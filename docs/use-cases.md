@@ -45,7 +45,7 @@ Super Administrator
 
 ---
 
-## UC-01: Notifications
+## UC-01: Notifications (ppt-web, mobile)
 
 ### UC-01.1: Enable Push Notifications
 **Actor:** Owner, Tenant
@@ -73,7 +73,7 @@ Super Administrator
 
 ---
 
-## UC-02: Announcements
+## UC-02: Announcements (ppt-web, mobile)
 
 ### UC-02.1: Create Announcement
 **Actor:** Manager
@@ -129,7 +129,7 @@ Super Administrator
 
 ---
 
-## UC-03: Faults
+## UC-03: Faults (ppt-web, mobile)
 
 ### UC-03.1: Report Fault
 **Actor:** Owner, Tenant, Manager
@@ -189,7 +189,7 @@ Super Administrator
 
 ---
 
-## UC-04: Voting and Polls
+## UC-04: Voting and Polls (ppt-web, mobile)
 
 ### UC-04.1: Search Votes
 **Actor:** Owner, Manager
@@ -249,7 +249,7 @@ Super Administrator
 
 ---
 
-## UC-05: Messages
+## UC-05: Messages (ppt-web, mobile)
 
 ### UC-05.1: Create New Message
 **Actor:** Owner, Tenant, Manager
@@ -297,7 +297,7 @@ Super Administrator
 
 ---
 
-## UC-06: Neighbors
+## UC-06: Neighbors (ppt-web, mobile)
 
 ### UC-06.1: View Neighbors List
 **Actor:** Owner, Tenant, Manager
@@ -341,7 +341,7 @@ Super Administrator
 
 ---
 
-## UC-07: Contacts
+## UC-07: Contacts (ppt-web, mobile)
 
 ### UC-07.1: View Manager Directory
 **Actor:** Owner, Tenant
@@ -373,7 +373,7 @@ Super Administrator
 
 ---
 
-## UC-08: Documents
+## UC-08: Documents (ppt-web, mobile)
 
 ### UC-08.1: Search Documents
 **Actor:** Owner, Tenant, Manager
@@ -433,7 +433,7 @@ Super Administrator
 
 ---
 
-## UC-09: Forms
+## UC-09: Forms (ppt-web, mobile)
 
 ### UC-09.1: Search Forms
 **Actor:** Owner, Tenant
@@ -469,7 +469,7 @@ Super Administrator
 
 ---
 
-## UC-10: Person-Months
+## UC-10: Person-Months (ppt-web, mobile)
 
 ### UC-10.1: Add Person-Month Record
 **Actor:** Owner, Manager
@@ -501,7 +501,7 @@ Super Administrator
 
 ---
 
-## UC-11: Self-Readings
+## UC-11: Self-Readings (ppt-web, mobile)
 
 ### UC-11.1: Submit Meter Reading
 **Actor:** Owner
@@ -545,7 +545,7 @@ Super Administrator
 
 ---
 
-## UC-12: Outages
+## UC-12: Outages (ppt-web, mobile)
 
 ### UC-12.1: View Outages List
 **Actor:** Owner, Tenant
@@ -581,7 +581,7 @@ Super Administrator
 
 ---
 
-## UC-13: News
+## UC-13: News (ppt-web, mobile)
 
 ### UC-13.1: Search News
 **Actor:** Owner, Tenant, Manager
@@ -621,7 +621,7 @@ Super Administrator
 
 ---
 
-## UC-14: User Account Management
+## UC-14: User Account Management (ppt-web, mobile, reality-web, mobile-native)
 
 ### UC-14.1: Register Account
 **Actor:** Owner, Tenant
@@ -661,7 +661,7 @@ Super Administrator
 
 ---
 
-## UC-15: Building/Property Management
+## UC-15: Building/Property Management (ppt-web, mobile)
 
 ### UC-15.1: Add Building
 **Actor:** Manager, System Administrator
@@ -693,7 +693,7 @@ Super Administrator
 
 ---
 
-## UC-16: Financial Management
+## UC-16: Financial Management (ppt-web, mobile)
 
 ### UC-16.1: View Account Balance
 **Actor:** Owner
@@ -725,7 +725,7 @@ Super Administrator
 
 ---
 
-## UC-17: Reports and Analytics
+## UC-17: Reports and Analytics (ppt-web)
 
 ### UC-17.1: Generate Fault Statistics Report
 **Actor:** Manager
@@ -749,7 +749,7 @@ Super Administrator
 
 ---
 
-## UC-18: System Administration
+## UC-18: System Administration (ppt-web)
 
 ### UC-18.1: Manage User Roles
 **Actor:** System Administrator
@@ -777,7 +777,7 @@ Super Administrator
 
 ---
 
-## UC-19: Real-time & Mobile Features
+## UC-19: Real-time & Mobile Features (ppt-web, mobile, reality-web, mobile-native)
 
 ### UC-19.1: Real-time Fault Status Updates
 **Actor:** Owner, Tenant, Manager
@@ -829,7 +829,7 @@ Super Administrator
 
 ---
 
-## UC-20: AI/ML Features
+## UC-20: AI/ML Features (ppt-web, mobile, reality-web, mobile-native)
 
 ### UC-20.1: AI Chatbot for Common Questions
 **Actor:** Owner, Tenant, AI System
@@ -929,7 +929,7 @@ Super Administrator
 
 ---
 
-## UC-21: IoT & Smart Building
+## UC-21: IoT & Smart Building (ppt-web, mobile)
 
 ### UC-21.1: Connect Smart Meters
 **Actor:** Manager, System Administrator, IoT Device
@@ -973,7 +973,7 @@ Super Administrator
 
 ---
 
-## UC-22: External Integrations
+## UC-22: External Integrations (ppt-web, mobile)
 
 ### UC-22.1: Calendar Integration
 **Actor:** Owner, Tenant, Manager
@@ -1017,7 +1017,7 @@ Super Administrator
 
 ---
 
-## UC-23: Security & Compliance
+## UC-23: Security & Compliance (ppt-web, mobile, reality-web, mobile-native)
 
 ### UC-23.1: Two-Factor Authentication
 **Actor:** Owner, Tenant, Manager, Technical Manager
@@ -1061,7 +1061,7 @@ Super Administrator
 
 ---
 
-## UC-24: Community & Social
+## UC-24: Community & Social (ppt-web, mobile)
 
 ### UC-24.1: Community Forum
 **Actor:** Owner, Tenant, Manager
@@ -1105,7 +1105,7 @@ Super Administrator
 
 ---
 
-## UC-25: Accessibility
+## UC-25: Accessibility (ppt-web, mobile, reality-web, mobile-native)
 
 ### UC-25.1: Screen Reader Compatibility
 **Actor:** Owner, Tenant, Manager
@@ -1141,7 +1141,7 @@ Super Administrator
 
 ---
 
-## UC-26: Workflow Automation
+## UC-26: Workflow Automation (ppt-web, mobile)
 
 ### UC-26.1: Automated Fault Routing
 **Actor:** AI System, Manager
@@ -1185,7 +1185,7 @@ Super Administrator
 
 ---
 
-## UC-27: Multi-tenancy & Organizations
+## UC-27: Multi-tenancy & Organizations (ppt-web, mobile)
 
 ### UC-27.1: Create Organization
 **Actor:** Super Administrator
@@ -1229,7 +1229,7 @@ Super Administrator
 
 ---
 
-## UC-28: Delegation & Permissions
+## UC-28: Delegation & Permissions (ppt-web, mobile)
 
 ### UC-28.1: Delegate Rights to Person
 **Actor:** Owner
@@ -1273,7 +1273,7 @@ Super Administrator
 
 ---
 
-## UC-29: Short-term Rental Management (Airbnb/Booking)
+## UC-29: Short-term Rental Management (Airbnb/Booking) (ppt-web, mobile)
 
 ### UC-29.1: Connect Airbnb Account
 **Actor:** Property Manager, Owner
@@ -1337,7 +1337,7 @@ Super Administrator
 
 ---
 
-## UC-30: Guest Registration System
+## UC-30: Guest Registration System (ppt-web, mobile)
 
 ### UC-30.1: Register Guest Manually
 **Actor:** Property Manager, Owner
@@ -1381,7 +1381,7 @@ Super Administrator
 
 ---
 
-## UC-31: Real Estate & Listings
+## UC-31: Real Estate & Listings (ppt-web, mobile, reality-web, mobile-native)
 
 ### UC-31.1: Create Property Listing (Sale)
 **Actor:** Owner, Real Estate Agent
@@ -1441,7 +1441,7 @@ Super Administrator
 
 ---
 
-## UC-32: Real Estate Portal Integration (API)
+## UC-32: Real Estate Portal Integration (API) (ppt-web, mobile, reality-web, mobile-native)
 
 ### UC-32.1: Configure Portal Connection
 **Actor:** Organization Admin, Real Estate Agent
@@ -1485,7 +1485,7 @@ Super Administrator
 
 ---
 
-## UC-33: Tenant Screening
+## UC-33: Tenant Screening (ppt-web, mobile)
 
 ### UC-33.1: Request Tenant Background Check
 **Actor:** Owner, Real Estate Agent
@@ -1529,7 +1529,7 @@ Super Administrator
 
 ---
 
-## UC-34: Lease Management
+## UC-34: Lease Management (ppt-web, mobile)
 
 ### UC-34.1: Create Lease Agreement
 **Actor:** Owner, Real Estate Agent, Manager
@@ -1573,7 +1573,7 @@ Super Administrator
 
 ---
 
-## UC-35: Insurance Management
+## UC-35: Insurance Management (ppt-web, mobile)
 
 ### UC-35.1: View Building Insurance Policies
 **Actor:** Manager, Organization Admin
@@ -1609,7 +1609,7 @@ Super Administrator
 
 ---
 
-## UC-36: Maintenance Scheduling
+## UC-36: Maintenance Scheduling (ppt-web, mobile)
 
 ### UC-36.1: Schedule Preventive Maintenance
 **Actor:** Manager, Technical Manager
@@ -1645,7 +1645,7 @@ Super Administrator
 
 ---
 
-## UC-37: Supplier/Vendor Management
+## UC-37: Supplier/Vendor Management (ppt-web, mobile)
 
 ### UC-37.1: Add Supplier
 **Actor:** Manager, Organization Admin
@@ -1681,7 +1681,7 @@ Super Administrator
 
 ---
 
-## UC-38: Legal & Compliance
+## UC-38: Legal & Compliance (ppt-web, mobile)
 
 ### UC-38.1: Store Legal Documents
 **Actor:** Manager, Organization Admin
@@ -1717,7 +1717,7 @@ Super Administrator
 
 ---
 
-## UC-39: Emergency Management
+## UC-39: Emergency Management (ppt-web, mobile)
 
 ### UC-39.1: Trigger Emergency Alert
 **Actor:** Manager, System Administrator
@@ -1753,7 +1753,7 @@ Super Administrator
 
 ---
 
-## UC-40: Budget & Planning
+## UC-40: Budget & Planning (ppt-web, mobile)
 
 ### UC-40.1: Create Annual Budget
 **Actor:** Manager, Organization Admin
@@ -1789,7 +1789,7 @@ Super Administrator
 
 ---
 
-## UC-41: Subscription & Billing (Platform)
+## UC-41: Subscription & Billing (Platform) (ppt-web)
 
 ### UC-41.1: View Subscription Plan
 **Actor:** Organization Admin
@@ -1825,7 +1825,7 @@ Super Administrator
 
 ---
 
-## UC-42: Onboarding & Help
+## UC-42: Onboarding & Help (ppt-web, mobile, reality-web, mobile-native)
 
 ### UC-42.1: Complete Onboarding Tour
 **Actor:** Owner, Tenant, Manager
@@ -1861,7 +1861,7 @@ Super Administrator
 
 ---
 
-## UC-43: Mobile App Features
+## UC-43: Mobile App Features (mobile, mobile-native)
 
 ### UC-43.1: Add Home Screen Widget
 **Actor:** Owner, Tenant, Manager
@@ -1899,49 +1899,49 @@ Super Administrator
 
 ## Summary
 
-| Category | Use Cases |
-|----------|-----------|
-| UC-01: Notifications | 6 |
-| UC-02: Announcements | 13 |
-| UC-03: Faults | 14 |
-| UC-04: Voting and Polls | 14 |
-| UC-05: Messages | 11 |
-| UC-06: Neighbors | 10 |
-| UC-07: Contacts | 7 |
-| UC-08: Documents | 14 |
-| UC-09: Forms | 8 |
-| UC-10: Person-Months | 7 |
-| UC-11: Self-Readings | 10 |
-| UC-12: Outages | 8 |
-| UC-13: News | 9 |
-| UC-14: User Account Management | 9 |
-| UC-15: Building/Property Management | 7 |
-| UC-16: Financial Management | 7 |
-| UC-17: Reports and Analytics | 5 |
-| UC-18: System Administration | 6 |
-| UC-19: Real-time & Mobile Features | 12 |
-| UC-20: AI/ML Features | 24 |
-| UC-21: IoT & Smart Building | 10 |
-| UC-22: External Integrations | 10 |
-| UC-23: Security & Compliance | 10 |
-| UC-24: Community & Social | 10 |
-| UC-25: Accessibility | 8 |
-| UC-26: Workflow Automation | 10 |
-| UC-27: Multi-tenancy & Organizations | 10 |
-| UC-28: Delegation & Permissions | 10 |
-| UC-29: Short-term Rental Management | 15 |
-| UC-30: Guest Registration System | 10 |
-| UC-31: Real Estate & Listings | 14 |
-| UC-32: Real Estate Portal Integration | 10 |
-| UC-33: Tenant Screening | 10 |
-| UC-34: Lease Management | 10 |
-| UC-35: Insurance Management | 8 |
-| UC-36: Maintenance Scheduling | 8 |
-| UC-37: Supplier/Vendor Management | 8 |
-| UC-38: Legal & Compliance | 8 |
-| UC-39: Emergency Management | 8 |
-| UC-40: Budget & Planning | 8 |
-| UC-41: Subscription & Billing | 8 |
-| UC-42: Onboarding & Help | 8 |
-| UC-43: Mobile App Features | 8 |
-| **TOTAL** | **407** |
+| Category | Use Cases | Apps |
+|----------|-----------|------|
+| UC-01: Notifications | 6 | ppt-web, mobile |
+| UC-02: Announcements | 13 | ppt-web, mobile |
+| UC-03: Faults | 14 | ppt-web, mobile |
+| UC-04: Voting and Polls | 14 | ppt-web, mobile |
+| UC-05: Messages | 11 | ppt-web, mobile |
+| UC-06: Neighbors | 10 | ppt-web, mobile |
+| UC-07: Contacts | 7 | ppt-web, mobile |
+| UC-08: Documents | 14 | ppt-web, mobile |
+| UC-09: Forms | 8 | ppt-web, mobile |
+| UC-10: Person-Months | 7 | ppt-web, mobile |
+| UC-11: Self-Readings | 10 | ppt-web, mobile |
+| UC-12: Outages | 8 | ppt-web, mobile |
+| UC-13: News | 9 | ppt-web, mobile |
+| UC-14: User Account Management | 9 | ppt-web, mobile, reality-web, mobile-native |
+| UC-15: Building/Property Management | 7 | ppt-web, mobile |
+| UC-16: Financial Management | 7 | ppt-web, mobile |
+| UC-17: Reports and Analytics | 5 | ppt-web |
+| UC-18: System Administration | 6 | ppt-web |
+| UC-19: Real-time & Mobile Features | 12 | ppt-web, mobile, reality-web, mobile-native |
+| UC-20: AI/ML Features | 24 | ppt-web, mobile, reality-web, mobile-native |
+| UC-21: IoT & Smart Building | 10 | ppt-web, mobile |
+| UC-22: External Integrations | 10 | ppt-web, mobile |
+| UC-23: Security & Compliance | 10 | ppt-web, mobile, reality-web, mobile-native |
+| UC-24: Community & Social | 10 | ppt-web, mobile |
+| UC-25: Accessibility | 8 | ppt-web, mobile, reality-web, mobile-native |
+| UC-26: Workflow Automation | 10 | ppt-web, mobile |
+| UC-27: Multi-tenancy & Organizations | 10 | ppt-web, mobile |
+| UC-28: Delegation & Permissions | 10 | ppt-web, mobile |
+| UC-29: Short-term Rental Management | 15 | ppt-web, mobile |
+| UC-30: Guest Registration System | 10 | ppt-web, mobile |
+| UC-31: Real Estate & Listings | 14 | ppt-web, mobile, reality-web, mobile-native |
+| UC-32: Real Estate Portal Integration | 10 | ppt-web, mobile, reality-web, mobile-native |
+| UC-33: Tenant Screening | 10 | ppt-web, mobile |
+| UC-34: Lease Management | 10 | ppt-web, mobile |
+| UC-35: Insurance Management | 8 | ppt-web, mobile |
+| UC-36: Maintenance Scheduling | 8 | ppt-web, mobile |
+| UC-37: Supplier/Vendor Management | 8 | ppt-web, mobile |
+| UC-38: Legal & Compliance | 8 | ppt-web, mobile |
+| UC-39: Emergency Management | 8 | ppt-web, mobile |
+| UC-40: Budget & Planning | 8 | ppt-web, mobile |
+| UC-41: Subscription & Billing | 8 | ppt-web |
+| UC-42: Onboarding & Help | 8 | ppt-web, mobile, reality-web, mobile-native |
+| UC-43: Mobile App Features | 8 | mobile, mobile-native |
+| **TOTAL** | **407** | |
