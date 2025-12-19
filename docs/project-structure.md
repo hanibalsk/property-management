@@ -64,8 +64,8 @@ property-management/
 │   ├── CLAUDE.md                    # KMP context
 │   ├── build.gradle.kts
 │   ├── shared/                      # Common code
-│   ├── androidApp/                  # bit.two.three.ppt.reality
-│   └── iosApp/                      # bit.two.three.ppt.reality
+│   ├── androidApp/                  # three.two.bit.ppt.reality
+│   └── iosApp/                      # three.two.bit.ppt.reality
 │
 └── .github/workflows/                # CI/CD
     ├── api-validation.yml
@@ -93,8 +93,8 @@ property-management/
 
 | App | Package ID | Technology | Backend |
 |-----|------------|------------|---------|
-| Reality Portal Android | bit.two.three.ppt.reality | Kotlin Multiplatform | reality-server |
-| Reality Portal iOS | bit.two.three.ppt.reality | Kotlin Multiplatform | reality-server |
+| Reality Portal Android | three.two.bit.ppt.reality | Kotlin Multiplatform | reality-server |
+| Reality Portal iOS | three.two.bit.ppt.reality | Kotlin Multiplatform | reality-server |
 
 ## Shared Code
 

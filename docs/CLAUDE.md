@@ -407,8 +407,8 @@ openapi-generator generate \
 ### Mobile Native
 
 Reality Portal mobile apps (Kotlin Multiplatform):
-- Android: `bit.two.three.ppt.reality`
-- iOS: `bit.two.three.ppt.reality`
+- Android: `three.two.bit.ppt.reality`
+- iOS: `three.two.bit.ppt.reality`
 
 ---
 

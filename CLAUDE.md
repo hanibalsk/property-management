@@ -6,10 +6,10 @@
 
 | Platform | Package/Bundle ID |
 |----------|-------------------|
-| Android (Reality Portal) | `bit.two.three.ppt.reality` |
-| iOS (Reality Portal) | `bit.two.three.ppt.reality` |
-| Android (Property Mgmt) | `bit.two.three.ppt.management` |
-| iOS (Property Mgmt) | `bit.two.three.ppt.management` |
+| Android (Reality Portal) | `three.two.bit.ppt.reality` |
+| iOS (Reality Portal) | `three.two.bit.ppt.reality` |
+| Android (Property Mgmt) | `three.two.bit.ppt.management` |
+| iOS (Property Mgmt) | `three.two.bit.ppt.management` |
 
 ## Architecture
 
@@ -18,8 +18,8 @@
 │                        PROPERTY MANAGEMENT                          │
 ├─────────────────────────────────────────────────────────────────────┤
 │  ppt-web (React SPA)     │  mobile (React Native)                  │
-│  - Manager dashboard     │  - Android: bit.two.three.ppt.management│
-│  - Building management   │  - iOS: bit.two.three.ppt.management    │
+│  - Manager dashboard     │  - Android: three.two.bit.ppt.management│
+│  - Building management   │  - iOS: three.two.bit.ppt.management    │
 │  - Faults, Voting, etc   │                                         │
 ├─────────────────────────────────────────────────────────────────────┤
 │                         api-server (Rust)                           │
@@ -33,8 +33,8 @@
 │  Port 8081 │ Public listings │ SSO Consumer                        │
 ├─────────────────────────────────────────────────────────────────────┤
 │  reality-web (Next.js SSR)   │  mobile-native (KMP)                │
-│  - Public listings           │  - Android: bit.two.three.ppt.reality│
-│  - Search, filters           │  - iOS: bit.two.three.ppt.reality   │
+│  - Public listings           │  - Android: three.two.bit.ppt.reality│
+│  - Search, filters           │  - iOS: three.two.bit.ppt.reality   │
 │  - i18n (sk, cs, de, en)     │                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                          REALITY PORTAL                             │

@@ -6,14 +6,14 @@
 
 Kotlin Multiplatform project for Reality Portal mobile apps.
 
-**Package ID:** `bit.two.three.ppt.reality`
+**Package ID:** `three.two.bit.ppt.reality`
 
 ## Targets
 
 | Platform | App |
 |----------|-----|
-| Android | Reality Portal (bit.two.three.ppt.reality) |
-| iOS | Reality Portal (bit.two.three.ppt.reality) |
+| Android | Reality Portal (three.two.bit.ppt.reality) |
+| iOS | Reality Portal (three.two.bit.ppt.reality) |
 
 ## Quick Commands
 

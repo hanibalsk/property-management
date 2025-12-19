@@ -52,7 +52,7 @@ i18n Files: `messages/` directory
 
 **Technology:** React Native (Expo)
 **Backend:** api-server (Port 8080)
-**Package ID:** `bit.two.three.ppt.management`
+**Package ID:** `three.two.bit.ppt.management`
 **Purpose:** Property Management mobile app
 
 ```bash
