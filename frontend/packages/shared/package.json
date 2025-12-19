@@ -10,7 +10,9 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@ppt/api-client": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.3.0"
   }

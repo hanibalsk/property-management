@@ -3,7 +3,7 @@
  */
 
 // Re-export API client
-export * from '@pm/api-client';
+export * from '@ppt/api-client';
 
 // Shared types
 export interface TenantContext {
