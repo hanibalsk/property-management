@@ -61,7 +61,8 @@ pub async fn tenant_logging(request: Request<Body>, next: Next) -> Response {
         .headers()
         .get("X-Tenant-ID")
         .and_then(|v| v.to_str().ok())
-        .unwrap_or("none");
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "none".to_string());
 
     let method = request.method().clone();
     let uri = request.uri().clone();

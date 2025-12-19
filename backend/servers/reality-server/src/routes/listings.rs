@@ -6,7 +6,7 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 /// Create listings router.
@@ -17,7 +17,7 @@ pub fn router() -> Router {
 }
 
 /// Listing search request.
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct ListingSearchRequest {
     /// Search query (address, city, description)
     pub q: Option<String>,

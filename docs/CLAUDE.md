@@ -324,13 +324,12 @@ docs/api/
 │       ├── pagination.tsp      # List patterns
 │       └── tenant.tsp          # Multi-tenant context
 ├── generated/
-│   ├── openapi.yaml            # Full consolidated spec
-│   └── by-service/
-│       ├── api-server.yaml     # Property Management API
-│       └── reality-server.yaml # Reality Portal API
+│   └── openapi.yaml            # Consolidated OpenAPI spec (used by all SDKs)
 └── rules/
     └── spectral.yaml           # Linting rules
 ```
+
+> **Note:** Both api-server and reality-server share the same OpenAPI spec. SDK generation uses the consolidated `openapi.yaml`.
 
 ### Multi-Tenancy Pattern
 

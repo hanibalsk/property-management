@@ -68,7 +68,19 @@ Key workspace dependencies:
 
 ## Environment Variables
 
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `JWT_SECRET` | Yes | Secret key for JWT signing (min 32 chars) |
+| `RUST_LOG` | No | Log level (default: info) |
+
 ```bash
+# Required
 DATABASE_URL=postgres://user:pass@localhost:5432/ppt
+JWT_SECRET=your-secure-random-secret-key-min-32-chars
+
+# Optional
 RUST_LOG=debug
 ```
+
+> **Security:** `JWT_SECRET` has no fallback. Server will fail to authenticate requests if not set.

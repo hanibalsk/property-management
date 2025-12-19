@@ -59,8 +59,11 @@ where
             .strip_prefix("Bearer ")
             .ok_or((StatusCode::UNAUTHORIZED, "Invalid Authorization header format"))?;
 
-        // In production, get the secret from environment/config
-        let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-key".to_string());
+        // Get JWT secret from environment - REQUIRED, no fallback for security
+        let secret = std::env::var("JWT_SECRET").map_err(|_| {
+            tracing::error!("JWT_SECRET environment variable not set");
+            (StatusCode::INTERNAL_SERVER_ERROR, "Server configuration error")
+        })?;
 
         // Decode and validate JWT
         let token_data = decode::<Claims>(

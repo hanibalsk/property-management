@@ -9,8 +9,9 @@
 linker = "clang"
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
-[target.aarch64-apple-darwin]
-rustflags = ["-C", "link-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld"]
+# [target.aarch64-apple-darwin]
+# Uncomment if you have lld installed via: brew install llvm
+# rustflags = ["-C", "link-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld"]
 
 [alias]
 # Common development commands
