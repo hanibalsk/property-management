@@ -1,0 +1,83 @@
+name: API Validation
+
+on:
+  push:
+    paths:
+      - 'docs/api/**'
+  pull_request:
+    paths:
+      - 'docs/api/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install TypeSpec
+        run: npm install -g @typespec/compiler
+
+      - name: Install Spectral
+        run: npm install -g @stoplight/spectral-cli
+
+      - name: Install oasdiff
+        run: |
+          curl -sL https://github.com/Tufin/oasdiff/releases/download/v1.10.0/oasdiff_1.10.0_linux_amd64.tar.gz | tar xz
+          sudo mv oasdiff /usr/local/bin/
+
+      - name: Compile TypeSpec
+        run: |
+          cd docs/api/typespec
+          tsp compile .
+
+      - name: Lint OpenAPI
+        run: spectral lint docs/api/generated/openapi.yaml -r docs/api/rules/spectral.yaml
+
+      - name: Check Breaking Changes
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          if [ -f "origin/${{ github.base_ref }}:docs/api/generated/openapi.yaml" ]; then
+            oasdiff breaking origin/${{ github.base_ref }}:docs/api/generated/openapi.yaml docs/api/generated/openapi.yaml
+          fi
+
+      - name: Upload OpenAPI Spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-spec
+          path: docs/api/generated/openapi.yaml
+
+  generate-sdks:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download OpenAPI Spec
+        uses: actions/download-artifact@v4
+        with:
+          name: openapi-spec
+          path: docs/api/generated
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate TypeScript SDK
+        run: |
+          npm install -g @hey-api/openapi-ts
+          openapi-ts -i docs/api/generated/openapi.yaml -o frontend/packages/api-client/src/generated
+
+      - name: Upload TypeScript SDK
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-sdk
+          path: frontend/packages/api-client/src/generated

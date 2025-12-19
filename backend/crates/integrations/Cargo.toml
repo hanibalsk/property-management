@@ -1,0 +1,13 @@
+[package]
+name = "integrations"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+common = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }

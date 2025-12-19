@@ -247,3 +247,216 @@ hotfix/{issue-description}
 - `feat(UC-14): implement user registration`
 - `fix(UC-04): correct vote counting logic`
 - `docs(PRD-001): add security requirements`
+
+---
+
+## API Strategy
+
+### Single Source of Truth: OpenAPI
+
+The API specification serves as the single source of truth for all clients and services. We use a **hybrid API-first approach**:
+
+| Approach | Use For |
+|----------|---------|
+| **Design-First** | Multi-tenancy, authentication, GDPR, external integrations |
+| **Code-First** | Internal CRUD, business logic, rapidly evolving features |
+
+### Technology Stack
+
+#### API Specifications
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Spec Language | **TypeSpec** | Design-first, code-like syntax |
+| OpenAPI Version | **3.1** | Latest standard |
+| Linting | **Spectral** | Enforce naming, security rules |
+| Breaking Changes | **oasdiff** | Detect breaking changes in CI |
+| Documentation | **Stoplight/ReDoc** | Interactive API docs |
+
+#### Backend (Rust)
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Framework | **Axum** | High-performance, type-safe |
+| OpenAPI | **utoipa** | Derive specs from Rust code |
+| Validation | **validator** | Request validation with derive |
+| Database | **sqlx** / **sea-orm** | Async database access |
+
+#### Frontend (TypeScript)
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Web | **React** | SPA web application |
+| Mobile | **React Native** | Cross-platform mobile |
+| SDK Generation | **@hey-api/openapi-ts** | Type-safe API client |
+| State | **TanStack Query** | Server state + caching |
+
+#### Mobile Native (Kotlin)
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Framework | **Kotlin Multiplatform** | Shared business logic |
+| Networking | **Ktor Client** | HTTP client |
+| SDK Generation | **openapi-generator** | Kotlin API client |
+
+### API Specifications Location
+
+```
+docs/api/
+├── README.md                    # API documentation index
+├── typespec/
+│   ├── main.tsp                # Entry point
+│   ├── tspconfig.yaml
+│   ├── domains/
+│   │   ├── auth.tsp            # UC-14: Authentication
+│   │   ├── organizations.tsp   # UC-27: Multi-tenancy
+│   │   ├── buildings.tsp       # UC-15: Buildings
+│   │   ├── units.tsp           # Properties, Units
+│   │   ├── faults.tsp          # UC-03: Fault reporting
+│   │   ├── voting.tsp          # UC-04: Voting
+│   │   ├── documents.tsp       # UC-08: Documents
+│   │   ├── rentals.tsp         # UC-29-30: Airbnb/Booking
+│   │   ├── listings.tsp        # UC-31-32: Real estate
+│   │   └── compliance.tsp      # UC-26: GDPR
+│   └── shared/
+│       ├── models.tsp          # Common data types
+│       ├── errors.tsp          # Error responses
+│       ├── pagination.tsp      # List patterns
+│       └── tenant.tsp          # Multi-tenant context
+├── generated/
+│   ├── openapi.yaml            # Full consolidated spec
+│   └── by-service/
+│       ├── auth-api.yaml
+│       ├── property-api.yaml
+│       └── integration-api.yaml
+└── rules/
+    └── spectral.yaml           # Linting rules
+```
+
+### Multi-Tenancy Pattern
+
+All API operations require tenant context:
+
+```yaml
+# OpenAPI Security Scheme
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          scopes:
+            'tenant:read': Read tenant data
+            'tenant:write': Write tenant data
+            'gdpr:export': Export personal data
+            'gdpr:delete': Delete personal data
+```
+
+```rust
+// Rust TenantContext
+#[derive(Debug, Clone, ToSchema)]
+pub struct TenantContext {
+    pub tenant_id: String,
+    pub role: TenantRole,
+}
+```
+
+### Versioning Strategy
+
+- **URI-based**: `/api/v1/properties`, `/api/v2/properties`
+- **Max 2 active versions** at any time
+- **12-month deprecation window** for breaking changes
+- **Response headers**: `Deprecation`, `Sunset`, `Link`
+
+### SDK Generation
+
+```bash
+# TypeScript (React, React Native)
+npx @hey-api/openapi-ts \
+  -i docs/api/generated/openapi.yaml \
+  -o frontend/packages/api-client/src/generated
+
+# Kotlin (KMP)
+openapi-generator generate \
+  -i docs/api/generated/openapi.yaml \
+  -g kotlin \
+  -o mobile-native/shared/src/commonMain/kotlin/api \
+  --additional-properties=library=multiplatform
+```
+
+---
+
+## Architecture
+
+### Backend (Rust Multi-Server)
+
+```
+backend/
+├── Cargo.toml                   # Workspace root
+├── crates/                      # Shared libraries
+│   ├── common/                  # Core types, errors, TenantContext
+│   ├── api-core/               # OpenAPI, extractors, middleware
+│   ├── db/                     # Database layer, models, repositories
+│   └── integrations/           # Airbnb, Booking, real estate portals
+└── servers/                     # Individual servers
+    ├── auth-server/            # Authentication service
+    ├── property-server/        # Core property management
+    └── integration-server/     # External integrations
+```
+
+### Frontend (TypeScript Monorepo)
+
+```
+frontend/
+├── packages/
+│   ├── api-client/             # Generated TypeScript SDK
+│   ├── shared/                 # Shared components/logic
+│   └── ui-kit/                 # Design system
+└── apps/
+    ├── web/                    # React web app
+    └── mobile/                 # React Native
+```
+
+### Mobile Native (Kotlin Multiplatform)
+
+```
+mobile-native/
+├── shared/                      # KMP shared code
+│   └── src/
+│       ├── commonMain/         # Shared Kotlin (API client)
+│       ├── androidMain/        # Android-specific
+│       └── iosMain/            # iOS-specific
+├── androidApp/                 # Android application
+└── iosApp/                     # iOS application
+```
+
+---
+
+## CI/CD Pipeline
+
+### API Validation Workflow
+
+```yaml
+name: API Validation
+on: [push, pull_request]
+
+jobs:
+  validate:
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile TypeSpec
+        run: npx tsp compile docs/api/typespec
+      - name: Lint OpenAPI
+        run: npx spectral lint docs/api/generated/openapi.yaml
+      - name: Check Breaking Changes
+        run: npx oasdiff breaking origin/main docs/api/generated/openapi.yaml
+      - name: Generate SDKs
+        run: |
+          npx @hey-api/openapi-ts -i docs/api/generated/openapi.yaml -o frontend/packages/api-client/src/generated
+```
+
+### Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| API contract mismatches | 80% reduction |
+| Documentation freshness | < 1 hour after code change |
+| Cross-tenant data leaks | Zero |
+| Integration failure rate | < 1% |
+| GDPR compliance | 100% |

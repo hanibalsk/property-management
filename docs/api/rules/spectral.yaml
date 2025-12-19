@@ -1,0 +1,177 @@
+# Spectral rules for Property Management API
+# Run: npx spectral lint docs/api/generated/openapi.yaml
+
+extends:
+  - spectral:oas
+
+rules:
+  # ===== Naming Conventions =====
+
+  operation-operationId-kebab-case:
+    description: Operation IDs should be camelCase
+    given: "$.paths[*][*].operationId"
+    severity: warn
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-zA-Z0-9]*$"
+
+  path-kebab-case:
+    description: Paths should use kebab-case
+    given: "$.paths[*]~"
+    severity: warn
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(/[a-z0-9-{}]+)+$"
+
+  schema-names-pascal-case:
+    description: Schema names should be PascalCase
+    given: "$.components.schemas[*]~"
+    severity: warn
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[A-Z][a-zA-Z0-9]*$"
+
+  # ===== Multi-Tenancy =====
+
+  require-tenant-header:
+    description: All non-auth endpoints must require X-Tenant-ID header
+    given: "$.paths[?(!@property.match(/^\\/api\\/v[0-9]+\\/auth/))].[get,post,put,patch,delete].parameters[*]"
+    severity: error
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          properties:
+            name:
+              const: X-Tenant-ID
+            in:
+              const: header
+
+  # ===== Security =====
+
+  require-authorization:
+    description: All endpoints must define security requirements
+    given: "$.paths[*][get,post,put,patch,delete]"
+    severity: error
+    then:
+      - field: security
+        function: truthy
+
+  no-http-basic:
+    description: HTTP Basic auth is not allowed
+    given: "$.components.securitySchemes[*]"
+    severity: error
+    then:
+      field: type
+      function: pattern
+      functionOptions:
+        notMatch: "^http$"
+
+  # ===== Documentation =====
+
+  operation-description:
+    description: Operations should have descriptions
+    given: "$.paths[*][get,post,put,patch,delete]"
+    severity: warn
+    then:
+      field: description
+      function: truthy
+
+  operation-tags:
+    description: Operations must have tags
+    given: "$.paths[*][get,post,put,patch,delete]"
+    severity: error
+    then:
+      field: tags
+      function: truthy
+
+  # ===== Response Standards =====
+
+  success-response-required:
+    description: Operations must define success responses (2xx)
+    given: "$.paths[*][get,post,put,patch,delete].responses"
+    severity: error
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          anyOf:
+            - required: ["200"]
+            - required: ["201"]
+            - required: ["202"]
+            - required: ["204"]
+
+  error-response-401:
+    description: Secured endpoints should define 401 response
+    given: "$.paths[*][get,post,put,patch,delete][?(@.security)].responses"
+    severity: warn
+    then:
+      field: "401"
+      function: truthy
+
+  error-response-403:
+    description: Secured endpoints should define 403 response
+    given: "$.paths[*][get,post,put,patch,delete][?(@.security)].responses"
+    severity: info
+    then:
+      field: "403"
+      function: truthy
+
+  # ===== Pagination =====
+
+  list-endpoints-pagination:
+    description: List endpoints should support pagination
+    given: "$.paths[*].get[?(@.operationId && @.operationId.match(/^list/))]"
+    severity: warn
+    message: "List operations should include pagination parameters (page, limit)"
+
+  # ===== GDPR Compliance =====
+
+  pii-field-marked:
+    description: PII fields should be marked with x-gdpr-protected
+    given: "$.components.schemas.*.properties[?(@ && (@.format == 'email' || @.description && @.description.match(/personal|private|ssn|birth/i)))]"
+    severity: info
+    message: "Consider marking this field with x-gdpr-protected: true"
+
+  # ===== Versioning =====
+
+  api-version-in-path:
+    description: API version must be in path
+    given: "$.paths[*]~"
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^/api/v[0-9]+"
+
+  # ===== Request/Response =====
+
+  request-body-content-type:
+    description: Request bodies should use application/json
+    given: "$.paths[*][post,put,patch].requestBody.content"
+    severity: warn
+    then:
+      field: "application/json"
+      function: truthy
+
+  no-eval-in-default:
+    description: Default values should not contain code
+    given: "$..[?(@.default)]"
+    severity: error
+    then:
+      field: default
+      function: pattern
+      functionOptions:
+        notMatch: "(eval|function|=>"
+
+overrides:
+  - files:
+      - "**/*.yaml"
+      - "**/*.json"
+    rules:
+      # Relax some rules for generated specs
+      operation-operationId-kebab-case: warn

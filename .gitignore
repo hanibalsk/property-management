@@ -1,8 +1,14 @@
-# Ignore everything
-*
-
-# Hidden directories (explicit)
+# === OS ===
 .DS_Store
+Thumbs.db
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# === Project-specific hidden directories ===
 .agent/
 .agentvibes/
 .bmad/
@@ -10,9 +16,66 @@
 .cursor/
 .mcp.json
 
-# Except docs and readme
+# === Documentation ===
 !docs/
 !docs/**
 !README.md
 !README*
 !.gitignore
+
+# === Backend (Rust) ===
+!backend/
+!backend/**
+backend/target/
+backend/**/*.rs.bk
+backend/Cargo.lock
+
+# === Frontend (TypeScript) ===
+!frontend/
+!frontend/**
+frontend/node_modules/
+frontend/**/node_modules/
+frontend/**/dist/
+frontend/**/build/
+frontend/**/.next/
+frontend/**/coverage/
+frontend/pnpm-lock.yaml
+
+# === Mobile Native (Kotlin) ===
+!mobile-native/
+!mobile-native/**
+mobile-native/.gradle/
+mobile-native/build/
+mobile-native/**/build/
+mobile-native/local.properties
+mobile-native/.kotlin/
+
+# === API Specs ===
+# Keep generated specs (they're the source of truth)
+# But ignore node_modules from typespec
+docs/api/typespec/node_modules/
+
+# === GitHub Actions ===
+!.github/
+!.github/**
+
+# === Environment ===
+.env
+.env.local
+.env.*.local
+*.env
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# === Testing ===
+coverage/
+*.lcov
+
+# === Temporary ===
+*.tmp
+*.temp
+.cache/

@@ -1,0 +1,74 @@
+name: Mobile Native (KMP)
+
+on:
+  push:
+    paths:
+      - 'mobile-native/**'
+  pull_request:
+    paths:
+      - 'mobile-native/**'
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build shared module
+        working-directory: mobile-native
+        run: ./gradlew :shared:build
+
+      - name: Build Android app
+        working-directory: mobile-native
+        run: ./gradlew :androidApp:assembleDebug
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: mobile-native/androidApp/build/outputs/apk/debug/*.apk
+
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build iOS framework
+        working-directory: mobile-native
+        run: ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64
+
+      - name: Upload iOS framework
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-framework
+          path: mobile-native/shared/build/bin/iosSimulatorArm64/debugFramework/

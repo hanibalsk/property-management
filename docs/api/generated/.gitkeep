@@ -1,0 +1,2 @@
+# This directory contains generated OpenAPI specs
+# Run `npx tsp compile docs/api/typespec` to generate
