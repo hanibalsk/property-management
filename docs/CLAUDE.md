@@ -1,8 +1,10 @@
-# Property Management System - Project Documentation
+# Documentation - CLAUDE.md
+
+> **Parent:** See root `CLAUDE.md` for namespace, architecture, and conventions.
 
 ## Overview
 
-This repository contains the requirements specification for a comprehensive **Property Management System** designed for housing cooperatives, property management companies, and building administrators.
+This folder contains requirements, specifications, and API documentation for the Property Management System (PPT) and Reality Portal.
 
 ## Documents
 
@@ -10,6 +12,8 @@ This repository contains the requirements specification for a comprehensive **Pr
 |------|-------------|
 | `spec1.0.md` | Original system specification with UI/feature details |
 | `use-cases.md` | Complete use case catalog (407 use cases, 43 categories) |
+| `project-structure.md` | Full project directory structure |
+| `api/` | API specifications (TypeSpec, OpenAPI) |
 
 ## Use Cases Summary
 
@@ -322,9 +326,8 @@ docs/api/
 ├── generated/
 │   ├── openapi.yaml            # Full consolidated spec
 │   └── by-service/
-│       ├── auth-api.yaml
-│       ├── property-api.yaml
-│       └── integration-api.yaml
+│       ├── api-server.yaml     # Property Management API
+│       └── reality-server.yaml # Reality Portal API
 └── rules/
     └── spectral.yaml           # Linting rules
 ```
@@ -384,47 +387,28 @@ openapi-generator generate \
 
 ## Architecture
 
-### Backend (Rust Multi-Server)
+> **See:** Root `CLAUDE.md` for architecture diagram and platform matrix.
 
-```
-backend/
-├── Cargo.toml                   # Workspace root
-├── crates/                      # Shared libraries
-│   ├── common/                  # Core types, errors, TenantContext
-│   ├── api-core/               # OpenAPI, extractors, middleware
-│   ├── db/                     # Database layer, models, repositories
-│   └── integrations/           # Airbnb, Booking, real estate portals
-└── servers/                     # Individual servers
-    ├── auth-server/            # Authentication service
-    ├── property-server/        # Core property management
-    └── integration-server/     # External integrations
-```
+### Backend Servers
 
-### Frontend (TypeScript Monorepo)
+| Server | Port | Purpose |
+|--------|------|---------|
+| api-server | 8080 | Property Management (UC-01 to UC-32) |
+| reality-server | 8081 | Reality Portal (public listings) |
 
-```
-frontend/
-├── packages/
-│   ├── api-client/             # Generated TypeScript SDK
-│   ├── shared/                 # Shared components/logic
-│   └── ui-kit/                 # Design system
-└── apps/
-    ├── web/                    # React web app
-    └── mobile/                 # React Native
-```
+### Frontend Apps
 
-### Mobile Native (Kotlin Multiplatform)
+| App | Package | Technology |
+|-----|---------|------------|
+| ppt-web | @ppt/web | React SPA (Vite) |
+| reality-web | @ppt/reality-web | Next.js (SSR) |
+| mobile | @ppt/mobile | React Native |
 
-```
-mobile-native/
-├── shared/                      # KMP shared code
-│   └── src/
-│       ├── commonMain/         # Shared Kotlin (API client)
-│       ├── androidMain/        # Android-specific
-│       └── iosMain/            # iOS-specific
-├── androidApp/                 # Android application
-└── iosApp/                     # iOS application
-```
+### Mobile Native
+
+Reality Portal mobile apps (Kotlin Multiplatform):
+- Android: `bit.two.three.ppt.reality`
+- iOS: `bit.two.three.ppt.reality`
 
 ---
 

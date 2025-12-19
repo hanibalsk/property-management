@@ -1,0 +1,38 @@
+{
+  "common": {
+    "search": "Hľadať",
+    "login": "Prihlásiť sa",
+    "register": "Registrovať sa",
+    "logout": "Odhlásiť sa",
+    "favorites": "Obľúbené",
+    "contact": "Kontakt"
+  },
+  "home": {
+    "title": "Nájdite svoj ideálny domov",
+    "subtitle": "Prehľadajte tisíce ponúk",
+    "searchPlaceholder": "Zadajte mesto, adresu alebo kľúčové slovo..."
+  },
+  "listing": {
+    "price": "Cena",
+    "area": "Plocha",
+    "rooms": "Izby",
+    "floor": "Poschodie",
+    "features": "Vybavenie",
+    "description": "Popis",
+    "contact_agent": "Kontaktovať makléra",
+    "schedule_viewing": "Naplánovať obhliadku"
+  },
+  "search": {
+    "filters": "Filtre",
+    "property_type": "Typ nehnuteľnosti",
+    "transaction_type": "Typ transakcie",
+    "price_range": "Cenové rozpätie",
+    "area_range": "Plocha",
+    "sale": "Na predaj",
+    "rent": "Na prenájom",
+    "apartment": "Byt",
+    "house": "Dom",
+    "land": "Pozemok",
+    "commercial": "Komerčné"
+  }
+}

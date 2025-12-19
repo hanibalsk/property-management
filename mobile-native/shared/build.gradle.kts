@@ -68,7 +68,8 @@ kotlin {
 }
 
 android {
-    namespace = "com.propertymanagement.shared"
+    // Package: bit.two.three.ppt.reality
+    namespace = "bit.two.three.ppt.reality.shared"
     compileSdk = 34
 
     defaultConfig {

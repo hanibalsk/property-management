@@ -1,0 +1,38 @@
+{
+  "common": {
+    "search": "Hledat",
+    "login": "Přihlásit se",
+    "register": "Registrovat se",
+    "logout": "Odhlásit se",
+    "favorites": "Oblíbené",
+    "contact": "Kontakt"
+  },
+  "home": {
+    "title": "Najděte svůj ideální domov",
+    "subtitle": "Prohledejte tisíce nabídek",
+    "searchPlaceholder": "Zadejte město, adresu nebo klíčové slovo..."
+  },
+  "listing": {
+    "price": "Cena",
+    "area": "Plocha",
+    "rooms": "Pokoje",
+    "floor": "Patro",
+    "features": "Vybavení",
+    "description": "Popis",
+    "contact_agent": "Kontaktovat makléře",
+    "schedule_viewing": "Naplánovat prohlídku"
+  },
+  "search": {
+    "filters": "Filtry",
+    "property_type": "Typ nemovitosti",
+    "transaction_type": "Typ transakce",
+    "price_range": "Cenové rozmezí",
+    "area_range": "Plocha",
+    "sale": "Na prodej",
+    "rent": "K pronájmu",
+    "apartment": "Byt",
+    "house": "Dům",
+    "land": "Pozemek",
+    "commercial": "Komerční"
+  }
+}

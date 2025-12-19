@@ -1,0 +1,38 @@
+{
+  "common": {
+    "search": "Search",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "favorites": "Favorites",
+    "contact": "Contact"
+  },
+  "home": {
+    "title": "Find Your Perfect Property",
+    "subtitle": "Search thousands of listings",
+    "searchPlaceholder": "Enter city, address, or keyword..."
+  },
+  "listing": {
+    "price": "Price",
+    "area": "Area",
+    "rooms": "Rooms",
+    "floor": "Floor",
+    "features": "Features",
+    "description": "Description",
+    "contact_agent": "Contact Agent",
+    "schedule_viewing": "Schedule Viewing"
+  },
+  "search": {
+    "filters": "Filters",
+    "property_type": "Property Type",
+    "transaction_type": "Transaction Type",
+    "price_range": "Price Range",
+    "area_range": "Area Range",
+    "sale": "For Sale",
+    "rent": "For Rent",
+    "apartment": "Apartment",
+    "house": "House",
+    "land": "Land",
+    "commercial": "Commercial"
+  }
+}

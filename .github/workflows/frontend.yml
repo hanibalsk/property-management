@@ -9,7 +9,8 @@ on:
       - 'frontend/**'
 
 jobs:
-  build-web:
+  build-ppt-web:
+    name: Build Property Management Web
     runs-on: ubuntu-latest
 
     steps:
@@ -50,17 +51,62 @@ jobs:
         working-directory: frontend
         run: pnpm lint || true
 
-      - name: Build
-        working-directory: frontend
+      - name: Build ppt-web
+        working-directory: frontend/apps/ppt-web
         run: pnpm build
 
-      - name: Upload web build
+      - name: Upload ppt-web build
         uses: actions/upload-artifact@v4
         with:
-          name: web-build
-          path: frontend/apps/web/dist
+          name: ppt-web-build
+          path: frontend/apps/ppt-web/dist
+
+  build-reality-web:
+    name: Build Reality Portal Web
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install
+
+      - name: Build reality-web
+        working-directory: frontend/apps/reality-web
+        run: pnpm build
+
+      - name: Upload reality-web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: reality-web-build
+          path: frontend/apps/reality-web/.next
 
   build-mobile:
+    name: Build Property Management Mobile
     runs-on: ubuntu-latest
 
     steps:

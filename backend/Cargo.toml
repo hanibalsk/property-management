@@ -5,9 +5,8 @@ members = [
     "crates/api-core",
     "crates/db",
     "crates/integrations",
-    "servers/auth-server",
-    "servers/property-server",
-    "servers/integration-server",
+    "servers/api-server",
+    "servers/reality-server",
 ]
 
 [workspace.package]

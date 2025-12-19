@@ -1,0 +1,38 @@
+{
+  "common": {
+    "search": "Suchen",
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "logout": "Abmelden",
+    "favorites": "Favoriten",
+    "contact": "Kontakt"
+  },
+  "home": {
+    "title": "Finden Sie Ihr perfektes Zuhause",
+    "subtitle": "Durchsuchen Sie tausende Angebote",
+    "searchPlaceholder": "Stadt, Adresse oder Stichwort eingeben..."
+  },
+  "listing": {
+    "price": "Preis",
+    "area": "Fläche",
+    "rooms": "Zimmer",
+    "floor": "Etage",
+    "features": "Ausstattung",
+    "description": "Beschreibung",
+    "contact_agent": "Makler kontaktieren",
+    "schedule_viewing": "Besichtigung planen"
+  },
+  "search": {
+    "filters": "Filter",
+    "property_type": "Immobilientyp",
+    "transaction_type": "Transaktionstyp",
+    "price_range": "Preisspanne",
+    "area_range": "Flächenbereich",
+    "sale": "Zum Verkauf",
+    "rent": "Zur Miete",
+    "apartment": "Wohnung",
+    "house": "Haus",
+    "land": "Grundstück",
+    "commercial": "Gewerblich"
+  }
+}

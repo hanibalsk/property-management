@@ -1,17 +1,20 @@
 {
-  "name": "property-management-frontend",
+  "name": "ppt-frontend",
   "private": true,
+  "description": "PPT Frontend Monorepo",
   "workspaces": [
     "packages/*",
     "apps/*"
   ],
   "scripts": {
-    "dev:web": "pnpm --filter @pm/web dev",
-    "dev:mobile": "pnpm --filter @pm/mobile start",
+    "dev:ppt": "pnpm --filter @ppt/web dev",
+    "dev:reality": "pnpm --filter @ppt/reality-web dev",
+    "dev:mobile": "pnpm --filter @ppt/mobile start",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",
-    "generate-api": "pnpm --filter @pm/api-client generate",
+    "generate-api": "pnpm --filter @ppt/api-client generate",
+    "generate-reality-api": "pnpm --filter @ppt/reality-api-client generate",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {

@@ -101,6 +101,5 @@ jobs:
         with:
           name: backend-binaries
           path: |
-            backend/target/release/auth-server
-            backend/target/release/property-server
-            backend/target/release/integration-server
+            backend/target/release/api-server
+            backend/target/release/reality-server

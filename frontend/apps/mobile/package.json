@@ -1,7 +1,8 @@
 {
-  "name": "@pm/mobile",
+  "name": "@ppt/mobile",
   "version": "0.1.0",
   "private": true,
+  "description": "Property Management Mobile App (React Native)",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -9,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@pm/api-client": "workspace:*",
-    "@pm/shared": "workspace:*",
+    "@ppt/api-client": "workspace:*",
+    "@ppt/shared": "workspace:*",
     "@tanstack/react-query": "^5.17.0",
     "expo": "~50.0.0",
     "expo-status-bar": "~1.11.0",
