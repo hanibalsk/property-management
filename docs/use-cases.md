@@ -7,6 +7,8 @@
 - **Manager** - Property management company representative
 - **Technical Manager** - Technical staff responsible for building maintenance
 - **System Administrator** - User with full system access for configuration and maintenance
+- **AI System** - Automated AI/ML system performing intelligent operations
+- **IoT Device** - Smart building devices and sensors
 
 ---
 
@@ -742,6 +744,414 @@
 
 ---
 
+## UC-19: Real-time & Mobile Features
+
+### UC-19.1: Real-time Fault Status Updates
+**Actor:** Owner, Tenant, Manager
+**Description:** User receives live updates when fault status changes without refreshing the page.
+
+### UC-19.2: Live Voting Results
+**Actor:** Owner, Manager
+**Description:** User views real-time vote count updates during active polls.
+
+### UC-19.3: Typing Indicators in Messages
+**Actor:** Owner, Tenant, Manager
+**Description:** User sees when the other person is typing a message in a conversation.
+
+### UC-19.4: Presence Indicators
+**Actor:** Owner, Tenant
+**Description:** User sees online/offline/away status of managers in the contacts list.
+
+### UC-19.5: Live Document Collaboration
+**Actor:** Manager
+**Description:** Multiple managers can edit a document simultaneously with real-time sync.
+
+### UC-19.6: Offline Mode Support
+**Actor:** Owner, Tenant, Manager
+**Description:** User accesses cached data and queued actions when internet is unavailable.
+
+### UC-19.7: Background Sync
+**Actor:** Owner, Tenant, Manager
+**Description:** System automatically syncs queued actions when internet connection is restored.
+
+### UC-19.8: Low Bandwidth Mode
+**Actor:** Owner, Tenant
+**Description:** User enables compressed images and reduced data transfer for poor connections.
+
+### UC-19.9: Progressive Web App Installation
+**Actor:** Owner, Tenant, Manager
+**Description:** User installs the application as a native-like app on their device.
+
+### UC-19.10: Switch Application Language
+**Actor:** Owner, Tenant, Manager
+**Description:** User changes the application interface language.
+
+### UC-19.11: Auto-translate Announcements
+**Actor:** AI System
+**Description:** AI automatically translates announcements to the user's preferred language.
+
+### UC-19.12: Multi-language Document Support
+**Actor:** Manager
+**Description:** Manager uploads documents in multiple languages with automatic language detection.
+
+---
+
+## UC-20: AI/ML Features
+
+### UC-20.1: AI Chatbot for Common Questions
+**Actor:** Owner, Tenant, AI System
+**Description:** User asks common questions about rules, payments, contacts and receives instant AI-powered answers.
+
+### UC-20.2: AI-Assisted Fault Reporting
+**Actor:** Owner, Tenant, AI System
+**Description:** AI chatbot guides users through fault reporting with smart questions to gather complete information.
+
+### UC-20.3: AI Fault Categorization
+**Actor:** AI System
+**Description:** AI automatically categorizes reported faults based on description and assigns appropriate tags.
+
+### UC-20.4: AI Response Suggestions
+**Actor:** Manager, AI System
+**Description:** AI suggests response templates to managers for common queries and complaints.
+
+### UC-20.5: Virtual Building Assistant
+**Actor:** Owner, Tenant, AI System
+**Description:** User interacts with voice-activated assistant for hands-free building information access.
+
+### UC-20.6: Predict Maintenance Needs
+**Actor:** Manager, AI System
+**Description:** AI predicts when building equipment will need maintenance based on fault history and patterns.
+
+### UC-20.7: Consumption Anomaly Detection
+**Actor:** Manager, AI System
+**Description:** AI detects unusual water/electricity consumption patterns and alerts managers.
+
+### UC-20.8: Predict Payment Delays
+**Actor:** Manager, AI System
+**Description:** AI identifies owners likely to have payment issues based on historical patterns.
+
+### UC-20.9: Fault Resolution Time Prediction
+**Actor:** Owner, Tenant, AI System
+**Description:** AI estimates fault resolution time based on fault type and historical data.
+
+### UC-20.10: Occupancy Prediction
+**Actor:** Manager, AI System
+**Description:** AI predicts future building occupancy trends based on historical data.
+
+### UC-20.11: OCR Meter Reading
+**Actor:** Owner, AI System
+**Description:** AI automatically extracts meter reading value from uploaded photo of the meter.
+
+### UC-20.12: AI Fault Image Analysis
+**Actor:** AI System
+**Description:** AI analyzes fault photos to assess severity, type, and urgency of the issue.
+
+### UC-20.13: Document OCR & Indexing
+**Actor:** Manager, AI System
+**Description:** AI extracts text from uploaded documents to enable full-text search.
+
+### UC-20.14: Face Recognition for Access
+**Actor:** Owner, Tenant, AI System
+**Description:** User authenticates using facial recognition for building access integration.
+
+### UC-20.15: Damage Assessment from Photos
+**Actor:** Manager, AI System
+**Description:** AI estimates repair costs and severity from damage photos.
+
+### UC-20.16: Sentiment Analysis on Feedback
+**Actor:** Manager, AI System
+**Description:** AI analyzes resident sentiment from messages and comments to identify satisfaction trends.
+
+### UC-20.17: Smart Search with NLP
+**Actor:** Owner, Tenant, Manager, AI System
+**Description:** User searches using natural language queries across all content types.
+
+### UC-20.18: Auto-summarize Long Documents
+**Actor:** Owner, Tenant, AI System
+**Description:** AI generates concise summaries of lengthy documents for quick review.
+
+### UC-20.19: Auto-generate Meeting Minutes
+**Actor:** Manager, AI System
+**Description:** AI summarizes owners' meeting discussions and generates structured minutes.
+
+### UC-20.20: Spam/Abuse Detection
+**Actor:** AI System
+**Description:** AI automatically filters inappropriate content and spam in messages and comments.
+
+### UC-20.21: Recommend Similar Faults
+**Actor:** Manager, Technical Manager, AI System
+**Description:** AI shows similar past faults and their resolutions to help resolve current issues.
+
+### UC-20.22: Suggest Document Tags
+**Actor:** Manager, AI System
+**Description:** AI suggests relevant tags for uploaded documents based on content analysis.
+
+### UC-20.23: Personalized News Feed
+**Actor:** Owner, Tenant, AI System
+**Description:** AI curates news and announcements based on user interests and reading history.
+
+### UC-20.24: Smart Notification Prioritization
+**Actor:** AI System
+**Description:** AI prioritizes notifications by importance and user preferences to reduce noise.
+
+---
+
+## UC-21: IoT & Smart Building
+
+### UC-21.1: Connect Smart Meters
+**Actor:** Manager, System Administrator, IoT Device
+**Description:** Administrator integrates IoT smart meters for automatic reading collection.
+
+### UC-21.2: Smart Lock Integration
+**Actor:** Owner, Tenant, Manager, IoT Device
+**Description:** User manages building access through integrated smart locks.
+
+### UC-21.3: Environmental Sensors Dashboard
+**Actor:** Owner, Tenant, Manager, IoT Device
+**Description:** User views real-time temperature, humidity, and air quality data from sensors.
+
+### UC-21.4: Elevator Status Monitoring
+**Actor:** Manager, Technical Manager, IoT Device
+**Description:** Manager monitors real-time elevator status and receives fault alerts.
+
+### UC-21.5: Parking Sensor Integration
+**Actor:** Owner, Tenant, IoT Device
+**Description:** User views available parking spots through integrated parking sensors.
+
+### UC-21.6: CCTV Access
+**Actor:** Manager, System Administrator, IoT Device
+**Description:** Authorized user views building security camera feeds within the application.
+
+### UC-21.7: Fire/Smoke Alarm Integration
+**Actor:** Owner, Tenant, Manager, IoT Device
+**Description:** User receives instant push notifications from integrated fire/smoke detection systems.
+
+### UC-21.8: Energy Management Dashboard
+**Actor:** Manager, IoT Device
+**Description:** Manager monitors and analyzes building-wide energy consumption data.
+
+### UC-21.9: Water Leak Detection
+**Actor:** Manager, Technical Manager, IoT Device
+**Description:** System sends instant alerts when water leak sensors detect a leak.
+
+### UC-21.10: Automated Climate Control
+**Actor:** Manager, IoT Device
+**Description:** Manager configures and monitors automated HVAC for common areas.
+
+---
+
+## UC-22: External Integrations
+
+### UC-22.1: Calendar Integration
+**Actor:** Owner, Tenant, Manager
+**Description:** User syncs meetings, events, and deadlines with Google/Outlook calendar.
+
+### UC-22.2: Accounting System Integration
+**Actor:** Manager, System Administrator
+**Description:** Manager syncs financial data with external accounting software.
+
+### UC-22.3: Government Portal Integration
+**Actor:** Manager
+**Description:** Manager submits regulatory reports electronically to government portals.
+
+### UC-22.4: Bank Payment Integration
+**Actor:** Owner
+**Description:** Owner makes direct bank transfers for payments through integrated banking.
+
+### UC-22.5: SMS Gateway Integration
+**Actor:** Manager, System Administrator
+**Description:** System sends SMS notifications for critical alerts via integrated SMS gateway.
+
+### UC-22.6: Email Service Integration
+**Actor:** Manager, System Administrator
+**Description:** Administrator configures advanced email delivery with tracking and analytics.
+
+### UC-22.7: Document Signing Integration
+**Actor:** Owner, Manager
+**Description:** User electronically signs documents using integrated e-signature service (DocuSign, etc.).
+
+### UC-22.8: Video Conferencing Integration
+**Actor:** Owner, Manager
+**Description:** Manager conducts virtual owners' meetings via integrated Zoom/Teams.
+
+### UC-22.9: Public API for Third Parties
+**Actor:** System Administrator
+**Description:** Administrator manages API access for external service providers.
+
+### UC-22.10: Webhook Notifications
+**Actor:** System Administrator
+**Description:** Administrator configures real-time webhooks to notify external systems of events.
+
+---
+
+## UC-23: Security & Compliance
+
+### UC-23.1: Two-Factor Authentication
+**Actor:** Owner, Tenant, Manager, Technical Manager
+**Description:** User enables 2FA for enhanced account security.
+
+### UC-23.2: Biometric Login
+**Actor:** Owner, Tenant, Manager
+**Description:** User authenticates using fingerprint or Face ID on supported devices.
+
+### UC-23.3: Session Management
+**Actor:** Owner, Tenant, Manager
+**Description:** User views active sessions and can terminate sessions on other devices.
+
+### UC-23.4: GDPR Data Export
+**Actor:** Owner, Tenant
+**Description:** User exports all their personal data in a portable format (GDPR compliance).
+
+### UC-23.5: GDPR Data Deletion
+**Actor:** Owner, Tenant
+**Description:** User requests complete deletion of their personal data from the system.
+
+### UC-23.6: Privacy Settings Management
+**Actor:** Owner, Tenant
+**Description:** User controls what personal information is visible to other residents.
+
+### UC-23.7: Consent Management
+**Actor:** Owner, Tenant
+**Description:** User manages consent for various data processing activities.
+
+### UC-23.8: Document Encryption
+**Actor:** Manager
+**Description:** Manager uploads documents with end-to-end encryption for sensitive content.
+
+### UC-23.9: Secure Document Viewer
+**Actor:** Owner, Tenant
+**Description:** User views sensitive documents in a secure viewer that prevents downloading.
+
+### UC-23.10: Audit Trail for Sensitive Actions
+**Actor:** System Administrator
+**Description:** Administrator views detailed audit logs of all security-relevant actions.
+
+---
+
+## UC-24: Community & Social
+
+### UC-24.1: Community Forum
+**Actor:** Owner, Tenant, Manager
+**Description:** User participates in discussion boards organized by topics.
+
+### UC-24.2: Marketplace/Classifieds
+**Actor:** Owner, Tenant
+**Description:** User posts and browses items for sale/trade within the building community.
+
+### UC-24.3: Event Calendar
+**Actor:** Owner, Tenant, Manager
+**Description:** User views and registers for community events and activities.
+
+### UC-24.4: Facility Booking
+**Actor:** Owner, Tenant
+**Description:** User reserves common areas (party room, gym, meeting room, etc.).
+
+### UC-24.5: Neighbor Recommendations
+**Actor:** Owner, Tenant
+**Description:** User requests or offers services (babysitting, pet care, etc.) among neighbors.
+
+### UC-24.6: Pet Registry
+**Actor:** Owner, Tenant, Manager
+**Description:** User registers pets living in their unit for building records.
+
+### UC-24.7: Vehicle Registry
+**Actor:** Owner, Tenant, Manager
+**Description:** User registers vehicles for parking management and identification.
+
+### UC-24.8: Package Tracking
+**Actor:** Owner, Tenant
+**Description:** User tracks incoming packages and receives notifications upon delivery.
+
+### UC-24.9: Visitor Management
+**Actor:** Owner, Tenant
+**Description:** User pre-registers visitors and generates temporary access codes.
+
+### UC-24.10: Emergency Contact Directory
+**Actor:** Owner, Tenant, Manager
+**Description:** User accesses emergency contacts (police, fire, ambulance, building emergency).
+
+---
+
+## UC-25: Accessibility
+
+### UC-25.1: Screen Reader Compatibility
+**Actor:** Owner, Tenant, Manager
+**Description:** User navigates the application using screen reader software (WCAG compliance).
+
+### UC-25.2: Voice Navigation
+**Actor:** Owner, Tenant, Manager
+**Description:** User navigates and controls the app using voice commands.
+
+### UC-25.3: High Contrast Mode
+**Actor:** Owner, Tenant, Manager
+**Description:** User enables high contrast display mode for improved visibility.
+
+### UC-25.4: Text Size Adjustment
+**Actor:** Owner, Tenant, Manager
+**Description:** User adjusts text size throughout the application for better readability.
+
+### UC-25.5: Video Captions
+**Actor:** Owner, Tenant, Manager
+**Description:** User views captions on all video content within the application.
+
+### UC-25.6: Sign Language Support
+**Actor:** Owner, Tenant, Manager
+**Description:** User accesses sign language video versions of important announcements.
+
+### UC-25.7: Simplified Interface Mode
+**Actor:** Owner, Tenant
+**Description:** User enables a simplified interface with reduced complexity for easier navigation.
+
+### UC-25.8: Keyboard Navigation
+**Actor:** Owner, Tenant, Manager
+**Description:** User navigates the entire application using only keyboard controls.
+
+---
+
+## UC-26: Workflow Automation
+
+### UC-26.1: Automated Fault Routing
+**Actor:** AI System, Manager
+**Description:** System automatically assigns faults to appropriate technicians based on type and location.
+
+### UC-26.2: Automated Payment Reminders
+**Actor:** AI System, Owner
+**Description:** System sends scheduled payment reminder emails before due dates.
+
+### UC-26.3: Automated Meter Reading Reminders
+**Actor:** AI System, Owner
+**Description:** System sends reminders to owners before meter reading submission deadlines.
+
+### UC-26.4: Automated Report Generation
+**Actor:** Manager, AI System
+**Description:** Manager schedules automatic generation and delivery of regular reports.
+
+### UC-26.5: Workflow Templates
+**Actor:** Manager, System Administrator
+**Description:** Administrator creates reusable workflow templates for common processes.
+
+### UC-26.6: Approval Workflows
+**Actor:** Manager
+**Description:** Manager creates multi-step approval workflows for documents and expenses.
+
+### UC-26.7: Escalation Rules
+**Actor:** Manager, System Administrator
+**Description:** Administrator configures automatic escalation of unresolved faults after set time.
+
+### UC-26.8: SLA Monitoring
+**Actor:** Manager
+**Description:** Manager monitors service level agreements and receives alerts for potential breaches.
+
+### UC-26.9: Bulk Operations
+**Actor:** Manager
+**Description:** Manager performs actions on multiple items simultaneously (bulk update, bulk delete).
+
+### UC-26.10: Scheduled Tasks
+**Actor:** Manager, System Administrator
+**Description:** Administrator schedules any action for automatic future execution.
+
+---
+
 ## Summary
 
 | Category | Use Cases |
@@ -764,4 +1174,12 @@
 | UC-16: Financial Management | 7 |
 | UC-17: Reports and Analytics | 5 |
 | UC-18: System Administration | 6 |
-| **TOTAL** | **152** |
+| UC-19: Real-time & Mobile Features | 12 |
+| UC-20: AI/ML Features | 24 |
+| UC-21: IoT & Smart Building | 10 |
+| UC-22: External Integrations | 10 |
+| UC-23: Security & Compliance | 10 |
+| UC-24: Community & Social | 10 |
+| UC-25: Accessibility | 8 |
+| UC-26: Workflow Automation | 10 |
+| **TOTAL** | **246** |
