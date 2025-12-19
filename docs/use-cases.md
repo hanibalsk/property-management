@@ -1573,6 +1573,330 @@ Super Administrator
 
 ---
 
+## UC-35: Insurance Management
+
+### UC-35.1: View Building Insurance Policies
+**Actor:** Manager, Organization Admin
+**Description:** User views all active insurance policies for a building.
+
+### UC-35.2: Add Insurance Policy
+**Actor:** Manager, Organization Admin
+**Description:** Administrator adds a new insurance policy with coverage details and expiry date.
+
+### UC-35.3: File Insurance Claim
+**Actor:** Manager
+**Description:** Manager files an insurance claim for damage or incident.
+
+### UC-35.4: Track Claim Status
+**Actor:** Manager, Organization Admin
+**Description:** User tracks the status of submitted insurance claims.
+
+### UC-35.5: Upload Claim Documentation
+**Actor:** Manager
+**Description:** Manager uploads supporting documents (photos, reports) for an insurance claim.
+
+### UC-35.6: View Claim History
+**Actor:** Manager, Organization Admin
+**Description:** User views historical insurance claims for a building.
+
+### UC-35.7: Set Policy Renewal Reminder
+**Actor:** Manager, AI System
+**Description:** System sends reminder before insurance policy expiration.
+
+### UC-35.8: Compare Insurance Quotes
+**Actor:** Manager, Organization Admin
+**Description:** User compares quotes from different insurance providers.
+
+---
+
+## UC-36: Maintenance Scheduling
+
+### UC-36.1: Schedule Preventive Maintenance
+**Actor:** Manager, Technical Manager
+**Description:** User schedules preventive maintenance for building equipment.
+
+### UC-36.2: View Maintenance Calendar
+**Actor:** Manager, Technical Manager
+**Description:** User views calendar of all scheduled maintenance activities.
+
+### UC-36.3: Assign Maintenance Task
+**Actor:** Manager
+**Description:** Manager assigns a maintenance task to a technical manager or contractor.
+
+### UC-36.4: Track Maintenance Completion
+**Actor:** Manager, Technical Manager
+**Description:** User marks maintenance task as complete and adds notes.
+
+### UC-36.5: Set Recurring Maintenance
+**Actor:** Manager
+**Description:** Manager sets up recurring maintenance schedule (weekly, monthly, annual).
+
+### UC-36.6: Generate Maintenance Report
+**Actor:** Manager
+**Description:** Manager generates report on maintenance activities and costs.
+
+### UC-36.7: Manage Maintenance Contractors
+**Actor:** Manager, Organization Admin
+**Description:** Administrator manages list of approved maintenance contractors.
+
+### UC-36.8: View Equipment Maintenance History
+**Actor:** Manager, Technical Manager
+**Description:** User views maintenance history for specific equipment.
+
+---
+
+## UC-37: Supplier/Vendor Management
+
+### UC-37.1: Add Supplier
+**Actor:** Manager, Organization Admin
+**Description:** Administrator adds a new supplier/vendor to the system.
+
+### UC-37.2: View Supplier Directory
+**Actor:** Manager
+**Description:** User views directory of all registered suppliers.
+
+### UC-37.3: Rate Supplier Performance
+**Actor:** Manager, Technical Manager
+**Description:** User rates a supplier after completed work.
+
+### UC-37.4: Track Supplier Invoices
+**Actor:** Manager
+**Description:** Manager tracks invoices received from suppliers.
+
+### UC-37.5: Manage Supplier Contracts
+**Actor:** Manager, Organization Admin
+**Description:** Administrator manages contracts with suppliers.
+
+### UC-37.6: Request Quote from Supplier
+**Actor:** Manager
+**Description:** Manager sends request for quote to one or more suppliers.
+
+### UC-37.7: Compare Supplier Offers
+**Actor:** Manager
+**Description:** Manager compares quotes received from multiple suppliers.
+
+### UC-37.8: View Supplier Payment History
+**Actor:** Manager
+**Description:** Manager views payment history for a specific supplier.
+
+---
+
+## UC-38: Legal & Compliance
+
+### UC-38.1: Store Legal Documents
+**Actor:** Manager, Organization Admin
+**Description:** Administrator uploads and stores legal documents securely.
+
+### UC-38.2: Track Regulatory Deadlines
+**Actor:** Manager, AI System
+**Description:** System tracks and reminds about regulatory compliance deadlines.
+
+### UC-38.3: Generate Compliance Report
+**Actor:** Manager, Organization Admin
+**Description:** User generates report on regulatory compliance status.
+
+### UC-38.4: Manage Building Permits
+**Actor:** Manager, Organization Admin
+**Description:** Administrator manages building permits and their validity.
+
+### UC-38.5: Track Safety Inspections
+**Actor:** Manager, Technical Manager
+**Description:** User tracks mandatory safety inspections (fire, elevator, electrical).
+
+### UC-38.6: Document Legal Disputes
+**Actor:** Manager, Organization Admin
+**Description:** Administrator documents ongoing legal disputes with details and status.
+
+### UC-38.7: Archive Court Documents
+**Actor:** Manager, Organization Admin
+**Description:** Administrator archives court documents and legal correspondence.
+
+### UC-38.8: View Compliance Calendar
+**Actor:** Manager
+**Description:** Manager views calendar of all compliance deadlines and inspections.
+
+---
+
+## UC-39: Emergency Management
+
+### UC-39.1: Trigger Emergency Alert
+**Actor:** Manager, System Administrator
+**Description:** Administrator sends emergency alert to all building residents.
+
+### UC-39.2: View Evacuation Plan
+**Actor:** Owner, Tenant, Resident, Guest
+**Description:** User views building evacuation plan and routes.
+
+### UC-39.3: Track Emergency Response
+**Actor:** Manager
+**Description:** Manager tracks response to an active emergency situation.
+
+### UC-39.4: Manage Emergency Contacts
+**Actor:** Manager
+**Description:** Manager maintains list of emergency contacts (fire, police, hospital).
+
+### UC-39.5: Conduct Emergency Drill
+**Actor:** Manager
+**Description:** Manager schedules and documents emergency evacuation drills.
+
+### UC-39.6: Report Safety Hazard
+**Actor:** Owner, Tenant, Resident
+**Description:** User reports a safety hazard in the building.
+
+### UC-39.7: View Emergency Procedures
+**Actor:** Owner, Tenant, Resident, Guest
+**Description:** User views documented emergency procedures (fire, flood, gas leak).
+
+### UC-39.8: Send Emergency Broadcast
+**Actor:** Manager, AI System
+**Description:** System sends mass notification via multiple channels during emergency.
+
+---
+
+## UC-40: Budget & Planning
+
+### UC-40.1: Create Annual Budget
+**Actor:** Manager, Organization Admin
+**Description:** Administrator creates annual budget for a building.
+
+### UC-40.2: Track Budget vs Actual
+**Actor:** Manager, Organization Admin
+**Description:** User compares actual expenses against budgeted amounts.
+
+### UC-40.3: Plan Capital Expenditures
+**Actor:** Manager, Organization Admin
+**Description:** Administrator plans major capital expenditures (renovations, equipment).
+
+### UC-40.4: Vote on Budget Approval
+**Actor:** Owner
+**Description:** Owner votes to approve or reject proposed annual budget.
+
+### UC-40.5: Generate Budget Report
+**Actor:** Manager
+**Description:** Manager generates detailed budget report for stakeholders.
+
+### UC-40.6: Forecast Expenses
+**Actor:** Manager, AI System
+**Description:** AI forecasts future expenses based on historical data.
+
+### UC-40.7: Manage Reserve Fund
+**Actor:** Manager, Organization Admin
+**Description:** Administrator manages building reserve fund for major repairs.
+
+### UC-40.8: View Budget History
+**Actor:** Owner, Manager
+**Description:** User views historical budgets and their outcomes.
+
+---
+
+## UC-41: Subscription & Billing (Platform)
+
+### UC-41.1: View Subscription Plan
+**Actor:** Organization Admin
+**Description:** Administrator views current subscription plan and features.
+
+### UC-41.2: Upgrade Subscription
+**Actor:** Organization Admin
+**Description:** Administrator upgrades to a higher subscription tier.
+
+### UC-41.3: Downgrade Subscription
+**Actor:** Organization Admin
+**Description:** Administrator downgrades to a lower subscription tier.
+
+### UC-41.4: View Platform Billing History
+**Actor:** Organization Admin
+**Description:** Administrator views billing history for platform subscription.
+
+### UC-41.5: Update Payment Method
+**Actor:** Organization Admin
+**Description:** Administrator updates payment method for subscription.
+
+### UC-41.6: Download Platform Invoice
+**Actor:** Organization Admin
+**Description:** Administrator downloads invoice for platform subscription.
+
+### UC-41.7: Cancel Subscription
+**Actor:** Organization Admin
+**Description:** Administrator cancels platform subscription.
+
+### UC-41.8: Apply Discount Code
+**Actor:** Organization Admin
+**Description:** Administrator applies promotional discount code.
+
+---
+
+## UC-42: Onboarding & Help
+
+### UC-42.1: Complete Onboarding Tour
+**Actor:** Owner, Tenant, Manager
+**Description:** New user completes interactive onboarding tour of the application.
+
+### UC-42.2: View Contextual Help
+**Actor:** Owner, Tenant, Manager
+**Description:** User views context-sensitive help for current screen.
+
+### UC-42.3: Watch Video Tutorial
+**Actor:** Owner, Tenant, Manager
+**Description:** User watches video tutorial for a feature.
+
+### UC-42.4: Search FAQ
+**Actor:** Owner, Tenant, Manager
+**Description:** User searches frequently asked questions database.
+
+### UC-42.5: View Feature Announcements
+**Actor:** Owner, Tenant, Manager
+**Description:** User views announcements about new features and updates.
+
+### UC-42.6: Submit Feedback
+**Actor:** Owner, Tenant, Manager
+**Description:** User submits feedback or feature request.
+
+### UC-42.7: Start Support Chat
+**Actor:** Owner, Tenant, Manager
+**Description:** User initiates live chat with support team.
+
+### UC-42.8: Report Bug
+**Actor:** Owner, Tenant, Manager
+**Description:** User reports a bug or technical issue.
+
+---
+
+## UC-43: Mobile App Features
+
+### UC-43.1: Add Home Screen Widget
+**Actor:** Owner, Tenant, Manager
+**Description:** User adds dashboard widget to device home screen.
+
+### UC-43.2: Configure Quick Actions
+**Actor:** Owner, Tenant, Manager
+**Description:** User configures quick actions accessible from lock screen.
+
+### UC-43.3: Use Voice Assistant
+**Actor:** Owner, Tenant
+**Description:** User controls app features via Siri/Google Assistant.
+
+### UC-43.4: Scan QR Code
+**Actor:** Owner, Tenant, Manager, Guest
+**Description:** User scans QR code for quick access to features or information.
+
+### UC-43.5: Use NFC for Access
+**Actor:** Owner, Tenant
+**Description:** User uses NFC-enabled device for building access.
+
+### UC-43.6: Receive Critical Push Alerts
+**Actor:** Owner, Tenant, Resident
+**Description:** User receives high-priority push notifications for emergencies.
+
+### UC-43.7: Use Dark Mode
+**Actor:** Owner, Tenant, Manager
+**Description:** User enables dark mode for reduced eye strain.
+
+### UC-43.8: Configure App Badge
+**Actor:** Owner, Tenant, Manager
+**Description:** User configures app badge to show unread count.
+
+---
+
 ## Summary
 
 | Category | Use Cases |
@@ -1611,4 +1935,13 @@ Super Administrator
 | UC-32: Real Estate Portal Integration | 10 |
 | UC-33: Tenant Screening | 10 |
 | UC-34: Lease Management | 10 |
-| **TOTAL** | **335** |
+| UC-35: Insurance Management | 8 |
+| UC-36: Maintenance Scheduling | 8 |
+| UC-37: Supplier/Vendor Management | 8 |
+| UC-38: Legal & Compliance | 8 |
+| UC-39: Emergency Management | 8 |
+| UC-40: Budget & Planning | 8 |
+| UC-41: Subscription & Billing | 8 |
+| UC-42: Onboarding & Help | 8 |
+| UC-43: Mobile App Features | 8 |
+| **TOTAL** | **407** |
