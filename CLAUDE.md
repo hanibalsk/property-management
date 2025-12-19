@@ -85,6 +85,22 @@ hotfix/{issue-description}
 - `fix(api-server): correct tenant context extraction`
 - `docs(reality-portal): add i18n documentation`
 
+## Versioning
+
+Single source of truth: `VERSION` file (semantic versioning X.Y.Z)
+
+```bash
+# Patch auto-bumps on every commit via pre-commit hook
+# Manual bumps:
+./scripts/bump-version.sh minor   # 0.1.x -> 0.2.0
+./scripts/bump-version.sh major   # 0.x.y -> 1.0.0
+
+# Install hooks (one-time setup)
+./scripts/install-hooks.sh
+```
+
+Version syncs to: all `package.json` files, `mobile-native/gradle.properties`
+
 ## Quick Start
 
 ```bash

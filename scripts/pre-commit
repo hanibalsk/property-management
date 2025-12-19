@@ -51,6 +51,12 @@ fi
 # Skip if the only changes are to VERSION and version-synced files
 STAGED_FILES=$(git diff --cached --name-only)
 
+# Skip if VERSION file is already staged (manual bump was done)
+if echo "$STAGED_FILES" | grep -q '^VERSION$'; then
+    echo "VERSION already changed, skipping auto-bump"
+    exit 0
+fi
+
 # If only VERSION file or package.json files are staged, skip bump
 if echo "$STAGED_FILES" | grep -qvE '^(VERSION|.*package\.json|mobile-native/gradle\.properties)$'; then
     echo -e "${YELLOW}Auto-bumping patch version...${NC}"
