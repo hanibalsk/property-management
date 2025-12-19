@@ -9,7 +9,27 @@ on:
       - 'mobile-native/**'
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Check formatting (Spotless)
+        working-directory: mobile-native
+        run: ./gradlew spotlessCheck
+
   build-android:
+    needs: lint
     runs-on: ubuntu-latest
 
     steps:
@@ -49,6 +69,7 @@ jobs:
           path: mobile-native/androidApp/build/outputs/apk/debug/*.apk
 
   build-ios:
+    needs: lint
     runs-on: macos-latest
 
     steps:

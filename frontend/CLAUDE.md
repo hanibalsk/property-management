@@ -20,6 +20,12 @@ TypeScript frontend monorepo using pnpm workspaces.
 # Install dependencies
 pnpm install
 
+# Code quality (Biome)
+pnpm check           # Verify lint + format
+pnpm check:fix       # Auto-fix all issues
+pnpm format          # Format only
+pnpm lint            # Lint only
+
 # Development
 pnpm dev:ppt         # Property Management web
 pnpm dev:reality     # Reality Portal web
@@ -31,13 +37,19 @@ pnpm build           # Build all
 # Type check
 pnpm typecheck       # Check all packages
 
-# Lint
-pnpm lint            # Lint all packages
-
 # Generate API clients
 pnpm generate-api           # @ppt/api-client
 pnpm generate-reality-api   # @ppt/reality-api-client
 ```
+
+## Code Quality
+
+Uses **Biome** for linting and formatting (replaces ESLint + Prettier):
+
+- Config: `biome.json`
+- Runs automatically in CI before build
+- Auto-fix: `pnpm check:fix`
+- Check only: `pnpm check`
 
 ## Workspace Structure
 

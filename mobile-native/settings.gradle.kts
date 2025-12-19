@@ -15,5 +15,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "RealityPortal"
+
 include(":shared")
+
 include(":androidApp")

@@ -8,23 +8,18 @@ import kotlinx.serialization.Serializable
  *
  * These will be generated from OpenAPI spec.
  */
-
 @Serializable
 data class User(
     val id: String,
     val email: String,
-    @SerialName("display_name")
-    val displayName: String,
-    @SerialName("avatar_url")
-    val avatarUrl: String? = null
+    @SerialName("display_name") val displayName: String,
+    @SerialName("avatar_url") val avatarUrl: String? = null
 )
 
 @Serializable
 data class TenantContext(
-    @SerialName("tenant_id")
-    val tenantId: String,
-    @SerialName("tenant_name")
-    val tenantName: String,
+    @SerialName("tenant_id") val tenantId: String,
+    @SerialName("tenant_name") val tenantName: String,
     val role: String
 )
 
@@ -32,28 +27,22 @@ data class TenantContext(
 data class LoginRequest(
     val email: String,
     val password: String,
-    @SerialName("two_factor_code")
-    val twoFactorCode: String? = null
+    @SerialName("two_factor_code") val twoFactorCode: String? = null
 )
 
 @Serializable
 data class LoginResponse(
-    @SerialName("access_token")
-    val accessToken: String,
-    @SerialName("refresh_token")
-    val refreshToken: String,
-    @SerialName("expires_in")
-    val expiresIn: Int,
+    @SerialName("access_token") val accessToken: String,
+    @SerialName("refresh_token") val refreshToken: String,
+    @SerialName("expires_in") val expiresIn: Int,
     val user: User,
     val tenants: List<TenantMembership>
 )
 
 @Serializable
 data class TenantMembership(
-    @SerialName("tenant_id")
-    val tenantId: String,
-    @SerialName("tenant_name")
-    val tenantName: String,
+    @SerialName("tenant_id") val tenantId: String,
+    @SerialName("tenant_name") val tenantName: String,
     val role: String
 )
 
@@ -61,7 +50,6 @@ data class TenantMembership(
 data class ErrorResponse(
     val code: String,
     val message: String,
-    @SerialName("request_id")
-    val requestId: String? = null,
+    @SerialName("request_id") val requestId: String? = null,
     val timestamp: String
 )

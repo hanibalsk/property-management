@@ -5,19 +5,9 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "17"
-            }
-        }
-    }
+    androidTarget { compilations.all { kotlinOptions { jvmTarget = "17" } } }
 
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach {
+    listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach {
         it.binaries.framework {
             baseName = "shared"
             isStatic = true
@@ -40,17 +30,9 @@ kotlin {
             }
         }
 
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-            }
-        }
+        val commonTest by getting { dependencies { implementation(libs.kotlin.test) } }
 
-        val androidMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.android)
-            }
-        }
+        val androidMain by getting { dependencies { implementation(libs.ktor.client.android) } }
 
         val iosX64Main by getting
         val iosArm64Main by getting
@@ -60,9 +42,7 @@ kotlin {
             iosX64Main.dependsOn(this)
             iosArm64Main.dependsOn(this)
             iosSimulatorArm64Main.dependsOn(this)
-            dependencies {
-                implementation(libs.ktor.client.darwin)
-            }
+            dependencies { implementation(libs.ktor.client.darwin) }
         }
     }
 }
@@ -71,9 +51,7 @@ android {
     namespace = "three.two.bit.ppt.reality.shared"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
-    defaultConfig {
-        minSdk = libs.versions.minSdk.get().toInt()
-    }
+    defaultConfig { minSdk = libs.versions.minSdk.get().toInt() }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

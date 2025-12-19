@@ -29,28 +29,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "Reality Portal",
-            style = MaterialTheme.typography.headlineLarge
-        )
+        Text(text = "Reality Portal", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Android App (KMP)",
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Text(text = "Android App (KMP)", style = MaterialTheme.typography.bodyLarge)
     }
 }
 
 @Composable
 fun RealityPortalTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = lightColorScheme(),
-        content = content
-    )
+    MaterialTheme(colorScheme = lightColorScheme(), content = content)
 }

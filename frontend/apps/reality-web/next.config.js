@@ -8,11 +8,7 @@ const nextConfig = {
 
   // Image optimization
   images: {
-    domains: [
-      'api.reality-portal.sk',
-      'api.reality-portal.cz',
-      'api.reality-portal.eu',
-    ],
+    domains: ['api.reality-portal.sk', 'api.reality-portal.cz', 'api.reality-portal.eu'],
   },
 
   // Environment variables

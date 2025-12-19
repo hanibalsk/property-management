@@ -29,6 +29,10 @@ Kotlin Multiplatform project for Reality Portal mobile apps.
 ## Quick Commands
 
 ```bash
+# Code quality (Spotless)
+./gradlew spotlessCheck    # Verify formatting
+./gradlew spotlessApply    # Auto-fix formatting
+
 # Build shared module
 ./gradlew :shared:build
 
@@ -47,6 +51,14 @@ Kotlin Multiplatform project for Reality Portal mobile apps.
 # Clean build
 ./gradlew clean
 ```
+
+## Code Quality
+
+Uses **Spotless** with **ktfmt** (Kotlin lang style):
+
+- Runs automatically in CI before build
+- Auto-fix: `./gradlew spotlessApply`
+- Check only: `./gradlew spotlessCheck`
 
 ## Project Structure
 
