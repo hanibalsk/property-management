@@ -1,0 +1,18 @@
+# Ignore everything
+*
+
+# Hidden directories (explicit)
+.DS_Store
+.agent/
+.agentvibes/
+.bmad/
+.claude/
+.cursor/
+.mcp.json
+
+# Except docs and readme
+!docs/
+!docs/**
+!README.md
+!README*
+!.gitignore
