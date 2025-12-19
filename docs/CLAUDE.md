@@ -11,16 +11,17 @@ This folder contains requirements, specifications, and API documentation for the
 | File | Description |
 |------|-------------|
 | `spec1.0.md` | Original system specification with UI/feature details |
-| `use-cases.md` | Complete use case catalog (407 use cases, 43 categories) |
+| `use-cases.md` | Complete use case catalog (493 use cases, 51 categories) |
 | `project-structure.md` | Full project directory structure |
 | `api/` | API specifications (TypeSpec, OpenAPI) |
+| `validation/` | Edge cases, error paths, and validation checklists |
 
 ## Use Cases Summary
 
 ### Statistics
-- **Total Use Cases:** 407
-- **Categories:** 43
-- **Actors:** 16
+- **Total Use Cases:** 493
+- **Categories:** 51
+- **Actors:** 20+
 
 ### Actor Hierarchy
 
@@ -79,6 +80,16 @@ Super Administrator (Platform Level)
 - Subscription & Billing
 - Onboarding & Help
 - Mobile App Features
+
+#### Reality Portal (UC-44 to UC-51)
+- Favorites Management
+- Saved Searches & Alerts
+- Contact Inquiries
+- Portal User Accounts (SSO)
+- Property Comparison
+- Agency Management
+- Property Import
+- Realtor Profile & Listings
 
 ## Key Features
 
@@ -209,6 +220,9 @@ docs/
 ├── CLAUDE.md                    # This file
 ├── spec1.0.md                   # Original specification
 ├── use-cases.md                 # Use case catalog
+├── validation/                  # Validation documentation
+│   ├── edge-cases.md            # Edge cases & error paths
+│   └── checklist.md             # Stakeholder validation checklist
 ├── prd/                         # Product Requirements
 │   ├── PRD-001-user-auth.md
 │   └── PRD-002-fault-mgmt.md

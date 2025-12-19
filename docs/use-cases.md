@@ -672,6 +672,18 @@ Super Administrator
 **Actor:** Owner, Tenant, Manager
 **Description:** User views their own activity history in the system.
 
+### UC-14.10: Setup Multi-Factor Authentication
+**Actor:** Owner, Tenant, Manager, Technical Manager
+**Description:** User sets up MFA using TOTP authenticator app or SMS verification during initial configuration.
+
+### UC-14.11: Login with SSO
+**Actor:** Manager, Technical Manager, Organization Admin
+**Description:** User authenticates using organization's SAML/OIDC identity provider for single sign-on.
+
+### UC-14.12: Handle Account Lockout
+**Actor:** Owner, Tenant, Manager, Technical Manager
+**Description:** User is locked out after multiple failed login attempts and must wait or contact support to unlock.
+
 ---
 
 ## UC-15: Building/Property Management (ppt-web, mobile)
@@ -704,6 +716,18 @@ Super Administrator
 **Actor:** Manager
 **Description:** Manager views statistics for a building (occupancy, faults, payments).
 
+### UC-15.8: Bulk Import Buildings
+**Actor:** System Administrator, Organization Admin
+**Description:** Administrator imports multiple buildings from a CSV file with address and configuration data.
+
+### UC-15.9: Merge Duplicate Buildings
+**Actor:** System Administrator
+**Description:** Administrator merges two duplicate building records, consolidating units and history.
+
+### UC-15.10: Archive Building
+**Actor:** Manager, System Administrator
+**Description:** Administrator archives a building that is no longer actively managed while preserving historical data.
+
 ---
 
 ## UC-16: Financial Management (ppt-web, mobile)
@@ -735,6 +759,18 @@ Super Administrator
 ### UC-16.7: Download Invoice PDF
 **Actor:** Owner
 **Description:** Owner downloads an invoice as a PDF document.
+
+### UC-16.8: Reconcile Payments
+**Actor:** Manager
+**Description:** Manager reconciles bank payments with invoices and marks them as paid.
+
+### UC-16.9: Process Refund
+**Actor:** Manager
+**Description:** Manager processes a refund for an overpayment or cancelled service.
+
+### UC-16.10: Configure Late Payment Fees
+**Actor:** Manager, Organization Admin
+**Description:** Administrator configures automatic late payment fee rules and percentages.
 
 ---
 
@@ -1071,6 +1107,14 @@ Super Administrator
 ### UC-23.10: Audit Trail for Sensitive Actions
 **Actor:** System Administrator
 **Description:** Administrator views detailed audit logs of all security-relevant actions.
+
+### UC-23.11: View Rate Limiting Status
+**Actor:** System Administrator
+**Description:** Administrator views rate limiting alerts and notifications when API limits are approached.
+
+### UC-23.12: Manage Trusted Devices
+**Actor:** Owner, Tenant, Manager
+**Description:** User views and removes trusted devices that are allowed to bypass MFA verification.
 
 ---
 
@@ -1540,6 +1584,14 @@ Super Administrator
 **Actor:** Owner, Real Estate Agent
 **Description:** User compares multiple tenant applications side by side.
 
+### UC-33.11: GDPR-Compliant Screening
+**Actor:** Real Estate Agent, Owner
+**Description:** User performs tenant screening using GDPR-compliant processes with explicit consent in EU regions.
+
+### UC-33.12: Manage Screening Consent
+**Actor:** Tenant
+**Description:** Prospective tenant reviews and provides consent for credit check and background screening.
+
 ---
 
 ## UC-34: Lease Management (ppt-web, mobile)
@@ -1835,6 +1887,18 @@ Super Administrator
 ### UC-41.8: Apply Discount Code
 **Actor:** Organization Admin
 **Description:** Administrator applies promotional discount code.
+
+### UC-41.9: Start Free Trial
+**Actor:** Organization Admin
+**Description:** New organization starts a free trial period with limited features or time.
+
+### UC-41.10: Handle Trial Expiration
+**Actor:** AI System, Organization Admin
+**Description:** System notifies admin before trial expires and handles transition to paid or limited plan.
+
+### UC-41.11: Calculate Usage-Based Billing
+**Actor:** AI System
+**Description:** System calculates billing based on usage metrics (buildings, users, API calls).
 
 ---
 
@@ -2247,16 +2311,16 @@ Super Administrator
 | UC-11: Self-Readings | 10 | ppt-web, mobile |
 | UC-12: Outages | 8 | ppt-web, mobile |
 | UC-13: News | 9 | ppt-web, mobile |
-| UC-14: User Account Management | 9 | ppt-web, mobile, reality-web, mobile-native |
-| UC-15: Building/Property Management | 7 | ppt-web, mobile |
-| UC-16: Financial Management | 7 | ppt-web, mobile |
+| UC-14: User Account Management | 12 | ppt-web, mobile, reality-web, mobile-native |
+| UC-15: Building/Property Management | 10 | ppt-web, mobile |
+| UC-16: Financial Management | 10 | ppt-web, mobile |
 | UC-17: Reports and Analytics | 5 | ppt-web |
 | UC-18: System Administration | 6 | ppt-web |
 | UC-19: Real-time & Mobile Features | 12 | ppt-web, mobile, reality-web, mobile-native |
 | UC-20: AI/ML Features | 24 | ppt-web, mobile, reality-web, mobile-native |
 | UC-21: IoT & Smart Building | 10 | ppt-web, mobile |
 | UC-22: External Integrations | 10 | ppt-web, mobile |
-| UC-23: Security & Compliance | 10 | ppt-web, mobile, reality-web, mobile-native |
+| UC-23: Security & Compliance | 12 | ppt-web, mobile, reality-web, mobile-native |
 | UC-24: Community & Social | 10 | ppt-web, mobile |
 | UC-25: Accessibility | 8 | ppt-web, mobile, reality-web, mobile-native |
 | UC-26: Workflow Automation | 10 | ppt-web, mobile |
@@ -2266,7 +2330,7 @@ Super Administrator
 | UC-30: Guest Registration System | 10 | ppt-web, mobile |
 | UC-31: Real Estate & Listings | 14 | ppt-web, mobile, reality-web, mobile-native |
 | UC-32: Real Estate Portal Integration | 10 | ppt-web, mobile, reality-web, mobile-native |
-| UC-33: Tenant Screening | 10 | ppt-web, mobile |
+| UC-33: Tenant Screening | 12 | ppt-web, mobile |
 | UC-34: Lease Management | 10 | ppt-web, mobile |
 | UC-35: Insurance Management | 8 | ppt-web, mobile |
 | UC-36: Maintenance Scheduling | 8 | ppt-web, mobile |
@@ -2274,7 +2338,7 @@ Super Administrator
 | UC-38: Legal & Compliance | 8 | ppt-web, mobile |
 | UC-39: Emergency Management | 8 | ppt-web, mobile |
 | UC-40: Budget & Planning | 8 | ppt-web, mobile |
-| UC-41: Subscription & Billing | 8 | ppt-web |
+| UC-41: Subscription & Billing | 11 | ppt-web |
 | UC-42: Onboarding & Help | 8 | ppt-web, mobile, reality-web, mobile-native |
 | UC-43: Mobile App Features | 8 | mobile, mobile-native |
 | UC-44: Favorites Management | 6 | reality-web, mobile-native |
@@ -2285,4 +2349,4 @@ Super Administrator
 | UC-49: Agency Management | 10 | reality-web, mobile-native |
 | UC-50: Property Import | 10 | reality-web, mobile-native |
 | UC-51: Realtor Profile & Listings | 12 | reality-web, mobile-native |
-| **TOTAL** | **479** | |
+| **TOTAL** | **493** | |
