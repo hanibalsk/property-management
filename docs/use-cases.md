@@ -25,22 +25,35 @@
 - **Real Estate Portal** - External listing portal system (API integration)
 - **System Administrator** - User with full system access for configuration and maintenance
 
+### Reality Portal Level
+- **Portal User** - Regular user browsing and searching property listings on Reality Portal
+- **Realtor** - Licensed real estate agent listing and managing properties on portal
+- **Agency Manager** - Manages realtors within a reality agency
+- **Agency Owner** - Owns and administers a reality agency organization
+
 ### Actor Hierarchy
 ```
 Super Administrator
-└── Organization (Housing Cooperative / Property Management Company)
-        ├── Organization Admin
-        ├── Manager
-        ├── Technical Manager
-        └── Building
-                └── Unit
-                        ├── Owner
-                        │       └── Owner Delegate
-                        ├── Tenant
-                        ├── Resident
-                        ├── Property Manager
-                        │       └── Guest
-                        └── Real Estate Agent
+├── Organization (Housing Cooperative / Property Management Company)
+│       ├── Organization Admin
+│       ├── Manager
+│       ├── Technical Manager
+│       └── Building
+│               └── Unit
+│                       ├── Owner
+│                       │       └── Owner Delegate
+│                       ├── Tenant
+│                       ├── Resident
+│                       ├── Property Manager
+│                       │       └── Guest
+│                       └── Real Estate Agent
+│
+└── Reality Portal
+        ├── Portal User
+        └── Agency (Reality Agency)
+                ├── Agency Owner
+                ├── Agency Manager
+                └── Realtor
 ```
 
 ---
@@ -1897,6 +1910,326 @@ Super Administrator
 
 ---
 
+## UC-44: Favorites Management (reality-web, mobile-native)
+
+### UC-44.1: Add Listing to Favorites
+**Actor:** Portal User
+**Description:** User saves a listing to their favorites list for later viewing.
+
+### UC-44.2: Remove from Favorites
+**Actor:** Portal User
+**Description:** User removes a listing from their favorites list.
+
+### UC-44.3: View Favorites List
+**Actor:** Portal User
+**Description:** User views all saved favorite listings in one place.
+
+### UC-44.4: Share Favorites
+**Actor:** Portal User
+**Description:** User shares their favorites list via link or email with others.
+
+### UC-44.5: Export Favorites
+**Actor:** Portal User
+**Description:** User exports favorites list to PDF or spreadsheet format.
+
+### UC-44.6: Favorites Notifications
+**Actor:** Portal User, AI System
+**Description:** User receives alerts when a favorite listing's price changes or status updates.
+
+---
+
+## UC-45: Saved Searches & Alerts (reality-web, mobile-native)
+
+### UC-45.1: Save Search Criteria
+**Actor:** Portal User
+**Description:** User saves current search filters and criteria for future use.
+
+### UC-45.2: View Saved Searches
+**Actor:** Portal User
+**Description:** User views list of all saved search configurations.
+
+### UC-45.3: Edit Saved Search
+**Actor:** Portal User
+**Description:** User modifies the criteria of a saved search.
+
+### UC-45.4: Delete Saved Search
+**Actor:** Portal User
+**Description:** User removes a saved search from their list.
+
+### UC-45.5: Enable Search Alerts
+**Actor:** Portal User
+**Description:** User enables notifications for new listings matching saved search criteria.
+
+### UC-45.6: Configure Alert Frequency
+**Actor:** Portal User
+**Description:** User sets how often to receive alerts (instant, daily, weekly).
+
+### UC-45.7: Receive New Listing Alert
+**Actor:** Portal User, AI System
+**Description:** System sends notification when a new listing matches saved search criteria.
+
+### UC-45.8: Receive Price Drop Alert
+**Actor:** Portal User, AI System
+**Description:** System notifies user when a listing's price decreases.
+
+---
+
+## UC-46: Contact Inquiries (reality-web, mobile-native)
+
+### UC-46.1: Send Contact Message
+**Actor:** Portal User
+**Description:** User sends an inquiry message about a listing to the owner or agent.
+
+### UC-46.2: Request Viewing
+**Actor:** Portal User
+**Description:** User requests to schedule a property viewing appointment.
+
+### UC-46.3: View Inquiry History
+**Actor:** Portal User
+**Description:** User views their sent inquiries and any responses received.
+
+### UC-46.4: Track Inquiry Status
+**Actor:** Portal User
+**Description:** User sees status of inquiries (pending, responded, scheduled).
+
+### UC-46.5: Respond to Inquiry
+**Actor:** Owner, Real Estate Agent, Realtor
+**Description:** Listing owner or agent responds to a user inquiry.
+
+### UC-46.6: Schedule Viewing from Inquiry
+**Actor:** Real Estate Agent, Realtor
+**Description:** Agent schedules a property viewing based on user's request.
+
+---
+
+## UC-47: Portal User Accounts (reality-web, mobile-native)
+
+### UC-47.1: Register Portal Account
+**Actor:** Portal User
+**Description:** User creates a new account on Reality Portal with email and password.
+
+### UC-47.2: Login with Email/Password
+**Actor:** Portal User, Realtor, Agency Manager, Agency Owner
+**Description:** User logs into the portal using their email and password credentials.
+
+### UC-47.3: Login with Google
+**Actor:** Portal User, Realtor, Agency Manager, Agency Owner
+**Description:** User authenticates using their Google account via OAuth.
+
+### UC-47.4: Login with Apple
+**Actor:** Portal User, Realtor, Agency Manager, Agency Owner
+**Description:** User authenticates using their Apple ID via Sign in with Apple.
+
+### UC-47.5: Login with Facebook
+**Actor:** Portal User, Realtor, Agency Manager, Agency Owner
+**Description:** User authenticates using their Facebook account via OAuth.
+
+### UC-47.6: Link Property Management Account
+**Actor:** Portal User
+**Description:** User links their portal account to their Property Management account for SSO.
+
+### UC-47.7: View Portal Profile
+**Actor:** Portal User, Realtor
+**Description:** User views their profile information and account settings.
+
+### UC-47.8: Update Portal Profile
+**Actor:** Portal User, Realtor
+**Description:** User edits their profile information (name, avatar, preferences).
+
+### UC-47.9: Delete Portal Account
+**Actor:** Portal User
+**Description:** User requests deletion of their account and personal data (GDPR).
+
+### UC-47.10: Manage Linked Social Accounts
+**Actor:** Portal User, Realtor
+**Description:** User links or unlinks Google, Apple, or Facebook accounts.
+
+### UC-47.11: Register as Realtor
+**Actor:** Realtor
+**Description:** Agent registers as a realtor with license verification information.
+
+### UC-47.12: Create Reality Agency
+**Actor:** Agency Owner
+**Description:** Owner creates a new reality agency organization on the portal.
+
+### UC-47.13: Invite Realtors to Agency
+**Actor:** Agency Owner, Agency Manager
+**Description:** Manager sends invitations to realtors to join the agency.
+
+### UC-47.14: Accept Agency Invitation
+**Actor:** Realtor
+**Description:** Realtor accepts an invitation to join a reality agency.
+
+### UC-47.15: Manage Agency Realtors
+**Actor:** Agency Owner, Agency Manager
+**Description:** Manager views and manages the list of agency's realtors.
+
+---
+
+## UC-48: Property Comparison (reality-web, mobile-native)
+
+### UC-48.1: Add to Comparison
+**Actor:** Portal User
+**Description:** User adds a listing to their comparison list.
+
+### UC-48.2: View Comparison
+**Actor:** Portal User
+**Description:** User views side-by-side comparison of selected properties.
+
+### UC-48.3: Remove from Comparison
+**Actor:** Portal User
+**Description:** User removes a listing from the comparison list.
+
+### UC-48.4: Share Comparison
+**Actor:** Portal User
+**Description:** User shares their property comparison via link.
+
+### UC-48.5: Export Comparison
+**Actor:** Portal User
+**Description:** User exports property comparison to PDF format.
+
+---
+
+## UC-49: Agency Management (reality-web, mobile-native)
+
+### UC-49.1: View Agency Dashboard
+**Actor:** Agency Owner, Agency Manager
+**Description:** User views agency performance metrics and overview dashboard.
+
+### UC-49.2: Edit Agency Profile
+**Actor:** Agency Owner
+**Description:** Owner updates agency name, logo, contact info, and description.
+
+### UC-49.3: Set Agency Branding
+**Actor:** Agency Owner
+**Description:** Owner configures agency colors and logo watermarks for listings.
+
+### UC-49.4: View Agency Listings
+**Actor:** Agency Owner, Agency Manager
+**Description:** User views all listings from all agency realtors.
+
+### UC-49.5: View Agency Inquiries
+**Actor:** Agency Owner, Agency Manager
+**Description:** User views all inquiries received by the agency.
+
+### UC-49.6: Assign Inquiry to Realtor
+**Actor:** Agency Manager
+**Description:** Manager assigns an incoming inquiry to a specific realtor.
+
+### UC-49.7: View Realtor Performance
+**Actor:** Agency Owner, Agency Manager
+**Description:** User views realtor metrics (listings, inquiries, conversions).
+
+### UC-49.8: Suspend Realtor
+**Actor:** Agency Owner
+**Description:** Owner temporarily disables a realtor's access to the agency.
+
+### UC-49.9: Remove Realtor from Agency
+**Actor:** Agency Owner
+**Description:** Owner removes a realtor from the agency.
+
+### UC-49.10: Configure Agency Settings
+**Actor:** Agency Owner
+**Description:** Owner sets agency-wide preferences and policies.
+
+---
+
+## UC-50: Property Import (reality-web, mobile-native)
+
+### UC-50.1: Connect External CRM
+**Actor:** Realtor, Agency Owner
+**Description:** User connects to an external CRM system using API credentials.
+
+### UC-50.2: Import Properties from CRM
+**Actor:** Realtor, Agency Owner
+**Description:** User imports property listings from a connected CRM system.
+
+### UC-50.3: Map CRM Fields
+**Actor:** Realtor, Agency Owner
+**Description:** User configures field mapping between CRM and portal fields.
+
+### UC-50.4: Schedule Automatic Sync
+**Actor:** Agency Owner
+**Description:** Owner sets up periodic automatic import from CRM.
+
+### UC-50.5: View Import History
+**Actor:** Realtor, Agency Owner
+**Description:** User views log of past imports and their status.
+
+### UC-50.6: Resolve Import Conflicts
+**Actor:** Realtor
+**Description:** User handles duplicate or conflicting listings during import.
+
+### UC-50.7: Import from XML Feed
+**Actor:** Agency Owner
+**Description:** Owner imports properties from an XML/RSS feed URL.
+
+### UC-50.8: Import from CSV File
+**Actor:** Realtor
+**Description:** User bulk imports listings from a CSV or Excel file upload.
+
+### UC-50.9: Import from IDX/RETS
+**Actor:** Agency Owner
+**Description:** Owner connects to MLS/IDX real estate data feeds for import.
+
+### UC-50.10: Export Properties
+**Actor:** Realtor
+**Description:** User exports their listings to external formats.
+
+---
+
+## UC-51: Realtor Profile & Listings (reality-web, mobile-native)
+
+### UC-51.1: Create Realtor Profile
+**Actor:** Realtor
+**Description:** Realtor sets up professional profile with bio, photo, and credentials.
+
+### UC-51.2: Add License Information
+**Actor:** Realtor
+**Description:** Realtor adds real estate license details for verification.
+
+### UC-51.3: View My Listings
+**Actor:** Realtor
+**Description:** Realtor views all listings they have created.
+
+### UC-51.4: Create New Listing
+**Actor:** Realtor
+**Description:** Realtor creates a new property listing with details.
+
+### UC-51.5: Edit Listing
+**Actor:** Realtor
+**Description:** Realtor modifies an existing listing's details.
+
+### UC-51.6: Upload Listing Photos
+**Actor:** Realtor
+**Description:** Realtor adds and manages photos for a listing.
+
+### UC-51.7: Set Listing Status
+**Actor:** Realtor
+**Description:** Realtor changes listing status (active, pending, sold, withdrawn).
+
+### UC-51.8: View My Inquiries
+**Actor:** Realtor
+**Description:** Realtor views inquiries received for their listings.
+
+### UC-51.9: Respond to Inquiry
+**Actor:** Realtor
+**Description:** Realtor replies to a potential buyer or renter inquiry.
+
+### UC-51.10: View Listing Analytics
+**Actor:** Realtor
+**Description:** Realtor views views, favorites, and inquiries per listing.
+
+### UC-51.11: Feature Listing
+**Actor:** Realtor
+**Description:** Realtor promotes a listing to featured/premium placement.
+
+### UC-51.12: Share Listing
+**Actor:** Realtor
+**Description:** Realtor shares a listing on social media or via link.
+
+---
+
 ## Summary
 
 | Category | Use Cases | Apps |
@@ -1944,4 +2277,12 @@ Super Administrator
 | UC-41: Subscription & Billing | 8 | ppt-web |
 | UC-42: Onboarding & Help | 8 | ppt-web, mobile, reality-web, mobile-native |
 | UC-43: Mobile App Features | 8 | mobile, mobile-native |
-| **TOTAL** | **407** | |
+| UC-44: Favorites Management | 6 | reality-web, mobile-native |
+| UC-45: Saved Searches & Alerts | 8 | reality-web, mobile-native |
+| UC-46: Contact Inquiries | 6 | reality-web, mobile-native |
+| UC-47: Portal User Accounts | 15 | reality-web, mobile-native |
+| UC-48: Property Comparison | 5 | reality-web, mobile-native |
+| UC-49: Agency Management | 10 | reality-web, mobile-native |
+| UC-50: Property Import | 10 | reality-web, mobile-native |
+| UC-51: Realtor Profile & Listings | 12 | reality-web, mobile-native |
+| **TOTAL** | **479** | |
