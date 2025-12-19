@@ -2,13 +2,46 @@
 
 ## Actors
 
-- **Owner** - Apartment/unit owner who uses the system
-- **Tenant** - Person renting a unit
-- **Manager** - Property management company representative
-- **Technical Manager** - Technical staff responsible for building maintenance
-- **System Administrator** - User with full system access for configuration and maintenance
+### Platform Level
+- **Super Administrator** - Global platform administrator managing all organizations
 - **AI System** - Automated AI/ML system performing intelligent operations
 - **IoT Device** - Smart building devices and sensors
+
+### Organization Level
+- **Organization Admin** - Administrator of a housing cooperative or property management company
+- **Manager** - Property management company representative managing buildings
+- **Technical Manager** - Technical staff responsible for building maintenance
+
+### Unit Level
+- **Owner** - Apartment/unit owner who uses the system
+- **Owner Delegate** - Person with delegated rights from owner (voting, payments, etc.)
+- **Tenant** - Person renting a unit under lease agreement
+- **Resident** - Person living in unit without ownership (family member, roommate)
+- **Property Manager** - Short-term rental manager (Airbnb/Booking administrator)
+- **Guest** - Temporary visitor or short-term rental guest
+
+### External Actors
+- **Real Estate Agent** - Licensed real estate broker managing listings and tenant screening
+- **Real Estate Portal** - External listing portal system (API integration)
+- **System Administrator** - User with full system access for configuration and maintenance
+
+### Actor Hierarchy
+```
+Super Administrator
+└── Organization (Housing Cooperative / Property Management Company)
+        ├── Organization Admin
+        ├── Manager
+        ├── Technical Manager
+        └── Building
+                └── Unit
+                        ├── Owner
+                        │       └── Owner Delegate
+                        ├── Tenant
+                        ├── Resident
+                        ├── Property Manager
+                        │       └── Guest
+                        └── Real Estate Agent
+```
 
 ---
 
@@ -1152,6 +1185,394 @@
 
 ---
 
+## UC-27: Multi-tenancy & Organizations
+
+### UC-27.1: Create Organization
+**Actor:** Super Administrator
+**Description:** Super admin creates a new organization (housing cooperative or property management company).
+
+### UC-27.2: Edit Organization
+**Actor:** Super Administrator, Organization Admin
+**Description:** Administrator edits organization details (name, contact info, settings).
+
+### UC-27.3: Delete Organization
+**Actor:** Super Administrator
+**Description:** Super admin permanently deletes an organization and all associated data.
+
+### UC-27.4: View Organization List
+**Actor:** Super Administrator
+**Description:** Super admin views list of all organizations on the platform.
+
+### UC-27.5: Assign Building to Organization
+**Actor:** Super Administrator, Organization Admin
+**Description:** Administrator assigns a building to be managed by an organization.
+
+### UC-27.6: Remove Building from Organization
+**Actor:** Super Administrator, Organization Admin
+**Description:** Administrator removes a building from an organization's management.
+
+### UC-27.7: Switch Organization Context
+**Actor:** Manager, Organization Admin
+**Description:** User with access to multiple organizations switches between them.
+
+### UC-27.8: View Organization Statistics
+**Actor:** Organization Admin, Manager
+**Description:** Administrator views statistics for their organization (buildings, users, activity).
+
+### UC-27.9: Configure Organization Settings
+**Actor:** Organization Admin
+**Description:** Administrator configures organization-specific settings and preferences.
+
+### UC-27.10: Manage Organization Branding
+**Actor:** Organization Admin
+**Description:** Administrator customizes organization branding (logo, colors, email templates).
+
+---
+
+## UC-28: Delegation & Permissions
+
+### UC-28.1: Delegate Rights to Person
+**Actor:** Owner
+**Description:** Owner delegates specific rights to another person (family member, representative).
+
+### UC-28.2: Revoke Delegated Rights
+**Actor:** Owner
+**Description:** Owner revokes previously delegated rights from a person.
+
+### UC-28.3: View Active Delegations
+**Actor:** Owner, Owner Delegate
+**Description:** User views list of all active delegations (given or received).
+
+### UC-28.4: Accept Delegation Invitation
+**Actor:** Owner Delegate
+**Description:** Person accepts an invitation to act as delegate for an owner.
+
+### UC-28.5: Decline Delegation Invitation
+**Actor:** Owner Delegate
+**Description:** Person declines an invitation to act as delegate for an owner.
+
+### UC-28.6: Set Delegation Expiry Date
+**Actor:** Owner
+**Description:** Owner sets an expiry date for delegated rights (temporary delegation).
+
+### UC-28.7: Delegate Voting Rights
+**Actor:** Owner
+**Description:** Owner specifically delegates voting rights for owners' meetings.
+
+### UC-28.8: Delegate Payment Rights
+**Actor:** Owner
+**Description:** Owner delegates rights to make payments on their behalf.
+
+### UC-28.9: View Delegation History
+**Actor:** Owner, Manager
+**Description:** User views historical record of all delegations for a unit.
+
+### UC-28.10: Notify on Delegation Expiry
+**Actor:** AI System
+**Description:** System notifies owner and delegate when delegation is about to expire.
+
+---
+
+## UC-29: Short-term Rental Management (Airbnb/Booking)
+
+### UC-29.1: Connect Airbnb Account
+**Actor:** Property Manager, Owner
+**Description:** User connects their Airbnb account to sync reservations automatically.
+
+### UC-29.2: Connect Booking.com Account
+**Actor:** Property Manager, Owner
+**Description:** User connects their Booking.com account to sync reservations automatically.
+
+### UC-29.3: Sync Reservations
+**Actor:** Property Manager, AI System
+**Description:** System synchronizes reservations from connected platforms.
+
+### UC-29.4: View Reservation Calendar
+**Actor:** Property Manager, Owner
+**Description:** User views calendar with all reservations across platforms.
+
+### UC-29.5: Register Guest from Reservation
+**Actor:** Property Manager, AI System
+**Description:** System automatically creates guest registration from reservation data.
+
+### UC-29.6: Generate Access Code for Guest
+**Actor:** Property Manager, AI System
+**Description:** System generates temporary access code for guest's stay duration.
+
+### UC-29.7: Send Welcome Message to Guest
+**Actor:** Property Manager, AI System
+**Description:** System sends automated welcome message with check-in instructions.
+
+### UC-29.8: Auto-generate Police Registration
+**Actor:** AI System
+**Description:** System automatically generates police registration form from guest data.
+
+### UC-29.9: Track Guest Check-in
+**Actor:** Property Manager, Guest
+**Description:** System tracks when guest completes check-in process.
+
+### UC-29.10: Track Guest Check-out
+**Actor:** Property Manager, Guest
+**Description:** System tracks when guest completes check-out process.
+
+### UC-29.11: Rate Guest
+**Actor:** Property Manager
+**Description:** Property manager rates guest after their stay for future reference.
+
+### UC-29.12: Block Problem Guest
+**Actor:** Property Manager
+**Description:** Property manager blocks a problematic guest from future bookings.
+
+### UC-29.13: View Rental Statistics
+**Actor:** Property Manager, Owner
+**Description:** User views statistics on occupancy, revenue, and guest ratings.
+
+### UC-29.14: Calculate Rental Income
+**Actor:** Property Manager, Owner
+**Description:** System calculates total rental income for a period.
+
+### UC-29.15: Export Tax Report
+**Actor:** Property Manager, Owner
+**Description:** User exports rental income report for tax purposes.
+
+---
+
+## UC-30: Guest Registration System
+
+### UC-30.1: Register Guest Manually
+**Actor:** Property Manager, Owner
+**Description:** User manually registers a guest by entering their details.
+
+### UC-30.2: Scan Guest ID Document
+**Actor:** Property Manager, Guest
+**Description:** User scans guest's ID document using device camera.
+
+### UC-30.3: OCR Extract Guest Data
+**Actor:** AI System
+**Description:** AI extracts guest information from scanned ID document.
+
+### UC-30.4: Submit to Police Registry
+**Actor:** Property Manager, AI System
+**Description:** System submits guest registration to police/government registry.
+
+### UC-30.5: View Guest History
+**Actor:** Property Manager, Owner, Manager
+**Description:** User views history of all guests who stayed at a unit.
+
+### UC-30.6: Search Guests
+**Actor:** Property Manager, Manager
+**Description:** User searches registered guests by name, date, or nationality.
+
+### UC-30.7: Export Guest List
+**Actor:** Property Manager, Manager
+**Description:** User exports guest list for reporting or compliance purposes.
+
+### UC-30.8: Generate Guest Statistics
+**Actor:** Property Manager, Manager
+**Description:** System generates statistics on guest demographics and stays.
+
+### UC-30.9: Set Guest Notification Rules
+**Actor:** Property Manager, Manager
+**Description:** User configures automatic notifications for guest-related events.
+
+### UC-30.10: Archive Old Guest Records
+**Actor:** Manager, AI System
+**Description:** System archives old guest records according to retention policy.
+
+---
+
+## UC-31: Real Estate & Listings
+
+### UC-31.1: Create Property Listing (Sale)
+**Actor:** Owner, Real Estate Agent
+**Description:** User creates a listing to sell a property.
+
+### UC-31.2: Create Property Listing (Rent)
+**Actor:** Owner, Real Estate Agent
+**Description:** User creates a listing to rent out a property.
+
+### UC-31.3: Edit Listing
+**Actor:** Owner, Real Estate Agent
+**Description:** User edits an existing property listing.
+
+### UC-31.4: Publish Listing
+**Actor:** Owner, Real Estate Agent
+**Description:** User publishes a listing to make it visible to potential buyers/tenants.
+
+### UC-31.5: Unpublish Listing
+**Actor:** Owner, Real Estate Agent
+**Description:** User temporarily hides a listing from public view.
+
+### UC-31.6: Upload Listing Photos
+**Actor:** Owner, Real Estate Agent
+**Description:** User uploads photos for a property listing.
+
+### UC-31.7: Generate Virtual Tour
+**Actor:** Real Estate Agent, AI System
+**Description:** System generates a virtual tour from uploaded photos.
+
+### UC-31.8: Assign Real Estate Agent
+**Actor:** Owner
+**Description:** Owner assigns a real estate agent to manage their listing.
+
+### UC-31.9: Track Listing Views
+**Actor:** Owner, Real Estate Agent
+**Description:** User views analytics on listing views and engagement.
+
+### UC-31.10: Manage Inquiries
+**Actor:** Owner, Real Estate Agent
+**Description:** User manages and responds to inquiries about a listing.
+
+### UC-31.11: Schedule Viewing
+**Actor:** Real Estate Agent, Owner
+**Description:** User schedules a property viewing with interested party.
+
+### UC-31.12: Record Viewing Feedback
+**Actor:** Real Estate Agent
+**Description:** Agent records feedback from property viewing.
+
+### UC-31.13: Mark as Sold/Rented
+**Actor:** Owner, Real Estate Agent
+**Description:** User marks a property as sold or rented.
+
+### UC-31.14: Archive Listing
+**Actor:** Owner, Real Estate Agent
+**Description:** User archives an old listing for historical reference.
+
+---
+
+## UC-32: Real Estate Portal Integration (API)
+
+### UC-32.1: Configure Portal Connection
+**Actor:** Organization Admin, Real Estate Agent
+**Description:** User configures connection to external real estate portal.
+
+### UC-32.2: Export Listing to Portal
+**Actor:** Real Estate Agent, AI System
+**Description:** System exports a listing to connected real estate portal.
+
+### UC-32.3: Sync Listing Updates
+**Actor:** AI System
+**Description:** System synchronizes listing updates with connected portals.
+
+### UC-32.4: Remove Listing from Portal
+**Actor:** Real Estate Agent
+**Description:** User removes a listing from external portal.
+
+### UC-32.5: Import Inquiries from Portal
+**Actor:** AI System
+**Description:** System imports inquiries received through external portals.
+
+### UC-32.6: View Portal Statistics
+**Actor:** Real Estate Agent, Owner
+**Description:** User views performance statistics from each connected portal.
+
+### UC-32.7: Manage Multiple Portals
+**Actor:** Real Estate Agent
+**Description:** User manages connections to multiple real estate portals.
+
+### UC-32.8: Auto-refresh Listings
+**Actor:** AI System
+**Description:** System automatically refreshes listings on portals to maintain visibility.
+
+### UC-32.9: Handle Portal Webhooks
+**Actor:** Real Estate Portal, AI System
+**Description:** System processes incoming webhooks from real estate portals.
+
+### UC-32.10: Generate Portal Report
+**Actor:** Real Estate Agent, Manager
+**Description:** User generates report on portal performance and conversions.
+
+---
+
+## UC-33: Tenant Screening
+
+### UC-33.1: Request Tenant Background Check
+**Actor:** Owner, Real Estate Agent
+**Description:** User requests a background check for a potential tenant.
+
+### UC-33.2: Verify Tenant Income
+**Actor:** Real Estate Agent, Owner
+**Description:** User verifies tenant's income through documentation or third-party service.
+
+### UC-33.3: Check Tenant References
+**Actor:** Real Estate Agent
+**Description:** Agent contacts and verifies tenant's references.
+
+### UC-33.4: View Tenant Credit Score
+**Actor:** Owner, Real Estate Agent
+**Description:** User views tenant's credit score from credit bureau.
+
+### UC-33.5: Request Employer Verification
+**Actor:** Real Estate Agent
+**Description:** Agent requests verification of tenant's employment.
+
+### UC-33.6: Generate Tenant Report
+**Actor:** Real Estate Agent, AI System
+**Description:** System generates comprehensive tenant screening report.
+
+### UC-33.7: Approve Tenant Application
+**Actor:** Owner, Real Estate Agent
+**Description:** User approves a tenant application after screening.
+
+### UC-33.8: Reject Tenant Application
+**Actor:** Owner, Real Estate Agent
+**Description:** User rejects a tenant application with documented reason.
+
+### UC-33.9: Store Screening Results
+**Actor:** AI System
+**Description:** System securely stores tenant screening results.
+
+### UC-33.10: Compare Tenant Applications
+**Actor:** Owner, Real Estate Agent
+**Description:** User compares multiple tenant applications side by side.
+
+---
+
+## UC-34: Lease Management
+
+### UC-34.1: Create Lease Agreement
+**Actor:** Owner, Real Estate Agent, Manager
+**Description:** User creates a new lease agreement for a tenant.
+
+### UC-34.2: Generate Lease from Template
+**Actor:** Owner, Real Estate Agent, Manager
+**Description:** User generates lease agreement from predefined template.
+
+### UC-34.3: Send Lease for Signature
+**Actor:** Owner, Real Estate Agent, Manager
+**Description:** User sends lease agreement for electronic signature.
+
+### UC-34.4: Track Lease Signature Status
+**Actor:** Owner, Real Estate Agent
+**Description:** User tracks the signature status of sent lease agreements.
+
+### UC-34.5: Store Signed Lease
+**Actor:** AI System
+**Description:** System securely stores fully executed lease agreement.
+
+### UC-34.6: Set Lease Renewal Reminder
+**Actor:** Owner, Manager, AI System
+**Description:** System sets reminder before lease expiration for renewal decision.
+
+### UC-34.7: Renew Lease
+**Actor:** Owner, Tenant
+**Description:** User initiates lease renewal process.
+
+### UC-34.8: Terminate Lease
+**Actor:** Owner, Tenant, Manager
+**Description:** User initiates early lease termination process.
+
+### UC-34.9: Calculate Lease Balance
+**Actor:** Manager, AI System
+**Description:** System calculates outstanding balance at lease end.
+
+### UC-34.10: Track Lease Violations
+**Actor:** Manager, Owner
+**Description:** User documents and tracks lease violations by tenant.
+
+---
+
 ## Summary
 
 | Category | Use Cases |
@@ -1182,4 +1603,12 @@
 | UC-24: Community & Social | 10 |
 | UC-25: Accessibility | 8 |
 | UC-26: Workflow Automation | 10 |
-| **TOTAL** | **246** |
+| UC-27: Multi-tenancy & Organizations | 10 |
+| UC-28: Delegation & Permissions | 10 |
+| UC-29: Short-term Rental Management | 15 |
+| UC-30: Guest Registration System | 10 |
+| UC-31: Real Estate & Listings | 14 |
+| UC-32: Real Estate Portal Integration | 10 |
+| UC-33: Tenant Screening | 10 |
+| UC-34: Lease Management | 10 |
+| **TOTAL** | **335** |
