@@ -1,16 +1,10 @@
 plugins {
-    // Kotlin Multiplatform
-    kotlin("multiplatform") version "1.9.21" apply false
-    kotlin("plugin.serialization") version "1.9.21" apply false
-
-    // Android
-    id("com.android.application") version "8.2.0" apply false
-    id("com.android.library") version "8.2.0" apply false
-}
-
-allprojects {
-    group = "com.propertymanagement"
-    version = "0.1.0"
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.kotlin.multiplatform) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    alias(libs.plugins.kotlin.compose) apply false
 }
 
 tasks.register("clean", Delete::class) {

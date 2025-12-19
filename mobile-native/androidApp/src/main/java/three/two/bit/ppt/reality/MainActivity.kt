@@ -1,4 +1,4 @@
-package com.propertymanagement
+package three.two.bit.ppt.reality
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -14,7 +14,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            PropertyManagementTheme {
+            RealityPortalTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -36,7 +36,7 @@ fun MainScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Property Management",
+            text = "Reality Portal",
             style = MaterialTheme.typography.headlineLarge
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -48,7 +48,7 @@ fun MainScreen() {
 }
 
 @Composable
-fun PropertyManagementTheme(content: @Composable () -> Unit) {
+fun RealityPortalTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = lightColorScheme(),
         content = content
