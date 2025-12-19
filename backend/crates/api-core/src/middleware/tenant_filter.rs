@@ -52,7 +52,9 @@ fn is_public_path(path: &str) -> bool {
         "/api-docs",
     ];
 
-    public_prefixes.iter().any(|prefix| path.starts_with(prefix))
+    public_prefixes
+        .iter()
+        .any(|prefix| path.starts_with(prefix))
 }
 
 /// Middleware to log requests with tenant context.

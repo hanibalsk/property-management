@@ -91,7 +91,10 @@ impl TenantRole {
     pub fn is_manager(&self) -> bool {
         matches!(
             self,
-            TenantRole::SuperAdmin | TenantRole::OrgAdmin | TenantRole::Manager | TenantRole::TechnicalManager
+            TenantRole::SuperAdmin
+                | TenantRole::OrgAdmin
+                | TenantRole::Manager
+                | TenantRole::TechnicalManager
         )
     }
 }

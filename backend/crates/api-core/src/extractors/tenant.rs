@@ -34,7 +34,10 @@ where
             .get("X-Tenant-ID")
             .and_then(|v| v.to_str().ok())
             .and_then(|s| Uuid::parse_str(s).ok())
-            .ok_or((StatusCode::BAD_REQUEST, "Missing or invalid X-Tenant-ID header"))?;
+            .ok_or((
+                StatusCode::BAD_REQUEST,
+                "Missing or invalid X-Tenant-ID header",
+            ))?;
 
         // In a real implementation, we would:
         // 1. Validate the tenant exists
@@ -55,7 +58,9 @@ where
             .copied()
             .unwrap_or(TenantRole::Guest);
 
-        Ok(TenantExtractor(TenantContext::new(tenant_id, user_id, role)))
+        Ok(TenantExtractor(TenantContext::new(
+            tenant_id, user_id, role,
+        )))
     }
 }
 

@@ -97,7 +97,10 @@ pub struct GeoLocation {
 
 impl GeoLocation {
     pub fn new(latitude: f64, longitude: f64) -> Self {
-        Self { latitude, longitude }
+        Self {
+            latitude,
+            longitude,
+        }
     }
 }
 

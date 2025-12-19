@@ -55,14 +55,18 @@ where
             .ok_or((StatusCode::UNAUTHORIZED, "Missing Authorization header"))?;
 
         // Extract Bearer token
-        let token = auth_header
-            .strip_prefix("Bearer ")
-            .ok_or((StatusCode::UNAUTHORIZED, "Invalid Authorization header format"))?;
+        let token = auth_header.strip_prefix("Bearer ").ok_or((
+            StatusCode::UNAUTHORIZED,
+            "Invalid Authorization header format",
+        ))?;
 
         // Get JWT secret from environment - REQUIRED, no fallback for security
         let secret = std::env::var("JWT_SECRET").map_err(|_| {
             tracing::error!("JWT_SECRET environment variable not set");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Server configuration error")
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Server configuration error",
+            )
         })?;
 
         // Decode and validate JWT
