@@ -16,6 +16,11 @@ use utoipa_swagger_ui::SwaggerUi;
 
 mod handlers;
 mod routes;
+mod services;
+mod state;
+
+use services::EmailService;
+use state::AppState;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -35,12 +40,21 @@ mod routes;
         routes::auth::login,
         routes::auth::register,
         routes::auth::logout,
+        routes::auth::verify_email,
+        routes::auth::resend_verification,
     ),
     components(schemas(
         routes::health::HealthResponse,
         routes::auth::LoginRequest,
         routes::auth::LoginResponse,
         routes::auth::RegisterRequest,
+        routes::auth::RegisterResponse,
+        routes::auth::VerifyEmailQuery,
+        routes::auth::VerifyEmailResponse,
+        routes::auth::ResendVerificationRequest,
+        routes::auth::ResendVerificationResponse,
+        common::errors::ErrorResponse,
+        common::errors::ValidationError,
         common::tenant::TenantContext,
         common::tenant::TenantRole,
     )),
@@ -72,6 +86,28 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // Get database URL from environment
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| {
+            tracing::warn!("DATABASE_URL not set, using default");
+            "postgres://postgres:postgres@localhost:5432/ppt".to_string()
+        });
+
+    // Create database pool
+    let db_pool = db::create_pool(&database_url).await?;
+    tracing::info!("Connected to database");
+
+    // Create email service (development mode by default)
+    let email_enabled = std::env::var("EMAIL_ENABLED")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false);
+    let base_url = std::env::var("APP_BASE_URL")
+        .unwrap_or_else(|_| "http://localhost:3000".to_string());
+    let email_service = EmailService::new(base_url, email_enabled);
+
+    // Create application state
+    let state = AppState::new(db_pool, email_service);
+
     // Build router
     let app = Router::new()
         // Health check
@@ -96,7 +132,9 @@ async fn main() -> anyhow::Result<()> {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
         .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive());
+        .layer(CorsLayer::permissive())
+        // Application state
+        .with_state(state);
 
     // Run server
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));

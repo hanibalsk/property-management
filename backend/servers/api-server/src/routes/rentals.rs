@@ -1,9 +1,10 @@
 //! Rental routes (UC-29, UC-30) - Airbnb/Booking integration.
 
 use axum::Router;
+use crate::state::AppState;
 
 /// Create rentals router.
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
     // TODO: Add rental routes
     // GET /reservations            - List reservations
