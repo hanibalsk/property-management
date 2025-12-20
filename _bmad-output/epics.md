@@ -1,0 +1,2966 @@
+---
+stepsCompleted: [1, 2, 3, 4]
+inputDocuments:
+  - _bmad-output/prd.md
+  - _bmad-output/architecture.md
+  - _bmad-output/ux-design-specification.md
+workflowType: 'epics-and-stories'
+lastStep: 4
+status: 'complete'
+project_name: 'Property Management System (PPT) & Reality Portal'
+user_name: 'Martin Janci'
+date: '2025-12-20'
+elicitation_methods_applied:
+  - Pre-mortem Analysis
+  - Architecture Decision Records
+  - Cross-Functional War Room
+mvp_stories_generated: 74
+mvp_acceptance_criteria: 222
+validation_passed: true
+fr_coverage: '63/63 MVP FRs'
+---
+
+# Property Management System (PPT) & Reality Portal - Epic Breakdown
+
+## Overview
+
+This document provides the complete epic and story breakdown for Property Management System (PPT) & Reality Portal, decomposing the requirements from the PRD, UX Design, and Architecture requirements into implementable stories.
+
+## Requirements Inventory
+
+### Functional Requirements
+
+**From PRD - 101 Functional Requirements across 15 Capability Areas:**
+
+| ID | Capability Area | FR Count | Phase |
+|----|-----------------|----------|-------|
+| CA-01 | Identity & Access Management | 7 FRs | MVP |
+| CA-02 | Organization & Multi-Tenancy | 7 FRs | MVP |
+| CA-03 | Property & Resident Management | 7 FRs | MVP |
+| CA-04 | Communication & Notifications | 8 FRs | MVP |
+| CA-05 | Issue & Fault Management | 7 FRs | MVP |
+| CA-06 | Voting & Decision Making | 8 FRs | MVP |
+| CA-07 | Document Management | 7 FRs | MVP |
+| CA-08 | Financial Management | 6 FRs | Phase 2 |
+| CA-09 | Meter Readings & Utilities | 6 FRs | Phase 2 |
+| CA-10 | AI & Automation | 7 FRs | Phase 3 |
+| CA-11 | IoT & Smart Building | 5 FRs | Phase 3 |
+| CA-12 | Real Estate & Listings | 8 FRs | Phase 4 |
+| CA-13 | Rental Management | 6 FRs | Phase 4 |
+| CA-14 | Compliance & Privacy | 6 FRs | MVP |
+| CA-15 | Platform Operations | 6 FRs | MVP |
+
+**Detailed Functional Requirements:**
+
+**CA-01: Identity & Access Management (7 FRs)**
+- FR1: Users can register accounts with email verification (UC-14.1, UC-14.2)
+- FR2: Users can authenticate via email/password with session management (UC-14.3, UC-14.4)
+- FR3: Users can reset forgotten passwords securely (UC-14.5, UC-14.6)
+- FR4: Users can enable two-factor authentication (UC-23.1)
+- FR5: Users can manage active sessions across devices (UC-14.11, UC-14.12)
+- FR6: Platform operators can manage user lifecycle (invite, suspend, delete) (UC-14.7-14.10)
+- FR7: Users can authenticate via SSO from Property Management to Reality Portal (UC-46.3)
+
+**CA-02: Organization & Multi-Tenancy (7 FRs)**
+- FR8: Organizations can be created with complete isolation from other tenants (UC-27.1)
+- FR9: Organization admins can configure organization settings and branding (UC-27.2, UC-27.3)
+- FR10: Organization admins can manage members and assign roles (UC-27.4, UC-27.5)
+- FR11: Organizations can define custom role permissions within RBAC framework (UC-27.6)
+- FR12: Super admins can view and manage all organizations (UC-18.1-18.10)
+- FR13: Organizations can export all their data for migration (UC-27.7)
+- FR14: Organizations can be deactivated with data retention per policy (UC-27.8)
+
+**CA-03: Property & Resident Management (7 FRs)**
+- FR15: Managers can create and configure buildings with address and metadata (UC-15.1)
+- FR16: Managers can define units within buildings with ownership/rental status (UC-15.2)
+- FR17: Managers can associate residents (owners, tenants) with units (UC-15.3, UC-15.4)
+- FR18: Owners can delegate rights to other users (UC-28.1-28.4)
+- FR19: Managers can track person-months for fee allocation (UC-10.1-10.6)
+- FR20: Residents can view their unit details and associated information (UC-15.5)
+- FR21: Managers can manage common areas and shared facilities (UC-15.6)
+
+**CA-04: Communication & Notifications (8 FRs)**
+- FR22: Managers can create announcements visible to specific buildings/units (UC-02.1-02.4)
+- FR23: Residents can view, comment on, and acknowledge announcements (UC-02.5-02.8)
+- FR24: Managers can pin important announcements (UC-02.9)
+- FR25: Users can send direct messages to other users within their organization (UC-05.1-05.4)
+- FR26: Users receive push notifications for relevant events (UC-01.1-01.3)
+- FR27: Users can configure notification preferences by channel and category (UC-01.4-01.6)
+- FR28: System can send email notifications for offline users (UC-01.2)
+- FR29: Users can view neighbor information based on privacy settings (UC-06.1-06.4)
+
+**CA-05: Issue & Fault Management (7 FRs)**
+- FR30: Residents can report faults with description, category, and photos (UC-03.1-03.3)
+- FR31: Managers can view, triage, and assign faults to technical staff (UC-03.4-03.6)
+- FR32: Technical managers can update fault status through resolution workflow (UC-03.7-03.9)
+- FR33: Residents can track status of their reported faults (UC-03.10)
+- FR34: Residents can rate resolved faults (UC-03.11)
+- FR35: System can suggest fault category and priority based on description (AI-assisted) (UC-20.3)
+- FR36: Managers can generate fault reports and analytics (UC-17.4)
+
+**CA-06: Voting & Decision Making (8 FRs)**
+- FR37: Managers can create votes with multiple question types (yes/no, multiple choice, ranked) (UC-04.1-04.3)
+- FR38: Owners can cast votes during voting period (UC-04.4)
+- FR39: Owners can delegate voting rights (UC-28.2)
+- FR40: Users can discuss votes in associated threads (UC-04.5)
+- FR41: System calculates and displays results based on configured quorum (UC-04.6-04.7)
+- FR42: System maintains immutable audit trail for all voting activity (UC-04.8)
+- FR43: Managers can generate compliance reports for votes (UC-04.9)
+- FR44: System supports hybrid attendance (in-person + remote) (UC-04.10)
+
+**CA-07: Document Management (7 FRs)**
+- FR45: Users can upload documents with metadata and categorization (UC-08.1-08.3)
+- FR46: Managers can organize documents in folder structures (UC-08.4)
+- FR47: Users can view documents based on their access permissions (UC-08.5)
+- FR48: System maintains version history for documents (UC-08.6)
+- FR49: Users can search documents by content and metadata (UC-08.7)
+- FR50: Managers can share documents with specific users or groups (UC-08.8)
+- FR51: System can extract text from uploaded documents (OCR) (UC-20.2)
+
+**CA-08: Financial Management (6 FRs) - Phase 2**
+- FR52: Owners can view their payment history and current balance (UC-16.1-16.3)
+- FR53: Managers can record payments and generate invoices (UC-16.4-16.6)
+- FR54: Managers can manage building maintenance fund (UC-16.7-16.9)
+- FR55: System can generate financial reports by period, building, category (UC-17.1-17.3)
+- FR56: System can export financial data to accounting systems (POHODA, Money S3) (UC-22.2)
+- FR57: Managers can send payment reminders (UC-16.10)
+
+**CA-09: Meter Readings & Utilities (6 FRs) - Phase 2**
+- FR58: Residents can submit meter readings with photos (UC-11.1-11.3)
+- FR59: System can extract meter values from photos (OCR) (UC-20.1)
+- FR60: Managers can view and validate submitted readings (UC-11.4-11.5)
+- FR61: System can detect anomalous readings (UC-11.6)
+- FR62: Managers can generate utility reports (UC-11.7)
+- FR63: System can track outages and service interruptions (UC-12.1-12.4)
+
+**CA-10: AI & Automation (7 FRs) - Phase 3**
+- FR64: Users can interact with AI chatbot for common questions (UC-20.4)
+- FR65: System can analyze message sentiment for trend detection (UC-20.5)
+- FR66: System can predict maintenance needs based on equipment age and history (UC-20.6)
+- FR67: System can summarize long documents automatically (UC-20.7)
+- FR68: System can provide smart search with natural language queries (UC-20.8)
+- FR69: Managers can configure workflow automations (UC-26.1-26.4)
+- FR70: System can trigger automated actions based on events (UC-26.5-26.8)
+
+**CA-11: IoT & Smart Building (5 FRs) - Phase 3**
+- FR71: System can ingest data from IoT sensors (UC-21.1-21.3)
+- FR72: Users can view real-time sensor data dashboards (UC-21.4)
+- FR73: System can alert on threshold violations (UC-21.5)
+- FR74: System can correlate sensor data with fault reports (UC-21.6)
+- FR75: Managers can configure sensor thresholds and alerts (UC-21.7)
+
+**CA-12: Real Estate & Listings (8 FRs) - Phase 4**
+- FR76: Owners can create property listings from existing unit data (UC-31.1-31.3)
+- FR77: Realtors can manage listings with photos, descriptions, pricing (UC-31.4-31.6)
+- FR78: System can syndicate listings to external portals (UC-32.1-32.4)
+- FR79: Portal users can search and filter property listings (UC-44.1-44.4)
+- FR80: Portal users can save favorite listings (UC-44.5-44.8)
+- FR81: Portal users can contact listing agents (UC-45.1-45.4)
+- FR82: Agencies can manage realtors and shared listings (UC-49.1-49.6)
+- FR83: Realtors can import listings from external sources (UC-50.1-50.4)
+
+**CA-13: Rental Management (6 FRs) - Phase 4**
+- FR84: Property managers can sync with Airbnb/Booking.com (UC-29.1-29.4)
+- FR85: Property managers can register guests for legal compliance (UC-30.1-30.4)
+- FR86: System can generate guest reports for authorities (UC-30.5-30.6)
+- FR87: Landlords can screen potential tenants (UC-33.1-33.4)
+- FR88: Landlords can manage lease lifecycle (create, renew, terminate) (UC-34.1-34.6)
+- FR89: System can track lease expirations and send reminders (UC-34.7-34.8)
+
+**CA-14: Compliance & Privacy (6 FRs)**
+- FR90: Users can export all their personal data (GDPR) (UC-23.4)
+- FR91: Users can request deletion of their personal data (GDPR) (UC-23.5)
+- FR92: Users can configure privacy settings for profile visibility (UC-23.1-23.3)
+- FR93: System maintains audit logs for compliance-sensitive operations (UC-23.6)
+- FR94: Managers can generate compliance reports (UC-23.7)
+- FR95: System enforces data retention policies per regulation (UC-23.8)
+
+**CA-15: Platform Operations (6 FRs)**
+- FR96: Super admins can view platform health metrics (UC-18.1)
+- FR97: Super admins can manage feature flags (UC-18.2)
+- FR98: Super admins can broadcast system announcements (UC-18.3)
+- FR99: Support staff can access organization data for troubleshooting (UC-18.4)
+- FR100: System provides onboarding tour for new users (UC-42.1)
+- FR101: System provides contextual help and documentation (UC-42.2)
+
+### Non-Functional Requirements
+
+**From PRD - Critical Quality Attributes:**
+
+**NFR-PERF: Performance**
+- NFR1: API P95 Latency < 200ms (alert threshold > 500ms)
+- NFR2: API P99 Latency < 500ms (alert threshold > 1s)
+- NFR3: Database Query P95 < 100ms (alert threshold > 200ms)
+- NFR4: Reality Portal LCP < 2.5s (alert threshold > 3s)
+- NFR5: Reality Portal FCP < 1.5s (alert threshold > 2s)
+- NFR6: Mobile App Launch < 3s (alert threshold > 5s)
+- NFR7: Push Notification Delivery < 5s (alert threshold > 15s)
+
+**NFR-CAP: Capacity**
+- NFR8: MVP: 500 concurrent users, Year 1: 5,000, Year 3: 15,000
+- NFR9: MVP: 100 RPS, Year 1: 1,000 RPS, Year 3: 5,000 RPS
+- NFR10: MVP: 1,000 WebSocket connections, Year 1: 10,000, Year 3: 50,000
+
+**NFR-SEC: Security**
+- NFR11: Argon2id for password hashing
+- NFR12: JWT with 15-minute access, 7-day refresh tokens
+- NFR13: TOTP-based 2FA support
+- NFR14: AES-256 encryption at rest for PII
+- NFR15: TLS 1.3 for all API communication
+- NFR16: Rate limiting: 100 req/min per user, 1000 req/min per org
+
+**NFR-REL: Reliability**
+- NFR17: 99.9% uptime SLA
+- NFR18: Max 4h planned downtime/month
+- NFR19: Error rate < 0.1%
+- NFR20: MTTR < 30 minutes
+- NFR21: RTO < 4 hours
+- NFR22: RPO < 1 hour
+
+**NFR-COMP: Compliance**
+- NFR23: GDPR full compliance
+- NFR24: Data export within 24 hours (UC-23.4)
+- NFR25: Data deletion within 72 hours (UC-23.5)
+- NFR26: Annual penetration testing
+- NFR27: SOC 2 Type II by Year 2
+
+**NFR-ACC: Accessibility**
+- NFR28: WCAG 2.1 AA full compliance
+- NFR29: Keyboard navigation for all features
+- NFR30: Screen reader compatibility (NVDA, VoiceOver)
+- NFR31: 4.5:1 minimum color contrast
+- NFR32: 200% text scaling support
+
+**NFR-I18N: Localization**
+- NFR33: Languages: Slovak (sk), Czech (cs), German (de), English (en)
+- NFR34: Locale-aware date/time formatting
+- NFR35: Currency display: EUR, CZK
+
+**NFR-MOB: Mobile**
+- NFR36: Offline mode with background sync
+- NFR37: Push notifications via FCM/APNs
+- NFR38: Deep linking support
+- NFR39: App size < 50MB
+- NFR40: Battery drain < 3% per hour active use
+
+### Additional Requirements
+
+**From Architecture Document:**
+
+**ARCH-TECH: Technology Stack**
+- ARCH1: Backend: Rust with Axum 0.8.6 framework
+- ARCH2: Database: PostgreSQL 16+ with RLS for tenant isolation
+- ARCH3: Cache: Redis for sessions and rate limiting
+- ARCH4: Storage: S3-compatible object storage
+- ARCH5: ppt-web: React 19 + Vite 6 SPA
+- ARCH6: reality-web: Next.js 15.5 SSR/SSG
+- ARCH7: mobile: React Native 0.83
+- ARCH8: mobile-native: Kotlin Multiplatform 2.3 (iOS/Android)
+
+**ARCH-API: API & Communication**
+- ARCH9: OpenAPI 3.1 specification (TypeSpec source)
+- ARCH10: SDK generation: TypeScript (@hey-api/openapi-ts), Kotlin (openapi-generator)
+- ARCH11: WebSocket for real-time (Axum + tokio-tungstenite)
+- ARCH12: Redis pub/sub for cross-instance messaging
+
+**ARCH-AUTH: Authentication**
+- ARCH13: api-server as OAuth 2.0 provider
+- ARCH14: reality-server as SSO consumer
+- ARCH15: 12+ role types across platform/org/building/unit levels
+
+**ARCH-DATA: Data Architecture**
+- ARCH16: SQLx for compile-time query checking
+- ARCH17: SeaORM for complex query building
+- ARCH18: sqlx-cli for schema migrations
+
+**ARCH-AI: AI/ML Architecture**
+- ARCH19: Hybrid approach (local + external APIs)
+- ARCH20: AI columns in data model (ocr_confidence, ai_category, sentiment_score)
+- ARCH21: Confidence thresholds: >90% auto-apply, 70-90% suggest, <70% human review
+
+**ARCH-TEST: Testing Strategy**
+- ARCH22: Backend: 80% unit test coverage target
+- ARCH23: Web: Vitest + React Testing Library (80% unit, 70% component)
+- ARCH24: E2E: Playwright for critical flows
+- ARCH25: Accessibility: axe-core in CI
+
+**ARCH-STRUCT: Project Structure**
+- ARCH26: Monorepo with pnpm workspaces (frontend/)
+- ARCH27: Cargo workspace (backend/)
+- ARCH28: Shared design tokens via Style Dictionary
+
+**From UX Design Specification:**
+
+**UX-CORE: Core Experience Principles**
+- UX1: Action-First, Dashboard-Available design
+- UX2: 60-Second Tasks: Notification to completion in under a minute
+- UX3: Confirm, Not Assume: AI assists, user approves
+- UX4: No Status Black Holes: Every item shows next expected step
+- UX5: Reversible by Default: Undo window (30s), confirmation for high-stakes
+- UX6: Design for Ján, Delight Michaela: Accessible first, density optional
+- UX7: Notification IS Navigation: Deep-links replace menu hunting
+- UX8: Platform-Native, Token-Unified: Consistent language, native feel
+
+**UX-DESIGN: Design System**
+- UX9: Token-first design system with Style Dictionary
+- UX10: Radix UI + Tailwind CSS for web apps
+- UX11: React Native Paper for PM mobile
+- UX12: Compose/SwiftUI for Reality Portal mobile (KMP)
+- UX13: 48px+ touch targets for accessibility
+
+**UX-FLOW: User Journey Targets**
+- UX14: Owner voting: < 60 seconds notification to completion
+- UX15: Tenant fault report: < 30 seconds photo to submission
+- UX16: Manager action processing: < 20 seconds per queue item
+- UX17: Realtor listing publish: < 2 minutes to multi-portal live
+- UX18: Portal user inquiry: ≤ 3 clicks from search to contact
+
+**UX-PATTERN: Interaction Patterns**
+- UX19: Command Palette (⌘K) for PM web power users
+- UX20: Bottom navigation with labels for mobile
+- UX21: Photo-first input for meter readings and fault reports
+- UX22: Inline approval without drilling down
+- UX23: Timeline views for fault status tracking
+
+**UX-VISUAL: Visual Design**
+- UX24: PM Palette: Professional blue (#2563EB primary)
+- UX25: Reality Palette: Warm neutrals with orange accent (#F97316)
+- UX26: Inter font family for all platforms
+- UX27: 4px spacing grid system
+
+### FR Coverage Map
+
+| FR | Epic | Description |
+|----|------|-------------|
+| FR1 | 1 | User registration with email verification |
+| FR2 | 1 | Email/password authentication with sessions |
+| FR3 | 1 | Secure password reset |
+| FR4 | 9 | Two-factor authentication (TOTP) |
+| FR5 | 1 | Session management across devices |
+| FR6 | 1 | User lifecycle management (invite, suspend, delete) |
+| FR7 | 10A + 10A-SSO | SSO between PM and Reality Portal |
+| FR8 | 2A | Organization creation with tenant isolation |
+| FR9 | 2A | Organization settings and branding |
+| FR10 | 2A | Member management and role assignment |
+| FR11 | 2A | Custom role permissions within RBAC |
+| FR12 | 10B | Super admin organization management |
+| FR13 | 2A | Organization data export |
+| FR14 | 2A | Organization deactivation with retention |
+| FR15 | 3 | Building creation and configuration |
+| FR16 | 3 | Unit definition with ownership/rental status |
+| FR17 | 3 | Resident association with units |
+| FR18 | 3 | Delegation of owner rights |
+| FR19 | 3 | Person-month tracking for fees |
+| FR20 | 3 | Resident unit view |
+| FR21 | 3 | Common areas and facilities management |
+| FR22 | 6 | Announcement creation for buildings/units |
+| FR23 | 6 | Announcement viewing, commenting, acknowledgment |
+| FR24 | 6 | Pinned announcements |
+| FR25 | 6 | Direct messaging within organization |
+| FR26 | 2B | Push notifications for events |
+| FR27 | 2B + 8A + 8B | Notification preferences by channel/category |
+| FR28 | 2B | Email notifications for offline users |
+| FR29 | 6 | Neighbor information with privacy settings |
+| FR30 | 4 | Fault reporting with description, category, photos |
+| FR31 | 4 | Fault triage and assignment |
+| FR32 | 4 | Fault status workflow |
+| FR33 | 4 | Fault status tracking for residents |
+| FR34 | 4 | Fault resolution rating |
+| FR35 | 4 | AI-suggested fault category and priority |
+| FR36 | 4 | Fault reports and analytics |
+| FR37 | 5 | Vote creation with multiple question types |
+| FR38 | 5 | Vote casting during voting period |
+| FR39 | 5 | Delegated voting rights |
+| FR40 | 5 | Vote discussion threads |
+| FR41 | 5 | Quorum-based result calculation |
+| FR42 | 5 | Immutable voting audit trail |
+| FR43 | 5 | Voting compliance reports |
+| FR44 | 5 | Hybrid attendance support |
+| FR45 | 7A | Document upload with metadata |
+| FR46 | 7A | Folder organization |
+| FR47 | 7A | Permission-based document viewing |
+| FR48 | 7B | Document version history |
+| FR49 | 7B | Document search by content/metadata |
+| FR50 | 7A | Document sharing |
+| FR51 | 7B | Document OCR text extraction |
+| FR52 | 11 | Payment history and balance viewing |
+| FR53 | 11 | Payment recording and invoice generation |
+| FR54 | 11 | Maintenance fund management |
+| FR55 | 11 | Financial reports |
+| FR56 | 11 | Accounting system export |
+| FR57 | 11 | Payment reminders |
+| FR58 | 12 | Meter reading submission with photos |
+| FR59 | 12 | OCR meter value extraction |
+| FR60 | 12 | Reading validation |
+| FR61 | 12 | Anomaly detection |
+| FR62 | 12 | Utility reports |
+| FR63 | 12 | Outage tracking |
+| FR64 | 13 | AI chatbot for common questions |
+| FR65 | 13 | Sentiment analysis for trend detection |
+| FR66 | 13 | Predictive maintenance |
+| FR67 | 13 | Automatic document summarization |
+| FR68 | 13 | Smart search with NLP |
+| FR69 | 13 | Workflow automation configuration |
+| FR70 | 13 | Event-triggered automated actions |
+| FR71 | 14 | IoT sensor data ingestion |
+| FR72 | 14 | Real-time sensor dashboards |
+| FR73 | 14 | Threshold violation alerts |
+| FR74 | 14 | Sensor-fault correlation |
+| FR75 | 14 | Sensor threshold configuration |
+| FR76 | 15 | Listing creation from unit data |
+| FR77 | 15 | Listing management (photos, descriptions, pricing) |
+| FR78 | 15 | Multi-portal syndication |
+| FR79 | 16 | Property search and filtering |
+| FR80 | 16 | Favorite listings |
+| FR81 | 16 | Agent contact |
+| FR82 | 17 | Agency and realtor management |
+| FR83 | 17 | External listing import |
+| FR84 | 18 | Airbnb/Booking.com sync |
+| FR85 | 18 | Guest registration |
+| FR86 | 18 | Guest reports for authorities |
+| FR87 | 19 | Tenant screening |
+| FR88 | 19 | Lease lifecycle management |
+| FR89 | 19 | Lease expiration tracking and reminders |
+| FR90 | 9 | GDPR data export |
+| FR91 | 9 | GDPR data deletion |
+| FR92 | 9 | Privacy settings configuration |
+| FR93 | 9 | Compliance audit logs |
+| FR94 | 9 | Compliance reports |
+| FR95 | 9 | Data retention policy enforcement |
+| FR96 | 10B | Platform health metrics |
+| FR97 | 10B | Feature flag management |
+| FR98 | 10B | System announcements |
+| FR99 | 10B | Support data access |
+| FR100 | 10B | User onboarding tour |
+| FR101 | 10B | Contextual help and documentation |
+
+## Epic List
+
+### Phase 1: MVP (12 Epics)
+
+#### Epic 1: User Authentication & Sessions
+**Goal:** Users can register, login, manage sessions, and reset passwords. Token structure supports future organization context.
+
+**FRs covered:** FR1, FR2, FR3, FR5, FR6
+**Estimate:** 3 weeks
+**Key Decisions:**
+- JWT with extension points for org/role claims
+- Multi-org session model
+- Email template localization (SK, CS, DE, EN)
+
+---
+
+#### Epic 2A: Organizations & Tenant Isolation
+**Goal:** Organizations can onboard with complete data isolation. RLS enforcement validated via penetration test framework.
+
+**FRs covered:** FR8, FR9, FR10, FR11, FR13, FR14
+**Estimate:** 2 weeks
+**Key Decisions:**
+- PostgreSQL RLS for tenant isolation
+- RLS penetration test framework
+- Organization data export capability
+
+---
+
+#### Epic 2B: Notification Infrastructure & Offline Foundation
+**Goal:** Push, email, and in-app notifications work reliably. Event bus established. Offline sync patterns defined.
+
+**FRs covered:** FR26, FR27 (basic), FR28
+**Estimate:** 3 weeks
+**Key Decisions:**
+- Redis pub/sub event bus
+- FCM/APNs push infrastructure
+- Privacy-aware notification design
+- Idempotency patterns for offline sync
+- Conflict resolution strategy
+
+---
+
+#### Epic 3: Property & Building Management
+**Goal:** Managers can create buildings and units with schema ready for Reality Portal. Residents associated with units.
+
+**FRs covered:** FR15, FR16, FR17, FR18, FR19, FR20, FR21
+**Estimate:** 2 weeks
+**Key Decisions:**
+- Nullable listing fields for Phase 4 readiness
+- Public/private access patterns in schema
+- No feature flags needed (just don't build listing UI)
+
+---
+
+#### Epic 4: Fault Reporting & Resolution
+**Goal:** Tenants report faults with photos (works offline). Managers triage and resolve. AI training metadata captured.
+
+**FRs covered:** FR30, FR31, FR32, FR33, FR34, FR35, FR36
+**Estimate:** 3 weeks
+**Key Decisions:**
+- Offline: create fault + queue photos
+- AI metadata columns (ai_category, confidence)
+- Photo-first UX per UX specification
+
+---
+
+#### Epic 5: Building Voting & Decisions
+**Goal:** Owners participate in remote voting with full audit trail. Online-only for integrity.
+
+**FRs covered:** FR37, FR38, FR39, FR40, FR41, FR42, FR43, FR44
+**Estimate:** 2 weeks
+**Key Decisions:**
+- **Online-only voting** (no offline to prevent conflicts)
+- View cached votes offline
+- Immutable audit log
+- Delegated voting support
+
+---
+
+#### Epic 6: Announcements & Communication ⚠️
+**Goal:** Managers broadcast announcements. Residents comment and interact. AI consent captured.
+
+**FRs covered:** FR22, FR23, FR24, FR25, FR29
+**Estimate:** 2 weeks
+**Priority:** Can slip 2 weeks if needed
+**Key Decisions:**
+- Offline: view cached, queue comments
+- AI consent flag on messages for Phase 3 training
+
+---
+
+#### Epic 7A: Basic Document Management
+**Goal:** Users can upload, organize, and share documents with basic functionality.
+
+**FRs covered:** FR45, FR46, FR47, FR50
+**Estimate:** 1.5 weeks
+**Key Decisions:**
+- Basic upload/download/organize
+- Permission-based viewing
+- OCR and search deferred to Epic 7B
+
+---
+
+#### Epic 8A: Basic Notification Preferences
+**Goal:** Users can toggle notifications on/off per channel.
+
+**FRs covered:** FR27 (basic toggles only)
+**Estimate:** 1 week
+**Key Decisions:**
+- Simple on/off per channel (push, email, in-app)
+- Granular preferences deferred to Epic 8B
+
+---
+
+#### Epic 9: Privacy, Security & GDPR
+**Goal:** Users can enable 2FA, export/delete data, and configure privacy. Audit logs available.
+
+**FRs covered:** FR4, FR90, FR91, FR92, FR93, FR94, FR95
+**Estimate:** 3 weeks
+**Key Decisions:**
+- TOTP-based 2FA (simpler, implement first)
+- GDPR export/deletion (more complex, implement second)
+- Audit trail for compliance operations
+
+---
+
+#### Epic 10A: OAuth Provider Foundation
+**Goal:** OAuth 2.0 provider established on api-server for future SSO.
+
+**FRs covered:** FR7 (partial - provider only)
+**Estimate:** 1.5 weeks
+**Key Decisions:**
+- Build OAuth provider infrastructure
+- SSO consumer on reality-server deferred to Phase 4
+- No end-user UI in MVP
+
+---
+
+#### Epic 10B: Platform Administration
+**Goal:** Super admins can manage organizations, feature flags, and platform health.
+
+**FRs covered:** FR12, FR96, FR97, FR98, FR99, FR100, FR101
+**Estimate:** 2 weeks
+**Key Decisions:**
+- Admin dashboard for org oversight
+- Feature flag management
+- Health metrics and monitoring
+- User onboarding tour
+
+---
+
+### Phase 2: Financial & Enhanced Features (4 Epics)
+
+#### Epic 11: Financial Management & Payments
+**Goal:** Owners view balances. Managers track payments and manage funds.
+
+**FRs covered:** FR52, FR53, FR54, FR55, FR56, FR57
+**Estimate:** 3 weeks
+
+---
+
+#### Epic 12: Meter Readings & Utilities
+**Goal:** Residents submit readings with OCR. Manual corrections stored as training data.
+
+**FRs covered:** FR58, FR59, FR60, FR61, FR62, FR63
+**Estimate:** 2.5 weeks
+**Key Decisions:**
+- OCR training pairs captured
+- Anomaly detection
+
+---
+
+#### Epic 7B: Advanced Document Features
+**Goal:** Full-text search, OCR extraction, and version history for documents.
+
+**FRs covered:** FR48, FR49, FR51
+**Estimate:** 2 weeks
+**Key Decisions:**
+- OCR text extraction
+- Content indexed for AI/RAG
+- Version history UI
+
+---
+
+#### Epic 8B: Granular Notification Preferences
+**Goal:** Users configure per-category settings, quiet hours, and digest emails.
+
+**FRs covered:** FR27 (advanced)
+**Estimate:** 2 weeks
+
+---
+
+### Phase 3: Modern Technology (2 Epics)
+
+#### Epic 13: AI Assistant & Automation
+**Goal:** Users interact with AI chatbot. Managers configure workflow automations.
+
+**FRs covered:** FR64, FR65, FR66, FR67, FR68, FR69, FR70
+**Estimate:** 4 weeks
+**Key Decisions:**
+- Chat UI included
+- RAG on documents (from Epic 7B)
+- Sentiment analysis on messages (from Epic 6)
+- Training data from Epics 4, 6, 12
+
+---
+
+#### Epic 14: IoT & Smart Building
+**Goal:** Users view sensor data dashboards and receive threshold alerts.
+
+**FRs covered:** FR71, FR72, FR73, FR74, FR75
+**Estimate:** 3 weeks
+
+---
+
+### Phase 4: Reality Portal & Rental (6 Epics)
+
+#### Epic 10A-SSO: Cross-Platform SSO Consumer
+**Goal:** Complete SSO between PM and Reality Portal.
+
+**FRs covered:** FR7 (complete)
+**Estimate:** 1.5 weeks
+**Key Decisions:**
+- OIDC consumer on reality-server
+- Mobile deep-link token sharing
+
+---
+
+#### Epic 15: Property Listings & Multi-Portal Sync
+**Goal:** Owners/Realtors create listings from unit data and publish to multiple portals.
+
+**FRs covered:** FR76, FR77, FR78
+**Estimate:** 3 weeks
+
+---
+
+#### Epic 16: Portal Search & Discovery
+**Goal:** Portal users search, filter, and save favorite listings.
+
+**FRs covered:** FR79, FR80, FR81
+**Estimate:** 2.5 weeks
+**Key Decisions:**
+- SSR/SSG for SEO
+- Elasticsearch for search
+
+---
+
+#### Epic 17: Agency & Realtor Management
+**Goal:** Agencies manage realtors and shared listings.
+
+**FRs covered:** FR82, FR83
+**Estimate:** 2 weeks
+
+---
+
+#### Epic 18: Short-Term Rental Integration
+**Goal:** Property managers sync with Airbnb/Booking.com and register guests.
+
+**FRs covered:** FR84, FR85, FR86
+**Estimate:** 2.5 weeks
+
+---
+
+#### Epic 19: Lease Management & Tenant Screening
+**Goal:** Landlords screen tenants and manage full lease lifecycle.
+
+**FRs covered:** FR87, FR88, FR89
+**Estimate:** 2.5 weeks
+
+---
+
+## Cross-Cutting Concerns
+
+| Concern | Epic | Implementation |
+|---------|------|----------------|
+| JWT Token Foundation | 1 | Extension points for org/role claims |
+| Multi-Org Sessions | 1 | User can belong to multiple orgs |
+| Tenant Isolation (RLS) | 2A | Penetration test framework |
+| Event Bus | 2B | Redis pub/sub for async operations |
+| Notification Service | 2B | Push (FCM/APNs), email, in-app |
+| Privacy-Aware Design | 2B | Notifications respect privacy settings |
+| Offline Architecture | 2B | Patterns, sync queue, conflict resolution |
+| Idempotency | 2B | Duplicate request handling for sync |
+| Reality Portal Schema | 3 | Nullable listing fields for Phase 4 |
+| Public Access Patterns | 3 | Schema ready for anonymous queries |
+| AI Training Data | 4, 6, 12 | Metadata, consent flags, corrections |
+| Online-Only Critical Actions | 5 | Voting requires connectivity |
+| i18n Email Templates | 1 | SK, CS, DE, EN from day one |
+
+## Summary
+
+| Phase | Epics | FRs | Weeks (Parallel) |
+|-------|-------|-----|------------------|
+| MVP | 12 | 63 | ~16 weeks |
+| Phase 2 | 4 | 12+ | ~5 weeks |
+| Phase 3 | 2 | 12 | ~4 weeks |
+| Phase 4 | 6 | 14 | ~8 weeks |
+| **Total** | **24** | **101** | **~33 weeks** |
+
+## MVP Critical Path
+
+```
+Week 1-3:   Epic 1 (Auth)
+Week 2-4:   Epic 2A (Orgs) ──► Week 5-6: Epic 3 (Buildings)
+Week 2-5:   Epic 2B (Notifications) [parallel]
+Week 7-9:   Epic 4 (Faults) ──► Week 10-11: Epic 5 (Voting)
+Week 10-11: Epic 6 (Announcements) [parallel, can slip]
+Week 12:    Epic 7A (Docs) + Epic 8A (Prefs)
+Week 13-15: Epic 9 (Privacy/2FA/GDPR)
+Week 14-16: Epic 10A (OAuth) + Epic 10B (Admin)
+```
+
+**Critical Path:** 1 → 2A → 3 → 4 → 5 → 9 → 10B = **15 weeks minimum**
+
+---
+
+# Detailed Epic Stories
+
+## Epic 1: User Authentication & Sessions
+
+**Goal:** Users can register, login, manage sessions, and reset passwords. Token structure supports future organization context.
+
+### Story 1.1: User Registration with Email Verification
+
+As a **new user**,
+I want to **create an account with my email address**,
+So that **I can access the Property Management System**.
+
+**Acceptance Criteria:**
+
+**Given** a user is on the registration page
+**When** they enter a valid email, password (min 8 chars, 1 uppercase, 1 number), and name
+**Then** the system creates a pending user record
+**And** sends a verification email with a unique token (valid 24 hours)
+**And** displays "Check your email to verify your account"
+
+**Given** a user clicks the verification link in the email
+**When** the token is valid and not expired
+**Then** the user account is activated
+**And** the user is redirected to login page with success message
+
+**Given** a user tries to register with an existing email
+**When** they submit the registration form
+**Then** the system displays "An account with this email already exists"
+**And** does not reveal whether the account is verified or not
+
+**Technical Notes:**
+- Create `users` table with columns: id, email, password_hash, name, email_verified_at, created_at
+- Use Argon2id for password hashing (NFR11)
+- Email templates in SK, CS, DE, EN based on browser locale
+
+---
+
+### Story 1.2: Email/Password Login
+
+As a **registered user**,
+I want to **log in with my email and password**,
+So that **I can access my account securely**.
+
+**Acceptance Criteria:**
+
+**Given** a verified user enters correct email and password
+**When** they submit the login form
+**Then** the system issues a JWT access token (15-minute expiry)
+**And** issues a refresh token (7-day expiry, stored in HttpOnly cookie)
+**And** redirects to the dashboard
+
+**Given** a user enters incorrect credentials
+**When** they submit the login form
+**Then** the system displays "Invalid email or password"
+**And** increments failed login counter
+**And** after 5 failures, enforces a 15-minute lockout
+
+**Given** an unverified user tries to log in
+**When** they submit correct credentials
+**Then** the system displays "Please verify your email first"
+**And** offers to resend verification email
+
+**Technical Notes:**
+- JWT includes: user_id, email, iat, exp
+- JWT extension point: `org_id` and `roles` claims (nullable for now)
+- Rate limit: 10 login attempts per minute per IP (NFR16)
+
+---
+
+### Story 1.3: JWT Token Refresh
+
+As an **authenticated user**,
+I want to **stay logged in without re-entering credentials**,
+So that **my session persists seamlessly**.
+
+**Acceptance Criteria:**
+
+**Given** a user has a valid refresh token
+**When** their access token expires
+**Then** the client automatically requests a new access token
+**And** receives a new access token without user interaction
+
+**Given** a user's refresh token is expired or invalid
+**When** the client attempts to refresh
+**Then** the system returns 401 Unauthorized
+**And** the client redirects to login page
+
+**Given** a refresh token is used
+**When** a new access token is issued
+**Then** the refresh token is rotated (old one invalidated)
+**And** the new refresh token is set in HttpOnly cookie
+
+**Technical Notes:**
+- Create `refresh_tokens` table: id, user_id, token_hash, expires_at, revoked_at
+- Token rotation prevents replay attacks
+
+---
+
+### Story 1.4: Password Reset Flow
+
+As a **user who forgot my password**,
+I want to **reset my password via email**,
+So that **I can regain access to my account**.
+
+**Acceptance Criteria:**
+
+**Given** a user requests a password reset with a registered email
+**When** they submit the request
+**Then** the system sends a reset email with a unique token (valid 1 hour)
+**And** displays "If an account exists, you'll receive reset instructions"
+
+**Given** a user clicks a valid reset link
+**When** they enter a new password meeting requirements
+**Then** the password is updated
+**And** all existing sessions are invalidated
+**And** the user is redirected to login with success message
+
+**Given** a user tries to use an expired or invalid reset token
+**When** they submit the reset form
+**Then** the system displays "This reset link has expired"
+**And** offers to request a new reset email
+
+**Technical Notes:**
+- Create `password_reset_tokens` table: id, user_id, token_hash, expires_at, used_at
+- Invalidate all refresh_tokens for user on password change
+
+---
+
+### Story 1.5: Active Session Management
+
+As a **security-conscious user**,
+I want to **view and revoke my active sessions**,
+So that **I can protect my account from unauthorized access**.
+
+**Acceptance Criteria:**
+
+**Given** a user navigates to account security settings
+**When** they view active sessions
+**Then** they see a list of sessions with: device type, browser, IP, location (approximate), last active, current session indicator
+
+**Given** a user clicks "Revoke" on a session
+**When** the action is confirmed
+**Then** that session's refresh token is invalidated
+**And** any active requests from that session receive 401
+
+**Given** a user clicks "Revoke all other sessions"
+**When** the action is confirmed
+**Then** all sessions except current are invalidated
+**And** the user sees confirmation message
+
+**Technical Notes:**
+- Extend `refresh_tokens` with: user_agent, ip_address, created_at
+- Use IP geolocation service for approximate location
+- Multi-org support: sessions span organizations (user belongs to multiple)
+
+---
+
+### Story 1.6: User Lifecycle Management (Admin)
+
+As a **platform operator**,
+I want to **invite, suspend, and delete users**,
+So that **I can manage user access to the platform**.
+
+**Acceptance Criteria:**
+
+**Given** an admin enters an email to invite a new user
+**When** they submit the invitation
+**Then** the system sends an invitation email with setup link
+**And** creates a pending user record with `invited_at` timestamp
+
+**Given** an admin suspends a user account
+**When** the suspension is applied
+**Then** all user sessions are immediately invalidated
+**And** the user cannot log in
+**And** the user sees "Account suspended. Contact support." on login attempt
+
+**Given** an admin deletes a user account
+**When** the deletion is confirmed (requires typing user email)
+**Then** the user record is soft-deleted (retained per GDPR)
+**And** all sessions are invalidated
+**And** the email cannot be reused for 30 days
+
+**Technical Notes:**
+- Add to `users`: status (active, suspended, deleted), invited_at, suspended_at, deleted_at
+- Soft delete with data retention per NFR25
+
+---
+
+### Story 1.7: Localized Email Templates
+
+As a **user who prefers their native language**,
+I want to **receive authentication emails in my language**,
+So that **I can understand important account communications**.
+
+**Acceptance Criteria:**
+
+**Given** a user registers with browser locale set to Slovak
+**When** the verification email is sent
+**Then** the email is rendered in Slovak language
+**And** uses Slovak date/time formatting
+
+**Given** a user's browser locale is Czech, German, or English
+**When** any authentication email is sent
+**Then** the email is rendered in the detected language
+
+**Given** a user's locale is not supported (e.g., French)
+**When** an email is sent
+**Then** the email defaults to English
+
+**Technical Notes:**
+- Create email templates: verification, password_reset, invitation, session_alert
+- Each template in: sk, cs, de, en
+- Store user's preferred_locale in users table (nullable, falls back to browser)
+
+---
+
+## Epic 2A: Organizations & Tenant Isolation
+
+**Goal:** Organizations can onboard with complete data isolation. RLS enforcement validated via penetration test framework.
+
+### Story 2A.1: Organization Creation
+
+As a **platform administrator**,
+I want to **create a new organization**,
+So that **a group of users can manage their properties in isolation**.
+
+**Acceptance Criteria:**
+
+**Given** an admin submits organization creation form
+**When** they provide name, slug (unique), and contact email
+**Then** the system creates the organization record
+**And** creates the organization owner user (or links existing user)
+**And** the new org is completely isolated from other orgs
+
+**Given** an organization slug is already taken
+**When** the admin tries to create the org
+**Then** the system displays "This URL slug is already in use"
+
+**Technical Notes:**
+- Create `organizations` table: id, name, slug, contact_email, created_at, status
+- All tenant-scoped tables will have `organization_id` foreign key
+- Enable PostgreSQL RLS on all tenant tables
+
+---
+
+### Story 2A.2: Row-Level Security Enforcement
+
+As a **security architect**,
+I want to **enforce tenant isolation at the database level**,
+So that **data leakage between organizations is impossible**.
+
+**Acceptance Criteria:**
+
+**Given** RLS policies are applied to all tenant-scoped tables
+**When** any query is executed without valid tenant context
+**Then** the query returns zero rows (not an error)
+
+**Given** a user with organization A context
+**When** they query any tenant-scoped table
+**Then** they only see rows where organization_id matches their context
+
+**Given** a super admin context
+**When** they query tenant-scoped tables
+**Then** they can see all rows (bypasses RLS for admin functions)
+
+**Technical Notes:**
+- Create RLS policies using `current_setting('app.current_org_id')`
+- Set tenant context in Axum middleware from JWT org_id claim
+- Create `set_tenant_context(org_id)` function
+
+---
+
+### Story 2A.3: RLS Penetration Test Framework
+
+As a **security team member**,
+I want to **automated tests that verify tenant isolation**,
+So that **we catch RLS misconfigurations before production**.
+
+**Acceptance Criteria:**
+
+**Given** the test suite runs with two test organizations
+**When** Organization A's context is set
+**Then** queries to all tenant tables return only Org A data
+
+**Given** the test creates a record in Organization A
+**When** Organization B's context is set and queries the table
+**Then** the record is not visible
+
+**Given** a new table is added without RLS policy
+**When** the test suite runs
+**Then** it fails with "Table X missing RLS policy"
+
+**Technical Notes:**
+- Integration tests using sqlx test fixtures
+- Test helper: `with_tenant_context(org_id, async_fn)`
+- CI gate: all new tables must have RLS test coverage
+
+---
+
+### Story 2A.4: Organization Settings & Branding
+
+As an **organization administrator**,
+I want to **configure my organization's settings and branding**,
+So that **the platform reflects our identity**.
+
+**Acceptance Criteria:**
+
+**Given** an org admin navigates to organization settings
+**When** they update name, logo, primary color
+**Then** the settings are saved
+**And** the branding is applied to the organization's interface
+
+**Given** an org admin uploads a logo
+**When** the file is a valid image (PNG, JPG, max 2MB)
+**Then** the logo is stored in S3 and URL saved
+**And** the logo appears in the org's header
+
+**Technical Notes:**
+- Add to `organizations`: logo_url, primary_color, settings (JSONB)
+- S3 upload with presigned URLs
+- Settings JSONB for future extensibility
+
+---
+
+### Story 2A.5: Organization Member Management
+
+As an **organization administrator**,
+I want to **add and remove members from my organization**,
+So that **the right people have access**.
+
+**Acceptance Criteria:**
+
+**Given** an org admin invites a user by email
+**When** the user doesn't exist
+**Then** an invitation email is sent with org context
+**And** a pending membership record is created
+
+**Given** an org admin invites an existing platform user
+**When** the invitation is sent
+**Then** the user receives a "Join Organization" email
+**And** upon acceptance, they're added to the org
+
+**Given** an org admin removes a member
+**When** the removal is confirmed
+**Then** the membership is revoked
+**And** the user's sessions for that org are invalidated
+
+**Technical Notes:**
+- Create `organization_members` table: id, organization_id, user_id, role, joined_at
+- Users can belong to multiple organizations
+
+---
+
+### Story 2A.6: Role-Based Access Control (RBAC)
+
+As an **organization administrator**,
+I want to **assign roles with specific permissions**,
+So that **users only access what they're authorized for**.
+
+**Acceptance Criteria:**
+
+**Given** an org admin assigns "Manager" role to a user
+**When** that user logs in
+**Then** their JWT includes the role in the org context
+**And** they can perform manager-level actions
+
+**Given** a user with "Owner" role tries to access manager settings
+**When** the permission check is performed
+**Then** the action is denied with 403 Forbidden
+
+**Given** an org defines custom permissions for a role
+**When** a user with that role attempts an action
+**Then** the permission is checked against the custom configuration
+
+**Technical Notes:**
+- Create `roles` table: id, organization_id, name, permissions (JSONB)
+- Default roles: Owner, Manager, Technical Manager, Tenant, Resident
+- Permission format: `resource:action` (e.g., `faults:create`, `votes:manage`)
+
+---
+
+### Story 2A.7: Organization Data Export
+
+As an **organization administrator**,
+I want to **export all my organization's data**,
+So that **I can migrate to another system or have a backup**.
+
+**Acceptance Criteria:**
+
+**Given** an org admin requests a full data export
+**When** the export is initiated
+**Then** a background job collects all org data
+**And** generates a ZIP file with JSON/CSV files per table
+**And** sends a download link via email when complete
+
+**Given** the export is ready
+**When** the admin clicks the download link (valid 7 days)
+**Then** the ZIP file downloads
+**And** contains: users, buildings, units, faults, votes, documents, etc.
+
+**Technical Notes:**
+- Async job using tokio background tasks
+- Export to S3 presigned URL
+- Respects GDPR: user data included only with consent
+
+---
+
+## Epic 2B: Notification Infrastructure & Offline Foundation
+
+**Goal:** Push, email, and in-app notifications work reliably. Event bus established. Offline sync patterns defined.
+
+### Story 2B.1: Event Bus Foundation
+
+As a **system architect**,
+I want to **establish an event-driven architecture**,
+So that **services can communicate asynchronously**.
+
+**Acceptance Criteria:**
+
+**Given** an event is published (e.g., `fault.created`)
+**When** subscribers are registered for that event
+**Then** all subscribers receive the event payload
+
+**Given** multiple api-server instances are running
+**When** an event is published on one instance
+**Then** all instances receive the event (via Redis pub/sub)
+
+**Given** an event fails to process
+**When** the subscriber throws an error
+**Then** the event is retried up to 3 times with exponential backoff
+
+**Technical Notes:**
+- Redis pub/sub for cross-instance messaging
+- Event schema: `{ event_type, payload, org_id, user_id, timestamp }`
+- Create `EventBus` trait with `publish()` and `subscribe()` methods
+
+---
+
+### Story 2B.2: Push Notification Service (FCM/APNs)
+
+As a **mobile user**,
+I want to **receive push notifications on my device**,
+So that **I'm alerted to important events in real-time**.
+
+**Acceptance Criteria:**
+
+**Given** a user has registered their device token
+**When** an event relevant to them occurs
+**Then** a push notification is sent to their device within 5 seconds (NFR7)
+
+**Given** a user has multiple devices registered
+**When** a notification is sent
+**Then** all devices receive the notification
+**And** tapping the notification deep-links to the relevant screen
+
+**Given** a device token is invalid (uninstalled app)
+**When** a push fails
+**Then** the device token is marked as invalid
+**And** removed from future notifications
+
+**Technical Notes:**
+- Create `device_tokens` table: id, user_id, token, platform (ios/android), created_at
+- FCM for Android, APNs for iOS
+- Batch notifications for efficiency
+
+---
+
+### Story 2B.3: Email Notification Service
+
+As an **offline user**,
+I want to **receive important notifications via email**,
+So that **I don't miss critical updates**.
+
+**Acceptance Criteria:**
+
+**Given** a user has email notifications enabled
+**When** they haven't been active for 24 hours and have pending notifications
+**Then** an email digest is sent with summary of notifications
+
+**Given** a high-priority event occurs (e.g., vote deadline)
+**When** the event is triggered
+**Then** an immediate email is sent regardless of digest settings
+
+**Given** an email fails to send
+**When** the delivery fails
+**Then** the system retries up to 3 times
+**And** logs the failure for monitoring
+
+**Technical Notes:**
+- Integration with email service (SendGrid/SES)
+- Email templates: immediate alerts, daily digest
+- Bounce handling and unsubscribe links
+
+---
+
+### Story 2B.4: In-App Notification Center
+
+As an **active user**,
+I want to **see my notifications in the app**,
+So that **I can review and act on them**.
+
+**Acceptance Criteria:**
+
+**Given** a user logs into the app
+**When** they view the notification center
+**Then** they see a chronological list of notifications
+**And** unread notifications are highlighted
+**And** each notification links to its context
+
+**Given** a user marks a notification as read
+**When** the action is performed
+**Then** the notification is no longer highlighted
+**And** the unread count decrements
+
+**Given** new notifications arrive while the user is active
+**When** WebSocket connection is open
+**Then** notifications appear in real-time without refresh
+
+**Technical Notes:**
+- Create `notifications` table: id, user_id, type, title, body, data (JSONB), read_at
+- WebSocket channel per user for real-time updates
+- Pagination for notification history
+
+---
+
+### Story 2B.5: Privacy-Aware Notification Design
+
+As a **privacy-conscious user**,
+I want to **notifications to respect my privacy settings**,
+So that **sensitive information isn't exposed**.
+
+**Acceptance Criteria:**
+
+**Given** a user has privacy mode enabled
+**When** a push notification is sent
+**Then** the notification shows generic text ("New update available")
+**And** doesn't expose content in lock screen
+
+**Given** a user's neighbor has hidden their profile
+**When** a notification involves that neighbor
+**Then** the name is anonymized ("A neighbor reported...")
+
+**Given** notification content contains PII
+**When** the notification is rendered
+**Then** PII is only shown within the authenticated app context
+
+**Technical Notes:**
+- Notification payload: `{ preview: "generic", full: "detailed" }`
+- Push shows preview only; in-app shows full when authenticated
+- Respect user's privacy_settings from their profile
+
+---
+
+### Story 2B.6: Offline Sync Queue Foundation
+
+As a **mobile user in a low-connectivity area**,
+I want to **queue my actions when offline**,
+So that **they sync when I'm back online**.
+
+**Acceptance Criteria:**
+
+**Given** a user performs an action while offline
+**When** the device has no network connection
+**Then** the action is stored in local queue with timestamp
+**And** the UI shows "Pending sync" indicator
+
+**Given** the device regains connectivity
+**When** the sync process runs
+**Then** queued actions are sent to server in order
+**And** successful syncs update local state
+**And** the user sees "Synced" confirmation
+
+**Given** a sync conflict occurs (server state changed)
+**When** the conflict is detected
+**Then** the user is prompted to resolve (keep local/server/merge)
+
+**Technical Notes:**
+- Client-side: AsyncStorage queue with retry logic
+- Server-side: Idempotency keys to prevent duplicates
+- Conflict resolution strategy documented per entity type
+
+---
+
+### Story 2B.7: Idempotency Pattern for API Operations
+
+As a **backend developer**,
+I want to **handle duplicate requests gracefully**,
+So that **offline sync doesn't create duplicates**.
+
+**Acceptance Criteria:**
+
+**Given** a client sends a request with an idempotency key
+**When** the same key is sent again
+**Then** the server returns the cached response
+**And** doesn't execute the operation twice
+
+**Given** an idempotency key is older than 24 hours
+**When** it's sent again
+**Then** the key is treated as new (cache expired)
+
+**Given** a request fails midway (network error)
+**When** the client retries with the same idempotency key
+**Then** the original operation is either completed or rolled back atomically
+
+**Technical Notes:**
+- Create `idempotency_keys` table: key, response, status, created_at
+- Redis cache for fast lookups (TTL 24h)
+- Idempotency header: `Idempotency-Key: uuid`
+
+---
+
+## Epic 3: Property & Building Management
+
+**Goal:** Managers can create buildings and units with schema ready for Reality Portal. Residents associated with units.
+
+### Story 3.1: Building Creation & Configuration
+
+As a **property manager**,
+I want to **create and configure buildings**,
+So that **I can manage properties for my organization**.
+
+**Acceptance Criteria:**
+
+**Given** a manager navigates to "Add Building"
+**When** they enter address, name, and building type
+**Then** the building is created in the organization
+**And** appears in the building list
+
+**Given** a manager edits a building
+**When** they update metadata (year built, floors, entrances)
+**Then** the changes are saved
+**And** reflected in the building detail view
+
+**Given** a building has a valid address
+**When** the address is saved
+**Then** the system geocodes and stores coordinates
+**And** the building can be displayed on a map
+
+**Technical Notes:**
+- Create `buildings` table: id, organization_id, name, address, coordinates, metadata (JSONB), created_at
+- Include Reality Portal-ready fields: listing_status (nullable), public_description (nullable)
+- Geocoding via external API (Google/Mapbox)
+
+---
+
+### Story 3.2: Unit Definition & Management
+
+As a **property manager**,
+I want to **define units within a building**,
+So that **I can track individual apartments or spaces**.
+
+**Acceptance Criteria:**
+
+**Given** a manager is on a building detail page
+**When** they add a unit with number, floor, and type (apartment, office, storage)
+**Then** the unit is created and linked to the building
+
+**Given** a manager configures a unit
+**When** they set area (m²), room count, and ownership type (owner/rental)
+**Then** the configuration is saved
+**And** affects fee allocation calculations
+
+**Given** multiple units exist in a building
+**When** a manager views the unit list
+**Then** units are sorted by floor and number
+**And** show occupancy status (vacant, occupied, owner-occupied)
+
+**Technical Notes:**
+- Create `units` table: id, building_id, number, floor, type, area_m2, ownership_type, status
+- Reality Portal fields: listing_metadata (JSONB, nullable), energy_certificate_id (FK, nullable)
+- Schema supports future Phase 4 without migration
+
+---
+
+### Story 3.3: Resident Association with Units
+
+As a **property manager**,
+I want to **associate residents with units**,
+So that **the right people receive relevant communications**.
+
+**Acceptance Criteria:**
+
+**Given** a manager adds a resident to a unit
+**When** they specify the resident type (owner, tenant, family member)
+**Then** the association is created
+**And** the resident can access unit-specific content
+
+**Given** a unit has multiple residents
+**When** a manager views residents
+**Then** they see all associated people with their roles
+**And** can manage each individually
+
+**Given** a resident moves out
+**When** a manager ends their association
+**Then** the end date is recorded
+**And** the resident loses access to unit content
+**And** historical records are preserved
+
+**Technical Notes:**
+- Create `unit_residents` table: id, unit_id, user_id, resident_type, start_date, end_date
+- Support multiple residents per unit
+- Historical associations for audit
+
+---
+
+### Story 3.4: Ownership Delegation
+
+As a **property owner**,
+I want to **delegate my rights to another person**,
+So that **they can act on my behalf**.
+
+**Acceptance Criteria:**
+
+**Given** an owner initiates delegation
+**When** they specify the delegate and scope (full, voting only, documents only)
+**Then** an invitation is sent to the delegate
+
+**Given** a delegate accepts the invitation
+**When** they confirm the delegation
+**Then** they gain the specified permissions
+**And** can act on behalf of the owner
+
+**Given** an owner revokes a delegation
+**When** the revocation is processed
+**Then** the delegate immediately loses access
+**And** the revocation is logged for audit
+
+**Technical Notes:**
+- Create `delegations` table: id, owner_user_id, delegate_user_id, unit_id, scope, start_date, end_date
+- Scope: all, voting, documents, faults
+- Delegation appears in owner's and delegate's profiles
+
+---
+
+### Story 3.5: Person-Month Tracking
+
+As a **property manager**,
+I want to **track person-months for each unit**,
+So that **fees can be allocated fairly based on occupancy**.
+
+**Acceptance Criteria:**
+
+**Given** a manager enters person-month data for a unit
+**When** they specify month, year, and count of residents
+**Then** the data is saved
+**And** contributes to fee allocation calculations
+
+**Given** a manager views person-month history
+**When** they select a date range
+**Then** they see monthly breakdown per unit
+**And** totals for the building
+
+**Given** the system needs to suggest person-months
+**When** resident associations exist
+**Then** the system pre-populates based on registered residents
+**And** allows manual override
+
+**Technical Notes:**
+- Create `person_months` table: id, unit_id, year, month, count, source (manual/calculated)
+- Aggregate view for building-level reports
+- Supports historical queries
+
+---
+
+### Story 3.6: Unit Detail View for Residents
+
+As a **resident**,
+I want to **view my unit's details**,
+So that **I can see relevant information about my home**.
+
+**Acceptance Criteria:**
+
+**Given** a resident logs in
+**When** they navigate to "My Unit"
+**Then** they see unit details (address, floor, area)
+**And** see their association status (owner/tenant)
+
+**Given** a resident has access to multiple units
+**When** they view the unit selector
+**Then** they can switch between units
+**And** each unit shows its specific context
+
+**Given** unit information is updated by a manager
+**When** the resident views the unit
+**Then** they see the current information
+
+**Technical Notes:**
+- Read-only view for residents
+- Respects privacy settings (don't show other residents unless allowed)
+- Mobile-optimized layout
+
+---
+
+### Story 3.7: Common Areas & Facilities
+
+As a **property manager**,
+I want to **manage common areas and shared facilities**,
+So that **residents can book and use them**.
+
+**Acceptance Criteria:**
+
+**Given** a manager adds a common area
+**When** they specify name, type (gym, laundry, meeting room), and rules
+**Then** the facility is available for booking/viewing
+
+**Given** a facility requires booking
+**When** a resident views available slots
+**Then** they see availability calendar
+**And** can request a booking
+
+**Given** a facility has usage rules
+**When** displayed to residents
+**Then** rules are clearly shown
+**And** violations can be reported
+
+**Technical Notes:**
+- Create `facilities` table: id, building_id, name, type, rules, bookable, capacity
+- Create `facility_bookings` table: id, facility_id, user_id, start_time, end_time, status
+- Future: integrate with IoT access control
+
+---
+
+## Epic 4: Fault Reporting & Resolution
+
+**Goal:** Tenants report faults with photos (works offline). Managers triage and resolve. AI training metadata captured.
+
+### Story 4.1: Fault Creation with Photos
+
+As a **tenant**,
+I want to **report a fault with photos**,
+So that **maintenance issues are documented and resolved**.
+
+**Acceptance Criteria:**
+
+**Given** a tenant opens "Report Fault"
+**When** they take/select photos and add a description
+**Then** the fault is created with pending status
+**And** attached photos are uploaded
+**And** notification is sent to managers
+
+**Given** a tenant is offline
+**When** they create a fault report
+**Then** the report is queued locally
+**And** syncs when connectivity is restored
+**And** shows "Pending sync" indicator
+
+**Given** photos are attached
+**When** they exceed 10MB total
+**Then** the system compresses images
+**And** warns if quality is significantly reduced
+
+**Technical Notes:**
+- Create `faults` table: id, unit_id, reporter_id, title, description, status, priority, category, created_at
+- Create `fault_attachments` table: id, fault_id, url, type, size
+- AI columns: ai_category, ai_priority, ai_confidence (nullable, for Phase 3)
+- Offline: use idempotency key from Story 2B.7
+
+---
+
+### Story 4.2: AI-Assisted Category Suggestion
+
+As a **tenant**,
+I want to **have fault category suggested automatically**,
+So that **I don't have to guess the right classification**.
+
+**Acceptance Criteria:**
+
+**Given** a tenant enters fault description
+**When** the description is analyzed
+**Then** a category is suggested with confidence level
+**And** the tenant can accept or override
+
+**Given** AI confidence is > 90%
+**When** the suggestion is made
+**Then** the category is pre-selected
+**And** highlighted as "AI suggested"
+
+**Given** AI confidence is < 70%
+**When** the suggestion is made
+**Then** no pre-selection occurs
+**And** manual selection is required
+
+**Technical Notes:**
+- Categories: plumbing, electrical, heating, structural, exterior, other
+- Store ai_category, ai_confidence for training data
+- Initial implementation: keyword matching (real ML in Phase 3)
+
+---
+
+### Story 4.3: Fault Triage by Manager
+
+As a **property manager**,
+I want to **triage incoming faults**,
+So that **they're prioritized and assigned appropriately**.
+
+**Acceptance Criteria:**
+
+**Given** a new fault is reported
+**When** a manager views the fault queue
+**Then** they see faults sorted by creation date
+**And** can filter by building, category, status
+
+**Given** a manager triages a fault
+**When** they set priority (low, medium, high, urgent) and category
+**Then** the fault is updated
+**And** relevant parties are notified
+
+**Given** a manager assigns a fault to technical staff
+**When** the assignment is made
+**Then** the assignee receives notification
+**And** the fault appears in their queue
+
+**Technical Notes:**
+- Add to `faults`: priority, assigned_to, triaged_at, triaged_by
+- Manager dashboard with queue filters
+- Keyboard shortcuts for quick triage (per UX spec)
+
+---
+
+### Story 4.4: Fault Status Workflow
+
+As a **technical manager**,
+I want to **update fault status through resolution**,
+So that **everyone knows the current state**.
+
+**Acceptance Criteria:**
+
+**Given** a fault is assigned to technical staff
+**When** they update status (in_progress, waiting_parts, scheduled, resolved)
+**Then** the status changes
+**And** timeline entry is created
+**And** reporter is notified
+
+**Given** a technician adds a work note
+**When** they describe actions taken
+**Then** the note is saved to timeline
+**And** visible to managers and reporter
+
+**Given** a fault is marked resolved
+**When** the resolution is submitted
+**Then** reporter is asked to confirm resolution
+**And** satisfaction survey is triggered
+
+**Technical Notes:**
+- Create `fault_timeline` table: id, fault_id, user_id, action, note, created_at
+- Status workflow: new → triaged → in_progress → resolved → closed
+- Timeline visible to all stakeholders
+
+---
+
+### Story 4.5: Fault Status Tracking for Residents
+
+As a **tenant**,
+I want to **track the status of my reported faults**,
+So that **I know when to expect resolution**.
+
+**Acceptance Criteria:**
+
+**Given** a tenant views their reported faults
+**When** they access the fault list
+**Then** they see all their faults with current status
+**And** can tap to view details
+
+**Given** a tenant views fault details
+**When** timeline entries exist
+**Then** they see chronological progress
+**And** understand next expected step
+
+**Given** a fault has an estimated completion date
+**When** displayed to the tenant
+**Then** the date is shown prominently
+**And** updates trigger notifications
+
+**Technical Notes:**
+- Timeline view per UX specification
+- Push notification on status changes
+- "No status black holes" principle
+
+---
+
+### Story 4.6: Fault Resolution & Rating
+
+As a **tenant**,
+I want to **confirm fault resolution and provide feedback**,
+So that **service quality can be tracked**.
+
+**Acceptance Criteria:**
+
+**Given** a fault is marked resolved
+**When** the tenant is prompted to confirm
+**Then** they can confirm resolution or reopen
+
+**Given** a tenant confirms resolution
+**When** prompted for feedback
+**Then** they can rate (1-5 stars) and add comments
+**And** the fault is closed
+
+**Given** a tenant reopens a fault
+**When** they provide reason
+**Then** the fault returns to triaged status
+**And** managers are notified
+
+**Technical Notes:**
+- Add to `faults`: resolved_at, confirmed_at, rating, feedback
+- Reopen creates new timeline entry
+- Aggregate ratings for reporting
+
+---
+
+### Story 4.7: Fault Reports & Analytics
+
+As a **property manager**,
+I want to **view fault reports and analytics**,
+So that **I can identify patterns and improve service**.
+
+**Acceptance Criteria:**
+
+**Given** a manager accesses fault reports
+**When** they select a date range and building
+**Then** they see: fault count, average resolution time, ratings breakdown
+
+**Given** analytics show category trends
+**When** a category has high volume
+**Then** it's highlighted for attention
+**And** drill-down to individual faults is available
+
+**Given** a manager exports report
+**When** they select format (PDF, CSV)
+**Then** the report is generated and downloadable
+
+**Technical Notes:**
+- Aggregate queries with date/building/category filters
+- Charts: bar (by category), line (over time), pie (by status)
+- Export includes raw data and summary
+
+---
+
+## Epic 5: Building Voting & Decisions
+
+**Goal:** Owners participate in remote voting with full audit trail. Online-only for integrity.
+
+### Story 5.1: Vote Creation with Question Types
+
+As a **property manager**,
+I want to **create votes with different question types**,
+So that **owners can make decisions on building matters**.
+
+**Acceptance Criteria:**
+
+**Given** a manager creates a new vote
+**When** they specify title, description, and end date
+**Then** the vote is created in draft status
+**And** questions can be added
+
+**Given** a manager adds questions
+**When** they select type (yes/no, multiple choice, ranked)
+**Then** the question is configured appropriately
+**And** preview shows expected ballot
+
+**Given** a vote is ready
+**When** the manager publishes it
+**Then** eligible owners are notified
+**And** voting period begins
+
+**Technical Notes:**
+- Create `votes` table: id, building_id, title, description, start_at, end_at, status, quorum_type
+- Create `vote_questions` table: id, vote_id, question_text, type, options (JSONB)
+- Question types: yes_no, single_choice, multiple_choice, ranked
+
+---
+
+### Story 5.2: Quorum Configuration
+
+As a **property manager**,
+I want to **configure quorum requirements**,
+So that **votes are valid according to building bylaws**.
+
+**Acceptance Criteria:**
+
+**Given** a manager configures vote quorum
+**When** they set type (simple majority, 2/3, weighted by ownership)
+**Then** the quorum is saved
+**And** displayed to voters
+
+**Given** voting period ends
+**When** quorum is not met
+**Then** the vote is marked "Quorum not reached"
+**And** results are still calculated but marked as advisory
+
+**Given** weighted voting is enabled
+**When** owners vote
+**Then** their vote weight reflects ownership share
+
+**Technical Notes:**
+- Quorum types: simple_majority, two_thirds, weighted
+- Weighted voting uses unit.ownership_share field
+- Add ownership_share to units table
+
+---
+
+### Story 5.3: Vote Casting (Online Only)
+
+As a **property owner**,
+I want to **cast my vote during the voting period**,
+So that **my voice is counted in building decisions**.
+
+**Acceptance Criteria:**
+
+**Given** an owner opens an active vote
+**When** they are eligible (owner or delegate)
+**Then** they see questions and can select answers
+
+**Given** an owner submits their ballot
+**When** they confirm their choices
+**Then** the vote is recorded with timestamp
+**And** receipt is shown with confirmation number
+
+**Given** an owner is offline
+**When** they try to vote
+**Then** a message explains voting requires connectivity
+**And** offers to save draft locally for later submission
+
+**Technical Notes:**
+- Create `vote_responses` table: id, vote_id, user_id, unit_id, answers (JSONB), submitted_at, signature
+- **Online-only**: no offline voting to prevent conflicts
+- Digital signature for non-repudiation
+
+---
+
+### Story 5.4: Delegated Voting
+
+As a **property owner**,
+I want to **delegate my voting rights**,
+So that **someone can vote on my behalf when I'm unavailable**.
+
+**Acceptance Criteria:**
+
+**Given** an owner has delegated voting rights
+**When** the delegate accesses a vote
+**Then** they see voting option for the owner's unit
+**And** can vote on behalf of the owner
+
+**Given** both owner and delegate try to vote
+**When** the owner votes first
+**Then** the delegate is blocked with "Owner already voted"
+**And** vice versa
+
+**Given** a delegation is revoked mid-vote
+**When** the delegate tries to vote
+**Then** they receive "Delegation revoked" error
+
+**Technical Notes:**
+- Check delegations table with scope including 'voting'
+- One vote per unit per question
+- Audit trail shows who cast the vote
+
+---
+
+### Story 5.5: Vote Discussion Threads
+
+As a **building resident**,
+I want to **discuss votes with neighbors**,
+So that **I can understand different perspectives**.
+
+**Acceptance Criteria:**
+
+**Given** a vote is active or recently closed
+**When** a resident opens discussion
+**Then** they see existing comments threaded by topic
+**And** can add their own comments
+
+**Given** a comment is posted
+**When** relevant users have notification enabled
+**Then** they receive notification of new comment
+
+**Given** discussion gets heated
+**When** a manager moderates
+**Then** they can hide or delete comments
+**And** warn or mute users
+
+**Technical Notes:**
+- Create `vote_comments` table: id, vote_id, user_id, parent_id, content, created_at, hidden
+- AI consent flag for future sentiment analysis
+- Moderation actions logged
+
+---
+
+### Story 5.6: Vote Results & Quorum Calculation
+
+As a **property manager**,
+I want to **see vote results with quorum status**,
+So that **I can communicate outcomes to owners**.
+
+**Acceptance Criteria:**
+
+**Given** voting period ends
+**When** the system calculates results
+**Then** participation rate and quorum status are determined
+**And** results per question are calculated
+
+**Given** quorum is reached
+**When** results are displayed
+**Then** winning options are clearly indicated
+**And** vote counts/percentages shown
+
+**Given** results need to be shared
+**When** manager generates report
+**Then** official document is created with all details
+
+**Technical Notes:**
+- Automatic calculation on vote end_at
+- Results: { participation_count, quorum_met, questions: [{ counts, winner }] }
+- PDF generation for official records
+
+---
+
+### Story 5.7: Immutable Voting Audit Trail
+
+As a **compliance officer**,
+I want to **access immutable voting records**,
+So that **vote integrity can be verified**.
+
+**Acceptance Criteria:**
+
+**Given** any voting action occurs
+**When** the action is completed
+**Then** an immutable audit entry is created
+**And** includes timestamp, user, action, data hash
+
+**Given** an audit is requested
+**When** the officer reviews the trail
+**Then** they see complete chronological log
+**And** can verify no tampering occurred
+
+**Given** a dispute arises
+**When** audit is examined
+**Then** original ballot data can be verified against hash
+
+**Technical Notes:**
+- Create `vote_audit_log` table: id, vote_id, user_id, action, data_hash, created_at
+- Hash: SHA-256 of response data
+- Append-only: no updates or deletes allowed
+- Regular backup of audit table
+
+---
+
+### Story 5.8: Voting Compliance Reports
+
+As a **property manager**,
+I want to **generate compliance reports for votes**,
+So that **I can satisfy legal requirements**.
+
+**Acceptance Criteria:**
+
+**Given** a vote is complete
+**When** manager generates compliance report
+**Then** document includes: vote details, participation, results, audit summary
+
+**Given** report is generated
+**When** exported as PDF
+**Then** it includes digital timestamp
+**And** can be officially submitted
+
+**Given** multiple votes need reporting
+**When** manager selects date range
+**Then** summary report covers all included votes
+
+**Technical Notes:**
+- PDF generation with official formatting
+- Digital timestamp via trusted service
+- Archive reports in documents system
+
+---
+
+## Epic 6: Announcements & Communication
+
+**Goal:** Managers broadcast announcements. Residents comment and interact. AI consent captured.
+
+### Story 6.1: Announcement Creation & Targeting
+
+As a **property manager**,
+I want to **create announcements for specific audiences**,
+So that **relevant information reaches the right people**.
+
+**Acceptance Criteria:**
+
+**Given** a manager creates an announcement
+**When** they specify title, content, and target (all, building, specific units)
+**Then** the announcement is created
+**And** targeted users are notified
+
+**Given** an announcement is scheduled for future
+**When** the scheduled time arrives
+**Then** the announcement is published automatically
+**And** notifications are sent
+
+**Given** rich content is needed
+**When** manager uses editor
+**Then** markdown formatting is supported
+**And** images can be embedded
+
+**Technical Notes:**
+- Create `announcements` table: id, organization_id, title, content, target_type, target_ids, published_at, scheduled_at
+- Target types: all, building, units, roles
+- Markdown with sanitization
+
+---
+
+### Story 6.2: Announcement Viewing & Acknowledgment
+
+As a **resident**,
+I want to **view and acknowledge announcements**,
+So that **I stay informed and managers know I've read them**.
+
+**Acceptance Criteria:**
+
+**Given** a resident has unread announcements
+**When** they open the app
+**Then** unread count is displayed
+**And** announcements are accessible from dashboard
+
+**Given** a resident views an announcement
+**When** they scroll to the end
+**Then** the announcement is marked as read
+**And** read status is recorded
+
+**Given** an announcement requires acknowledgment
+**When** the resident clicks "Acknowledge"
+**Then** their acknowledgment is recorded with timestamp
+**And** managers can see acknowledgment status
+
+**Technical Notes:**
+- Create `announcement_reads` table: id, announcement_id, user_id, read_at, acknowledged_at
+- Unread count in notification badge
+- Acknowledgment required flag on announcement
+
+---
+
+### Story 6.3: Announcement Comments & Discussion
+
+As a **resident**,
+I want to **comment on announcements**,
+So that **I can ask questions or provide feedback**.
+
+**Acceptance Criteria:**
+
+**Given** comments are enabled on an announcement
+**When** a resident adds a comment
+**Then** the comment is posted
+**And** author and announcement creator are notified
+
+**Given** a comment exists
+**When** another resident replies
+**Then** a threaded reply is created
+**And** parent comment author is notified
+
+**Given** comments are disabled
+**When** a resident views the announcement
+**Then** no comment input is shown
+**And** reason is displayed ("Comments closed")
+
+**Technical Notes:**
+- Create `announcement_comments` table: id, announcement_id, user_id, parent_id, content, created_at
+- AI consent flag: ai_training_consent (boolean)
+- Moderation by managers
+
+---
+
+### Story 6.4: Pinned Announcements
+
+As a **property manager**,
+I want to **pin important announcements**,
+So that **they remain visible at the top**.
+
+**Acceptance Criteria:**
+
+**Given** a manager pins an announcement
+**When** residents view the announcement list
+**Then** pinned items appear at the top
+**And** are visually distinguished
+
+**Given** multiple announcements are pinned
+**When** displayed
+**Then** they're sorted by pin date
+**And** limit of 3 pinned per building enforced
+
+**Given** a manager unpins an announcement
+**When** the action is taken
+**Then** it returns to chronological order
+**And** changes immediately visible
+
+**Technical Notes:**
+- Add to `announcements`: pinned_at, pinned_by
+- Client-side: pinned section + chronological section
+- Auto-unpin after 30 days (configurable)
+
+---
+
+### Story 6.5: Direct Messaging
+
+As a **resident**,
+I want to **send messages to other users**,
+So that **I can communicate privately about building matters**.
+
+**Acceptance Criteria:**
+
+**Given** a resident starts a conversation
+**When** they select a recipient within their org
+**Then** a direct message thread is created
+**And** recipient is notified
+
+**Given** messages are exchanged
+**When** either party views the thread
+**Then** messages appear in chronological order
+**And** read receipts show when messages were seen
+
+**Given** a user wants privacy
+**When** they block another user
+**Then** blocked user cannot send messages
+**And** blocker doesn't see messages from blocked user
+
+**Technical Notes:**
+- Create `messages` table: id, sender_id, recipient_id, thread_id, content, read_at, created_at
+- Create `message_threads` table: id, participant_ids, last_message_at
+- Respect privacy settings from user profile
+
+---
+
+### Story 6.6: Neighbor Information (Privacy-Aware)
+
+As a **resident**,
+I want to **see information about my neighbors**,
+So that **I can connect with my community**.
+
+**Acceptance Criteria:**
+
+**Given** a resident views neighbor list
+**When** neighbors have public profiles
+**Then** name and unit number are displayed
+**And** contact options if enabled
+
+**Given** a neighbor has hidden their profile
+**When** their entry would be displayed
+**Then** they appear as "Resident of Unit X"
+**And** no contact information shown
+
+**Given** a resident updates their visibility
+**When** they toggle profile visibility
+**Then** their display to neighbors updates immediately
+
+**Technical Notes:**
+- Neighbor = same building, different unit
+- Privacy settings: visible, hidden, contacts_only
+- Query respects privacy settings via view or application logic
+
+---
+
+## Epic 7A: Basic Document Management
+
+**Goal:** Users can upload, organize, and share documents with basic functionality.
+
+### Story 7A.1: Document Upload with Metadata
+
+As a **user**,
+I want to **upload documents with metadata**,
+So that **important files are stored and categorized**.
+
+**Acceptance Criteria:**
+
+**Given** a user uploads a document
+**When** they select a file and add title, category
+**Then** the document is uploaded to storage
+**And** metadata is saved
+**And** the document appears in the list
+
+**Given** a document exceeds size limit (50MB)
+**When** upload is attempted
+**Then** user sees error with size limit info
+**And** upload is rejected
+
+**Given** an unsupported file type is uploaded
+**When** the file is submitted
+**Then** user sees list of supported formats
+**And** upload is rejected
+
+**Technical Notes:**
+- Create `documents` table: id, organization_id, folder_id, title, description, category, file_url, mime_type, size_bytes, created_by, created_at
+- S3 presigned URLs for upload
+- Supported: PDF, DOC(X), XLS(X), images, TXT
+
+---
+
+### Story 7A.2: Folder Organization
+
+As a **property manager**,
+I want to **organize documents in folders**,
+So that **files are easy to find**.
+
+**Acceptance Criteria:**
+
+**Given** a manager creates a folder
+**When** they specify name and parent folder
+**Then** the folder is created
+**And** appears in the folder tree
+
+**Given** a manager moves a document to a folder
+**When** the move is confirmed
+**Then** the document's folder reference is updated
+**And** it appears in the new location
+
+**Given** a folder is deleted
+**When** it contains documents
+**Then** the user is warned
+**And** must choose: move contents or delete all
+
+**Technical Notes:**
+- Create `document_folders` table: id, organization_id, parent_id, name, created_by
+- Nested folders with max depth of 5
+- Soft delete with recovery option
+
+---
+
+### Story 7A.3: Permission-Based Document Access
+
+As a **user**,
+I want to **view documents based on my permissions**,
+So that **I only see what I'm authorized to access**.
+
+**Acceptance Criteria:**
+
+**Given** a document is uploaded with "Building X" scope
+**When** a resident of Building X views documents
+**Then** they can see and download the document
+
+**Given** a document has "Owners only" permission
+**When** a tenant tries to view it
+**Then** the document is not visible in their list
+
+**Given** a document is shared with specific users
+**When** those users access documents
+**Then** the shared document appears in their list
+
+**Technical Notes:**
+- Document access scopes: organization, building, unit, role, specific_users
+- Permission check middleware
+- Share via link with expiration
+
+---
+
+### Story 7A.4: Document Download & Preview
+
+As a **user**,
+I want to **preview and download documents**,
+So that **I can view content without leaving the app**.
+
+**Acceptance Criteria:**
+
+**Given** a user opens a PDF document
+**When** they click to view
+**Then** an inline preview is displayed
+**And** download button is available
+
+**Given** a user opens an image
+**When** they click to view
+**Then** the image is displayed in a lightbox
+**And** can be downloaded
+
+**Given** a document type doesn't support preview
+**When** user clicks to view
+**Then** download is triggered directly
+
+**Technical Notes:**
+- PDF.js for inline PDF preview
+- Image preview in modal
+- S3 presigned URLs with 1h expiration for downloads
+
+---
+
+### Story 7A.5: Document Sharing
+
+As a **property manager**,
+I want to **share documents with specific users or groups**,
+So that **relevant parties can access them**.
+
+**Acceptance Criteria:**
+
+**Given** a manager shares a document
+**When** they select recipients (users, roles, buildings)
+**Then** recipients receive notification
+**And** the document appears in their shared documents
+
+**Given** a share link is generated
+**When** a valid link is accessed
+**Then** the document is viewable/downloadable
+**And** access is logged
+
+**Given** a share is revoked
+**When** the revocation is processed
+**Then** recipients lose access immediately
+**And** share links stop working
+
+**Technical Notes:**
+- Create `document_shares` table: id, document_id, share_type, target_id, shared_by, expires_at
+- Share types: user, role, building, link
+- Link shares with optional password
+
+---
+
+## Epic 8A: Basic Notification Preferences
+
+**Goal:** Users can toggle notifications on/off per channel.
+
+### Story 8A.1: Channel-Level Notification Toggles
+
+As a **user**,
+I want to **toggle notifications on/off per channel**,
+So that **I control how I receive alerts**.
+
+**Acceptance Criteria:**
+
+**Given** a user opens notification settings
+**When** they view channel options
+**Then** they see toggles for: push, email, in-app
+
+**Given** a user disables push notifications
+**When** an event occurs
+**Then** push is not sent
+**And** email/in-app still work if enabled
+
+**Given** a user disables all channels
+**When** they're warned about missing important info
+**Then** they can confirm or cancel the action
+
+**Technical Notes:**
+- Create `notification_preferences` table: id, user_id, channel, enabled, updated_at
+- Channels: push, email, in_app
+- Default: all enabled
+
+---
+
+### Story 8A.2: Critical Notification Override
+
+As a **system administrator**,
+I want to **send critical notifications that bypass preferences**,
+So that **urgent information always reaches users**.
+
+**Acceptance Criteria:**
+
+**Given** a critical event occurs (system outage, security breach)
+**When** admin triggers critical notification
+**Then** all users receive it on all enabled channels
+**And** an attempt is made on disabled channels with "critical" flag
+
+**Given** a critical notification is sent
+**When** user receives it
+**Then** it's marked as critical/urgent
+**And** cannot be dismissed without acknowledgment
+
+**Technical Notes:**
+- Critical flag on notification bypasses preferences
+- Push: high priority mode
+- Email: marked as important
+- UI: modal that requires action
+
+---
+
+### Story 8A.3: Notification Preference Sync
+
+As a **user with multiple devices**,
+I want to **my preferences synced across devices**,
+So that **settings are consistent everywhere**.
+
+**Acceptance Criteria:**
+
+**Given** a user updates preferences on mobile
+**When** they open web app
+**Then** the same preferences are applied
+
+**Given** preferences change
+**When** the change is saved
+**Then** all active sessions receive update via WebSocket
+**And** behavior changes immediately
+
+**Technical Notes:**
+- Preferences stored server-side
+- WebSocket broadcast on change
+- Mobile: respect OS-level notification settings too
+
+---
+
+## Epic 9: Privacy, Security & GDPR
+
+**Goal:** Users can enable 2FA, export/delete data, and configure privacy. Audit logs available.
+
+### Story 9.1: TOTP Two-Factor Authentication Setup
+
+As a **security-conscious user**,
+I want to **enable two-factor authentication**,
+So that **my account is protected even if password is compromised**.
+
+**Acceptance Criteria:**
+
+**Given** a user enables 2FA
+**When** they scan QR code with authenticator app
+**Then** they enter verification code to confirm setup
+**And** 2FA is activated for their account
+
+**Given** a user with 2FA logs in
+**When** they enter correct password
+**Then** they're prompted for TOTP code
+**And** login only succeeds with valid code
+
+**Given** a user loses their authenticator
+**When** they use backup codes
+**Then** they can access their account
+**And** are prompted to set up 2FA again
+
+**Technical Notes:**
+- Create `user_2fa` table: id, user_id, secret, enabled_at, backup_codes
+- Generate 10 backup codes on setup
+- TOTP implementation with 30s window
+
+---
+
+### Story 9.2: 2FA Recovery & Management
+
+As a **user with 2FA enabled**,
+I want to **manage and recover my 2FA settings**,
+So that **I don't get locked out**.
+
+**Acceptance Criteria:**
+
+**Given** a user views their security settings
+**When** 2FA is enabled
+**Then** they see: last used, number of remaining backup codes
+
+**Given** a user regenerates backup codes
+**When** they confirm the action
+**Then** old codes are invalidated
+**And** new codes are shown once
+
+**Given** a user disables 2FA
+**When** they provide current TOTP code
+**Then** 2FA is disabled
+**And** confirmation email is sent
+
+**Technical Notes:**
+- Backup codes are hashed
+- Regeneration requires current code or backup code
+- Disable requires authentication proof
+
+---
+
+### Story 9.3: GDPR Data Export
+
+As a **user**,
+I want to **export all my personal data**,
+So that **I can exercise my GDPR right to data portability**.
+
+**Acceptance Criteria:**
+
+**Given** a user requests data export
+**When** they initiate the request
+**Then** a background job collects their data
+**And** they receive email when ready (within 24h per NFR24)
+
+**Given** the export is complete
+**When** user downloads the archive
+**Then** it contains: profile, messages, documents, activities
+**And** format is machine-readable (JSON)
+
+**Given** an export is requested
+**When** one is already in progress
+**Then** user sees status of pending export
+**And** cannot request another until complete
+
+**Technical Notes:**
+- Collect from all tables with user_id
+- Include related data (faults reported, votes cast)
+- S3 presigned URL, expires in 7 days
+
+---
+
+### Story 9.4: GDPR Data Deletion
+
+As a **user**,
+I want to **request deletion of my personal data**,
+So that **I can exercise my GDPR right to be forgotten**.
+
+**Acceptance Criteria:**
+
+**Given** a user requests account deletion
+**When** they confirm with password
+**Then** a 72-hour deletion process begins (per NFR25)
+**And** account is immediately deactivated
+
+**Given** the deletion period ends
+**When** user hasn't cancelled
+**Then** personal data is deleted or anonymized
+**And** only legally required records remain
+
+**Given** a user cancels during 72-hour window
+**When** they log in with password
+**Then** deletion is cancelled
+**And** account is reactivated
+
+**Technical Notes:**
+- Soft delete first, hard delete after 72h
+- Anonymize: replace name with "Deleted User", hash email
+- Retain: audit logs, financial records (legal requirement)
+
+---
+
+### Story 9.5: Privacy Settings Configuration
+
+As a **user**,
+I want to **configure my privacy settings**,
+So that **I control what information is visible to others**.
+
+**Acceptance Criteria:**
+
+**Given** a user opens privacy settings
+**When** they view options
+**Then** they can set: profile visibility, contact sharing, neighbor visibility
+
+**Given** a user hides their profile
+**When** others view neighbor list
+**Then** user appears as "Resident of Unit X"
+**And** no personal details shown
+
+**Given** a user enables "contacts only"
+**When** someone not in contacts tries to message
+**Then** message is blocked or flagged for approval
+
+**Technical Notes:**
+- Add to `users`: privacy_settings (JSONB)
+- Settings: profile_visible, share_email, share_phone, neighbor_visible
+- Immediate effect on all queries
+
+---
+
+### Story 9.6: Compliance Audit Logs
+
+As a **compliance officer**,
+I want to **access audit logs for sensitive operations**,
+So that **I can verify regulatory compliance**.
+
+**Acceptance Criteria:**
+
+**Given** a sensitive operation occurs (data export, deletion, role change)
+**When** the operation completes
+**Then** an audit log entry is created
+**And** includes: timestamp, user, action, affected data, IP
+
+**Given** an officer queries audit logs
+**When** they filter by date, action type, user
+**Then** matching entries are returned
+**And** can be exported for reporting
+
+**Given** audit log integrity is checked
+**When** verification runs
+**Then** any tampering is detected
+**And** alerts are raised
+
+**Technical Notes:**
+- Create `audit_logs` table: id, action_type, user_id, target_type, target_id, details (JSONB), ip_address, created_at
+- Append-only with no update/delete
+- Hash chain for integrity
+
+---
+
+### Story 9.7: Compliance Reports Generation
+
+As a **organization administrator**,
+I want to **generate compliance reports**,
+So that **I can demonstrate GDPR adherence**.
+
+**Acceptance Criteria:**
+
+**Given** an admin requests compliance report
+**When** they select report type and period
+**Then** a report is generated with relevant data
+
+**Given** report types include
+**When** selected: data access requests, deletions, consent records
+**Then** each type shows: count, status, timeline
+
+**Given** a report is generated
+**When** exported as PDF
+**Then** it includes certification and timestamp
+
+**Technical Notes:**
+- Report types: data_requests, deletions, consent, breaches
+- Aggregate statistics with drill-down
+- Official formatting for regulators
+
+---
+
+## Epic 10A: OAuth Provider Foundation
+
+**Goal:** OAuth 2.0 provider established on api-server for future SSO.
+
+### Story 10A.1: OAuth 2.0 Authorization Server
+
+As a **system architect**,
+I want to **implement OAuth 2.0 authorization server**,
+So that **future applications can authenticate via SSO**.
+
+**Acceptance Criteria:**
+
+**Given** an OAuth client is registered
+**When** it initiates authorization flow
+**Then** user is prompted to authorize
+**And** authorization code is returned
+
+**Given** a client exchanges authorization code
+**When** the code is valid
+**Then** access and refresh tokens are issued
+**And** client can access protected resources
+
+**Given** an access token is used
+**When** it's valid and not expired
+**Then** the protected resource is accessible
+**And** token claims are available
+
+**Technical Notes:**
+- Implement OAuth 2.0 Authorization Code flow
+- Create `oauth_clients` table: id, client_id, client_secret_hash, name, redirect_uris, scopes
+- Create `oauth_authorizations` table: id, user_id, client_id, code, scopes, expires_at
+
+---
+
+### Story 10A.2: OAuth Client Registration
+
+As a **platform administrator**,
+I want to **register OAuth clients**,
+So that **trusted applications can integrate**.
+
+**Acceptance Criteria:**
+
+**Given** an admin registers a new OAuth client
+**When** they provide name, redirect URIs, and scopes
+**Then** client_id and client_secret are generated
+**And** the client is active
+
+**Given** a client is registered
+**When** it makes an authorization request
+**Then** user sees client name and requested scopes
+**And** can approve or deny
+
+**Given** an admin revokes a client
+**When** revocation is processed
+**Then** all tokens for that client are invalidated
+**And** new authorizations are blocked
+
+**Technical Notes:**
+- Client secret shown only once at creation
+- Scopes: profile, email, org:read, full
+- Audit log of client registrations
+
+---
+
+### Story 10A.3: OAuth Token Management
+
+As an **OAuth client developer**,
+I want to **manage access and refresh tokens**,
+So that **my application stays authenticated**.
+
+**Acceptance Criteria:**
+
+**Given** a client has valid refresh token
+**When** it requests token refresh
+**Then** new access token is issued
+**And** optionally new refresh token (rotation)
+
+**Given** a user revokes client access
+**When** they remove it from their authorized apps
+**Then** all tokens for that user-client pair are invalidated
+
+**Given** token introspection is requested
+**When** a valid token is provided
+**Then** token metadata is returned (user_id, scopes, expiry)
+
+**Technical Notes:**
+- Token rotation configurable per client
+- Introspection endpoint for resource servers
+- Token expiration: access 15m, refresh 7d
+
+---
+
+## Epic 10B: Platform Administration
+
+**Goal:** Super admins can manage organizations, feature flags, and platform health.
+
+### Story 10B.1: Organization Management Dashboard
+
+As a **super administrator**,
+I want to **view and manage all organizations**,
+So that **I can oversee platform operations**.
+
+**Acceptance Criteria:**
+
+**Given** a super admin opens admin dashboard
+**When** they view organizations list
+**Then** they see all orgs with: name, user count, created date, status
+
+**Given** a super admin drills into an organization
+**When** they view details
+**Then** they see: members, buildings, usage metrics, billing status
+
+**Given** a super admin suspends an organization
+**When** the suspension is applied
+**Then** all org users are logged out
+**And** org appears as suspended
+
+**Technical Notes:**
+- Cross-tenant queries bypass RLS
+- Suspension cascades to all org members
+- Audit log for admin actions
+
+---
+
+### Story 10B.2: Feature Flag Management
+
+As a **platform administrator**,
+I want to **manage feature flags**,
+So that **I can control feature rollout**.
+
+**Acceptance Criteria:**
+
+**Given** an admin views feature flags
+**When** the list is displayed
+**Then** they see all flags with: name, status, affected entities
+
+**Given** an admin enables a flag for specific orgs
+**When** the flag is updated
+**Then** those orgs immediately see the feature
+**And** others don't
+
+**Given** a flag is globally enabled
+**When** the change is saved
+**Then** all users see the feature
+**And** the change is logged
+
+**Technical Notes:**
+- Create `feature_flags` table: id, name, description, default_value, overrides (JSONB)
+- Overrides: by org_id, user_id, role
+- Client polls or WebSocket update
+
+---
+
+### Story 10B.3: Platform Health Monitoring
+
+As a **super administrator**,
+I want to **monitor platform health metrics**,
+So that **I can detect and respond to issues**.
+
+**Acceptance Criteria:**
+
+**Given** an admin views health dashboard
+**When** the page loads
+**Then** they see: API latency, error rates, active users, queue depth
+
+**Given** a metric exceeds threshold
+**When** the threshold is crossed
+**Then** visual alert is shown
+**And** optional notification sent
+
+**Given** an admin views historical data
+**When** they select time range
+**Then** trends are displayed in charts
+
+**Technical Notes:**
+- Metrics from: Prometheus, application logs, database stats
+- Thresholds configurable per metric
+- Retention: 30 days detailed, 1 year aggregated
+
+---
+
+### Story 10B.4: System Announcements
+
+As a **platform administrator**,
+I want to **broadcast system announcements**,
+So that **all users are informed of platform changes**.
+
+**Acceptance Criteria:**
+
+**Given** an admin creates a system announcement
+**When** they specify message and severity (info, warning, critical)
+**Then** the announcement is queued for display
+
+**Given** an announcement is active
+**When** users open the app
+**Then** they see the banner at top of screen
+**And** can dismiss (for info) or must acknowledge (for critical)
+
+**Given** an admin schedules maintenance
+**When** the maintenance window approaches
+**Then** countdown is displayed
+**And** reminder notifications sent
+
+**Technical Notes:**
+- Create `system_announcements` table: id, message, severity, start_at, end_at, dismissible
+- Banner with severity-based styling
+- Maintenance mode: read-only access
+
+---
+
+### Story 10B.5: Support Data Access
+
+As a **support staff member**,
+I want to **access organization data for troubleshooting**,
+So that **I can help users resolve issues**.
+
+**Acceptance Criteria:**
+
+**Given** support staff is granted access to an org
+**When** they view org data
+**Then** they see user-facing data (not internal metadata)
+**And** access is read-only
+
+**Given** support access is requested
+**When** org admin approves (or auto-approved for support tier)
+**Then** access is granted for limited time (24h)
+**And** all actions are logged
+
+**Given** support access expires
+**When** the time limit is reached
+**Then** access is automatically revoked
+**And** support staff is notified
+
+**Technical Notes:**
+- Temporary tenant context for support
+- Read-only mode enforced at API level
+- Full audit trail of support access
+
+---
+
+### Story 10B.6: User Onboarding Tour
+
+As a **new user**,
+I want to **see an interactive onboarding tour**,
+So that **I understand how to use the system**.
+
+**Acceptance Criteria:**
+
+**Given** a user logs in for the first time
+**When** the dashboard loads
+**Then** an onboarding tour starts automatically
+**And** highlights key features step by step
+
+**Given** a user is in the tour
+**When** they complete a step
+**Then** the next step is shown
+**And** progress is tracked
+
+**Given** a user skips or completes the tour
+**When** they want to revisit
+**Then** they can restart from help menu
+**And** progress is reset
+
+**Technical Notes:**
+- Add to `users`: onboarding_completed_at
+- Tour steps: dashboard, notifications, faults, votes, documents
+- Role-specific tours (manager vs resident)
+
+---
+
+### Story 10B.7: Contextual Help & Documentation
+
+As a **user**,
+I want to **access contextual help**,
+So that **I can learn features without leaving the app**.
+
+**Acceptance Criteria:**
+
+**Given** a user clicks help icon on a screen
+**When** help panel opens
+**Then** relevant documentation is displayed
+**And** links to full docs if needed
+
+**Given** a user searches in help
+**When** they enter a query
+**Then** matching help articles are returned
+**And** can be viewed inline
+
+**Given** documentation is updated
+**When** the change is published
+**Then** in-app help reflects updates immediately
+
+**Technical Notes:**
+- Help content in CMS or markdown files
+- Context: route + feature key
+- Search via client-side or API
+
+---
+
+## MVP Stories Summary
+
+| Epic | Stories | Total ACs |
+|------|---------|-----------|
+| 1 - Auth | 7 | 21 |
+| 2A - Organizations | 7 | 21 |
+| 2B - Notifications | 7 | 21 |
+| 3 - Buildings | 7 | 21 |
+| 4 - Faults | 7 | 21 |
+| 5 - Voting | 8 | 24 |
+| 6 - Announcements | 6 | 18 |
+| 7A - Documents | 5 | 15 |
+| 8A - Notif Prefs | 3 | 9 |
+| 9 - Privacy/GDPR | 7 | 21 |
+| 10A - OAuth | 3 | 9 |
+| 10B - Admin | 7 | 21 |
+| **MVP Total** | **74** | **222** |
