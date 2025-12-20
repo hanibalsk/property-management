@@ -14,6 +14,7 @@ This folder contains requirements, specifications, and API documentation for the
 | `use-cases.md` | Complete use case catalog (493 use cases, 51 categories) |
 | `functional-requirements.md` | Functional requirements for all 493 use cases (inputs, outputs, business rules) |
 | `domain-model.md` | Domain model with entities, value objects, aggregates, and relationships |
+| `sequence-diagrams.md` | Sequence diagrams and flows (sync/async, external calls) |
 | `project-structure.md` | Full project directory structure |
 | `api/` | API specifications (TypeSpec, OpenAPI) |
 | `validation/` | Edge cases, error paths, and validation checklists |
