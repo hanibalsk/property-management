@@ -16,6 +16,7 @@ This folder contains requirements, specifications, and API documentation for the
 | `domain-model.md` | Domain model with entities, value objects, aggregates, and relationships |
 | `sequence-diagrams.md` | Sequence diagrams and flows (sync/async, external calls) |
 | `architecture.md` | System architecture, ADRs, service boundaries, database design |
+| `technical-design.md` | API endpoints (~145), DTOs (~127), validation rules, state machines (8) |
 | `project-structure.md` | Full project directory structure |
 | `api/` | API specifications (TypeSpec, OpenAPI) |
 | `validation/` | Edge cases, error paths, and validation checklists |
