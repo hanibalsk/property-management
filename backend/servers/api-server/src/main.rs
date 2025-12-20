@@ -42,6 +42,7 @@ use state::AppState;
         routes::auth::logout,
         routes::auth::verify_email,
         routes::auth::resend_verification,
+        routes::auth::refresh_token,
     ),
     components(schemas(
         routes::health::HealthResponse,
@@ -53,6 +54,9 @@ use state::AppState;
         routes::auth::VerifyEmailResponse,
         routes::auth::ResendVerificationRequest,
         routes::auth::ResendVerificationResponse,
+        routes::auth::RefreshTokenRequest,
+        routes::auth::LogoutRequest,
+        routes::auth::LogoutResponse,
         common::errors::ErrorResponse,
         common::errors::ValidationError,
         common::tenant::TenantContext,

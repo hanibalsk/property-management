@@ -22,6 +22,7 @@ pub fn router() -> Router<AppState> {
         .route("/verify-email", get(verify_email))
         .route("/resend-verification", post(resend_verification))
         .route("/login", post(login))
+        .route("/refresh", post(refresh_token))
         .route("/logout", post(logout))
 }
 
@@ -589,19 +590,236 @@ pub async fn login(
     }))
 }
 
-// ==================== Logout (Story 1.3 - placeholder) ====================
+// ==================== Refresh Token (Story 1.3) ====================
+
+/// Refresh token request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct RefreshTokenRequest {
+    /// The refresh token to exchange for new tokens
+    pub refresh_token: String,
+}
+
+/// Refresh token endpoint.
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/refresh",
+    tag = "Authentication",
+    request_body = RefreshTokenRequest,
+    responses(
+        (status = 200, description = "Token refreshed", body = LoginResponse),
+        (status = 401, description = "Invalid or expired refresh token", body = ErrorResponse)
+    )
+)]
+pub async fn refresh_token(
+    State(state): State<AppState>,
+    Json(req): Json<RefreshTokenRequest>,
+) -> Result<Json<LoginResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Validate the refresh token JWT
+    let claims = match state.jwt_service.validate_refresh_token(&req.refresh_token) {
+        Ok(claims) => claims,
+        Err(e) => {
+            tracing::debug!(error = %e, "Invalid refresh token");
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new("INVALID_TOKEN", "Invalid or expired refresh token")),
+            ));
+        }
+    };
+
+    // Hash the token to look it up in database
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(req.refresh_token.as_bytes());
+    let token_hash = hex::encode(hasher.finalize());
+
+    // Find the token in database
+    let stored_token = match state.session_repo.find_by_token_hash(&token_hash).await {
+        Ok(Some(token)) => token,
+        Ok(None) => {
+            tracing::warn!(user_id = %claims.sub, "Refresh token not found in database (possibly revoked)");
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new("TOKEN_REVOKED", "This session has been revoked")),
+            ));
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Database error finding refresh token");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to validate session")),
+            ));
+        }
+    };
+
+    // Check if token is still valid
+    if !stored_token.is_valid() {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("TOKEN_EXPIRED", "Session has expired")),
+        ));
+    }
+
+    // Parse user ID from claims
+    let user_id: uuid::Uuid = claims.sub.parse().map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("INVALID_TOKEN", "Invalid token format")),
+        )
+    })?;
+
+    // Verify user still exists and is active
+    let user = match state.user_repo.find_by_id(user_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new("USER_NOT_FOUND", "User account no longer exists")),
+            ));
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Database error finding user");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to validate user")),
+            ));
+        }
+    };
+
+    if user.status != "active" {
+        // Revoke the token since user is no longer active
+        let _ = state.session_repo.revoke_token(stored_token.id).await;
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("ACCOUNT_INACTIVE", "Account is no longer active")),
+        ));
+    }
+
+    // Token rotation: revoke the old token
+    if let Err(e) = state.session_repo.revoke_token(stored_token.id).await {
+        tracing::error!(error = %e, "Failed to revoke old refresh token");
+        // Continue anyway - better to issue new token than fail
+    }
+
+    // Generate new access token
+    let access_token = match state.jwt_service.generate_access_token(
+        user.id,
+        &user.email,
+        &user.name,
+        None,
+        None,
+    ) {
+        Ok(token) => token,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to generate access token");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("TOKEN_ERROR", "Failed to create session")),
+            ));
+        }
+    };
+
+    // Generate new refresh token (rotation)
+    let (new_refresh_token, new_token_hash, expires_at) = match state.jwt_service.generate_refresh_token(
+        user.id,
+        &user.email,
+        &user.name,
+    ) {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to generate refresh token");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("TOKEN_ERROR", "Failed to create session")),
+            ));
+        }
+    };
+
+    // Store new refresh token
+    use db::models::CreateRefreshToken;
+    let create_token = CreateRefreshToken {
+        user_id: user.id,
+        token_hash: new_token_hash,
+        expires_at,
+        user_agent: stored_token.user_agent.clone(),
+        ip_address: stored_token.ip_address.clone(),
+        device_info: stored_token.device_info.clone(),
+    };
+
+    if let Err(e) = state.session_repo.create_refresh_token(create_token).await {
+        tracing::error!(error = %e, "Failed to store new refresh token");
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DATABASE_ERROR", "Failed to create session")),
+        ));
+    }
+
+    tracing::info!(user_id = %user.id, "Token refreshed successfully");
+
+    Ok(Json(LoginResponse {
+        access_token,
+        refresh_token: new_refresh_token,
+        expires_in: state.jwt_service.access_token_lifetime(),
+        token_type: "Bearer".to_string(),
+    }))
+}
+
+// ==================== Logout (Story 1.3) ====================
+
+/// Logout request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct LogoutRequest {
+    /// The refresh token to revoke
+    pub refresh_token: String,
+}
+
+/// Logout response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct LogoutResponse {
+    /// Success message
+    pub message: String,
+}
 
 /// Logout endpoint.
 #[utoipa::path(
     post,
     path = "/api/v1/auth/logout",
     tag = "Authentication",
+    request_body = LogoutRequest,
     responses(
-        (status = 200, description = "Logout successful"),
-        (status = 401, description = "Not authenticated")
+        (status = 200, description = "Logout successful", body = LogoutResponse),
+        (status = 401, description = "Invalid token")
     )
 )]
-pub async fn logout(State(_state): State<AppState>) -> StatusCode {
-    // TODO: Implement in Story 1.3
-    StatusCode::OK
+pub async fn logout(
+    State(state): State<AppState>,
+    Json(req): Json<LogoutRequest>,
+) -> Result<Json<LogoutResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Hash the token to look it up
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(req.refresh_token.as_bytes());
+    let token_hash = hex::encode(hasher.finalize());
+
+    // Find and revoke the token
+    match state.session_repo.find_by_token_hash(&token_hash).await {
+        Ok(Some(token)) => {
+            if let Err(e) = state.session_repo.revoke_token(token.id).await {
+                tracing::error!(error = %e, "Failed to revoke token");
+            } else {
+                tracing::info!(user_id = %token.user_id, "User logged out");
+            }
+        }
+        Ok(None) => {
+            // Token not found - might already be revoked, that's fine
+            tracing::debug!("Logout requested for unknown/revoked token");
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Database error during logout");
+        }
+    }
+
+    // Always return success to prevent token enumeration
+    Ok(Json(LogoutResponse {
+        message: "Logged out successfully".to_string(),
+    }))
 }
