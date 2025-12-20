@@ -57,8 +57,7 @@ impl AuthService {
 
     /// Verify a password against a hash.
     pub fn verify_password(&self, password: &str, hash: &str) -> Result<bool, AuthError> {
-        let parsed_hash =
-            PasswordHash::new(hash).map_err(|_| AuthError::VerificationFailed)?;
+        let parsed_hash = PasswordHash::new(hash).map_err(|_| AuthError::VerificationFailed)?;
         Ok(self
             .argon2
             .verify_password(password.as_bytes(), &parsed_hash)

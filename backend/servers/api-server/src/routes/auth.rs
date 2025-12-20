@@ -126,7 +126,10 @@ pub async fn register(
             tracing::error!(error = %e, "Database error checking email");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to check email")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check email",
+                )),
             ));
         }
     }
@@ -138,7 +141,10 @@ pub async fn register(
             tracing::error!(error = %e, "Failed to hash password");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to process password")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to process password",
+                )),
             ));
         }
     };
@@ -165,7 +171,10 @@ pub async fn register(
             tracing::error!(error = %e, email = %req.email, "Failed to create user");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to create account")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create account",
+                )),
             ));
         }
     };
@@ -261,7 +270,10 @@ pub async fn verify_email(
             tracing::error!(error = %e, "Database error finding verification token");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to verify token")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to verify token",
+                )),
             ));
         }
     };
@@ -287,7 +299,11 @@ pub async fn verify_email(
     }
 
     // Verify the user's email
-    match state.user_repo.verify_email(verification_token.user_id).await {
+    match state
+        .user_repo
+        .verify_email(verification_token.user_id)
+        .await
+    {
         Ok(Some(user)) => {
             tracing::info!(user_id = %user.id, email = %user.email, "Email verified");
             Ok(Json(VerifyEmailResponse {
@@ -305,7 +321,10 @@ pub async fn verify_email(
             tracing::error!(error = %e, "Failed to verify email");
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to verify email")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to verify email",
+                )),
             ))
         }
     }
@@ -343,7 +362,9 @@ pub async fn resend_verification(
 ) -> Json<ResendVerificationResponse> {
     // Always return success to prevent email enumeration
     let response = ResendVerificationResponse {
-        message: "If an unverified account exists with this email, a verification link has been sent.".to_string(),
+        message:
+            "If an unverified account exists with this email, a verification link has been sent."
+                .to_string(),
     };
 
     // Try to find user and send email
@@ -451,7 +472,10 @@ pub async fn login(
                 StatusCode::TOO_MANY_REQUESTS,
                 Json(ErrorResponse::new(
                     "RATE_LIMITED",
-                    format!("Too many failed login attempts. Please try again in {} minutes.", remaining / 60 + 1),
+                    format!(
+                        "Too many failed login attempts. Please try again in {} minutes.",
+                        remaining / 60 + 1
+                    ),
                 )),
             ));
         }
@@ -467,11 +491,17 @@ pub async fn login(
         Ok(Some(user)) => user,
         Ok(None) => {
             // Record failed attempt (user not found)
-            let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+            let _ = state
+                .session_repo
+                .record_login_attempt(&req.email, &ip_address, false)
+                .await;
             tracing::debug!(email = %req.email, "Login failed: user not found");
             return Err((
                 StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new("INVALID_CREDENTIALS", "Invalid email or password")),
+                Json(ErrorResponse::new(
+                    "INVALID_CREDENTIALS",
+                    "Invalid email or password",
+                )),
             ));
         }
         Err(e) => {
@@ -485,7 +515,10 @@ pub async fn login(
 
     // Check if user can log in
     if user.status == "suspended" {
-        let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+        let _ = state
+            .session_repo
+            .record_login_attempt(&req.email, &ip_address, false)
+            .await;
         return Err((
             StatusCode::UNAUTHORIZED,
             Json(ErrorResponse::new(
@@ -496,7 +529,10 @@ pub async fn login(
     }
 
     if !user.is_verified() {
-        let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+        let _ = state
+            .session_repo
+            .record_login_attempt(&req.email, &ip_address, false)
+            .await;
         return Err((
             StatusCode::UNAUTHORIZED,
             Json(ErrorResponse::new(
@@ -507,11 +543,17 @@ pub async fn login(
     }
 
     // Verify password
-    let password_valid = match state.auth_service.verify_password(&req.password, &user.password_hash) {
+    let password_valid = match state
+        .auth_service
+        .verify_password(&req.password, &user.password_hash)
+    {
         Ok(valid) => valid,
         Err(e) => {
             tracing::error!(error = %e, "Password verification error");
-            let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+            let _ = state
+                .session_repo
+                .record_login_attempt(&req.email, &ip_address, false)
+                .await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("INTERNAL_ERROR", "Login failed")),
@@ -520,11 +562,17 @@ pub async fn login(
     };
 
     if !password_valid {
-        let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+        let _ = state
+            .session_repo
+            .record_login_attempt(&req.email, &ip_address, false)
+            .await;
         tracing::debug!(email = %req.email, "Login failed: invalid password");
         return Err((
             StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse::new("INVALID_CREDENTIALS", "Invalid email or password")),
+            Json(ErrorResponse::new(
+                "INVALID_CREDENTIALS",
+                "Invalid email or password",
+            )),
         ));
     }
 
@@ -532,7 +580,10 @@ pub async fn login(
     // if user.has_2fa_enabled() && req.two_factor_code.is_none() { ... }
 
     // Record successful login attempt
-    let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, true).await;
+    let _ = state
+        .session_repo
+        .record_login_attempt(&req.email, &ip_address, true)
+        .await;
 
     // Generate access token
     let access_token = match state.jwt_service.generate_access_token(
@@ -547,26 +598,32 @@ pub async fn login(
             tracing::error!(error = %e, "Failed to generate access token");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("TOKEN_ERROR", "Failed to create session")),
+                Json(ErrorResponse::new(
+                    "TOKEN_ERROR",
+                    "Failed to create session",
+                )),
             ));
         }
     };
 
     // Generate refresh token
-    let (refresh_token, token_hash, expires_at) = match state.jwt_service.generate_refresh_token(
-        user.id,
-        &user.email,
-        &user.name,
-    ) {
-        Ok(result) => result,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to generate refresh token");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("TOKEN_ERROR", "Failed to create session")),
-            ));
-        }
-    };
+    let (refresh_token, token_hash, expires_at) =
+        match state
+            .jwt_service
+            .generate_refresh_token(user.id, &user.email, &user.name)
+        {
+            Ok(result) => result,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to generate refresh token");
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "TOKEN_ERROR",
+                        "Failed to create session",
+                    )),
+                ));
+            }
+        };
 
     // Store refresh token in database
     use db::models::CreateRefreshToken;
@@ -583,7 +640,10 @@ pub async fn login(
         tracing::error!(error = %e, "Failed to store refresh token");
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", "Failed to create session")),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                "Failed to create session",
+            )),
         ));
     }
 
@@ -632,7 +692,10 @@ pub async fn refresh_token(
             tracing::debug!(error = %e, "Invalid refresh token");
             return Err((
                 StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new("INVALID_TOKEN", "Invalid or expired refresh token")),
+                Json(ErrorResponse::new(
+                    "INVALID_TOKEN",
+                    "Invalid or expired refresh token",
+                )),
             ));
         }
     };
@@ -650,14 +713,20 @@ pub async fn refresh_token(
             tracing::warn!(user_id = %claims.sub, "Refresh token not found in database (possibly revoked)");
             return Err((
                 StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new("TOKEN_REVOKED", "This session has been revoked")),
+                Json(ErrorResponse::new(
+                    "TOKEN_REVOKED",
+                    "This session has been revoked",
+                )),
             ));
         }
         Err(e) => {
             tracing::error!(error = %e, "Database error finding refresh token");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to validate session")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to validate session",
+                )),
             ));
         }
     };
@@ -684,14 +753,20 @@ pub async fn refresh_token(
         Ok(None) => {
             return Err((
                 StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new("USER_NOT_FOUND", "User account no longer exists")),
+                Json(ErrorResponse::new(
+                    "USER_NOT_FOUND",
+                    "User account no longer exists",
+                )),
             ));
         }
         Err(e) => {
             tracing::error!(error = %e, "Database error finding user");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to validate user")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to validate user",
+                )),
             ));
         }
     };
@@ -701,7 +776,10 @@ pub async fn refresh_token(
         let _ = state.session_repo.revoke_token(stored_token.id).await;
         return Err((
             StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse::new("ACCOUNT_INACTIVE", "Account is no longer active")),
+            Json(ErrorResponse::new(
+                "ACCOUNT_INACTIVE",
+                "Account is no longer active",
+            )),
         ));
     }
 
@@ -712,35 +790,38 @@ pub async fn refresh_token(
     }
 
     // Generate new access token
-    let access_token = match state.jwt_service.generate_access_token(
-        user.id,
-        &user.email,
-        &user.name,
-        None,
-        None,
-    ) {
-        Ok(token) => token,
-        Err(e) => {
-            tracing::error!(error = %e, "Failed to generate access token");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("TOKEN_ERROR", "Failed to create session")),
-            ));
-        }
-    };
+    let access_token =
+        match state
+            .jwt_service
+            .generate_access_token(user.id, &user.email, &user.name, None, None)
+        {
+            Ok(token) => token,
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to generate access token");
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "TOKEN_ERROR",
+                        "Failed to create session",
+                    )),
+                ));
+            }
+        };
 
     // Generate new refresh token (rotation)
-    let (new_refresh_token, new_token_hash, expires_at) = match state.jwt_service.generate_refresh_token(
-        user.id,
-        &user.email,
-        &user.name,
-    ) {
+    let (new_refresh_token, new_token_hash, expires_at) = match state
+        .jwt_service
+        .generate_refresh_token(user.id, &user.email, &user.name)
+    {
         Ok(result) => result,
         Err(e) => {
             tracing::error!(error = %e, "Failed to generate refresh token");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("TOKEN_ERROR", "Failed to create session")),
+                Json(ErrorResponse::new(
+                    "TOKEN_ERROR",
+                    "Failed to create session",
+                )),
             ));
         }
     };
@@ -760,7 +841,10 @@ pub async fn refresh_token(
         tracing::error!(error = %e, "Failed to store new refresh token");
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", "Failed to create session")),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                "Failed to create session",
+            )),
         ));
     }
 
@@ -867,14 +951,18 @@ pub async fn forgot_password(
 ) -> Json<ForgotPasswordResponse> {
     // Always return success to prevent email enumeration
     let response = ForgotPasswordResponse {
-        message: "If an account exists with this email, a password reset link has been sent.".to_string(),
+        message: "If an account exists with this email, a password reset link has been sent."
+            .to_string(),
     };
 
     // Try to find user and send email
     match state.user_repo.find_by_email(&req.email).await {
         Ok(Some(user)) if user.status == "active" => {
             // Invalidate any existing reset tokens for this user
-            let _ = state.password_reset_repo.invalidate_user_tokens(user.id).await;
+            let _ = state
+                .password_reset_repo
+                .invalidate_user_tokens(user.id)
+                .await;
 
             // Generate reset token (1 hour expiry)
             let token = state.auth_service.generate_token();
@@ -982,7 +1070,11 @@ pub async fn reset_password(
     let token_hash = state.auth_service.hash_token(&req.token);
 
     // Find the reset token
-    let reset_token = match state.password_reset_repo.find_by_token_hash(&token_hash).await {
+    let reset_token = match state
+        .password_reset_repo
+        .find_by_token_hash(&token_hash)
+        .await
+    {
         Ok(Some(token)) => token,
         Ok(None) => {
             return Err((
@@ -997,7 +1089,10 @@ pub async fn reset_password(
             tracing::error!(error = %e, "Database error finding password reset token");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to validate reset token")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to validate reset token",
+                )),
             ));
         }
     };
@@ -1019,14 +1114,20 @@ pub async fn reset_password(
         Ok(None) => {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("USER_NOT_FOUND", "User account no longer exists")),
+                Json(ErrorResponse::new(
+                    "USER_NOT_FOUND",
+                    "User account no longer exists",
+                )),
             ));
         }
         Err(e) => {
             tracing::error!(error = %e, "Database error finding user");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to reset password")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to reset password",
+                )),
             ));
         }
     };
@@ -1049,17 +1150,27 @@ pub async fn reset_password(
             tracing::error!(error = %e, "Failed to hash new password");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to process password")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to process password",
+                )),
             ));
         }
     };
 
     // Update password
-    if let Err(e) = state.user_repo.update_password(user.id, &password_hash).await {
+    if let Err(e) = state
+        .user_repo
+        .update_password(user.id, &password_hash)
+        .await
+    {
         tracing::error!(error = %e, user_id = %user.id, "Failed to update password");
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", "Failed to update password")),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                "Failed to update password",
+            )),
         ));
     }
 
@@ -1070,7 +1181,11 @@ pub async fn reset_password(
     }
 
     // Revoke all refresh tokens for security (force re-login)
-    if let Err(e) = state.session_repo.revoke_all_user_tokens(user.id, None).await {
+    if let Err(e) = state
+        .session_repo
+        .revoke_all_user_tokens(user.id, None)
+        .await
+    {
         tracing::error!(error = %e, "Failed to revoke user sessions");
         // Continue anyway - password was changed
     }
@@ -1138,16 +1253,14 @@ pub async fn list_sessions(
 
     // Get current token hash to identify current session
     use sha2::{Digest, Sha256};
-    let current_token_hash = if let Some(refresh_token) = headers
-        .get("X-Refresh-Token")
-        .and_then(|h| h.to_str().ok())
-    {
-        let mut hasher = Sha256::new();
-        hasher.update(refresh_token.as_bytes());
-        Some(hex::encode(hasher.finalize()))
-    } else {
-        None
-    };
+    let current_token_hash =
+        if let Some(refresh_token) = headers.get("X-Refresh-Token").and_then(|h| h.to_str().ok()) {
+            let mut hasher = Sha256::new();
+            hasher.update(refresh_token.as_bytes());
+            Some(hex::encode(hasher.finalize()))
+        } else {
+            None
+        };
 
     // Get all active sessions for user
     let sessions = match state.session_repo.find_user_sessions(user_id).await {
@@ -1156,7 +1269,10 @@ pub async fn list_sessions(
             tracing::error!(error = %e, "Failed to fetch user sessions");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to fetch sessions")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to fetch sessions",
+                )),
             ));
         }
     };
@@ -1233,7 +1349,10 @@ pub async fn revoke_session(
     let session_id: uuid::Uuid = req.session_id.parse().map_err(|_| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("INVALID_SESSION_ID", "Invalid session ID format")),
+            Json(ErrorResponse::new(
+                "INVALID_SESSION_ID",
+                "Invalid session ID format",
+            )),
         )
     })?;
 
@@ -1244,7 +1363,10 @@ pub async fn revoke_session(
             tracing::error!(error = %e, "Failed to fetch user sessions");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to verify session")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to verify session",
+                )),
             ));
         }
     };
@@ -1267,13 +1389,19 @@ pub async fn revoke_session(
         }
         Ok(false) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("SESSION_NOT_FOUND", "Session already revoked")),
+            Json(ErrorResponse::new(
+                "SESSION_NOT_FOUND",
+                "Session already revoked",
+            )),
         )),
         Err(e) => {
             tracing::error!(error = %e, "Failed to revoke session");
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to revoke session")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to revoke session",
+                )),
             ))
         }
     }
@@ -1315,26 +1443,28 @@ pub async fn revoke_all_sessions(
     })?;
 
     // Get current session to exclude
-    let current_session_id = if let Some(refresh_token) = headers
-        .get("X-Refresh-Token")
-        .and_then(|h| h.to_str().ok())
-    {
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(refresh_token.as_bytes());
-        let token_hash = hex::encode(hasher.finalize());
+    let current_session_id =
+        if let Some(refresh_token) = headers.get("X-Refresh-Token").and_then(|h| h.to_str().ok()) {
+            use sha2::{Digest, Sha256};
+            let mut hasher = Sha256::new();
+            hasher.update(refresh_token.as_bytes());
+            let token_hash = hex::encode(hasher.finalize());
 
-        // Find session by hash
-        match state.session_repo.find_by_token_hash(&token_hash).await {
-            Ok(Some(session)) => Some(session.id),
-            _ => None,
-        }
-    } else {
-        None
-    };
+            // Find session by hash
+            match state.session_repo.find_by_token_hash(&token_hash).await {
+                Ok(Some(session)) => Some(session.id),
+                _ => None,
+            }
+        } else {
+            None
+        };
 
     // Revoke all sessions except current
-    match state.session_repo.revoke_all_user_tokens(user_id, current_session_id).await {
+    match state
+        .session_repo
+        .revoke_all_user_tokens(user_id, current_session_id)
+        .await
+    {
         Ok(count) => {
             tracing::info!(
                 user_id = %user_id,
@@ -1350,7 +1480,10 @@ pub async fn revoke_all_sessions(
             tracing::error!(error = %e, "Failed to revoke sessions");
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to revoke sessions")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to revoke sessions",
+                )),
             ))
         }
     }
@@ -1359,14 +1492,19 @@ pub async fn revoke_all_sessions(
 // ==================== Helper Functions ====================
 
 /// Extract bearer token from Authorization header.
-fn extract_bearer_token(headers: &axum::http::HeaderMap) -> Result<String, (StatusCode, Json<ErrorResponse>)> {
+fn extract_bearer_token(
+    headers: &axum::http::HeaderMap,
+) -> Result<String, (StatusCode, Json<ErrorResponse>)> {
     let auth_header = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
         .ok_or_else(|| {
             (
                 StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new("MISSING_TOKEN", "Authorization header required")),
+                Json(ErrorResponse::new(
+                    "MISSING_TOKEN",
+                    "Authorization header required",
+                )),
             )
         })?;
 
@@ -1389,7 +1527,10 @@ fn validate_access_token(
         tracing::debug!(error = %e, "Invalid access token");
         (
             StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse::new("INVALID_TOKEN", "Invalid or expired token")),
+            Json(ErrorResponse::new(
+                "INVALID_TOKEN",
+                "Invalid or expired token",
+            )),
         )
     })
 }

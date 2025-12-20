@@ -2,17 +2,6 @@ import "@typespec/http";
 import "@typespec/openapi";
 import "@typespec/openapi3";
 
-using TypeSpec.Http;
-using TypeSpec.OpenAPI;
-
-@service({
-  title: "Property Management API",
-  version: "0.1.28",
-})
-@server("https://api.property-management.example.com", "Production")
-@server("http://localhost:8080", "Development")
-namespace PropertyManagement;
-
 // Import shared models
 import "./shared/models.tsp";
 import "./shared/errors.tsp";
@@ -30,3 +19,14 @@ import "./domains/documents.tsp";
 import "./domains/rentals.tsp";
 import "./domains/listings.tsp";
 import "./domains/compliance.tsp";
+
+using TypeSpec.Http;
+using TypeSpec.OpenAPI;
+
+@service({
+  title: "Property Management API",
+  version: "0.1.28",
+})
+@server("https://api.property-management.example.com", "Production")
+@server("http://localhost:8080", "Development")
+namespace PropertyManagement;

@@ -1,7 +1,7 @@
 //! Voting routes (UC-04).
 
-use axum::Router;
 use crate::state::AppState;
+use axum::Router;
 
 /// Create voting router.
 pub fn router() -> Router<AppState> {

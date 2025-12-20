@@ -1,7 +1,7 @@
 //! Listing routes (UC-31) - Real estate listing management.
 
-use axum::Router;
 use crate::state::AppState;
+use axum::Router;
 
 /// Create listings router.
 pub fn router() -> Router<AppState> {

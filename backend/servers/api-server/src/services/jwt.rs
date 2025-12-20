@@ -87,7 +87,7 @@ impl JwtService {
         Ok(Self {
             encoding_key: EncodingKey::from_secret(secret.as_bytes()),
             decoding_key: DecodingKey::from_secret(secret.as_bytes()),
-            access_token_lifetime: 15 * 60,       // 15 minutes
+            access_token_lifetime: 15 * 60,           // 15 minutes
             refresh_token_lifetime: 7 * 24 * 60 * 60, // 7 days
         })
     }

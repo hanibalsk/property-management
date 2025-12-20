@@ -323,10 +323,7 @@ impl UserRepository {
         let where_clause = conditions.join(" AND ");
 
         // Count query
-        let count_query = format!(
-            "SELECT COUNT(*) FROM users WHERE {}",
-            where_clause
-        );
+        let count_query = format!("SELECT COUNT(*) FROM users WHERE {}", where_clause);
 
         // Data query
         let data_query = format!(

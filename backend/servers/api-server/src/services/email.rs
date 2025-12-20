@@ -266,7 +266,13 @@ impl EmailService {
         }
     }
 
-    fn get_security_alert_body(&self, name: &str, device: &str, ip: &str, locale: &Locale) -> String {
+    fn get_security_alert_body(
+        &self,
+        name: &str,
+        device: &str,
+        ip: &str,
+        locale: &Locale,
+    ) -> String {
         match locale {
             Locale::Slovak => format!(
                 "Dobrý deň {},\n\nZaznamenali sme nové prihlásenie do vášho účtu:\n\n• Zariadenie: {}\n• IP adresa: {}\n\nAk ste to boli vy, túto správu môžete ignorovať.\n\nAk ste sa neprihlasovali, odporúčame okamžite zmeniť heslo a skontrolovať aktívne relácie v nastaveniach účtu.\n\nS pozdravom,\nTím PPT",
@@ -353,7 +359,12 @@ impl EmailService {
         }
     }
 
-    fn get_account_suspended_body(&self, name: &str, reason: Option<&str>, locale: &Locale) -> String {
+    fn get_account_suspended_body(
+        &self,
+        name: &str,
+        reason: Option<&str>,
+        locale: &Locale,
+    ) -> String {
         let reason_text = reason.unwrap_or("-");
         match locale {
             Locale::Slovak => format!(

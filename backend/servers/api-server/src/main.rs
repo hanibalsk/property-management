@@ -116,11 +116,10 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Get database URL from environment
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| {
-            tracing::warn!("DATABASE_URL not set, using default");
-            "postgres://postgres:postgres@localhost:5432/ppt".to_string()
-        });
+    let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        tracing::warn!("DATABASE_URL not set, using default");
+        "postgres://postgres:postgres@localhost:5432/ppt".to_string()
+    });
 
     // Create database pool
     let db_pool = db::create_pool(&database_url).await?;
@@ -130,8 +129,8 @@ async fn main() -> anyhow::Result<()> {
     let email_enabled = std::env::var("EMAIL_ENABLED")
         .map(|v| v == "true" || v == "1")
         .unwrap_or(false);
-    let base_url = std::env::var("APP_BASE_URL")
-        .unwrap_or_else(|_| "http://localhost:3000".to_string());
+    let base_url =
+        std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
     let email_service = EmailService::new(base_url, email_enabled);
 
     // Create JWT service

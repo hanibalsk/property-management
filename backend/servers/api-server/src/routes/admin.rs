@@ -119,9 +119,11 @@ const ADMIN_ROLES: &[&str] = &[
 /// Check if the user has any admin role.
 fn has_admin_role(roles: &Option<Vec<String>>) -> bool {
     match roles {
-        Some(user_roles) => user_roles
-            .iter()
-            .any(|r| ADMIN_ROLES.iter().any(|admin| r.eq_ignore_ascii_case(admin))),
+        Some(user_roles) => user_roles.iter().any(|r| {
+            ADMIN_ROLES
+                .iter()
+                .any(|admin| r.eq_ignore_ascii_case(admin))
+        }),
         None => false,
     }
 }
@@ -137,7 +139,10 @@ fn extract_admin_token(
         .ok_or_else(|| {
             (
                 StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new("MISSING_TOKEN", "Authorization header required")),
+                Json(ErrorResponse::new(
+                    "MISSING_TOKEN",
+                    "Authorization header required",
+                )),
             )
         })?;
 
@@ -149,13 +154,19 @@ fn extract_admin_token(
     }
 
     let token = &auth_header[7..];
-    let claims = state.jwt_service.validate_access_token(token).map_err(|e| {
-        tracing::debug!(error = %e, "Invalid access token");
-        (
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse::new("INVALID_TOKEN", "Invalid or expired token")),
-        )
-    })?;
+    let claims = state
+        .jwt_service
+        .validate_access_token(token)
+        .map_err(|e| {
+            tracing::debug!(error = %e, "Invalid access token");
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new(
+                    "INVALID_TOKEN",
+                    "Invalid or expired token",
+                )),
+            )
+        })?;
 
     let user_id: Uuid = claims.sub.parse().map_err(|_| {
         (
@@ -349,7 +360,10 @@ pub async fn suspend_user(
     if user_id == admin_id {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("CANNOT_SELF_SUSPEND", "Cannot suspend your own account")),
+            Json(ErrorResponse::new(
+                "CANNOT_SELF_SUSPEND",
+                "Cannot suspend your own account",
+            )),
         ));
     }
 
@@ -368,13 +382,20 @@ pub async fn suspend_user(
             tracing::error!(error = %e, "Failed to suspend user");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to suspend user")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to suspend user",
+                )),
             ));
         }
     };
 
     // Revoke all user sessions
-    if let Err(e) = state.session_repo.revoke_all_user_tokens(user_id, None).await {
+    if let Err(e) = state
+        .session_repo
+        .revoke_all_user_tokens(user_id, None)
+        .await
+    {
         tracing::error!(error = %e, "Failed to revoke user sessions");
     }
 
@@ -439,7 +460,10 @@ pub async fn reactivate_user(
             tracing::error!(error = %e, "Failed to reactivate user");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to reactivate user")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to reactivate user",
+                )),
             ));
         }
     };
@@ -493,7 +517,10 @@ pub async fn delete_user(
     if user_id == admin_id {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("CANNOT_SELF_DELETE", "Cannot delete your own account")),
+            Json(ErrorResponse::new(
+                "CANNOT_SELF_DELETE",
+                "Cannot delete your own account",
+            )),
         ));
     }
 
@@ -502,20 +529,30 @@ pub async fn delete_user(
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("USER_NOT_FOUND", "User not found or already deleted")),
+                Json(ErrorResponse::new(
+                    "USER_NOT_FOUND",
+                    "User not found or already deleted",
+                )),
             ));
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to delete user");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to delete user")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to delete user",
+                )),
             ));
         }
     };
 
     // Revoke all user sessions
-    if let Err(e) = state.session_repo.revoke_all_user_tokens(user_id, None).await {
+    if let Err(e) = state
+        .session_repo
+        .revoke_all_user_tokens(user_id, None)
+        .await
+    {
         tracing::error!(error = %e, "Failed to revoke user sessions");
     }
 

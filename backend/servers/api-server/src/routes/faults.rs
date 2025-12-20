@@ -1,7 +1,7 @@
 //! Fault routes (UC-03).
 
-use axum::Router;
 use crate::state::AppState;
+use axum::Router;
 
 /// Create faults router.
 pub fn router() -> Router<AppState> {

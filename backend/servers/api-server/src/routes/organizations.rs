@@ -1,7 +1,7 @@
 //! Organization routes (UC-27) - Multi-tenancy.
 
-use axum::Router;
 use crate::state::AppState;
+use axum::Router;
 
 /// Create organizations router.
 pub fn router() -> Router<AppState> {

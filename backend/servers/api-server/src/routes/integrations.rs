@@ -1,7 +1,7 @@
 //! Integration routes (UC-22, UC-32) - External portal integrations.
 
-use axum::Router;
 use crate::state::AppState;
+use axum::Router;
 
 /// Create integrations router.
 pub fn router() -> Router<AppState> {

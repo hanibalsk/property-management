@@ -1,7 +1,7 @@
 //! Building routes (UC-15).
 
-use axum::Router;
 use crate::state::AppState;
+use axum::Router;
 
 /// Create buildings router.
 pub fn router() -> Router<AppState> {
