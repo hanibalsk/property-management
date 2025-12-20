@@ -106,6 +106,26 @@ pub struct AdminActionResponse {
 
 // ==================== Helper Functions ====================
 
+/// Admin role names that grant access to admin endpoints.
+/// Based on TenantRole enum from common crate.
+const ADMIN_ROLES: &[&str] = &[
+    "SuperAdministrator",
+    "OrganizationAdmin",
+    "super_admin",
+    "org_admin",
+    "admin",
+];
+
+/// Check if the user has any admin role.
+fn has_admin_role(roles: &Option<Vec<String>>) -> bool {
+    match roles {
+        Some(user_roles) => user_roles
+            .iter()
+            .any(|r| ADMIN_ROLES.iter().any(|admin| r.eq_ignore_ascii_case(admin))),
+        None => false,
+    }
+}
+
 /// Extract and validate admin access token.
 fn extract_admin_token(
     headers: &axum::http::HeaderMap,
@@ -144,9 +164,22 @@ fn extract_admin_token(
         )
     })?;
 
-    // TODO: Check if user has admin role
-    // For now, allow any authenticated user to access admin endpoints
-    // This should be restricted once organization/role system is implemented
+    // Check if user has admin role
+    if !has_admin_role(&claims.roles) {
+        tracing::warn!(
+            user_id = %user_id,
+            email = %claims.email,
+            roles = ?claims.roles,
+            "Unauthorized admin access attempt"
+        );
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "INSUFFICIENT_PERMISSIONS",
+                "Admin role required to access this endpoint",
+            )),
+        ));
+    }
 
     Ok((user_id, claims.email))
 }

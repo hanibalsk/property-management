@@ -2,11 +2,15 @@
 #
 # update-version.sh - Synchronize version across all projects
 #
-# Reads VERSION file and updates:
+# Single source of truth: VERSION file
+#
+# Updates:
+# - backend/Cargo.toml (workspace.package.version)
 # - frontend/package.json
 # - frontend/apps/*/package.json
 # - frontend/packages/*/package.json
-# - mobile-native/gradle.properties (for Android versionName)
+# - mobile-native/gradle.properties (versionName + versionCode)
+# - docs/api/typespec/main.tsp (API service version)
 #
 # Usage: ./scripts/update-version.sh
 
@@ -61,7 +65,17 @@ update_package_json() {
     fi
 }
 
-# Update frontend package.json files
+# ==================== Backend (Rust) ====================
+echo "Updating backend..."
+CARGO_TOML="$ROOT_DIR/backend/Cargo.toml"
+if [[ -f "$CARGO_TOML" ]]; then
+    # Update workspace.package.version in Cargo.toml
+    sed "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" "$CARGO_TOML" > "$CARGO_TOML.tmp"
+    mv "$CARGO_TOML.tmp" "$CARGO_TOML"
+    echo -e "  ${GREEN}✓${NC} Updated $CARGO_TOML"
+fi
+
+# ==================== Frontend (TypeScript) ====================
 echo "Updating frontend packages..."
 update_package_json "$ROOT_DIR/frontend/package.json"
 
@@ -77,20 +91,34 @@ for pkg_dir in "$ROOT_DIR/frontend/packages"/*; do
     fi
 done
 
-# Update mobile-native gradle.properties with version info
+# ==================== Mobile Native (Kotlin) ====================
+echo "Updating mobile-native..."
 GRADLE_PROPS="$ROOT_DIR/mobile-native/gradle.properties"
 if [[ -f "$GRADLE_PROPS" ]]; then
-    # Remove existing version properties if present
-    grep -v "^app.version" "$GRADLE_PROPS" > "$GRADLE_PROPS.tmp" || true
-    mv "$GRADLE_PROPS.tmp" "$GRADLE_PROPS"
+    # Remove existing version properties AND the comment line, then remove consecutive empty lines
+    grep -v -E "^app\.version|^# App version" "$GRADLE_PROPS" | awk 'NF || !blank {print; blank=!NF}' > "$GRADLE_PROPS.tmp"
 
-    # Append version properties
+    # Remove trailing empty lines using awk (portable)
+    awk '/^$/{blank++; next} {for(i=0;i<blank;i++){print ""}; blank=0; print}' "$GRADLE_PROPS.tmp" > "$GRADLE_PROPS"
+    rm -f "$GRADLE_PROPS.tmp"
+
+    # Append version properties with single blank line separator
     echo "" >> "$GRADLE_PROPS"
     echo "# App version (synced from VERSION file)" >> "$GRADLE_PROPS"
     echo "app.versionName=$VERSION" >> "$GRADLE_PROPS"
     echo "app.versionCode=$VERSION_CODE" >> "$GRADLE_PROPS"
 
     echo -e "  ${GREEN}✓${NC} Updated $GRADLE_PROPS"
+fi
+
+# ==================== API Specs (TypeSpec) ====================
+echo "Updating API specs..."
+TYPESPEC_MAIN="$ROOT_DIR/docs/api/typespec/main.tsp"
+if [[ -f "$TYPESPEC_MAIN" ]]; then
+    # Update service version in TypeSpec (version: "X.Y.Z")
+    sed "s/version: \"[^\"]*\"/version: \"$VERSION\"/" "$TYPESPEC_MAIN" > "$TYPESPEC_MAIN.tmp"
+    mv "$TYPESPEC_MAIN.tmp" "$TYPESPEC_MAIN"
+    echo -e "  ${GREEN}✓${NC} Updated $TYPESPEC_MAIN"
 fi
 
 echo ""
@@ -102,3 +130,9 @@ echo "  Version Code: $VERSION_CODE"
 echo "  Major:        $MAJOR"
 echo "  Minor:        $MINOR"
 echo "  Patch:        $PATCH"
+echo ""
+echo "Files updated:"
+echo "  - backend/Cargo.toml (workspace version)"
+echo "  - frontend/**/package.json"
+echo "  - mobile-native/gradle.properties"
+echo "  - docs/api/typespec/main.tsp (API version)"

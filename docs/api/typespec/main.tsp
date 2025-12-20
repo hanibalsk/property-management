@@ -7,7 +7,7 @@ using TypeSpec.OpenAPI;
 
 @service({
   title: "Property Management API",
-  version: "1.0.0",
+  version: "0.1.27",
 })
 @server("https://api.property-management.example.com", "Production")
 @server("http://localhost:8080", "Development")
