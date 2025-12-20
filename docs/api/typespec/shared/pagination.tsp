@@ -1,5 +1,7 @@
 namespace PropertyManagement.Shared;
 
+using TypeSpec.Http;
+
 @doc("Pagination query parameters")
 model PaginationQuery {
   @doc("Page number (1-indexed)")

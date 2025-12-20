@@ -53,8 +53,9 @@ mobile-native/.kotlin/
 
 # === API Specs ===
 # Keep generated specs (they're the source of truth)
-# But ignore node_modules from typespec
+# But ignore node_modules and tsp-output from typespec
 docs/api/typespec/node_modules/
+docs/api/typespec/tsp-output/
 
 # === GitHub Actions ===
 !.github/

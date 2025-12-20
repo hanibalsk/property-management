@@ -20,8 +20,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install TypeSpec
-        run: npm install -g @typespec/compiler
+      - name: Install TypeSpec dependencies
+        run: |
+          cd docs/api/typespec
+          npm install
 
       - name: Install Spectral
         run: npm install -g @stoplight/spectral-cli
@@ -34,7 +36,7 @@ jobs:
       - name: Compile TypeSpec
         run: |
           cd docs/api/typespec
-          tsp compile .
+          npx tsp compile .
 
       - name: Lint OpenAPI
         run: spectral lint docs/api/generated/openapi.yaml -r docs/api/rules/spectral.yaml

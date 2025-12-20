@@ -18,7 +18,7 @@ scalar phoneNumber extends string;
 
 @doc("URL string")
 @format("uri")
-scalar url extends string;
+scalar urlString extends string;
 
 @doc("Physical address")
 model Address {
@@ -82,7 +82,7 @@ model Attachment {
   sizeBytes: int64;
 
   @doc("Download URL")
-  url: url;
+  downloadUrl: urlString;
 
   @doc("Upload timestamp")
   uploadedAt: dateTime;

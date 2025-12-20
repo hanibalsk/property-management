@@ -8,7 +8,7 @@ namespace PropertyManagement.Compliance;
 using TypeSpec.Http;
 using PropertyManagement.Shared;
 
-@doc("GDPR and compliance (UC-26)")
+// GDPR and compliance (UC-26)
 
 @doc("GDPR data export request")
 model DataExportRequest {
@@ -18,7 +18,7 @@ model DataExportRequest {
   format: ExportFormat;
   requestedAt: dateTime;
   completedAt?: dateTime;
-  downloadUrl?: url;
+  downloadUrl?: urlString;
   expiresAt?: dateTime;
   includeCategories: DataCategory[];
   ...AuditableEntity;

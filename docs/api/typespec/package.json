@@ -1,0 +1,17 @@
+{
+  "name": "@ppt/api-typespec",
+  "version": "0.1.28",
+  "private": true,
+  "description": "TypeSpec API definitions for Property Management System",
+  "scripts": {
+    "compile": "tsp compile .",
+    "watch": "tsp compile . --watch",
+    "format": "tsp format **/*.tsp"
+  },
+  "dependencies": {
+    "@typespec/compiler": "^1.0.0",
+    "@typespec/http": "^1.0.0",
+    "@typespec/openapi": "^1.0.0",
+    "@typespec/openapi3": "^1.0.0"
+  }
+}

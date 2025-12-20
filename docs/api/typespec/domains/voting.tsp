@@ -22,7 +22,6 @@ model Vote {
   options: VoteOption[];
   allowDelegation: boolean;
   isAnonymous: boolean;
-  createdBy: uuid;
   ...AuditableEntity;
 }
 

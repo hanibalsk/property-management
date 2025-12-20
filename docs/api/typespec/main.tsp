@@ -23,9 +23,11 @@ import "./domains/compliance.tsp";
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
-@service({
+@service(#{
   title: "Property Management API",
-  version: "0.1.28",
+})
+@info(#{
+  version: "0.1.30",
 })
 @server("https://api.property-management.example.com", "Production")
 @server("http://localhost:8080", "Development")
