@@ -18,6 +18,7 @@ This folder contains requirements, specifications, and API documentation for the
 | `architecture.md` | System architecture, ADRs, service boundaries, database design |
 | `technical-design.md` | API endpoints (~145), DTOs (~127), validation rules, state machines (8) |
 | `non-functional-requirements.md` | Performance, scalability, security, logging, monitoring, SEO, caching, SSR/SSG |
+| `testability-and-implementation.md` | Test strategy, MVP prioritization, iterations, traceability matrix |
 | `project-structure.md` | Full project directory structure |
 | `api/` | API specifications (TypeSpec, OpenAPI) |
 | `validation/` | Edge cases, error paths, and validation checklists |
