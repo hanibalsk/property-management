@@ -1,9 +1,10 @@
 //! Building routes (UC-15).
 
+use crate::state::AppState;
 use axum::Router;
 
 /// Create buildings router.
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
     // TODO: Add building routes
     // POST /               - Create building

@@ -14,6 +14,7 @@ db = { workspace = true }
 integrations = { workspace = true }
 
 axum = { workspace = true }
+axum-extra = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
@@ -31,3 +32,7 @@ dotenvy = { workspace = true }
 config = { workspace = true }
 anyhow = { workspace = true }
 validator = { workspace = true }
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"
+thiserror = { workspace = true }

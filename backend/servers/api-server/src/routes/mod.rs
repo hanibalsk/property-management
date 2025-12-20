@@ -2,6 +2,7 @@
 //!
 //! Each module handles a specific domain and provides its own router.
 
+pub mod admin;
 pub mod auth;
 pub mod buildings;
 pub mod faults;

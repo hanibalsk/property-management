@@ -11,6 +11,7 @@ pub enum BookingError {
 }
 
 /// Booking.com API client.
+#[allow(dead_code)]
 pub struct BookingClient {
     client: reqwest::Client,
     api_key: String,
