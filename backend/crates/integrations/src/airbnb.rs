@@ -11,6 +11,7 @@ pub enum AirbnbError {
 }
 
 /// Airbnb API client.
+#[allow(dead_code)]
 pub struct AirbnbClient {
     client: reqwest::Client,
     api_key: String,

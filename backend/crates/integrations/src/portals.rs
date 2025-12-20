@@ -11,6 +11,7 @@ pub enum PortalError {
 }
 
 /// Generic real estate portal client.
+#[allow(dead_code)]
 pub struct PortalClient {
     client: reqwest::Client,
     base_url: String,

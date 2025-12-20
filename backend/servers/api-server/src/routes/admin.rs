@@ -240,7 +240,7 @@ pub async fn list_users(
     let (_admin_id, _admin_email) = extract_admin_token(&headers, &state)?;
 
     // Validate page size
-    let page_size = query.page_size.min(100).max(1);
+    let page_size = query.page_size.clamp(1, 100);
     let page = query.page.max(1);
     let offset = ((page - 1) * page_size) as i64;
 

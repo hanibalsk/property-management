@@ -224,9 +224,9 @@ impl SessionRepository {
         })
     }
 
-    /// Clear successful login resets the failed attempt counter.
-    /// This is implicit - successful logins are recorded but don't clear old failures.
-    /// The window-based approach handles this automatically.
+    // Note: Clear successful login resets the failed attempt counter.
+    // This is implicit - successful logins are recorded but don't clear old failures.
+    // The window-based approach handles this automatically.
 
     /// Cleanup old login attempts.
     pub async fn cleanup_old_attempts(&self) -> Result<u64, SqlxError> {

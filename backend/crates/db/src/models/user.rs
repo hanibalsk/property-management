@@ -33,7 +33,7 @@ impl std::fmt::Display for UserStatus {
 }
 
 /// Supported locales for email templates.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "VARCHAR", rename_all = "lowercase")]
 pub enum Locale {
     #[sqlx(rename = "sk")]
@@ -43,6 +43,7 @@ pub enum Locale {
     #[sqlx(rename = "de")]
     German,
     #[sqlx(rename = "en")]
+    #[default]
     English,
 }
 
@@ -56,19 +57,14 @@ impl Locale {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    /// Parse locale from string.
+    pub fn parse(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "sk" | "sk-sk" => Locale::Slovak,
             "cs" | "cs-cz" => Locale::Czech,
             "de" | "de-de" | "de-at" | "de-ch" => Locale::German,
             _ => Locale::English,
         }
-    }
-}
-
-impl Default for Locale {
-    fn default() -> Self {
-        Locale::English
     }
 }
 
@@ -122,7 +118,7 @@ impl User {
 
     /// Get locale as enum.
     pub fn locale_enum(&self) -> Locale {
-        Locale::from_str(&self.locale)
+        Locale::parse(&self.locale)
     }
 }
 

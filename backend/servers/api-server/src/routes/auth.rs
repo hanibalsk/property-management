@@ -153,7 +153,7 @@ pub async fn register(
     let locale = req
         .locale
         .as_ref()
-        .map(|l| Locale::from_str(l))
+        .map(|l| Locale::parse(l))
         .unwrap_or(Locale::English);
 
     // Create user

@@ -6,6 +6,9 @@
 //!
 //! Package: ppt::api_server
 
+// Allow dead code for stub implementations during development
+#![allow(dead_code)]
+
 use axum::{routing::get, Router};
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
