@@ -50,13 +50,37 @@
 | Mobile | Property Management | React Native | api-server |
 | Mobile | Reality Portal | Kotlin Multiplatform | reality-server |
 
-## Project Structure
+## Tech Stack
 
-See `docs/project-structure.md` for full directory tree.
+### backend/
+| Component | Technology |
+|-----------|------------|
+| Framework | Rust, Axum 0.8 |
+| Database | PostgreSQL 16+ (RLS), SQLx, SeaORM |
+| Cache | Redis (sessions, pub/sub) |
+| Auth | JWT (15m access, 7d refresh), Argon2id, TOTP |
+| API | OpenAPI 3.1 (TypeSpec), WebSocket |
+| Storage | S3-compatible |
+
+### frontend/
+| App | Technology |
+|-----|------------|
+| ppt-web | React 19, Vite 6, Radix UI, Tailwind CSS |
+| reality-web | Next.js 15.5 (SSR/SSG), Tailwind CSS |
+| mobile | React Native 0.83, React Native Paper |
+| shared | TypeScript, @hey-api/openapi-ts (SDK gen) |
+
+### mobile-native/
+| Component | Technology |
+|-----------|------------|
+| Framework | Kotlin Multiplatform 2.3 |
+| UI | Compose (Android), SwiftUI (iOS) |
+| SDK | openapi-generator (Kotlin) |
+
+## Project Structure
 
 ```
 property-management/
-├── docs/                 # Documentation, API specs
 ├── backend/              # Rust: api-server, reality-server
 ├── frontend/             # TypeScript: ppt-web, reality-web, mobile
 └── mobile-native/        # Kotlin: Reality Portal (Android/iOS)
@@ -84,6 +108,69 @@ hotfix/{issue-description}
 - `feat(UC-14): implement user registration`
 - `fix(api-server): correct tenant context extraction`
 - `docs(reality-portal): add i18n documentation`
+
+## Epic & Story Development Workflow
+
+**IMPORTANT: Follow this workflow when implementing epics and stories.**
+
+### Before Starting an Epic
+
+```bash
+# Create feature branch from main
+git checkout main
+git pull origin main
+git checkout -b feature/epic-{N}-{description}
+```
+
+**Example:** `git checkout -b feature/epic-1-user-authentication`
+
+### After Completing Each Story
+
+```bash
+# Stage and commit with story reference
+git add .
+git commit -m "feat(epic-{N}): story {N}.{M} - {description}"
+```
+
+**Examples:**
+- `feat(epic-1): story 1.1 - user registration with email verification`
+- `feat(epic-1): story 1.2 - email/password login`
+- `feat(epic-4): story 4.3 - fault triage by manager`
+
+### After All Stories in Epic Complete
+
+1. **Run BMAD Code Review Workflow:**
+   ```bash
+   # Invoke the code-review workflow
+   /bmad:bmm:workflows:code-review
+   ```
+
+2. **Address Review Findings** - Fix any issues identified
+
+3. **Create Pull Request:**
+   ```bash
+   git push -u origin feature/epic-{N}-{description}
+   gh pr create --title "Epic {N}: {Title}" --body "..."
+   ```
+
+### Workflow Summary
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. Create feature branch: feature/epic-{N}-{description}  │
+├─────────────────────────────────────────────────────────────┤
+│  2. Implement Story {N}.1 → Commit                          │
+│  3. Implement Story {N}.2 → Commit                          │
+│  4. Implement Story {N}.{M} → Commit                        │
+│     ... repeat for all stories ...                          │
+├─────────────────────────────────────────────────────────────┤
+│  5. Run /bmad:bmm:workflows:code-review                     │
+│  6. Fix issues → Commit fixes                               │
+├─────────────────────────────────────────────────────────────┤
+│  7. Push branch and create PR                               │
+│  8. Merge to main after approval                            │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## Versioning
 
