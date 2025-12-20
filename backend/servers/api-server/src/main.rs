@@ -19,7 +19,7 @@ mod routes;
 mod services;
 mod state;
 
-use services::EmailService;
+use services::{EmailService, JwtService};
 use state::AppState;
 
 #[derive(OpenApi)]
@@ -105,8 +105,16 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "http://localhost:3000".to_string());
     let email_service = EmailService::new(base_url, email_enabled);
 
+    // Create JWT service
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| {
+        tracing::warn!("JWT_SECRET not set, using development default (NOT FOR PRODUCTION)");
+        "development-secret-key-that-is-at-least-32-characters-long".to_string()
+    });
+    let jwt_service = JwtService::new(&jwt_secret)
+        .expect("Failed to create JWT service - secret must be at least 32 characters");
+
     // Create application state
-    let state = AppState::new(db_pool, email_service);
+    let state = AppState::new(db_pool, email_service, jwt_service);
 
     // Build router
     let app = Router::new()
@@ -141,7 +149,11 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("API server (Property Management) listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .await?;
 
     Ok(())
 }

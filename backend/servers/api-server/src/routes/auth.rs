@@ -379,7 +379,7 @@ pub async fn resend_verification(
     Json(response)
 }
 
-// ==================== Login (Story 1.2 - placeholder) ====================
+// ==================== Login (Story 1.2) ====================
 
 /// Login request.
 #[derive(Debug, Deserialize, ToSchema)]
@@ -388,7 +388,8 @@ pub struct LoginRequest {
     pub email: String,
     /// Password
     pub password: String,
-    /// 2FA code (optional)
+    /// 2FA code (optional, for future use)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub two_factor_code: Option<String>,
 }
 
@@ -399,8 +400,10 @@ pub struct LoginResponse {
     pub access_token: String,
     /// Refresh token
     pub refresh_token: String,
-    /// Token expiration in seconds
-    pub expires_in: i32,
+    /// Access token expiration in seconds
+    pub expires_in: i64,
+    /// Token type (always "Bearer")
+    pub token_type: String,
 }
 
 /// Login endpoint.
@@ -411,20 +414,178 @@ pub struct LoginResponse {
     request_body = LoginRequest,
     responses(
         (status = 200, description = "Login successful", body = LoginResponse),
-        (status = 401, description = "Invalid credentials", body = ErrorResponse)
+        (status = 401, description = "Invalid credentials", body = ErrorResponse),
+        (status = 429, description = "Too many failed attempts", body = ErrorResponse)
     )
 )]
 pub async fn login(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
+    axum::extract::ConnectInfo(addr): axum::extract::ConnectInfo<std::net::SocketAddr>,
     Json(req): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement in Story 1.2
-    tracing::info!(email = %req.email, "Login attempt");
+    let ip_address = addr.ip().to_string();
+
+    // Check rate limiting
+    match state.session_repo.check_rate_limit(&req.email).await {
+        Ok(status) if !status.can_attempt() => {
+            let remaining = status.lockout_remaining_secs.unwrap_or(900);
+            tracing::warn!(
+                email = %req.email,
+                ip = %ip_address,
+                remaining_secs = remaining,
+                "Login attempt blocked due to rate limiting"
+            );
+            return Err((
+                StatusCode::TOO_MANY_REQUESTS,
+                Json(ErrorResponse::new(
+                    "RATE_LIMITED",
+                    format!("Too many failed login attempts. Please try again in {} minutes.", remaining / 60 + 1),
+                )),
+            ));
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to check rate limit");
+            // Continue anyway - don't block login due to rate limit check failure
+        }
+        _ => {}
+    }
+
+    // Find user by email
+    let user = match state.user_repo.find_by_email(&req.email).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            // Record failed attempt (user not found)
+            let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+            tracing::debug!(email = %req.email, "Login failed: user not found");
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new("INVALID_CREDENTIALS", "Invalid email or password")),
+            ));
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Database error finding user");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Login failed")),
+            ));
+        }
+    };
+
+    // Check if user can log in
+    if user.status == "suspended" {
+        let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new(
+                "ACCOUNT_SUSPENDED",
+                "Account suspended. Contact support.",
+            )),
+        ));
+    }
+
+    if !user.is_verified() {
+        let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new(
+                "EMAIL_NOT_VERIFIED",
+                "Please verify your email first",
+            )),
+        ));
+    }
+
+    // Verify password
+    let password_valid = match state.auth_service.verify_password(&req.password, &user.password_hash) {
+        Ok(valid) => valid,
+        Err(e) => {
+            tracing::error!(error = %e, "Password verification error");
+            let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("INTERNAL_ERROR", "Login failed")),
+            ));
+        }
+    };
+
+    if !password_valid {
+        let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, false).await;
+        tracing::debug!(email = %req.email, "Login failed: invalid password");
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("INVALID_CREDENTIALS", "Invalid email or password")),
+        ));
+    }
+
+    // TODO: Check 2FA if enabled (future story)
+    // if user.has_2fa_enabled() && req.two_factor_code.is_none() { ... }
+
+    // Record successful login attempt
+    let _ = state.session_repo.record_login_attempt(&req.email, &ip_address, true).await;
+
+    // Generate access token
+    let access_token = match state.jwt_service.generate_access_token(
+        user.id,
+        &user.email,
+        &user.name,
+        None, // org_id - will be set when org context is selected
+        None, // roles - will be set when org context is selected
+    ) {
+        Ok(token) => token,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to generate access token");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("TOKEN_ERROR", "Failed to create session")),
+            ));
+        }
+    };
+
+    // Generate refresh token
+    let (refresh_token, token_hash, expires_at) = match state.jwt_service.generate_refresh_token(
+        user.id,
+        &user.email,
+        &user.name,
+    ) {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to generate refresh token");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("TOKEN_ERROR", "Failed to create session")),
+            ));
+        }
+    };
+
+    // Store refresh token in database
+    use db::models::CreateRefreshToken;
+    let create_token = CreateRefreshToken {
+        user_id: user.id,
+        token_hash,
+        expires_at,
+        user_agent: None, // TODO: Extract from headers in Story 1.5
+        ip_address: Some(ip_address.clone()),
+        device_info: None,
+    };
+
+    if let Err(e) = state.session_repo.create_refresh_token(create_token).await {
+        tracing::error!(error = %e, "Failed to store refresh token");
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DATABASE_ERROR", "Failed to create session")),
+        ));
+    }
+
+    tracing::info!(
+        user_id = %user.id,
+        email = %user.email,
+        "User logged in successfully"
+    );
 
     Ok(Json(LoginResponse {
-        access_token: "placeholder-token".to_string(),
-        refresh_token: "placeholder-refresh".to_string(),
-        expires_in: 3600,
+        access_token,
+        refresh_token,
+        expires_in: state.jwt_service.access_token_lifetime(),
+        token_type: "Bearer".to_string(),
     }))
 }
 
