@@ -2349,4 +2349,4 @@ Super Administrator
 | UC-49: Agency Management | 10 | reality-web, mobile-native |
 | UC-50: Property Import | 10 | reality-web, mobile-native |
 | UC-51: Realtor Profile & Listings | 12 | reality-web, mobile-native |
-| **TOTAL** | **493** | |
+| **TOTAL** | **508** | |

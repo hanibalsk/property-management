@@ -11,14 +11,15 @@ This folder contains requirements, specifications, and API documentation for the
 | File | Description |
 |------|-------------|
 | `spec1.0.md` | Original system specification with UI/feature details |
-| `use-cases.md` | Complete use case catalog (493 use cases, 51 categories) |
-| `functional-requirements.md` | Functional requirements for all 493 use cases (inputs, outputs, business rules) |
+| `use-cases.md` | Complete use case catalog (508 use cases, 51 categories) |
+| `functional-requirements.md` | Functional requirements for all 508 use cases (inputs, outputs, business rules) |
 | `domain-model.md` | Domain model with entities, value objects, aggregates, and relationships |
 | `sequence-diagrams.md` | Sequence diagrams and flows (sync/async, external calls) |
 | `architecture.md` | System architecture, ADRs, service boundaries, database design |
 | `technical-design.md` | API endpoints (~145), DTOs (~127), validation rules, state machines (8) |
 | `non-functional-requirements.md` | Performance, scalability, security, logging, monitoring, SEO, caching, SSR/SSG |
 | `testability-and-implementation.md` | Test strategy, MVP prioritization, iterations, traceability matrix |
+| `DOCUMENTATION_DEEP_DIVE.md` | Doc audit: duplications, contradictions, source-of-truth model |
 | `project-structure.md` | Full project directory structure |
 | `api/` | API specifications (TypeSpec, OpenAPI) |
 | `validation/` | Edge cases, error paths, and validation checklists |
@@ -26,7 +27,7 @@ This folder contains requirements, specifications, and API documentation for the
 ## Use Cases Summary
 
 ### Statistics
-- **Total Use Cases:** 493
+- **Total Use Cases:** 508
 - **Categories:** 51
 - **Actors:** 20+
 

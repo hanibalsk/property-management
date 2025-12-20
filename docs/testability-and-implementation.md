@@ -1049,7 +1049,7 @@ jobs:
 
 | Aspect | Details |
 |--------|---------|
-| **Test Cases** | ~1,100 mapped to 493 use cases |
+| **Test Cases** | ~1,100 mapped to 508 use cases |
 | **Testing Pyramid** | 75% Unit, 20% Integration, 5% E2E |
 | **MVP Scope** | ~180 use cases (40% of total) |
 | **Iterations to GA** | 12 iterations (~24 sprints) |
