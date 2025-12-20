@@ -128,6 +128,9 @@ rules:
     given: "$.paths[*].get[?(@.operationId && @.operationId.match(/^list/))]"
     severity: warn
     message: "List operations should include pagination parameters (page, limit)"
+    then:
+      field: parameters
+      function: truthy
 
   # ===== GDPR Compliance =====
 
@@ -136,6 +139,8 @@ rules:
     given: "$.components.schemas.*.properties[?(@ && (@.format == 'email' || @.description && @.description.match(/personal|private|ssn|birth/i)))]"
     severity: info
     message: "Consider marking this field with x-gdpr-protected: true"
+    then:
+      function: truthy
 
   # ===== Versioning =====
 
