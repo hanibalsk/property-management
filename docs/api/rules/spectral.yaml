@@ -171,7 +171,7 @@ rules:
       field: default
       function: pattern
       functionOptions:
-        notMatch: "(eval|function|=>"
+        notMatch: "(eval|function|=>)"
 
 overrides:
   - files:
