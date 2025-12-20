@@ -48,6 +48,11 @@ use state::AppState;
         routes::auth::list_sessions,
         routes::auth::revoke_session,
         routes::auth::revoke_all_sessions,
+        routes::admin::list_users,
+        routes::admin::get_user,
+        routes::admin::suspend_user,
+        routes::admin::reactivate_user,
+        routes::admin::delete_user,
     ),
     components(schemas(
         routes::health::HealthResponse,
@@ -71,6 +76,11 @@ use state::AppState;
         routes::auth::RevokeSessionRequest,
         routes::auth::RevokeSessionResponse,
         routes::auth::RevokeAllSessionsResponse,
+        routes::admin::AdminUserInfo,
+        routes::admin::ListUsersQuery,
+        routes::admin::ListUsersResponse,
+        routes::admin::UserActionRequest,
+        routes::admin::AdminActionResponse,
         common::errors::ErrorResponse,
         common::errors::ValidationError,
         common::tenant::TenantContext,
@@ -79,6 +89,7 @@ use state::AppState;
     tags(
         (name = "Health", description = "Health check endpoints"),
         (name = "Authentication", description = "User authentication and authorization"),
+        (name = "Admin", description = "Administrative user management"),
         (name = "Organizations", description = "Multi-tenant organization management"),
         (name = "Buildings", description = "Building and unit management"),
         (name = "Faults", description = "Fault reporting and tracking"),
@@ -140,6 +151,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(routes::health::health))
         // Auth routes
         .nest("/api/v1/auth", routes::auth::router())
+        // Admin routes
+        .nest("/api/v1/admin", routes::admin::router())
         // Organizations routes
         .nest("/api/v1/organizations", routes::organizations::router())
         // Buildings routes

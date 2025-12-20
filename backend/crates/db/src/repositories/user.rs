@@ -292,4 +292,84 @@ impl UserRepository {
 
         Ok(result.rows_affected())
     }
+
+    // ==================== Admin Operations ====================
+
+    /// List users with pagination and optional filters.
+    pub async fn list_users(
+        &self,
+        offset: i64,
+        limit: i64,
+        status_filter: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<(Vec<User>, i64), SqlxError> {
+        // Build dynamic query based on filters
+        let mut conditions = vec!["1=1".to_string()];
+        let mut param_idx = 1;
+
+        if status_filter.is_some() {
+            param_idx += 1;
+            conditions.push(format!("status = ${}", param_idx));
+        }
+
+        if search.is_some() {
+            param_idx += 1;
+            conditions.push(format!(
+                "(LOWER(email) LIKE '%' || LOWER(${}::text) || '%' OR LOWER(name) LIKE '%' || LOWER(${}::text) || '%')",
+                param_idx, param_idx
+            ));
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        // Count query
+        let count_query = format!(
+            "SELECT COUNT(*) FROM users WHERE {}",
+            where_clause
+        );
+
+        // Data query
+        let data_query = format!(
+            "SELECT * FROM users WHERE {} ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+            where_clause
+        );
+
+        // Execute count query
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query);
+        if let Some(status) = status_filter {
+            count_q = count_q.bind(status);
+        }
+        if let Some(s) = search {
+            count_q = count_q.bind(s);
+        }
+        let total = count_q.fetch_one(&self.pool).await?;
+
+        // Execute data query
+        let mut data_q = sqlx::query_as::<_, User>(&data_query)
+            .bind(limit)
+            .bind(offset);
+        if let Some(status) = status_filter {
+            data_q = data_q.bind(status);
+        }
+        if let Some(s) = search {
+            data_q = data_q.bind(s);
+        }
+        let users = data_q.fetch_all(&self.pool).await?;
+
+        Ok((users, total))
+    }
+
+    /// Find user by ID including deleted users (for admin).
+    pub async fn find_by_id_admin(&self, id: Uuid) -> Result<Option<User>, SqlxError> {
+        let user = sqlx::query_as::<_, User>(
+            r#"
+            SELECT * FROM users WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(user)
+    }
 }
