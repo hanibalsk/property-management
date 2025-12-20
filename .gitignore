@@ -12,6 +12,7 @@ Thumbs.db
 .agent/
 .agentvibes/
 .bmad/
+_bmad/
 .claude/
 .cursor/
 .mcp.json
