@@ -90,10 +90,10 @@ CREATE INDEX IF NOT EXISTS idx_data_export_expires_at
 -- ============================================================================
 
 -- Updated_at trigger
-CREATE TRIGGER set_data_export_updated_at
+CREATE TRIGGER update_data_export_requests_updated_at
     BEFORE UPDATE ON data_export_requests
     FOR EACH ROW
-    EXECUTE FUNCTION trigger_set_timestamp();
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
 -- ROW LEVEL SECURITY
