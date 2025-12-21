@@ -219,6 +219,21 @@ async fn test_cross_tenant_org_isolation() {
         .await
         .unwrap();
 
+    // Debug: check session variables
+    let is_admin: bool = sqlx::query_scalar("SELECT is_super_admin()")
+        .fetch_one(&db.pool)
+        .await
+        .unwrap();
+    let current_uid: Option<String> =
+        sqlx::query_scalar("SELECT current_setting('app.current_user_id', TRUE)")
+            .fetch_one(&db.pool)
+            .await
+            .unwrap();
+    println!(
+        "DEBUG: is_super_admin={}, current_user_id={:?}, expected user_a_id={}",
+        is_admin, current_uid, user_a_id
+    );
+
     // Debug: print what we're seeing
     println!(
         "DEBUG: User A sees {} members, org_a_id={}, org_b_id={}",
