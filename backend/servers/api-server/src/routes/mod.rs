@@ -5,6 +5,8 @@
 pub mod admin;
 pub mod auth;
 pub mod buildings;
+pub mod delegations;
+pub mod facilities;
 pub mod faults;
 pub mod health;
 pub mod integrations;

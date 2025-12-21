@@ -143,6 +143,9 @@ use state::AppState;
         (name = "Admin", description = "Administrative user management"),
         (name = "Organizations", description = "Multi-tenant organization management"),
         (name = "Buildings", description = "Building and unit management"),
+        (name = "Delegations", description = "Ownership delegation management"),
+        (name = "Facilities", description = "Common area and facility management"),
+        (name = "Facility Bookings", description = "Facility booking and reservation management"),
         (name = "Faults", description = "Fault reporting and tracking"),
         (name = "Voting", description = "Voting and polls"),
         (name = "Rentals", description = "Short-term rental integrations (Airbnb, Booking)"),
@@ -207,6 +210,10 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/organizations", routes::organizations::router())
         // Buildings routes
         .nest("/api/v1/buildings", routes::buildings::router())
+        // Delegations routes (Epic 3, Story 3.4)
+        .nest("/api/v1/delegations", routes::delegations::router())
+        // Facilities routes (Epic 3, Story 3.7)
+        .nest("/api/v1", routes::facilities::router())
         // Faults routes
         .nest("/api/v1/faults", routes::faults::router())
         // Voting routes
