@@ -12,6 +12,7 @@ common = { workspace = true }
 api-core = { workspace = true }
 db = { workspace = true }
 integrations = { workspace = true }
+sqlx = { workspace = true }
 
 axum = { workspace = true }
 axum-extra = { workspace = true }

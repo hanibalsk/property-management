@@ -3,6 +3,7 @@
 pub mod building;
 pub mod delegation;
 pub mod facility;
+pub mod fault;
 pub mod organization;
 pub mod organization_member;
 pub mod password_reset;
@@ -26,6 +27,13 @@ pub use facility::{
     booking_status, facility_type, ApproveBooking, AvailableSlot, BookingWithDetails,
     CancelBooking, CreateFacility, CreateFacilityBooking, Facility, FacilityBooking,
     FacilitySummary, RejectBooking, UpdateFacility, UpdateFacilityBooking,
+};
+pub use fault::{
+    fault_category, fault_priority, fault_status, timeline_action, AddFaultComment, AddWorkNote,
+    AiSuggestion, AssignFault, CategoryCount, ConfirmFault, CreateFault, CreateFaultAttachment,
+    CreateFaultTimelineEntry, Fault, FaultAttachment, FaultListQuery, FaultStatistics, FaultSummary,
+    FaultTimelineEntry, FaultTimelineEntryWithUser, FaultWithDetails, PriorityCount, ReopenFault,
+    ResolveFault, StatusCount, TriageFault, UpdateFault, UpdateFaultStatus,
 };
 pub use organization::{
     CreateOrganization, Organization, OrganizationStatus, OrganizationSummary, UpdateOrganization,

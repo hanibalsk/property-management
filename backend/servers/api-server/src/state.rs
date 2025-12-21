@@ -3,9 +3,10 @@
 use crate::services::{AuthService, EmailService, JwtService};
 use db::{
     repositories::{
-        BuildingRepository, DelegationRepository, FacilityRepository, OrganizationMemberRepository,
-        OrganizationRepository, PasswordResetRepository, PersonMonthRepository, RoleRepository,
-        SessionRepository, UnitRepository, UnitResidentRepository, UserRepository,
+        BuildingRepository, DelegationRepository, FacilityRepository, FaultRepository,
+        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
+        PersonMonthRepository, RoleRepository, SessionRepository, UnitRepository,
+        UnitResidentRepository, UserRepository,
     },
     DbPool,
 };
@@ -26,6 +27,7 @@ pub struct AppState {
     pub delegation_repo: DelegationRepository,
     pub person_month_repo: PersonMonthRepository,
     pub facility_repo: FacilityRepository,
+    pub fault_repo: FaultRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -46,6 +48,7 @@ impl AppState {
         let delegation_repo = DelegationRepository::new(db.clone());
         let person_month_repo = PersonMonthRepository::new(db.clone());
         let facility_repo = FacilityRepository::new(db.clone());
+        let fault_repo = FaultRepository::new(db.clone());
         let auth_service = AuthService::new();
 
         Self {
@@ -62,6 +65,7 @@ impl AppState {
             delegation_repo,
             person_month_repo,
             facility_repo,
+            fault_repo,
             auth_service,
             email_service,
             jwt_service,
