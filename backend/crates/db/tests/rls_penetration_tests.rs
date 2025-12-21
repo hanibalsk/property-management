@@ -9,7 +9,7 @@
 //! 3. Context manipulation tests - Ensure session variables cannot be spoofed
 //! 4. Null context tests - Verify behavior when no tenant context is set
 
-use sqlx::{postgres::PgPoolOptions, PgPool, Row};
+use sqlx::{postgres::PgPoolOptions, Acquire, Executor, PgPool, Row};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -208,31 +208,39 @@ async fn test_cross_tenant_org_isolation() {
         .await
         .unwrap();
 
+    // Acquire a dedicated connection for the RLS test
+    // Session variables only persist on the same connection
+    let mut conn = db.pool.acquire().await.unwrap();
+
     // Test: User A sets their context to Org A
-    db.set_request_context(Some(org_a_id), Some(user_a_id), false)
+    sqlx::query("SELECT set_request_context($1, $2, $3)")
+        .bind(org_a_id)
+        .bind(user_a_id)
+        .bind(false)
+        .execute(&mut *conn)
         .await
         .unwrap();
 
-    // User A should only see Org A members
-    let members: Vec<_> = sqlx::query("SELECT * FROM organization_members")
-        .fetch_all(&db.pool)
-        .await
-        .unwrap();
-
-    // Debug: check session variables
+    // Debug: check session variables on the SAME connection
     let is_admin: bool = sqlx::query_scalar("SELECT is_super_admin()")
-        .fetch_one(&db.pool)
+        .fetch_one(&mut *conn)
         .await
         .unwrap();
     let current_uid: Option<String> =
         sqlx::query_scalar("SELECT current_setting('app.current_user_id', TRUE)")
-            .fetch_one(&db.pool)
+            .fetch_one(&mut *conn)
             .await
             .unwrap();
     println!(
         "DEBUG: is_super_admin={}, current_user_id={:?}, expected user_a_id={}",
         is_admin, current_uid, user_a_id
     );
+
+    // User A should only see Org A members (on the same connection)
+    let members: Vec<_> = sqlx::query("SELECT * FROM organization_members")
+        .fetch_all(&mut *conn)
+        .await
+        .unwrap();
 
     // Debug: print what we're seeing
     println!(
@@ -259,12 +267,16 @@ async fn test_cross_tenant_org_isolation() {
 
     // Test: User A tries to access Org B by setting wrong context
     // This should fail because user is not member of Org B
-    db.set_request_context(Some(org_b_id), Some(user_a_id), false)
+    sqlx::query("SELECT set_request_context($1, $2, $3)")
+        .bind(org_b_id)
+        .bind(user_a_id)
+        .bind(false)
+        .execute(&mut *conn)
         .await
         .unwrap();
 
     let org_b_members: Vec<_> = sqlx::query("SELECT * FROM organization_members")
-        .fetch_all(&db.pool)
+        .fetch_all(&mut *conn)
         .await
         .unwrap();
 
@@ -279,6 +291,7 @@ async fn test_cross_tenant_org_isolation() {
     );
 
     // Cleanup
+    drop(conn);
     db.clear_context().await.unwrap();
     db.cleanup().await.unwrap();
 }
@@ -307,14 +320,21 @@ async fn test_cross_tenant_role_isolation() {
         .await
         .unwrap();
 
+    // Acquire a dedicated connection for the RLS test
+    let mut conn = db.pool.acquire().await.unwrap();
+
     // Set context as User A in Org A
-    db.set_request_context(Some(org_a_id), Some(user_a_id), false)
+    sqlx::query("SELECT set_request_context($1, $2, $3)")
+        .bind(org_a_id)
+        .bind(user_a_id)
+        .bind(false)
+        .execute(&mut *conn)
         .await
         .unwrap();
 
     // User A should only see Org A roles
     let roles: Vec<_> = sqlx::query("SELECT * FROM roles")
-        .fetch_all(&db.pool)
+        .fetch_all(&mut *conn)
         .await
         .unwrap();
 
@@ -327,13 +347,17 @@ async fn test_cross_tenant_role_isolation() {
     );
 
     // Verify Org B roles exist but are not visible
-    db.set_request_context(Some(org_b_id), Some(user_a_id), false)
+    sqlx::query("SELECT set_request_context($1, $2, $3)")
+        .bind(org_b_id)
+        .bind(user_a_id)
+        .bind(false)
+        .execute(&mut *conn)
         .await
         .unwrap();
 
     let org_b_roles: Vec<_> = sqlx::query("SELECT * FROM roles WHERE organization_id = $1")
         .bind(org_b_id)
-        .fetch_all(&db.pool)
+        .fetch_all(&mut *conn)
         .await
         .unwrap();
 
@@ -343,6 +367,7 @@ async fn test_cross_tenant_role_isolation() {
         "Non-member should not see org roles"
     );
 
+    drop(conn);
     db.clear_context().await.unwrap();
     db.cleanup().await.unwrap();
 }
