@@ -262,12 +262,11 @@ async fn test_cross_tenant_org_isolation() {
     );
 
     // Check if role has BYPASSRLS
-    let has_bypassrls: bool = sqlx::query_scalar(
-        "SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user",
-    )
-    .fetch_one(&mut *conn)
-    .await
-    .unwrap();
+    let has_bypassrls: bool =
+        sqlx::query_scalar("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
     println!("DEBUG: has_bypassrls={}", has_bypassrls);
 
     // List all policies on the table with their expressions
