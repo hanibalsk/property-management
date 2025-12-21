@@ -64,11 +64,11 @@ BEGIN
         ALTER TABLE user_blocks
             ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
 
-        -- Update existing blocks with org from blocker
+        -- Update existing blocks with org from blocker (via organization_members)
         UPDATE user_blocks ub
-        SET organization_id = u.organization_id
-        FROM users u
-        WHERE ub.blocker_id = u.id AND ub.organization_id IS NULL;
+        SET organization_id = om.organization_id
+        FROM organization_members om
+        WHERE ub.blocker_id = om.user_id AND ub.organization_id IS NULL;
 
         -- Make it required going forward
         ALTER TABLE user_blocks
