@@ -11,6 +11,7 @@ pub mod facility;
 pub mod fault;
 pub mod messaging;
 pub mod notification_preference;
+pub mod oauth;
 pub mod organization;
 pub mod organization_member;
 pub mod password_reset;
@@ -80,6 +81,14 @@ pub use notification_preference::{
     DisableAllWarningResponse, NotificationChannel, NotificationPreference,
     NotificationPreferenceResponse, NotificationPreferencesResponse,
     UpdateNotificationPreferenceRequest,
+};
+pub use oauth::{
+    AuthorizeRequest, ConsentPageData, CreateAccessToken, CreateAuthorizationCode,
+    CreateOAuthClient, CreateRefreshToken as CreateOAuthRefreshToken, CreateUserOAuthGrant,
+    IntrospectionResponse, OAuthAccessToken, OAuthAuthorizationCode, OAuthClient,
+    OAuthClientSummary, OAuthError, OAuthRefreshToken, OAuthScope, RegisterClientRequest,
+    RegisterClientResponse, RevokeTokenRequest, ScopeDisplay, TokenRequest, TokenResponse,
+    UpdateOAuthClient, UserGrantWithClient, UserGrantWithClientRow, UserOAuthGrant,
 };
 pub use organization::{
     CreateOrganization, Organization, OrganizationStatus, OrganizationSummary, UpdateOrganization,

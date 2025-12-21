@@ -48,6 +48,12 @@ pub enum AuditAction {
     ResourceUpdated,
     ResourceDeleted,
     ResourceAccessed,
+    // OAuth actions (Epic 10A)
+    OAuthAuthorize,
+    OAuthRevoke,
+    OAuthClientCreate,
+    OAuthClientRevoke,
+    OAuthClientSecretRegenerate,
 }
 
 /// An audit log entry.

@@ -1,0 +1,794 @@
+//! OAuth 2.0 Provider service (Epic 10A).
+//!
+//! This module implements OAuth 2.0 Authorization Server functionality
+//! with PKCE support (RFC 7636).
+
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use chrono::{Duration, Utc};
+use db::models::oauth::{
+    ConsentPageData, CreateAccessToken, CreateAuthorizationCode, CreateOAuthClient,
+    CreateRefreshToken, CreateUserOAuthGrant, IntrospectionResponse, OAuthClient,
+    OAuthClientSummary, OAuthError, OAuthScope, RegisterClientRequest, RegisterClientResponse,
+    ScopeDisplay, TokenRequest, TokenResponse, UpdateOAuthClient, UserGrantWithClient,
+};
+use db::repositories::OAuthRepository;
+use rand::RngCore;
+use sha2::{Digest, Sha256};
+use thiserror::Error;
+use uuid::Uuid;
+
+use super::auth::AuthService;
+
+/// OAuth service errors.
+#[derive(Debug, Error)]
+pub enum OAuthServiceError {
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
+
+    #[error("Invalid client: {0}")]
+    InvalidClient(String),
+
+    #[error("Invalid redirect URI")]
+    InvalidRedirectUri,
+
+    #[error("Invalid scope: {0}")]
+    InvalidScope(String),
+
+    #[error("Invalid grant")]
+    InvalidGrant,
+
+    #[error("Invalid code verifier")]
+    InvalidCodeVerifier,
+
+    #[error("Authorization code expired")]
+    CodeExpired,
+
+    #[error("Authorization code already used")]
+    CodeAlreadyUsed,
+
+    #[error("Token expired")]
+    TokenExpired,
+
+    #[error("Token revoked")]
+    TokenRevoked,
+
+    #[error("Token reuse detected - security breach")]
+    TokenReuseDetected,
+
+    #[error("Unsupported grant type: {0}")]
+    UnsupportedGrantType(String),
+
+    #[error("Client not found")]
+    ClientNotFound,
+
+    #[error("Database error: {0}")]
+    DatabaseError(#[from] sqlx::Error),
+
+    #[error("Internal error")]
+    InternalError,
+}
+
+impl From<OAuthServiceError> for OAuthError {
+    fn from(e: OAuthServiceError) -> Self {
+        match e {
+            OAuthServiceError::InvalidRequest(msg) => OAuthError::invalid_request(&msg),
+            OAuthServiceError::InvalidClient(msg) => OAuthError::invalid_client(&msg),
+            OAuthServiceError::InvalidRedirectUri => {
+                OAuthError::invalid_request("Invalid redirect URI")
+            }
+            OAuthServiceError::InvalidScope(scope) => {
+                OAuthError::invalid_scope(&format!("Invalid scope: {}", scope))
+            }
+            OAuthServiceError::InvalidGrant => {
+                OAuthError::invalid_grant("Invalid authorization code")
+            }
+            OAuthServiceError::InvalidCodeVerifier => {
+                OAuthError::invalid_grant("Invalid code verifier")
+            }
+            OAuthServiceError::CodeExpired => {
+                OAuthError::invalid_grant("Authorization code expired")
+            }
+            OAuthServiceError::CodeAlreadyUsed => {
+                OAuthError::invalid_grant("Authorization code already used")
+            }
+            OAuthServiceError::TokenExpired => OAuthError::invalid_grant("Token expired"),
+            OAuthServiceError::TokenRevoked => OAuthError::invalid_grant("Token revoked"),
+            OAuthServiceError::TokenReuseDetected => {
+                OAuthError::invalid_grant("Token reuse detected")
+            }
+            OAuthServiceError::UnsupportedGrantType(gt) => {
+                OAuthError::invalid_request(&format!("Unsupported grant type: {}", gt))
+            }
+            OAuthServiceError::ClientNotFound => OAuthError::invalid_client("Client not found"),
+            OAuthServiceError::DatabaseError(_) => OAuthError::server_error("Database error"),
+            OAuthServiceError::InternalError => OAuthError::server_error("Internal error"),
+        }
+    }
+}
+
+/// Configuration for OAuth service.
+#[derive(Debug, Clone)]
+pub struct OAuthConfig {
+    /// Authorization code expiration in seconds (default: 600 = 10 minutes).
+    pub code_expires_secs: i64,
+    /// Access token expiration in seconds (default: 900 = 15 minutes).
+    pub access_token_expires_secs: i64,
+    /// Refresh token expiration in seconds (default: 604800 = 7 days).
+    pub refresh_token_expires_secs: i64,
+}
+
+impl Default for OAuthConfig {
+    fn default() -> Self {
+        Self {
+            code_expires_secs: 600,             // 10 minutes
+            access_token_expires_secs: 900,     // 15 minutes
+            refresh_token_expires_secs: 604800, // 7 days
+        }
+    }
+}
+
+/// OAuth 2.0 Provider service.
+#[derive(Clone)]
+pub struct OAuthService {
+    repo: OAuthRepository,
+    auth_service: AuthService,
+    config: OAuthConfig,
+}
+
+impl OAuthService {
+    /// Create a new OAuthService.
+    pub fn new(repo: OAuthRepository, auth_service: AuthService) -> Self {
+        Self {
+            repo,
+            auth_service,
+            config: OAuthConfig::default(),
+        }
+    }
+
+    /// Create a new OAuthService with custom config.
+    pub fn with_config(
+        repo: OAuthRepository,
+        auth_service: AuthService,
+        config: OAuthConfig,
+    ) -> Self {
+        Self {
+            repo,
+            auth_service,
+            config,
+        }
+    }
+
+    // ==================== Client Management ====================
+
+    /// Register a new OAuth client.
+    pub async fn register_client(
+        &self,
+        request: RegisterClientRequest,
+    ) -> Result<RegisterClientResponse, OAuthServiceError> {
+        // Validate scopes
+        for scope in &request.scopes {
+            if OAuthScope::parse(scope).is_none() {
+                return Err(OAuthServiceError::InvalidScope(scope.clone()));
+            }
+        }
+
+        // Generate client_id and client_secret
+        let client_id = self.generate_client_id();
+        let client_secret = self.generate_client_secret();
+        let client_secret_hash = self
+            .auth_service
+            .hash_password(&client_secret)
+            .map_err(|_| OAuthServiceError::InternalError)?;
+
+        let data = CreateOAuthClient {
+            client_id: client_id.clone(),
+            client_secret_hash,
+            name: request.name.clone(),
+            description: request.description.clone(),
+            redirect_uris: request.redirect_uris.clone(),
+            scopes: request.scopes.clone(),
+            is_confidential: request.is_confidential.unwrap_or(true),
+            rotate_refresh_tokens: request.rotate_refresh_tokens.unwrap_or(true),
+        };
+
+        let client = self.repo.create_client(data).await?;
+
+        Ok(RegisterClientResponse {
+            id: client.id,
+            client_id,
+            client_secret, // Plaintext, shown only once
+            name: client.name,
+            redirect_uris: client.redirect_uris.0,
+            scopes: client.scopes.0,
+            created_at: client.created_at,
+        })
+    }
+
+    /// Get client by client_id for validation.
+    pub async fn get_client(
+        &self,
+        client_id: &str,
+    ) -> Result<Option<OAuthClient>, OAuthServiceError> {
+        Ok(self.repo.find_active_client_by_client_id(client_id).await?)
+    }
+
+    /// List all OAuth clients.
+    pub async fn list_clients(&self) -> Result<Vec<OAuthClientSummary>, OAuthServiceError> {
+        let clients = self.repo.list_clients().await?;
+        Ok(clients.into_iter().map(OAuthClientSummary::from).collect())
+    }
+
+    /// Update an OAuth client.
+    pub async fn update_client(
+        &self,
+        id: Uuid,
+        data: UpdateOAuthClient,
+    ) -> Result<Option<OAuthClientSummary>, OAuthServiceError> {
+        // Validate scopes if provided
+        if let Some(ref scopes) = data.scopes {
+            for scope in scopes {
+                if OAuthScope::parse(scope).is_none() {
+                    return Err(OAuthServiceError::InvalidScope(scope.clone()));
+                }
+            }
+        }
+
+        let client = self.repo.update_client(id, data).await?;
+        Ok(client.map(OAuthClientSummary::from))
+    }
+
+    /// Regenerate client secret.
+    pub async fn regenerate_client_secret(&self, id: Uuid) -> Result<String, OAuthServiceError> {
+        let client_secret = self.generate_client_secret();
+        let client_secret_hash = self
+            .auth_service
+            .hash_password(&client_secret)
+            .map_err(|_| OAuthServiceError::InternalError)?;
+
+        let updated = self
+            .repo
+            .update_client_secret(id, &client_secret_hash)
+            .await?;
+
+        if !updated {
+            return Err(OAuthServiceError::ClientNotFound);
+        }
+
+        Ok(client_secret)
+    }
+
+    /// Revoke an OAuth client.
+    pub async fn revoke_client(&self, id: Uuid) -> Result<bool, OAuthServiceError> {
+        Ok(self.repo.revoke_client(id).await?)
+    }
+
+    /// Validate client credentials.
+    pub async fn validate_client_credentials(
+        &self,
+        client_id: &str,
+        client_secret: &str,
+    ) -> Result<OAuthClient, OAuthServiceError> {
+        let client = self
+            .repo
+            .find_active_client_by_client_id(client_id)
+            .await?
+            .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
+
+        let valid = self
+            .auth_service
+            .verify_password(client_secret, &client.client_secret_hash)
+            .map_err(|_| OAuthServiceError::InternalError)?;
+
+        if !valid {
+            return Err(OAuthServiceError::InvalidClient(
+                "Invalid client secret".to_string(),
+            ));
+        }
+
+        Ok(client)
+    }
+
+    // ==================== Authorization Flow ====================
+
+    /// Validate authorization request and return consent page data.
+    pub async fn validate_authorize_request(
+        &self,
+        client_id: &str,
+        redirect_uri: &str,
+        requested_scopes: &[String],
+        state: Option<String>,
+        code_challenge: Option<&str>,
+    ) -> Result<ConsentPageData, OAuthServiceError> {
+        // Find and validate client
+        let client = self
+            .repo
+            .find_active_client_by_client_id(client_id)
+            .await?
+            .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
+
+        // PKCE is required for public (non-confidential) clients per RFC 7636 / OAuth 2.1
+        if !client.is_confidential && code_challenge.is_none() {
+            return Err(OAuthServiceError::InvalidRequest(
+                "PKCE code_challenge required for public clients".to_string(),
+            ));
+        }
+
+        // Validate redirect URI
+        if !client.is_redirect_uri_allowed(redirect_uri) {
+            return Err(OAuthServiceError::InvalidRedirectUri);
+        }
+
+        // Validate scopes
+        let scopes = if requested_scopes.is_empty() {
+            vec!["profile".to_string()]
+        } else {
+            for scope in requested_scopes {
+                if !client.is_scope_allowed(scope) {
+                    return Err(OAuthServiceError::InvalidScope(scope.clone()));
+                }
+            }
+            requested_scopes.to_vec()
+        };
+
+        // Build scope display info
+        let scope_displays: Vec<ScopeDisplay> = scopes
+            .iter()
+            .filter_map(|s| OAuthScope::parse(s))
+            .map(|s| ScopeDisplay {
+                name: s.as_str().to_string(),
+                description: s.description().to_string(),
+            })
+            .collect();
+
+        Ok(ConsentPageData {
+            client_id: client.client_id,
+            client_name: client.name,
+            client_description: client.description,
+            scopes: scope_displays,
+            redirect_uri: redirect_uri.to_string(),
+            state,
+        })
+    }
+
+    /// Create authorization code after user consent.
+    pub async fn create_authorization_code(
+        &self,
+        user_id: Uuid,
+        client_id: &str,
+        redirect_uri: &str,
+        scopes: &[String],
+        code_challenge: Option<String>,
+        code_challenge_method: Option<String>,
+    ) -> Result<String, OAuthServiceError> {
+        // Generate authorization code
+        let code = self.generate_secure_token();
+        let code_hash = self.hash_token(&code);
+
+        let expires_at = Utc::now() + Duration::seconds(self.config.code_expires_secs);
+
+        let data = CreateAuthorizationCode {
+            user_id,
+            client_id: client_id.to_string(),
+            code_hash,
+            scopes: scopes.to_vec(),
+            redirect_uri: redirect_uri.to_string(),
+            code_challenge,
+            code_challenge_method,
+            expires_at,
+        };
+
+        self.repo.create_authorization_code(data).await?;
+
+        // Create or update user grant
+        self.repo
+            .upsert_user_grant(CreateUserOAuthGrant {
+                user_id,
+                client_id: client_id.to_string(),
+                scopes: scopes.to_vec(),
+            })
+            .await?;
+
+        Ok(code)
+    }
+
+    /// Exchange authorization code for tokens.
+    pub async fn exchange_code_for_tokens(
+        &self,
+        request: &TokenRequest,
+    ) -> Result<TokenResponse, OAuthServiceError> {
+        let code = request
+            .code
+            .as_ref()
+            .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
+        let redirect_uri = request
+            .redirect_uri
+            .as_ref()
+            .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
+
+        // Atomically find and consume authorization code (prevents race condition)
+        let code_hash = self.hash_token(code);
+        let auth_code = self
+            .repo
+            .find_and_consume_authorization_code(&code_hash)
+            .await?
+            .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
+
+        // Validate redirect URI matches
+        if auth_code.redirect_uri != *redirect_uri {
+            return Err(OAuthServiceError::InvalidRedirectUri);
+        }
+
+        // Validate PKCE if code challenge was provided
+        if let Some(ref challenge) = auth_code.code_challenge {
+            let verifier = request
+                .code_verifier
+                .as_ref()
+                .ok_or_else(|| OAuthServiceError::InvalidCodeVerifier)?;
+
+            if !self.verify_pkce(
+                verifier,
+                challenge,
+                auth_code.code_challenge_method.as_deref(),
+            ) {
+                return Err(OAuthServiceError::InvalidCodeVerifier);
+            }
+        }
+
+        // Get client for rotation settings
+        let client = self
+            .repo
+            .find_active_client_by_client_id(&auth_code.client_id)
+            .await?
+            .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
+
+        // Generate tokens
+        let (access_token, refresh_token) = self
+            .issue_tokens(
+                auth_code.user_id,
+                &auth_code.client_id,
+                &auth_code.scopes.0,
+                None, // New token family
+            )
+            .await?;
+
+        Ok(TokenResponse {
+            access_token,
+            token_type: "Bearer".to_string(),
+            expires_in: self.config.access_token_expires_secs,
+            refresh_token: if client.is_confidential {
+                Some(refresh_token)
+            } else {
+                None
+            },
+            scope: auth_code.scopes.0.join(" "),
+        })
+    }
+
+    /// Refresh access token.
+    pub async fn refresh_tokens(
+        &self,
+        refresh_token_str: &str,
+        client_id: &str,
+    ) -> Result<TokenResponse, OAuthServiceError> {
+        // Find refresh token
+        let token_hash = self.hash_token(refresh_token_str);
+        let refresh_token = self
+            .repo
+            .find_refresh_token_by_hash(&token_hash)
+            .await?
+            .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
+
+        // Validate token belongs to client
+        if refresh_token.client_id != client_id {
+            return Err(OAuthServiceError::InvalidClient(
+                "Token doesn't belong to client".to_string(),
+            ));
+        }
+
+        // Check if token was already revoked (reuse detection)
+        if refresh_token.is_revoked() {
+            // Security breach! Revoke entire token family
+            self.repo
+                .revoke_token_family(refresh_token.family_id)
+                .await?;
+            return Err(OAuthServiceError::TokenReuseDetected);
+        }
+
+        // Check expiration
+        if refresh_token.is_expired() {
+            return Err(OAuthServiceError::TokenExpired);
+        }
+
+        // Get client for rotation settings
+        let client = self
+            .repo
+            .find_active_client_by_client_id(client_id)
+            .await?
+            .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
+
+        // Revoke old refresh token
+        self.repo.revoke_refresh_token(refresh_token.id).await?;
+
+        // Issue new tokens (with same family for rotation detection)
+        let family_id = if client.rotate_refresh_tokens {
+            Some(refresh_token.family_id)
+        } else {
+            None
+        };
+
+        let (access_token, new_refresh_token) = self
+            .issue_tokens(
+                refresh_token.user_id,
+                client_id,
+                &refresh_token.scopes.0,
+                family_id,
+            )
+            .await?;
+
+        Ok(TokenResponse {
+            access_token,
+            token_type: "Bearer".to_string(),
+            expires_in: self.config.access_token_expires_secs,
+            refresh_token: Some(new_refresh_token),
+            scope: refresh_token.scopes.0.join(" "),
+        })
+    }
+
+    // ==================== Token Operations ====================
+
+    /// Validate and introspect an access token.
+    pub async fn introspect_token(
+        &self,
+        token: &str,
+    ) -> Result<IntrospectionResponse, OAuthServiceError> {
+        let token_hash = self.hash_token(token);
+
+        // Try access token first
+        if let Some(access_token) = self.repo.find_access_token_by_hash(&token_hash).await? {
+            if !access_token.is_valid() {
+                return Ok(IntrospectionResponse::inactive());
+            }
+
+            return Ok(IntrospectionResponse {
+                active: true,
+                scope: Some(access_token.scopes.0.join(" ")),
+                client_id: Some(access_token.client_id),
+                username: None, // Would need user lookup
+                token_type: Some("access_token".to_string()),
+                exp: Some(access_token.expires_at.timestamp()),
+                iat: Some(access_token.created_at.timestamp()),
+                sub: Some(access_token.user_id.to_string()),
+            });
+        }
+
+        // Try refresh token
+        if let Some(refresh_token) = self.repo.find_refresh_token_by_hash(&token_hash).await? {
+            if !refresh_token.is_valid() {
+                return Ok(IntrospectionResponse::inactive());
+            }
+
+            return Ok(IntrospectionResponse {
+                active: true,
+                scope: Some(refresh_token.scopes.0.join(" ")),
+                client_id: Some(refresh_token.client_id),
+                username: None,
+                token_type: Some("refresh_token".to_string()),
+                exp: Some(refresh_token.expires_at.timestamp()),
+                iat: Some(refresh_token.created_at.timestamp()),
+                sub: Some(refresh_token.user_id.to_string()),
+            });
+        }
+
+        Ok(IntrospectionResponse::inactive())
+    }
+
+    /// Revoke a token.
+    pub async fn revoke_token(
+        &self,
+        token: &str,
+        _token_type_hint: Option<&str>,
+    ) -> Result<(), OAuthServiceError> {
+        let token_hash = self.hash_token(token);
+
+        // Try to revoke as access token
+        if self.repo.revoke_access_token_by_hash(&token_hash).await? {
+            return Ok(());
+        }
+
+        // Try to revoke as refresh token
+        if self.repo.revoke_refresh_token_by_hash(&token_hash).await? {
+            return Ok(());
+        }
+
+        // Token not found is still a success per RFC 7009
+        Ok(())
+    }
+
+    // ==================== User Grants ====================
+
+    /// List user's authorized applications.
+    pub async fn list_user_grants(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<UserGrantWithClient>, OAuthServiceError> {
+        let grants = self.repo.list_user_grants(user_id).await?;
+        Ok(grants.into_iter().map(UserGrantWithClient::from).collect())
+    }
+
+    /// Revoke user's authorization for a client.
+    pub async fn revoke_user_grant(
+        &self,
+        user_id: Uuid,
+        client_id: &str,
+    ) -> Result<bool, OAuthServiceError> {
+        Ok(self.repo.revoke_user_grant(user_id, client_id).await?)
+    }
+
+    // ==================== Cleanup ====================
+
+    /// Cleanup expired OAuth data.
+    pub async fn cleanup_expired(&self) -> Result<u64, OAuthServiceError> {
+        Ok(self.repo.cleanup_expired().await?)
+    }
+
+    // ==================== Private Helpers ====================
+
+    /// Issue access and refresh tokens.
+    async fn issue_tokens(
+        &self,
+        user_id: Uuid,
+        client_id: &str,
+        scopes: &[String],
+        family_id: Option<Uuid>,
+    ) -> Result<(String, String), OAuthServiceError> {
+        let access_token = self.generate_secure_token();
+        let refresh_token = self.generate_secure_token();
+
+        let access_token_hash = self.hash_token(&access_token);
+        let refresh_token_hash = self.hash_token(&refresh_token);
+
+        let access_expires = Utc::now() + Duration::seconds(self.config.access_token_expires_secs);
+        let refresh_expires =
+            Utc::now() + Duration::seconds(self.config.refresh_token_expires_secs);
+
+        // Create access token
+        self.repo
+            .create_access_token(CreateAccessToken {
+                user_id,
+                client_id: client_id.to_string(),
+                token_hash: access_token_hash,
+                scopes: scopes.to_vec(),
+                expires_at: access_expires,
+            })
+            .await?;
+
+        // Create refresh token
+        self.repo
+            .create_refresh_token(CreateRefreshToken {
+                user_id,
+                client_id: client_id.to_string(),
+                token_hash: refresh_token_hash,
+                scopes: scopes.to_vec(),
+                family_id: family_id.unwrap_or_else(Uuid::new_v4),
+                expires_at: refresh_expires,
+            })
+            .await?;
+
+        Ok((access_token, refresh_token))
+    }
+
+    /// Generate a 16-byte client_id (base64url encoded).
+    fn generate_client_id(&self) -> String {
+        let mut bytes = [0u8; 16];
+        rand::thread_rng().fill_bytes(&mut bytes);
+        URL_SAFE_NO_PAD.encode(bytes)
+    }
+
+    /// Generate a 32-byte client_secret (base64url encoded).
+    fn generate_client_secret(&self) -> String {
+        let mut bytes = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut bytes);
+        URL_SAFE_NO_PAD.encode(bytes)
+    }
+
+    /// Generate a 32-byte secure token (base64url encoded).
+    fn generate_secure_token(&self) -> String {
+        let mut bytes = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut bytes);
+        URL_SAFE_NO_PAD.encode(bytes)
+    }
+
+    /// Hash a token using SHA-256.
+    fn hash_token(&self, token: &str) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(token.as_bytes());
+        hex::encode(hasher.finalize())
+    }
+
+    /// Verify PKCE code challenge.
+    /// Only S256 method is supported per OAuth 2.1 recommendations.
+    fn verify_pkce(&self, verifier: &str, challenge: &str, method: Option<&str>) -> bool {
+        // Only S256 is supported - plain method is deprecated per OAuth 2.1
+        match method.unwrap_or("S256") {
+            "S256" => {
+                let mut hasher = Sha256::new();
+                hasher.update(verifier.as_bytes());
+                let computed = URL_SAFE_NO_PAD.encode(hasher.finalize());
+                computed == challenge
+            }
+            // "plain" is intentionally not supported as it defeats the purpose of PKCE
+            _ => false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test PKCE verification directly without needing service.
+    /// Only S256 is supported.
+    fn verify_pkce_helper(verifier: &str, challenge: &str, method: Option<&str>) -> bool {
+        match method.unwrap_or("S256") {
+            "S256" => {
+                let mut hasher = Sha256::new();
+                hasher.update(verifier.as_bytes());
+                let computed = URL_SAFE_NO_PAD.encode(hasher.finalize());
+                computed == challenge
+            }
+            // plain is not supported
+            _ => false,
+        }
+    }
+
+    /// Generate secure token for testing.
+    fn generate_test_token() -> String {
+        let mut bytes = [0u8; 32];
+        rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut bytes);
+        URL_SAFE_NO_PAD.encode(bytes)
+    }
+
+    /// Generate client ID for testing.
+    fn generate_test_client_id() -> String {
+        let mut bytes = [0u8; 16];
+        rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut bytes);
+        URL_SAFE_NO_PAD.encode(bytes)
+    }
+
+    #[test]
+    fn test_pkce_verification() {
+        // Test S256 method
+        let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+
+        // Generate expected challenge from verifier
+        let mut hasher = Sha256::new();
+        hasher.update(verifier.as_bytes());
+        let expected = URL_SAFE_NO_PAD.encode(hasher.finalize());
+
+        assert!(verify_pkce_helper(verifier, &expected, Some("S256")));
+        assert!(!verify_pkce_helper("wrong", &expected, Some("S256")));
+
+        // plain method is not supported (returns false)
+        assert!(!verify_pkce_helper("test", "test", Some("plain")));
+    }
+
+    #[test]
+    fn test_token_generation() {
+        let token1 = generate_test_token();
+        let token2 = generate_test_token();
+
+        // Should be 43 chars (32 bytes base64url encoded without padding)
+        assert_eq!(token1.len(), 43);
+        assert_ne!(token1, token2);
+    }
+
+    #[test]
+    fn test_client_id_generation() {
+        let id1 = generate_test_client_id();
+        let id2 = generate_test_client_id();
+
+        // Should be 22 chars (16 bytes base64url encoded without padding)
+        assert_eq!(id1.len(), 22);
+        assert_ne!(id1, id2);
+    }
+}

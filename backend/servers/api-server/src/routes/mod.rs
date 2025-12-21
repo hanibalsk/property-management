@@ -20,6 +20,7 @@ pub mod messaging;
 pub mod mfa;
 pub mod neighbors;
 pub mod notification_preferences;
+pub mod oauth;
 pub mod organizations;
 pub mod rentals;
 pub mod voting;

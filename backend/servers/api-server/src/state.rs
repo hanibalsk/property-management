@@ -1,14 +1,15 @@
 //! Application state.
 
-use crate::services::{AuthService, EmailService, JwtService, TotpService};
+use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpService};
 use db::{
     repositories::{
         AnnouncementRepository, AuditLogRepository, BuildingRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
         DocumentRepository, FacilityRepository, FaultRepository, NotificationPreferenceRepository,
-        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
-        PersonMonthRepository, RoleRepository, SessionRepository, TwoFactorAuthRepository,
-        UnitRepository, UnitResidentRepository, UserRepository, VoteRepository,
+        OAuthRepository, OrganizationMemberRepository, OrganizationRepository,
+        PasswordResetRepository, PersonMonthRepository, RoleRepository, SessionRepository,
+        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
+        VoteRepository,
     },
     DbPool,
 };
@@ -38,10 +39,12 @@ pub struct AppState {
     pub two_factor_repo: TwoFactorAuthRepository,
     pub audit_log_repo: AuditLogRepository,
     pub data_export_repo: DataExportRepository,
+    pub oauth_repo: OAuthRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
     pub totp_service: TotpService,
+    pub oauth_service: OAuthService,
 }
 
 impl AppState {
@@ -68,8 +71,10 @@ impl AppState {
         let two_factor_repo = TwoFactorAuthRepository::new(db.clone());
         let audit_log_repo = AuditLogRepository::new(db.clone());
         let data_export_repo = DataExportRepository::new(db.clone());
+        let oauth_repo = OAuthRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
+        let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
 
         Self {
             db,
@@ -94,10 +99,12 @@ impl AppState {
             two_factor_repo,
             audit_log_repo,
             data_export_repo,
+            oauth_repo,
             auth_service,
             email_service,
             jwt_service,
             totp_service,
+            oauth_service,
         }
     }
 }
