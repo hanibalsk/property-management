@@ -154,8 +154,6 @@ impl NotificationPreferenceRepository {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     // Tests would go here with a test database
     // For now, we'll test in integration tests
 }
