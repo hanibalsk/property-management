@@ -548,4 +548,44 @@ impl UserRepository {
 
         Ok(count)
     }
+
+    // ==================== GDPR Deletion Operations (Story 9.4) ====================
+
+    /// Schedule user account for deletion (GDPR Article 17).
+    /// Sets a 30-day grace period before actual deletion.
+    pub async fn schedule_deletion(
+        &self,
+        user_id: Uuid,
+        scheduled_for: chrono::DateTime<Utc>,
+    ) -> Result<bool, SqlxError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE users
+            SET scheduled_deletion_at = $2, updated_at = NOW()
+            WHERE id = $1 AND status != 'deleted'
+            "#,
+        )
+        .bind(user_id)
+        .bind(scheduled_for)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Cancel a scheduled deletion request.
+    pub async fn cancel_scheduled_deletion(&self, user_id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE users
+            SET scheduled_deletion_at = NULL, updated_at = NOW()
+            WHERE id = $1 AND scheduled_deletion_at IS NOT NULL
+            "#,
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
 }

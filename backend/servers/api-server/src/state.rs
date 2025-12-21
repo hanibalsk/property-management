@@ -1,12 +1,13 @@
 //! Application state.
 
-use crate::services::{AuthService, EmailService, JwtService};
+use crate::services::{AuthService, EmailService, JwtService, TotpService};
 use db::{
     repositories::{
-        AnnouncementRepository, BuildingRepository, CriticalNotificationRepository,
-        DelegationRepository, DocumentRepository, FacilityRepository, FaultRepository,
-        NotificationPreferenceRepository, OrganizationMemberRepository, OrganizationRepository,
-        PasswordResetRepository, PersonMonthRepository, RoleRepository, SessionRepository,
+        AnnouncementRepository, AuditLogRepository, BuildingRepository,
+        CriticalNotificationRepository, DataExportRepository, DelegationRepository,
+        DocumentRepository, FacilityRepository, FaultRepository, NotificationPreferenceRepository,
+        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
+        PersonMonthRepository, RoleRepository, SessionRepository, TwoFactorAuthRepository,
         UnitRepository, UnitResidentRepository, UserRepository, VoteRepository,
     },
     DbPool,
@@ -34,9 +35,13 @@ pub struct AppState {
     pub document_repo: DocumentRepository,
     pub notification_pref_repo: NotificationPreferenceRepository,
     pub critical_notification_repo: CriticalNotificationRepository,
+    pub two_factor_repo: TwoFactorAuthRepository,
+    pub audit_log_repo: AuditLogRepository,
+    pub data_export_repo: DataExportRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
+    pub totp_service: TotpService,
 }
 
 impl AppState {
@@ -60,7 +65,11 @@ impl AppState {
         let document_repo = DocumentRepository::new(db.clone());
         let notification_pref_repo = NotificationPreferenceRepository::new(db.clone());
         let critical_notification_repo = CriticalNotificationRepository::new(db.clone());
+        let two_factor_repo = TwoFactorAuthRepository::new(db.clone());
+        let audit_log_repo = AuditLogRepository::new(db.clone());
+        let data_export_repo = DataExportRepository::new(db.clone());
         let auth_service = AuthService::new();
+        let totp_service = TotpService::new("Property Management".to_string());
 
         Self {
             db,
@@ -82,9 +91,13 @@ impl AppState {
             document_repo,
             notification_pref_repo,
             critical_notification_repo,
+            two_factor_repo,
+            audit_log_repo,
+            data_export_repo,
             auth_service,
             email_service,
             jwt_service,
+            totp_service,
         }
     }
 }

@@ -8,7 +8,7 @@ use axum::{
     Json, Router,
 };
 use common::errors::{ErrorResponse, ValidationError};
-use db::models::{CreateUser, Locale};
+use db::models::{AuditAction, CreateAuditLog, CreateUser, Locale};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -424,14 +424,20 @@ pub struct LoginRequest {
 /// Login response.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LoginResponse {
-    /// JWT access token
+    /// JWT access token (empty if MFA required)
     pub access_token: String,
-    /// Refresh token
+    /// Refresh token (empty if MFA required)
     pub refresh_token: String,
     /// Access token expiration in seconds
     pub expires_in: i64,
     /// Token type (always "Bearer")
     pub token_type: String,
+    /// Whether MFA verification is required to complete login
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mfa_required: Option<bool>,
+    /// Temporary token for MFA verification (only present if mfa_required)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mfa_token: Option<String>,
 }
 
 /// Login endpoint.
@@ -576,8 +582,105 @@ pub async fn login(
         ));
     }
 
-    // TODO: Check 2FA if enabled (future story)
-    // if user.has_2fa_enabled() && req.two_factor_code.is_none() { ... }
+    // Check 2FA if enabled (Epic 9, Story 9.1)
+    if let Ok(Some(mfa_record)) = state.two_factor_repo.get_by_user_id(user.id).await {
+        if mfa_record.enabled {
+            // 2FA is enabled - check if code was provided
+            match &req.two_factor_code {
+                Some(code) => {
+                    // Decrypt secret if encrypted (Story 9.1 security fix)
+                    let decrypted_secret = state
+                        .totp_service
+                        .decrypt_secret(&mfa_record.secret)
+                        .map_err(|e| {
+                            tracing::error!(error = %e, "Failed to decrypt TOTP secret");
+                            (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(ErrorResponse::new(
+                                    "DECRYPTION_ERROR",
+                                    "Failed to verify MFA code",
+                                )),
+                            )
+                        })?;
+
+                    // Verify TOTP code
+                    let is_valid = state
+                        .totp_service
+                        .verify_code(&decrypted_secret, code)
+                        .unwrap_or(false);
+
+                    // If TOTP failed, try backup codes
+                    let backup_codes: Vec<String> =
+                        serde_json::from_value(mfa_record.backup_codes.clone()).unwrap_or_default();
+                    let backup_result = if !is_valid {
+                        state
+                            .totp_service
+                            .verify_backup_code(code, &backup_codes)
+                            .ok()
+                            .flatten()
+                    } else {
+                        None
+                    };
+
+                    if !is_valid && backup_result.is_none() {
+                        let _ = state
+                            .session_repo
+                            .record_login_attempt(&req.email, &ip_address, false)
+                            .await;
+                        return Err((
+                            StatusCode::UNAUTHORIZED,
+                            Json(ErrorResponse::new(
+                                "INVALID_MFA_CODE",
+                                "Invalid verification code",
+                            )),
+                        ));
+                    }
+
+                    // If backup code was used, consume it and log it
+                    if let Some(code_index) = backup_result {
+                        let _ = state
+                            .two_factor_repo
+                            .use_backup_code(user.id, code_index)
+                            .await;
+
+                        // Log backup code usage (Story 9.6 - Audit logging)
+                        if let Err(e) = state
+                            .audit_log_repo
+                            .create(CreateAuditLog {
+                                user_id: Some(user.id),
+                                action: AuditAction::MfaBackupCodeUsed,
+                                resource_type: Some("two_factor_auth".to_string()),
+                                resource_id: Some(user.id),
+                                org_id: None,
+                                details: Some(serde_json::json!({ "code_index": code_index })),
+                                old_values: None,
+                                new_values: None,
+                                ip_address: Some(ip_address.clone()),
+                                user_agent: None,
+                            })
+                            .await
+                        {
+                            tracing::error!(error = %e, user_id = %user.id, "Failed to create audit log for backup code usage");
+                        }
+
+                        tracing::info!(user_id = %user.id, "Backup code used for login");
+                    }
+                }
+                None => {
+                    // No code provided - return MFA required response.
+                    // The client should retry login with the two_factor_code included.
+                    return Ok(Json(LoginResponse {
+                        access_token: String::new(),
+                        refresh_token: String::new(),
+                        expires_in: 0,
+                        token_type: "Bearer".to_string(),
+                        mfa_required: Some(true),
+                        mfa_token: None,
+                    }));
+                }
+            }
+        }
+    }
 
     // Record successful login attempt
     let _ = state
@@ -658,6 +761,8 @@ pub async fn login(
         refresh_token,
         expires_in: state.jwt_service.access_token_lifetime(),
         token_type: "Bearer".to_string(),
+        mfa_required: None,
+        mfa_token: None,
     }))
 }
 
@@ -855,6 +960,8 @@ pub async fn refresh_token(
         refresh_token: new_refresh_token,
         expires_in: state.jwt_service.access_token_lifetime(),
         token_type: "Bearer".to_string(),
+        mfa_required: None,
+        mfa_token: None,
     }))
 }
 

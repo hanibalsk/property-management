@@ -123,6 +123,8 @@ pub struct User {
     pub profile_visibility: String,
     /// Privacy: show contact info to neighbors (Story 6.6)
     pub show_contact_info: bool,
+    /// GDPR: scheduled deletion timestamp (Story 9.4)
+    pub scheduled_deletion_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -162,6 +164,16 @@ impl User {
     /// Get profile visibility as enum (Story 6.6).
     pub fn visibility_enum(&self) -> ProfileVisibility {
         ProfileVisibility::parse(&self.profile_visibility)
+    }
+
+    /// Check if account is scheduled for deletion (Story 9.4).
+    pub fn is_scheduled_for_deletion(&self) -> bool {
+        self.scheduled_deletion_at.is_some()
+    }
+
+    /// Check if email is verified (helper for GDPR export).
+    pub fn email_verified(&self) -> bool {
+        self.email_verified_at.is_some()
     }
 }
 
