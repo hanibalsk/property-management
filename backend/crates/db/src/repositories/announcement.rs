@@ -2,9 +2,10 @@
 
 use crate::models::announcement::{
     announcement_status, AcknowledgmentStats, Announcement, AnnouncementAttachment,
-    AnnouncementListQuery, AnnouncementRead, AnnouncementStatistics, AnnouncementSummary,
-    AnnouncementWithDetails, CreateAnnouncement, CreateAnnouncementAttachment, UpdateAnnouncement,
-    UserAcknowledgmentStatus,
+    AnnouncementComment, AnnouncementListQuery, AnnouncementRead, AnnouncementStatistics,
+    AnnouncementSummary, AnnouncementWithDetails, CommentWithAuthor, CommentWithAuthorRow,
+    CreateAnnouncement, CreateAnnouncementAttachment, CreateComment, DeleteComment,
+    UpdateAnnouncement, UserAcknowledgmentStatus,
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
@@ -836,5 +837,187 @@ impl AnnouncementRepository {
         .await?;
 
         Ok(users)
+    }
+
+    // ========================================================================
+    // Comments (Story 6.3)
+    // ========================================================================
+
+    /// Create a new comment on an announcement.
+    pub async fn create_comment(&self, data: CreateComment) -> Result<AnnouncementComment, SqlxError> {
+        let comment = sqlx::query_as::<_, AnnouncementComment>(
+            r#"
+            INSERT INTO announcement_comments (announcement_id, user_id, parent_id, content, ai_training_consent)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+            "#,
+        )
+        .bind(data.announcement_id)
+        .bind(data.user_id)
+        .bind(data.parent_id)
+        .bind(&data.content)
+        .bind(data.ai_training_consent)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    /// Get a comment by ID.
+    pub async fn get_comment(&self, id: Uuid) -> Result<Option<AnnouncementComment>, SqlxError> {
+        let comment = sqlx::query_as::<_, AnnouncementComment>(
+            "SELECT * FROM announcement_comments WHERE id = $1",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    /// Get comments for an announcement with author info.
+    /// Returns top-level comments only; replies are fetched separately.
+    pub async fn get_comments(
+        &self,
+        announcement_id: Uuid,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<CommentWithAuthorRow>, SqlxError> {
+        let limit = limit.unwrap_or(50).min(100);
+        let offset = offset.unwrap_or(0);
+
+        let comments = sqlx::query_as::<_, CommentWithAuthorRow>(
+            r#"
+            SELECT
+                c.id, c.announcement_id, c.user_id, c.parent_id,
+                c.content, u.name as author_name, c.deleted_at,
+                c.created_at, c.updated_at
+            FROM announcement_comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.announcement_id = $1 AND c.parent_id IS NULL
+            ORDER BY c.created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(announcement_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(comments)
+    }
+
+    /// Get replies to a comment.
+    pub async fn get_comment_replies(
+        &self,
+        parent_id: Uuid,
+    ) -> Result<Vec<CommentWithAuthorRow>, SqlxError> {
+        let replies = sqlx::query_as::<_, CommentWithAuthorRow>(
+            r#"
+            SELECT
+                c.id, c.announcement_id, c.user_id, c.parent_id,
+                c.content, u.name as author_name, c.deleted_at,
+                c.created_at, c.updated_at
+            FROM announcement_comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.parent_id = $1
+            ORDER BY c.created_at ASC
+            "#,
+        )
+        .bind(parent_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(replies)
+    }
+
+    /// Get threaded comments (top-level with nested replies).
+    pub async fn get_threaded_comments(
+        &self,
+        announcement_id: Uuid,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<CommentWithAuthor>, SqlxError> {
+        // Get top-level comments
+        let top_level = self.get_comments(announcement_id, limit, offset).await?;
+
+        // Collect all parent IDs
+        let parent_ids: Vec<Uuid> = top_level.iter().map(|c| c.id).collect();
+
+        // Get all replies in one query
+        let all_replies = if !parent_ids.is_empty() {
+            sqlx::query_as::<_, CommentWithAuthorRow>(
+                r#"
+                SELECT
+                    c.id, c.announcement_id, c.user_id, c.parent_id,
+                    c.content, u.name as author_name, c.deleted_at,
+                    c.created_at, c.updated_at
+                FROM announcement_comments c
+                JOIN users u ON c.user_id = u.id
+                WHERE c.parent_id = ANY($1)
+                ORDER BY c.created_at ASC
+                "#,
+            )
+            .bind(&parent_ids)
+            .fetch_all(&self.pool)
+            .await?
+        } else {
+            vec![]
+        };
+
+        // Group replies by parent_id
+        let mut replies_map: std::collections::HashMap<Uuid, Vec<CommentWithAuthor>> =
+            std::collections::HashMap::new();
+        for reply in all_replies {
+            if let Some(parent_id) = reply.parent_id {
+                replies_map
+                    .entry(parent_id)
+                    .or_default()
+                    .push(reply.into_comment_with_author(None));
+            }
+        }
+
+        // Build threaded structure
+        let threaded: Vec<CommentWithAuthor> = top_level
+            .into_iter()
+            .map(|comment| {
+                let replies = replies_map.remove(&comment.id);
+                comment.into_comment_with_author(replies)
+            })
+            .collect();
+
+        Ok(threaded)
+    }
+
+    /// Soft-delete a comment (author or manager moderation).
+    pub async fn delete_comment(&self, data: DeleteComment) -> Result<AnnouncementComment, SqlxError> {
+        let comment = sqlx::query_as::<_, AnnouncementComment>(
+            r#"
+            UPDATE announcement_comments
+            SET deleted_at = NOW(), deleted_by = $2, deletion_reason = $3, updated_at = NOW()
+            WHERE id = $1 AND deleted_at IS NULL
+            RETURNING *
+            "#,
+        )
+        .bind(data.comment_id)
+        .bind(data.deleted_by)
+        .bind(&data.deletion_reason)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    /// Get comment count for an announcement (excluding deleted).
+    pub async fn get_comment_count(&self, announcement_id: Uuid) -> Result<i64, SqlxError> {
+        let (count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM announcement_comments WHERE announcement_id = $1 AND deleted_at IS NULL",
+        )
+        .bind(announcement_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count)
     }
 }

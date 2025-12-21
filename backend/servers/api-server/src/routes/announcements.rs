@@ -11,9 +11,10 @@ use axum::{
 use chrono::{DateTime, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    target_type, AcknowledgmentStats, Announcement, AnnouncementAttachment, AnnouncementListQuery,
-    AnnouncementStatistics, AnnouncementSummary, AnnouncementWithDetails, CreateAnnouncement,
-    CreateAnnouncementAttachment, UpdateAnnouncement, UserAcknowledgmentStatus,
+    target_type, AcknowledgmentStats, Announcement, AnnouncementAttachment, AnnouncementComment,
+    AnnouncementListQuery, AnnouncementStatistics, AnnouncementSummary, AnnouncementWithDetails,
+    CommentWithAuthor, CreateAnnouncement, CreateAnnouncementAttachment, CreateComment,
+    DeleteComment, UpdateAnnouncement, UserAcknowledgmentStatus,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Error as SqlxError;
@@ -29,6 +30,9 @@ const MAX_TITLE_LENGTH: usize = 200;
 
 /// Maximum allowed content length (characters).
 const MAX_CONTENT_LENGTH: usize = 50_000;
+
+/// Maximum allowed comment length (characters).
+const MAX_COMMENT_LENGTH: usize = 2000;
 
 // ============================================================================
 // Response Types
@@ -159,6 +163,46 @@ pub struct ListAnnouncementsQuery {
 }
 
 // ============================================================================
+// Comment Types (Story 6.3)
+// ============================================================================
+
+/// Request for creating a comment.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CreateCommentRequest {
+    pub content: String,
+    pub parent_id: Option<Uuid>,
+    #[serde(default)]
+    pub ai_training_consent: bool,
+}
+
+/// Request for deleting a comment (moderation).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct DeleteCommentRequest {
+    pub reason: Option<String>,
+}
+
+/// Response for comment list.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CommentsResponse {
+    pub comments: Vec<CommentWithAuthor>,
+    pub count: usize,
+    pub total: i64,
+}
+
+/// Response for single comment.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CommentResponse {
+    pub comment: CommentWithAuthor,
+}
+
+/// Query for listing comments.
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, utoipa::IntoParams)]
+pub struct ListCommentsQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+// ============================================================================
 // Router
 // ============================================================================
 
@@ -186,6 +230,10 @@ pub fn router() -> Router<AppState> {
         .route("/{id}/read", post(mark_read))
         .route("/{id}/acknowledge", post(acknowledge))
         .route("/{id}/acknowledgments", get(get_acknowledgments))
+        // Comments (Story 6.3)
+        .route("/{id}/comments", get(list_comments))
+        .route("/{id}/comments", post(create_comment))
+        .route("/{id}/comments/{comment_id}", delete(delete_comment))
         // Statistics
         .route("/statistics", get(get_statistics))
         .route("/unread-count", get(get_unread_count))
@@ -1397,4 +1445,371 @@ fn sanitize_markdown(content: &str) -> String {
     let content = re_js_url.replace_all(&content, "");
 
     content.to_string()
+}
+
+// ============================================================================
+// Comment Handlers (Story 6.3)
+// ============================================================================
+
+/// List comments for an announcement.
+#[utoipa::path(
+    get,
+    path = "/api/v1/announcements/{id}/comments",
+    params(
+        ("id" = Uuid, Path, description = "Announcement ID"),
+        ListCommentsQuery
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Comment list", body = CommentsResponse),
+        (status = 404, description = "Announcement not found", body = ErrorResponse),
+    ),
+    tag = "Announcements"
+)]
+async fn list_comments(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    _tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+    Query(query): Query<ListCommentsQuery>,
+) -> Result<Json<CommentsResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Check announcement exists
+    match state.announcement_repo.find_by_id(id).await {
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find announcement: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find announcement",
+                )),
+            ));
+        }
+        Ok(Some(_)) => {}
+    }
+
+    // Get total count
+    let total = match state.announcement_repo.get_comment_count(id).await {
+        Ok(count) => count,
+        Err(e) => {
+            tracing::error!("Failed to get comment count: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get comment count",
+                )),
+            ));
+        }
+    };
+
+    // Get threaded comments
+    match state
+        .announcement_repo
+        .get_threaded_comments(id, query.limit, query.offset)
+        .await
+    {
+        Ok(comments) => Ok(Json(CommentsResponse {
+            count: comments.len(),
+            comments,
+            total,
+        })),
+        Err(e) => {
+            tracing::error!("Failed to list comments: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to list comments",
+                )),
+            ))
+        }
+    }
+}
+
+/// Create a comment on an announcement.
+#[utoipa::path(
+    post,
+    path = "/api/v1/announcements/{id}/comments",
+    params(
+        ("id" = Uuid, Path, description = "Announcement ID")
+    ),
+    request_body = CreateCommentRequest,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 201, description = "Comment created", body = AnnouncementComment),
+        (status = 400, description = "Invalid request or comments disabled", body = ErrorResponse),
+        (status = 404, description = "Announcement not found", body = ErrorResponse),
+    ),
+    tag = "Announcements"
+)]
+async fn create_comment(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    _tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+    Json(req): Json<CreateCommentRequest>,
+) -> Result<(StatusCode, Json<AnnouncementComment>), (StatusCode, Json<ErrorResponse>)> {
+    // Validate content length
+    if req.content.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new("BAD_REQUEST", "Comment content is required")),
+        ));
+    }
+    if req.content.len() > MAX_COMMENT_LENGTH {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                format!(
+                    "Comment exceeds maximum length of {} characters",
+                    MAX_COMMENT_LENGTH
+                ),
+            )),
+        ));
+    }
+
+    // Check announcement exists and has comments enabled
+    let announcement = match state.announcement_repo.find_by_id(id).await {
+        Ok(Some(a)) => a,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find announcement: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find announcement",
+                )),
+            ));
+        }
+    };
+
+    // Check comments are enabled
+    if !announcement.comments_enabled {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "COMMENTS_DISABLED",
+                "Comments are disabled for this announcement",
+            )),
+        ));
+    }
+
+    // Check announcement is published
+    if !announcement.is_published() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Cannot comment on unpublished announcements",
+            )),
+        ));
+    }
+
+    // If parent_id is provided, verify it exists and belongs to same announcement
+    if let Some(parent_id) = req.parent_id {
+        match state.announcement_repo.get_comment(parent_id).await {
+            Ok(Some(parent)) => {
+                if parent.announcement_id != id {
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse::new(
+                            "BAD_REQUEST",
+                            "Parent comment belongs to different announcement",
+                        )),
+                    ));
+                }
+                // Only allow one level of nesting
+                if parent.parent_id.is_some() {
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse::new(
+                            "BAD_REQUEST",
+                            "Cannot reply to a reply - maximum nesting depth is 2",
+                        )),
+                    ));
+                }
+            }
+            Ok(None) => {
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse::new("NOT_FOUND", "Parent comment not found")),
+                ))
+            }
+            Err(e) => {
+                tracing::error!("Failed to find parent comment: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "INTERNAL_ERROR",
+                        "Failed to find parent comment",
+                    )),
+                ));
+            }
+        }
+    }
+
+    // Sanitize content
+    let sanitized_content = sanitize_markdown(&req.content);
+
+    let data = CreateComment {
+        announcement_id: id,
+        user_id: auth.user_id,
+        parent_id: req.parent_id,
+        content: sanitized_content,
+        ai_training_consent: req.ai_training_consent,
+    };
+
+    match state.announcement_repo.create_comment(data).await {
+        Ok(comment) => {
+            tracing::info!(
+                comment_id = %comment.id,
+                announcement_id = %id,
+                user_id = %auth.user_id,
+                "Comment created"
+            );
+            Ok((StatusCode::CREATED, Json(comment)))
+        }
+        Err(e) => {
+            tracing::error!("Failed to create comment: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to create comment",
+                )),
+            ))
+        }
+    }
+}
+
+/// Delete a comment (author or manager moderation).
+#[utoipa::path(
+    delete,
+    path = "/api/v1/announcements/{id}/comments/{comment_id}",
+    params(
+        ("id" = Uuid, Path, description = "Announcement ID"),
+        ("comment_id" = Uuid, Path, description = "Comment ID")
+    ),
+    request_body = Option<DeleteCommentRequest>,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Comment deleted", body = AnnouncementComment),
+        (status = 403, description = "Not authorized to delete", body = ErrorResponse),
+        (status = 404, description = "Comment not found", body = ErrorResponse),
+    ),
+    tag = "Announcements"
+)]
+async fn delete_comment(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    tenant: TenantExtractor,
+    Path((id, comment_id)): Path<(Uuid, Uuid)>,
+    body: Option<Json<DeleteCommentRequest>>,
+) -> Result<Json<AnnouncementComment>, (StatusCode, Json<ErrorResponse>)> {
+    // Get the comment
+    let comment = match state.announcement_repo.get_comment(comment_id).await {
+        Ok(Some(c)) => c,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Comment not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find comment: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find comment",
+                )),
+            ));
+        }
+    };
+
+    // Verify comment belongs to the announcement
+    if comment.announcement_id != id {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Comment not found")),
+        ));
+    }
+
+    // Check if already deleted
+    if comment.is_deleted() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Comment is already deleted",
+            )),
+        ));
+    }
+
+    // Authorization: author can delete their own, managers can delete any
+    let is_author = comment.user_id == auth.user_id;
+    let is_manager = tenant.role.is_manager();
+
+    if !is_author && !is_manager {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "You can only delete your own comments",
+            )),
+        ));
+    }
+
+    // Get deletion reason (only for manager moderation)
+    let deletion_reason = if is_manager && !is_author {
+        body.and_then(|b| b.reason.clone())
+    } else {
+        None
+    };
+
+    let data = DeleteComment {
+        comment_id,
+        deleted_by: auth.user_id,
+        deletion_reason,
+    };
+
+    match state.announcement_repo.delete_comment(data).await {
+        Ok(deleted) => {
+            tracing::info!(
+                comment_id = %comment_id,
+                deleted_by = %auth.user_id,
+                is_moderation = %(!is_author && is_manager),
+                "Comment deleted"
+            );
+            Ok(Json(deleted))
+        }
+        Err(SqlxError::RowNotFound) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Comment not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to delete comment: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to delete comment",
+                )),
+            ))
+        }
+    }
 }

@@ -155,3 +155,53 @@ export interface AcknowledgmentListResponse {
   users: UserAcknowledgmentStatus[];
   count: number;
 }
+
+// Story 6.3: Announcement Comments & Discussion
+
+export interface AnnouncementComment {
+  id: string;
+  announcementId: string;
+  userId: string;
+  parentId?: string;
+  content: string;
+  aiTrainingConsent: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  deletionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommentWithAuthor {
+  id: string;
+  announcementId: string;
+  userId: string;
+  parentId?: string;
+  content: string;
+  authorName: string;
+  isDeleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  replies?: CommentWithAuthor[];
+}
+
+export interface CreateCommentRequest {
+  content: string;
+  parentId?: string;
+  aiTrainingConsent?: boolean;
+}
+
+export interface DeleteCommentRequest {
+  reason?: string;
+}
+
+export interface CommentsResponse {
+  comments: CommentWithAuthor[];
+  count: number;
+  total: number;
+}
+
+export interface ListCommentsParams {
+  limit?: number;
+  offset?: number;
+}

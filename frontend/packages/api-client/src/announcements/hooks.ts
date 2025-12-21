@@ -9,7 +9,9 @@ import type { AnnouncementsApi } from './api';
 import type {
   AddAttachmentRequest,
   CreateAnnouncementRequest,
+  CreateCommentRequest,
   ListAnnouncementsParams,
+  ListCommentsParams,
   PinAnnouncementRequest,
   ScheduleAnnouncementRequest,
   UpdateAnnouncementRequest,
@@ -25,6 +27,8 @@ export const announcementKeys = {
   detail: (id: string) => [...announcementKeys.details(), id] as const,
   attachments: (id: string) => [...announcementKeys.detail(id), 'attachments'] as const,
   acknowledgments: (id: string) => [...announcementKeys.detail(id), 'acknowledgments'] as const,
+  comments: (id: string, params?: ListCommentsParams) =>
+    [...announcementKeys.detail(id), 'comments', params] as const,
   statistics: () => [...announcementKeys.all, 'statistics'] as const,
   unreadCount: () => [...announcementKeys.all, 'unread-count'] as const,
 };
@@ -250,6 +254,57 @@ export const createAnnouncementHooks = (api: AnnouncementsApi) => ({
       queryFn: () => api.getAcknowledgmentStats(id),
       enabled: enabled && !!id,
     }),
+
+  // ========================================================================
+  // Comments (Story 6.3)
+  // ========================================================================
+
+  /**
+   * List comments for an announcement
+   */
+  useComments: (id: string, params?: ListCommentsParams, enabled = true) =>
+    useQuery({
+      queryKey: announcementKeys.comments(id, params),
+      queryFn: () => api.listComments(id, params),
+      enabled: enabled && !!id,
+    }),
+
+  /**
+   * Create comment mutation
+   */
+  useCreateComment: () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: ({ id, data }: { id: string; data: CreateCommentRequest }) =>
+        api.createComment(id, data),
+      onSuccess: (_, { id }) => {
+        queryClient.invalidateQueries({ queryKey: announcementKeys.comments(id) });
+        queryClient.invalidateQueries({ queryKey: announcementKeys.detail(id) });
+      },
+    });
+  },
+
+  /**
+   * Delete comment mutation
+   */
+  useDeleteComment: () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: ({
+        announcementId,
+        commentId,
+        reason,
+      }: {
+        announcementId: string;
+        commentId: string;
+        reason?: string;
+      }) => api.deleteComment(announcementId, commentId, reason ? { reason } : undefined),
+      onSuccess: (_, { announcementId }) => {
+        queryClient.invalidateQueries({ queryKey: announcementKeys.comments(announcementId) });
+        queryClient.invalidateQueries({ queryKey: announcementKeys.detail(announcementId) });
+      },
+    });
+  },
 });
 
 export type AnnouncementHooks = ReturnType<typeof createAnnouncementHooks>;

@@ -71,8 +71,9 @@ pub use vote::{
 };
 pub use announcement::{
     announcement_status, target_type, AcknowledgeAnnouncement, AcknowledgmentStats, Announcement,
-    AnnouncementAttachment, AnnouncementListQuery, AnnouncementRead, AnnouncementStatistics,
-    AnnouncementSummary, AnnouncementWithDetails, CreateAnnouncement, CreateAnnouncementAttachment,
-    MarkAnnouncementRead, PinAnnouncement, PublishAnnouncement, UpdateAnnouncement,
+    AnnouncementAttachment, AnnouncementComment, AnnouncementListQuery, AnnouncementRead,
+    AnnouncementStatistics, AnnouncementSummary, AnnouncementWithDetails, CommentWithAuthor,
+    CommentWithAuthorRow, CreateAnnouncement, CreateAnnouncementAttachment, CreateComment,
+    DeleteComment, MarkAnnouncementRead, PinAnnouncement, PublishAnnouncement, UpdateAnnouncement,
     UserAcknowledgmentStatus,
 };

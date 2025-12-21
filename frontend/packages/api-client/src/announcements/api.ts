@@ -10,11 +10,16 @@ import type {
   AddAttachmentRequest,
   Announcement,
   AnnouncementAttachment,
+  AnnouncementComment,
   AnnouncementStatistics,
   AnnouncementSummary,
   AnnouncementWithDetails,
+  CommentsResponse,
   CreateAnnouncementRequest,
+  CreateCommentRequest,
+  DeleteCommentRequest,
   ListAnnouncementsParams,
+  ListCommentsParams,
   PaginatedResponse,
   PinAnnouncementRequest,
   ScheduleAnnouncementRequest,
@@ -270,6 +275,53 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
      */
     getAcknowledgmentStats: async (id: string): Promise<AcknowledgmentStatsResponse> => {
       const response = await fetch(`${baseUrl}/${id}/acknowledgments`, { headers });
+      return handleResponse(response);
+    },
+
+    // ========================================================================
+    // Comments (Story 6.3)
+    // ========================================================================
+
+    /**
+     * List comments for an announcement
+     */
+    listComments: async (id: string, params?: ListCommentsParams): Promise<CommentsResponse> => {
+      const searchParams = new URLSearchParams();
+      if (params?.limit) searchParams.set('limit', params.limit.toString());
+      if (params?.offset) searchParams.set('offset', params.offset.toString());
+
+      const url = searchParams.toString()
+        ? `${baseUrl}/${id}/comments?${searchParams}`
+        : `${baseUrl}/${id}/comments`;
+      const response = await fetch(url, { headers });
+      return handleResponse(response);
+    },
+
+    /**
+     * Create a comment on an announcement
+     */
+    createComment: async (id: string, data: CreateCommentRequest): Promise<AnnouncementComment> => {
+      const response = await fetch(`${baseUrl}/${id}/comments`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data),
+      });
+      return handleResponse(response);
+    },
+
+    /**
+     * Delete a comment (author or manager moderation)
+     */
+    deleteComment: async (
+      announcementId: string,
+      commentId: string,
+      data?: DeleteCommentRequest
+    ): Promise<AnnouncementComment> => {
+      const response = await fetch(`${baseUrl}/${announcementId}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers,
+        ...(data && { body: JSON.stringify(data) }),
+      });
       return handleResponse(response);
     },
   };

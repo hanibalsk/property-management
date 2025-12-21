@@ -242,3 +242,115 @@ pub struct UserAcknowledgmentStatus {
     pub read_at: Option<DateTime<Utc>>,
     pub acknowledged_at: Option<DateTime<Utc>>,
 }
+
+// ============================================================================
+// Announcement Comments (Story 6.3)
+// ============================================================================
+
+/// Announcement comment entity from database.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct AnnouncementComment {
+    pub id: Uuid,
+    pub announcement_id: Uuid,
+    pub user_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub content: String,
+    pub ai_training_consent: bool,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub deleted_by: Option<Uuid>,
+    pub deletion_reason: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl AnnouncementComment {
+    /// Check if the comment is deleted (soft-deleted).
+    pub fn is_deleted(&self) -> bool {
+        self.deleted_at.is_some()
+    }
+
+    /// Check if this is a top-level comment.
+    pub fn is_top_level(&self) -> bool {
+        self.parent_id.is_none()
+    }
+
+    /// Check if this is a reply to another comment.
+    pub fn is_reply(&self) -> bool {
+        self.parent_id.is_some()
+    }
+}
+
+/// Comment with author information for display.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CommentWithAuthor {
+    pub id: Uuid,
+    pub announcement_id: Uuid,
+    pub user_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub content: String,
+    pub author_name: String,
+    pub is_deleted: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    /// Nested replies (max 1 level deep).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replies: Option<Vec<CommentWithAuthor>>,
+}
+
+/// Row struct for comment with author query.
+#[derive(Debug, Clone, FromRow)]
+pub struct CommentWithAuthorRow {
+    pub id: Uuid,
+    pub announcement_id: Uuid,
+    pub user_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub content: String,
+    pub author_name: String,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl CommentWithAuthorRow {
+    /// Convert to CommentWithAuthor.
+    pub fn into_comment_with_author(self, replies: Option<Vec<CommentWithAuthor>>) -> CommentWithAuthor {
+        CommentWithAuthor {
+            id: self.id,
+            announcement_id: self.announcement_id,
+            user_id: self.user_id,
+            parent_id: self.parent_id,
+            content: if self.deleted_at.is_some() {
+                "[deleted]".to_string()
+            } else {
+                self.content
+            },
+            author_name: if self.deleted_at.is_some() {
+                "[deleted]".to_string()
+            } else {
+                self.author_name
+            },
+            is_deleted: self.deleted_at.is_some(),
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            replies,
+        }
+    }
+}
+
+/// Data for creating a comment.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreateComment {
+    pub announcement_id: Uuid,
+    pub user_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub content: String,
+    pub ai_training_consent: bool,
+}
+
+/// Data for deleting (soft-delete) a comment.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DeleteComment {
+    pub comment_id: Uuid,
+    pub deleted_by: Uuid,
+    pub deletion_reason: Option<String>,
+}
