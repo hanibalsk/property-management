@@ -14,6 +14,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 utoipa = { workspace = true }
 rust_decimal = { workspace = true }
+rand = { workspace = true }
+hex = { workspace = true }
+sha2 = "0.10"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }

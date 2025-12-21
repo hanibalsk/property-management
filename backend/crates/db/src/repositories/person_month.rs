@@ -1,0 +1,293 @@
+//! Person month repository (Epic 3, Story 3.5).
+
+use crate::models::person_month::{
+    BuildingPersonMonthSummary, BulkPersonMonthEntry, CreatePersonMonth, MonthlyCount, PersonMonth,
+    PersonMonthWithUnit, UpdatePersonMonth, YearlyPersonMonthSummary,
+};
+use crate::DbPool;
+use sqlx::Error as SqlxError;
+use uuid::Uuid;
+
+/// Repository for person month operations.
+#[derive(Clone)]
+pub struct PersonMonthRepository {
+    pool: DbPool,
+}
+
+impl PersonMonthRepository {
+    /// Create a new PersonMonthRepository.
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
+    }
+
+    /// Create or update a person month entry.
+    pub async fn upsert(
+        &self,
+        data: CreatePersonMonth,
+        user_id: Uuid,
+    ) -> Result<PersonMonth, SqlxError> {
+        let entry = sqlx::query_as::<_, PersonMonth>(
+            r#"
+            INSERT INTO person_months (unit_id, year, month, count, source, notes, created_by, updated_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+            ON CONFLICT (unit_id, year, month)
+            DO UPDATE SET
+                count = EXCLUDED.count,
+                source = EXCLUDED.source,
+                notes = EXCLUDED.notes,
+                updated_by = EXCLUDED.updated_by,
+                updated_at = NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(data.unit_id)
+        .bind(data.year)
+        .bind(data.month)
+        .bind(data.count)
+        .bind(&data.source)
+        .bind(&data.notes)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(entry)
+    }
+
+    /// Find person month by ID.
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<PersonMonth>, SqlxError> {
+        let entry =
+            sqlx::query_as::<_, PersonMonth>(r#"SELECT * FROM person_months WHERE id = $1"#)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        Ok(entry)
+    }
+
+    /// Find person month for a unit and period.
+    pub async fn find_by_unit_period(
+        &self,
+        unit_id: Uuid,
+        year: i32,
+        month: i32,
+    ) -> Result<Option<PersonMonth>, SqlxError> {
+        let entry = sqlx::query_as::<_, PersonMonth>(
+            r#"
+            SELECT * FROM person_months
+            WHERE unit_id = $1 AND year = $2 AND month = $3
+            "#,
+        )
+        .bind(unit_id)
+        .bind(year)
+        .bind(month)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(entry)
+    }
+
+    /// Find all person months for a unit in a year.
+    pub async fn find_by_unit_year(
+        &self,
+        unit_id: Uuid,
+        year: i32,
+    ) -> Result<Vec<PersonMonth>, SqlxError> {
+        let entries = sqlx::query_as::<_, PersonMonth>(
+            r#"
+            SELECT * FROM person_months
+            WHERE unit_id = $1 AND year = $2
+            ORDER BY month
+            "#,
+        )
+        .bind(unit_id)
+        .bind(year)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(entries)
+    }
+
+    /// Get yearly summary for a unit.
+    pub async fn get_yearly_summary(
+        &self,
+        unit_id: Uuid,
+        year: i32,
+    ) -> Result<YearlyPersonMonthSummary, SqlxError> {
+        let entries = self.find_by_unit_year(unit_id, year).await?;
+
+        let mut months: Vec<MonthlyCount> = (1..=12)
+            .map(|m| MonthlyCount {
+                month: m,
+                count: 0,
+                source: "calculated".to_string(),
+            })
+            .collect();
+
+        let mut total = 0;
+
+        for entry in entries {
+            if let Some(month_entry) = months.get_mut((entry.month - 1) as usize) {
+                month_entry.count = entry.count;
+                month_entry.source = entry.source;
+                total += entry.count;
+            }
+        }
+
+        Ok(YearlyPersonMonthSummary {
+            unit_id,
+            year,
+            months,
+            total,
+        })
+    }
+
+    /// Find person months for a building in a period.
+    pub async fn find_by_building_period(
+        &self,
+        building_id: Uuid,
+        year: i32,
+        month: i32,
+    ) -> Result<Vec<PersonMonthWithUnit>, SqlxError> {
+        let entries = sqlx::query_as::<_, PersonMonthWithUnit>(
+            r#"
+            SELECT
+                pm.id,
+                pm.unit_id,
+                u.designation as unit_designation,
+                pm.year,
+                pm.month,
+                pm.count,
+                pm.source
+            FROM person_months pm
+            INNER JOIN units u ON u.id = pm.unit_id
+            WHERE u.building_id = $1 AND pm.year = $2 AND pm.month = $3
+            ORDER BY u.floor, u.designation
+            "#,
+        )
+        .bind(building_id)
+        .bind(year)
+        .bind(month)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(entries)
+    }
+
+    /// Get building-level summary.
+    pub async fn get_building_summary(
+        &self,
+        building_id: Uuid,
+        year: i32,
+        month: i32,
+    ) -> Result<Option<BuildingPersonMonthSummary>, SqlxError> {
+        let summary = sqlx::query_as::<_, BuildingPersonMonthSummary>(
+            r#"
+            SELECT
+                $1::UUID as building_id,
+                $2::INTEGER as year,
+                $3::INTEGER as month,
+                COALESCE(SUM(pm.count), 0) as total_count,
+                COUNT(pm.id) as unit_count
+            FROM units u
+            LEFT JOIN person_months pm ON pm.unit_id = u.id
+                AND pm.year = $2 AND pm.month = $3
+            WHERE u.building_id = $1
+            "#,
+        )
+        .bind(building_id)
+        .bind(year)
+        .bind(month)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(summary)
+    }
+
+    /// Bulk upsert person months for a building.
+    pub async fn bulk_upsert(
+        &self,
+        year: i32,
+        month: i32,
+        entries: Vec<BulkPersonMonthEntry>,
+        user_id: Uuid,
+    ) -> Result<Vec<PersonMonth>, SqlxError> {
+        let mut results = Vec::with_capacity(entries.len());
+
+        for entry in entries {
+            let pm = self
+                .upsert(
+                    CreatePersonMonth {
+                        unit_id: entry.unit_id,
+                        year,
+                        month,
+                        count: entry.count,
+                        source: "manual".to_string(),
+                        notes: None,
+                    },
+                    user_id,
+                )
+                .await?;
+            results.push(pm);
+        }
+
+        Ok(results)
+    }
+
+    /// Update a person month.
+    pub async fn update(
+        &self,
+        id: Uuid,
+        data: UpdatePersonMonth,
+        user_id: Uuid,
+    ) -> Result<Option<PersonMonth>, SqlxError> {
+        let entry = sqlx::query_as::<_, PersonMonth>(
+            r#"
+            UPDATE person_months
+            SET
+                count = COALESCE($2, count),
+                source = COALESCE($3, source),
+                notes = COALESCE($4, notes),
+                updated_by = $5,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(data.count)
+        .bind(&data.source)
+        .bind(&data.notes)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(entry)
+    }
+
+    /// Delete a person month entry.
+    pub async fn delete(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM person_months WHERE id = $1"#)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Calculate person months from residents for a period.
+    pub async fn calculate_from_residents(
+        &self,
+        unit_id: Uuid,
+        year: i32,
+        month: i32,
+    ) -> Result<i32, SqlxError> {
+        let count: (i64,) = sqlx::query_as(r#"SELECT count_residents_for_month($1, $2, $3)"#)
+            .bind(unit_id)
+            .bind(year)
+            .bind(month)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(count.0 as i32)
+    }
+}

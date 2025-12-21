@@ -3,6 +3,8 @@
 
 -- Enable RLS on organization_members (users can only see their own memberships)
 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
+-- Force RLS even for table owner (needed for tests running as postgres user)
+ALTER TABLE organization_members FORCE ROW LEVEL SECURITY;
 
 -- Policy: Users can see their own memberships
 CREATE POLICY organization_members_select_own ON organization_members
@@ -38,12 +40,21 @@ CREATE POLICY organization_members_delete ON organization_members
 
 -- Enable RLS on roles (org-scoped)
 ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
+-- Force RLS even for table owner (needed for tests running as postgres user)
+ALTER TABLE roles FORCE ROW LEVEL SECURITY;
 
--- Policy: Users can see roles in their org
+-- Policy: Users can see roles in their org (requires membership verification)
 CREATE POLICY roles_select ON roles
     FOR SELECT
     USING (
-        organization_id = get_current_org_id()
+        (
+            organization_id = get_current_org_id()
+            AND EXISTS (
+                SELECT 1 FROM organization_members om
+                WHERE om.organization_id = roles.organization_id
+                  AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
+            )
+        )
         OR is_super_admin()
     );
 
@@ -78,7 +89,7 @@ CREATE POLICY roles_delete ON roles
 CREATE OR REPLACE FUNCTION set_user_context(user_id UUID)
 RETURNS void AS $$
 BEGIN
-    PERFORM set_config('app.current_user_id', user_id::TEXT, TRUE);
+    PERFORM set_config('app.current_user_id', user_id::TEXT, FALSE);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -86,11 +97,15 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION set_super_admin_context(is_admin BOOLEAN)
 RETURNS void AS $$
 BEGIN
-    PERFORM set_config('app.is_super_admin', is_admin::TEXT, TRUE);
+    PERFORM set_config('app.is_super_admin', is_admin::TEXT, FALSE);
 END;
 $$ LANGUAGE plpgsql;
 
 -- Combined function to set all context at once (called by middleware)
+-- Note: set_config's third parameter controls LOCAL vs SESSION scope
+-- FALSE = session-scoped (persists across transactions in the same connection)
+-- TRUE = transaction-scoped (only valid within current transaction)
+-- We use FALSE to ensure settings persist across queries in the same session
 CREATE OR REPLACE FUNCTION set_request_context(
     p_org_id UUID,
     p_user_id UUID,
@@ -98,9 +113,9 @@ CREATE OR REPLACE FUNCTION set_request_context(
 )
 RETURNS void AS $$
 BEGIN
-    PERFORM set_config('app.current_org_id', COALESCE(p_org_id::TEXT, ''), TRUE);
-    PERFORM set_config('app.current_user_id', COALESCE(p_user_id::TEXT, ''), TRUE);
-    PERFORM set_config('app.is_super_admin', COALESCE(p_is_super_admin::TEXT, 'false'), TRUE);
+    PERFORM set_config('app.current_org_id', COALESCE(p_org_id::TEXT, ''), FALSE);
+    PERFORM set_config('app.current_user_id', COALESCE(p_user_id::TEXT, ''), FALSE);
+    PERFORM set_config('app.is_super_admin', COALESCE(p_is_super_admin::TEXT, 'false'), FALSE);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -108,9 +123,9 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION clear_request_context()
 RETURNS void AS $$
 BEGIN
-    PERFORM set_config('app.current_org_id', '', TRUE);
-    PERFORM set_config('app.current_user_id', '', TRUE);
-    PERFORM set_config('app.is_super_admin', 'false', TRUE);
+    PERFORM set_config('app.current_org_id', '', FALSE);
+    PERFORM set_config('app.current_user_id', '', FALSE);
+    PERFORM set_config('app.is_super_admin', 'false', FALSE);
 END;
 $$ LANGUAGE plpgsql;
 

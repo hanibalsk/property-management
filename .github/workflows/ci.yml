@@ -107,9 +107,22 @@ jobs:
           sqlx database create || true
           sqlx migrate run --source crates/db/migrations
 
+      - name: Create RLS test user
+        env:
+          PGPASSWORD: postgres
+        run: |
+          # Create a non-superuser role for RLS testing
+          # Superusers bypass RLS even with FORCE ROW LEVEL SECURITY
+          psql -h localhost -U postgres -d ppt_test <<EOF
+          CREATE ROLE rls_test_user WITH LOGIN PASSWORD 'rls_test_pass' NOBYPASSRLS;
+          GRANT ALL ON ALL TABLES IN SCHEMA public TO rls_test_user;
+          GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO rls_test_user;
+          GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO rls_test_user;
+          EOF
+
       - name: Run RLS penetration tests
         working-directory: backend
         env:
-          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/ppt_test
+          TEST_DATABASE_URL: postgres://rls_test_user:rls_test_pass@localhost:5432/ppt_test
         run: |
           cargo test --test rls_penetration_tests -- --ignored --test-threads=1

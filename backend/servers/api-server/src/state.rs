@@ -3,8 +3,10 @@
 use crate::services::{AuthService, EmailService, JwtService};
 use db::{
     repositories::{
-        BuildingRepository, OrganizationMemberRepository, OrganizationRepository,
-        PasswordResetRepository, RoleRepository, SessionRepository, UnitRepository, UserRepository,
+        BuildingRepository, DelegationRepository, FacilityRepository, FaultRepository,
+        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
+        PersonMonthRepository, RoleRepository, SessionRepository, UnitRepository,
+        UnitResidentRepository, UserRepository, VoteRepository,
     },
     DbPool,
 };
@@ -21,6 +23,12 @@ pub struct AppState {
     pub role_repo: RoleRepository,
     pub building_repo: BuildingRepository,
     pub unit_repo: UnitRepository,
+    pub unit_resident_repo: UnitResidentRepository,
+    pub delegation_repo: DelegationRepository,
+    pub person_month_repo: PersonMonthRepository,
+    pub facility_repo: FacilityRepository,
+    pub fault_repo: FaultRepository,
+    pub vote_repo: VoteRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -37,6 +45,12 @@ impl AppState {
         let role_repo = RoleRepository::new(db.clone());
         let building_repo = BuildingRepository::new(db.clone());
         let unit_repo = UnitRepository::new(db.clone());
+        let unit_resident_repo = UnitResidentRepository::new(db.clone());
+        let delegation_repo = DelegationRepository::new(db.clone());
+        let person_month_repo = PersonMonthRepository::new(db.clone());
+        let facility_repo = FacilityRepository::new(db.clone());
+        let fault_repo = FaultRepository::new(db.clone());
+        let vote_repo = VoteRepository::new(db.clone());
         let auth_service = AuthService::new();
 
         Self {
@@ -49,6 +63,12 @@ impl AppState {
             role_repo,
             building_repo,
             unit_repo,
+            unit_resident_repo,
+            delegation_repo,
+            person_month_repo,
+            facility_repo,
+            fault_repo,
+            vote_repo,
             auth_service,
             email_service,
             jwt_service,
