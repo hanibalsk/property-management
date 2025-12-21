@@ -530,6 +530,10 @@ async fn test_rls_coverage_validation() {
         "documents",
         "document_shares",
         "document_share_access_log",
+        // Notification Preferences (Epic 8A)
+        "notification_preferences",
+        "critical_notifications",
+        "critical_notification_acknowledgments",
     ];
 
     for table_name in &expected_rls_tables {
