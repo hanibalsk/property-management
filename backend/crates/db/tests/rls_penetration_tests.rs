@@ -249,6 +249,25 @@ async fn test_cross_tenant_org_isolation() {
         rls_info.0, rls_info.1
     );
 
+    // Debug: check what the policy condition evaluates to
+    let policy_check: Vec<(Uuid, Uuid, bool, bool)> = sqlx::query_as(
+        r#"SELECT
+            organization_id,
+            user_id,
+            user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID as user_match,
+            is_super_admin() as is_admin
+           FROM organization_members"#,
+    )
+    .fetch_all(&mut *conn)
+    .await
+    .unwrap();
+    for row in &policy_check {
+        println!(
+            "DEBUG: Policy check - org_id={}, user_id={}, user_match={}, is_admin={}",
+            row.0, row.1, row.2, row.3
+        );
+    }
+
     // User A should only see Org A members (on the same connection)
     let members: Vec<_> = sqlx::query("SELECT * FROM organization_members")
         .fetch_all(&mut *conn)
