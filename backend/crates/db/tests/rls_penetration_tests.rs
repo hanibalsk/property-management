@@ -33,6 +33,7 @@ impl TestDb {
     }
 
     /// Set tenant context for the current session
+    #[allow(dead_code)]
     async fn set_tenant_context(&self, org_id: Uuid) -> Result<(), sqlx::Error> {
         sqlx::query("SELECT set_tenant_context($1)")
             .bind(org_id)
@@ -407,7 +408,7 @@ async fn test_null_context_blocks_access() {
     db.clear_context().await.unwrap();
 
     // Without context, access should be restricted
-    let members: Vec<_> = sqlx::query("SELECT * FROM organization_members")
+    let _members: Vec<_> = sqlx::query("SELECT * FROM organization_members")
         .fetch_all(&db.pool)
         .await
         .unwrap();
