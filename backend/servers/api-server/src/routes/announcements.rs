@@ -318,7 +318,7 @@ async fn create_announcement(
     }
 
     // Validate target_ids based on target_type
-    if req.target_type != target_type::ALL && req.target_ids.as_ref().map_or(true, |v| v.is_empty())
+    if req.target_type != target_type::ALL && req.target_ids.as_ref().is_none_or(|v| v.is_empty())
     {
         return Err((
             StatusCode::BAD_REQUEST,
