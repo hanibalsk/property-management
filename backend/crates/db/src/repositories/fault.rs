@@ -1,11 +1,11 @@
 //! Fault repository (Epic 4: Fault Reporting & Resolution).
 
 use crate::models::fault::{
-    timeline_action, AddFaultComment, AddWorkNote, AssignFault, CategoryCount,
-    ConfirmFault, CreateFault, CreateFaultAttachment, CreateFaultTimelineEntry, Fault,
-    FaultAttachment, FaultListQuery, FaultStatistics, FaultSummary, FaultTimelineEntry,
-    FaultTimelineEntryWithUser, FaultWithDetails, PriorityCount, ReopenFault, ResolveFault,
-    StatusCount, TriageFault, UpdateFault, UpdateFaultStatus,
+    timeline_action, AddFaultComment, AddWorkNote, AssignFault, CategoryCount, ConfirmFault,
+    CreateFault, CreateFaultAttachment, CreateFaultTimelineEntry, Fault, FaultAttachment,
+    FaultListQuery, FaultStatistics, FaultSummary, FaultTimelineEntry, FaultTimelineEntryWithUser,
+    FaultWithDetails, PriorityCount, ReopenFault, ResolveFault, StatusCount, TriageFault,
+    UpdateFault, UpdateFaultStatus,
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
@@ -151,10 +151,7 @@ impl FaultRepository {
     }
 
     /// Find fault by idempotency key.
-    pub async fn find_by_idempotency_key(
-        &self,
-        key: &str,
-    ) -> Result<Option<Fault>, SqlxError> {
+    pub async fn find_by_idempotency_key(&self, key: &str) -> Result<Option<Fault>, SqlxError> {
         let fault = sqlx::query_as::<_, Fault>(
             r#"
             SELECT * FROM faults WHERE idempotency_key = $1
@@ -794,9 +791,7 @@ impl FaultRepository {
         &self,
         data: CreateFaultTimelineEntry,
     ) -> Result<FaultTimelineEntry, SqlxError> {
-        let metadata = data
-            .metadata
-            .unwrap_or_else(|| serde_json::json!({}));
+        let metadata = data.metadata.unwrap_or_else(|| serde_json::json!({}));
 
         let entry = sqlx::query_as::<_, FaultTimelineEntry>(
             r#"

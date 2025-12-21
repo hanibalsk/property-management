@@ -1,11 +1,11 @@
 //! Vote repository (Epic 5: Building Voting & Decisions).
 
 use crate::models::vote::{
-    audit_action, question_type, vote_status, CancelVote, CastVote, CreateVote,
-    CreateVoteAuditLog, CreateVoteComment, CreateVoteQuestion, EligibleUnit, HideVoteComment,
-    OptionResult, PublishVote, QuestionResult, UpdateVote, UpdateVoteQuestion, Vote, VoteAuditLog,
-    VoteComment, VoteCommentWithUser, VoteEligibility, VoteListQuery, VoteQuestion, VoteReceipt,
-    VoteResponse, VoteResults, VoteSummary, VoteWithDetails,
+    audit_action, question_type, vote_status, CancelVote, CastVote, CreateVote, CreateVoteAuditLog,
+    CreateVoteComment, CreateVoteQuestion, EligibleUnit, HideVoteComment, OptionResult,
+    PublishVote, QuestionResult, UpdateVote, UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment,
+    VoteCommentWithUser, VoteEligibility, VoteListQuery, VoteQuestion, VoteReceipt, VoteResponse,
+    VoteResults, VoteSummary, VoteWithDetails,
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
@@ -785,7 +785,10 @@ impl VoteRepository {
         user_id: Uuid,
     ) -> Result<VoteEligibility, SqlxError> {
         // Get vote details
-        let vote = self.find_by_id(vote_id).await?.ok_or(SqlxError::RowNotFound)?;
+        let vote = self
+            .find_by_id(vote_id)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
 
         // Get eligible units (owned or delegated)
         let eligible_units = sqlx::query_as::<_, EligibleUnitRow>(
@@ -881,7 +884,10 @@ impl VoteRepository {
 
     /// Count eligible units for a vote.
     async fn count_eligible_units(&self, vote_id: Uuid) -> Result<i32, SqlxError> {
-        let vote = self.find_by_id(vote_id).await?.ok_or(SqlxError::RowNotFound)?;
+        let vote = self
+            .find_by_id(vote_id)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
 
         let count: (i64,) = sqlx::query_as(
             r#"
@@ -963,7 +969,11 @@ impl VoteRepository {
         vote_id: Uuid,
         include_hidden: bool,
     ) -> Result<Vec<VoteCommentWithUser>, SqlxError> {
-        let hidden_filter = if include_hidden { "" } else { "AND c.hidden = false" };
+        let hidden_filter = if include_hidden {
+            ""
+        } else {
+            "AND c.hidden = false"
+        };
 
         let sql = format!(
             r#"
@@ -1018,7 +1028,11 @@ impl VoteRepository {
         parent_id: Uuid,
         include_hidden: bool,
     ) -> Result<Vec<VoteCommentWithUser>, SqlxError> {
-        let hidden_filter = if include_hidden { "" } else { "AND c.hidden = false" };
+        let hidden_filter = if include_hidden {
+            ""
+        } else {
+            "AND c.hidden = false"
+        };
 
         let sql = format!(
             r#"
@@ -1111,7 +1125,10 @@ impl VoteRepository {
 
     /// Calculate results for a vote.
     pub async fn calculate_results(&self, vote_id: Uuid) -> Result<VoteResults, SqlxError> {
-        let vote = self.find_by_id(vote_id).await?.ok_or(SqlxError::RowNotFound)?;
+        let vote = self
+            .find_by_id(vote_id)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
         let questions = self.get_questions(vote_id).await?;
 
         // Get all responses
@@ -1268,8 +1285,8 @@ impl VoteRepository {
                                 if let Some(option_id) = sel.as_str() {
                                     if let Ok(opt_uuid) = Uuid::parse_str(option_id) {
                                         // Higher rank = more points (reverse index)
-                                        let rank_weight =
-                                            (num_options - rank) as f64 * weight / num_options as f64;
+                                        let rank_weight = (num_options - rank) as f64 * weight
+                                            / num_options as f64;
                                         for opt_result in option_results.iter_mut() {
                                             if opt_result.option_id == opt_uuid {
                                                 opt_result.count += 1;
@@ -1346,7 +1363,10 @@ impl VoteRepository {
     // ========================================================================
 
     /// Create an audit log entry.
-    pub async fn create_audit_entry(&self, data: CreateVoteAuditLog) -> Result<VoteAuditLog, SqlxError> {
+    pub async fn create_audit_entry(
+        &self,
+        data: CreateVoteAuditLog,
+    ) -> Result<VoteAuditLog, SqlxError> {
         // Generate hash of the data
         let data_str = serde_json::to_string(&data.data).unwrap_or_default();
         let data_hash = format!("{:x}", Sha256::digest(data_str.as_bytes()));
@@ -1396,7 +1416,10 @@ impl VoteRepository {
         &self,
         vote_id: Uuid,
     ) -> Result<crate::models::vote::VoteReportData, SqlxError> {
-        let vote = self.find_by_id(vote_id).await?.ok_or(SqlxError::RowNotFound)?;
+        let vote = self
+            .find_by_id(vote_id)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
         let questions = self.get_questions(vote_id).await?;
         let results = self.get_results(vote_id).await?;
 

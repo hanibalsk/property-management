@@ -8,7 +8,6 @@ use axum::{
     Json, Router,
 };
 use common::errors::ErrorResponse;
-use sqlx::Error as SqlxError;
 use db::models::{
     fault_category, fault_priority, fault_status, AddFaultComment, AddWorkNote, AiSuggestion,
     AssignFault, ConfirmFault, CreateFault, CreateFaultAttachment, Fault, FaultAttachment,
@@ -16,6 +15,7 @@ use db::models::{
     ReopenFault, ResolveFault, TriageFault, UpdateFault, UpdateFaultStatus,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::Error as SqlxError;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -223,7 +223,10 @@ pub fn router() -> Router<AppState> {
         // Attachments
         .route("/{id}/attachments", get(list_attachments))
         .route("/{id}/attachments", post(add_attachment))
-        .route("/{id}/attachments/{attachment_id}", delete(delete_attachment))
+        .route(
+            "/{id}/attachments/{attachment_id}",
+            delete(delete_attachment),
+        )
         // AI
         .route("/{id}/suggest", post(get_ai_suggestion))
         // Statistics
@@ -271,7 +274,7 @@ async fn create_fault(
     if !fault_category::ALL.contains(&req.category.as_str()) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST","Invalid category")),
+            Json(ErrorResponse::new("BAD_REQUEST", "Invalid category")),
         ));
     }
 
@@ -280,7 +283,7 @@ async fn create_fault(
         if !fault_priority::ALL.contains(&priority.as_str()) {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("BAD_REQUEST","Invalid priority")),
+                Json(ErrorResponse::new("BAD_REQUEST", "Invalid priority")),
             ));
         }
     }
@@ -310,7 +313,10 @@ async fn create_fault(
             tracing::error!("Failed to create fault: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to create fault")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to create fault",
+                )),
             ))
         }
     }
@@ -337,9 +343,15 @@ async fn list_faults(
     let list_query = FaultListQuery {
         building_id: query.building_id,
         unit_id: query.unit_id,
-        status: query.status.map(|s| s.split(',').map(String::from).collect()),
-        priority: query.priority.map(|s| s.split(',').map(String::from).collect()),
-        category: query.category.map(|s| s.split(',').map(String::from).collect()),
+        status: query
+            .status
+            .map(|s| s.split(',').map(String::from).collect()),
+        priority: query
+            .priority
+            .map(|s| s.split(',').map(String::from).collect()),
+        category: query
+            .category
+            .map(|s| s.split(',').map(String::from).collect()),
         assigned_to: query.assigned_to,
         reporter_id: None,
         search: query.search,
@@ -360,7 +372,10 @@ async fn list_faults(
             tracing::error!("Failed to list faults: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to list faults")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to list faults",
+                )),
             ))
         }
     }
@@ -386,7 +401,11 @@ async fn list_my_faults(
     let limit = query.limit.unwrap_or(50);
     let offset = query.offset.unwrap_or(0);
 
-    match state.fault_repo.list_by_reporter(user_id, limit, offset).await {
+    match state
+        .fault_repo
+        .list_by_reporter(user_id, limit, offset)
+        .await
+    {
         Ok(faults) => {
             let count = faults.len();
             Ok(Json(FaultListResponse { faults, count }))
@@ -395,7 +414,10 @@ async fn list_my_faults(
             tracing::error!("Failed to list my faults: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to list faults")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to list faults",
+                )),
             ))
         }
     }
@@ -426,14 +448,14 @@ async fn get_fault(
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+                Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
             ))
         }
         Err(e) => {
             tracing::error!("Failed to get fault: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to get fault")),
+                Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to get fault")),
             ));
         }
     };
@@ -483,14 +505,14 @@ async fn update_fault(
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+                Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
             ))
         }
         Err(e) => {
             tracing::error!("Failed to find fault: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to find fault")),
+                Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to find fault")),
             ));
         }
     };
@@ -498,7 +520,8 @@ async fn update_fault(
     if !existing.can_reporter_edit() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST",
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
                 "Fault cannot be edited after triage",
             )),
         ));
@@ -520,7 +543,10 @@ async fn update_fault(
             tracing::error!("Failed to update fault: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to update fault")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to update fault",
+                )),
             ))
         }
     }
@@ -553,7 +579,7 @@ async fn triage_fault(
     if !fault_priority::ALL.contains(&req.priority.as_str()) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST","Invalid priority")),
+            Json(ErrorResponse::new("BAD_REQUEST", "Invalid priority")),
         ));
     }
 
@@ -570,13 +596,16 @@ async fn triage_fault(
         })),
         Err(SqlxError::RowNotFound) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+            Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
         )),
         Err(e) => {
             tracing::error!("Failed to triage fault: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to triage fault")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to triage fault",
+                )),
             ))
         }
     }
@@ -615,13 +644,16 @@ async fn assign_fault(
         })),
         Err(SqlxError::RowNotFound) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+            Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
         )),
         Err(e) => {
             tracing::error!("Failed to assign fault: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to assign fault")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to assign fault",
+                )),
             ))
         }
     }
@@ -654,7 +686,7 @@ async fn update_status(
     if !fault_status::ALL.contains(&req.status.as_str()) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST","Invalid status")),
+            Json(ErrorResponse::new("BAD_REQUEST", "Invalid status")),
         ));
     }
 
@@ -672,13 +704,16 @@ async fn update_status(
         })),
         Err(SqlxError::RowNotFound) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+            Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
         )),
         Err(e) => {
             tracing::error!("Failed to update status: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to update status")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to update status",
+                )),
             ))
         }
     }
@@ -717,13 +752,16 @@ async fn resolve_fault(
         })),
         Err(SqlxError::RowNotFound) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+            Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
         )),
         Err(e) => {
             tracing::error!("Failed to resolve fault: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to resolve fault")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to resolve fault",
+                )),
             ))
         }
     }
@@ -757,7 +795,10 @@ async fn confirm_fault(
         if !(1..=5).contains(&rating) {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("BAD_REQUEST","Rating must be between 1 and 5")),
+                Json(ErrorResponse::new(
+                    "BAD_REQUEST",
+                    "Rating must be between 1 and 5",
+                )),
             ));
         }
     }
@@ -774,13 +815,16 @@ async fn confirm_fault(
         })),
         Err(SqlxError::RowNotFound) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+            Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
         )),
         Err(e) => {
             tracing::error!("Failed to confirm fault: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to confirm resolution")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to confirm resolution",
+                )),
             ))
         }
     }
@@ -817,13 +861,16 @@ async fn reopen_fault(
         })),
         Err(SqlxError::RowNotFound) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+            Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
         )),
         Err(e) => {
             tracing::error!("Failed to reopen fault: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to reopen fault")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to reopen fault",
+                )),
             ))
         }
     }
@@ -854,7 +901,10 @@ async fn list_comments(
             tracing::error!("Failed to list timeline: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to list comments")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to list comments",
+                )),
             ))
         }
     }
@@ -893,7 +943,10 @@ async fn add_comment(
             tracing::error!("Failed to add comment: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to add comment")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to add comment",
+                )),
             ))
         }
     }
@@ -929,7 +982,10 @@ async fn add_work_note(
             tracing::error!("Failed to add work note: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to add work note")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to add work note",
+                )),
             ))
         }
     }
@@ -957,7 +1013,10 @@ async fn list_attachments(
             tracing::error!("Failed to list attachments: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to list attachments")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to list attachments",
+                )),
             ))
         }
     }
@@ -1005,7 +1064,10 @@ async fn add_attachment(
             tracing::error!("Failed to add attachment: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to add attachment")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to add attachment",
+                )),
             ))
         }
     }
@@ -1035,7 +1097,10 @@ async fn delete_attachment(
             tracing::error!("Failed to delete attachment: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to delete attachment")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to delete attachment",
+                )),
             ))
         }
     }
@@ -1064,14 +1129,14 @@ async fn get_ai_suggestion(
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND","Fault not found")),
+                Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
             ))
         }
         Err(e) => {
             tracing::error!("Failed to get fault: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to get fault")),
+                Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to get fault")),
             ));
         }
     };
@@ -1195,13 +1260,20 @@ async fn get_statistics(
     // TODO: Get from auth context
     let org_id = Uuid::nil();
 
-    match state.fault_repo.get_statistics(org_id, query.building_id).await {
+    match state
+        .fault_repo
+        .get_statistics(org_id, query.building_id)
+        .await
+    {
         Ok(statistics) => Ok(Json(StatisticsResponse { statistics })),
         Err(e) => {
             tracing::error!("Failed to get statistics: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR","Failed to get statistics")),
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get statistics",
+                )),
             ))
         }
     }

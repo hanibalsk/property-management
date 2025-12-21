@@ -58,12 +58,11 @@ impl DelegationRepository {
 
     /// Find delegation by ID.
     pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Delegation>, SqlxError> {
-        let delegation = sqlx::query_as::<_, Delegation>(
-            r#"SELECT * FROM delegations WHERE id = $1"#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let delegation =
+            sqlx::query_as::<_, Delegation>(r#"SELECT * FROM delegations WHERE id = $1"#)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(delegation)
     }
@@ -84,7 +83,10 @@ impl DelegationRepository {
     }
 
     /// Find delegations by owner.
-    pub async fn find_by_owner(&self, owner_user_id: Uuid) -> Result<Vec<DelegationSummary>, SqlxError> {
+    pub async fn find_by_owner(
+        &self,
+        owner_user_id: Uuid,
+    ) -> Result<Vec<DelegationSummary>, SqlxError> {
         let delegations = sqlx::query_as::<_, DelegationSummary>(
             r#"
             SELECT id, owner_user_id, delegate_user_id, unit_id, scopes, status

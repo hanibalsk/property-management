@@ -26,7 +26,9 @@ impl UnitResidentRepository {
         data: CreateUnitResident,
         created_by: Uuid,
     ) -> Result<UnitResident, SqlxError> {
-        let start_date = data.start_date.unwrap_or_else(|| chrono::Utc::now().date_naive());
+        let start_date = data
+            .start_date
+            .unwrap_or_else(|| chrono::Utc::now().date_naive());
 
         let resident = sqlx::query_as::<_, UnitResident>(
             r#"
@@ -55,18 +57,20 @@ impl UnitResidentRepository {
 
     /// Find resident by ID.
     pub async fn find_by_id(&self, id: Uuid) -> Result<Option<UnitResident>, SqlxError> {
-        let resident = sqlx::query_as::<_, UnitResident>(
-            r#"SELECT * FROM unit_residents WHERE id = $1"#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let resident =
+            sqlx::query_as::<_, UnitResident>(r#"SELECT * FROM unit_residents WHERE id = $1"#)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(resident)
     }
 
     /// Find all active residents for a unit.
-    pub async fn find_by_unit(&self, unit_id: Uuid) -> Result<Vec<UnitResidentWithUser>, SqlxError> {
+    pub async fn find_by_unit(
+        &self,
+        unit_id: Uuid,
+    ) -> Result<Vec<UnitResidentWithUser>, SqlxError> {
         let residents = sqlx::query_as::<_, UnitResidentWithUser>(
             r#"
             SELECT

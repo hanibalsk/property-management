@@ -1,8 +1,8 @@
 //! Person month repository (Epic 3, Story 3.5).
 
 use crate::models::person_month::{
-    BuildingPersonMonthSummary, BulkPersonMonthEntry, CreatePersonMonth, MonthlyCount,
-    PersonMonth, PersonMonthWithUnit, UpdatePersonMonth, YearlyPersonMonthSummary,
+    BuildingPersonMonthSummary, BulkPersonMonthEntry, CreatePersonMonth, MonthlyCount, PersonMonth,
+    PersonMonthWithUnit, UpdatePersonMonth, YearlyPersonMonthSummary,
 };
 use crate::DbPool;
 use sqlx::Error as SqlxError;
@@ -55,12 +55,11 @@ impl PersonMonthRepository {
 
     /// Find person month by ID.
     pub async fn find_by_id(&self, id: Uuid) -> Result<Option<PersonMonth>, SqlxError> {
-        let entry = sqlx::query_as::<_, PersonMonth>(
-            r#"SELECT * FROM person_months WHERE id = $1"#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let entry =
+            sqlx::query_as::<_, PersonMonth>(r#"SELECT * FROM person_months WHERE id = $1"#)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(entry)
     }
@@ -282,14 +281,12 @@ impl PersonMonthRepository {
         year: i32,
         month: i32,
     ) -> Result<i32, SqlxError> {
-        let count: (i64,) = sqlx::query_as(
-            r#"SELECT count_residents_for_month($1, $2, $3)"#,
-        )
-        .bind(unit_id)
-        .bind(year)
-        .bind(month)
-        .fetch_one(&self.pool)
-        .await?;
+        let count: (i64,) = sqlx::query_as(r#"SELECT count_residents_for_month($1, $2, $3)"#)
+            .bind(unit_id)
+            .bind(year)
+            .bind(month)
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(count.0 as i32)
     }

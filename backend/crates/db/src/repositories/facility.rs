@@ -62,18 +62,19 @@ impl FacilityRepository {
 
     /// Find facility by ID.
     pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Facility>, SqlxError> {
-        let facility = sqlx::query_as::<_, Facility>(
-            r#"SELECT * FROM facilities WHERE id = $1"#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let facility = sqlx::query_as::<_, Facility>(r#"SELECT * FROM facilities WHERE id = $1"#)
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(facility)
     }
 
     /// Find all facilities for a building.
-    pub async fn find_by_building(&self, building_id: Uuid) -> Result<Vec<FacilitySummary>, SqlxError> {
+    pub async fn find_by_building(
+        &self,
+        building_id: Uuid,
+    ) -> Result<Vec<FacilitySummary>, SqlxError> {
         let facilities = sqlx::query_as::<_, FacilitySummary>(
             r#"
             SELECT id, building_id, name, facility_type, is_bookable, is_active

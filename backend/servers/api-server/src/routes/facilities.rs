@@ -445,17 +445,22 @@ pub async fn create_facility(
     if req.name.trim().is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("INVALID_NAME", "Facility name is required")),
+            Json(ErrorResponse::new(
+                "INVALID_NAME",
+                "Facility name is required",
+            )),
         ));
     }
 
     // Parse time strings
-    let available_from = req.available_from.as_ref().and_then(|s| {
-        chrono::NaiveTime::parse_from_str(s, "%H:%M").ok()
-    });
-    let available_to = req.available_to.as_ref().and_then(|s| {
-        chrono::NaiveTime::parse_from_str(s, "%H:%M").ok()
-    });
+    let available_from = req
+        .available_from
+        .as_ref()
+        .and_then(|s| chrono::NaiveTime::parse_from_str(s, "%H:%M").ok());
+    let available_to = req
+        .available_to
+        .as_ref()
+        .and_then(|s| chrono::NaiveTime::parse_from_str(s, "%H:%M").ok());
 
     let create_data = CreateFacility {
         building_id,
@@ -477,17 +482,13 @@ pub async fn create_facility(
         deposit_amount: req.deposit_amount,
     };
 
-    let facility = state
-        .facility_repo
-        .create(create_data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create facility");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Failed to create facility")),
-            )
-        })?;
+    let facility = state.facility_repo.create(create_data).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to create facility");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", "Failed to create facility")),
+        )
+    })?;
 
     tracing::info!(
         facility_id = %facility.id,
@@ -660,12 +661,14 @@ pub async fn update_facility(
     }
 
     // Parse time strings
-    let available_from = req.available_from.as_ref().and_then(|s| {
-        chrono::NaiveTime::parse_from_str(s, "%H:%M").ok()
-    });
-    let available_to = req.available_to.as_ref().and_then(|s| {
-        chrono::NaiveTime::parse_from_str(s, "%H:%M").ok()
-    });
+    let available_from = req
+        .available_from
+        .as_ref()
+        .and_then(|s| chrono::NaiveTime::parse_from_str(s, "%H:%M").ok());
+    let available_to = req
+        .available_to
+        .as_ref()
+        .and_then(|s| chrono::NaiveTime::parse_from_str(s, "%H:%M").ok());
 
     let update_data = UpdateFacility {
         name: req.name,
@@ -860,7 +863,9 @@ pub async fn list_facility_bookings(
     }
 
     let from = query.from.unwrap_or_else(Utc::now);
-    let to = query.to.unwrap_or_else(|| from + chrono::Duration::days(30));
+    let to = query
+        .to
+        .unwrap_or_else(|| from + chrono::Duration::days(30));
 
     let bookings = state
         .facility_repo

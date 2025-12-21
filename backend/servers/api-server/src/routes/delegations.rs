@@ -194,7 +194,10 @@ pub async fn create_delegation(
     if !delegate_exists {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("USER_NOT_FOUND", "Delegate user not found")),
+            Json(ErrorResponse::new(
+                "USER_NOT_FOUND",
+                "Delegate user not found",
+            )),
         ));
     }
 
@@ -237,7 +240,10 @@ pub async fn create_delegation(
             tracing::error!(error = %e, "Failed to create delegation");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Failed to create delegation")),
+                Json(ErrorResponse::new(
+                    "DB_ERROR",
+                    "Failed to create delegation",
+                )),
             )
         })?;
 
@@ -248,7 +254,10 @@ pub async fn create_delegation(
         "Delegation created"
     );
 
-    Ok((StatusCode::CREATED, Json(DelegationResponse::from(delegation))))
+    Ok((
+        StatusCode::CREATED,
+        Json(DelegationResponse::from(delegation)),
+    ))
 }
 
 /// List delegations I created.
@@ -375,9 +384,7 @@ pub async fn get_delegation(
         })?;
 
     // Check access - must be owner or delegate
-    if delegation.owner_user_id != auth.user_id
-        && delegation.delegate_user_id != auth.user_id
-    {
+    if delegation.owner_user_id != auth.user_id && delegation.delegate_user_id != auth.user_id {
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -446,7 +453,10 @@ pub async fn accept_delegation(
             tracing::error!(error = %e, "Failed to accept delegation");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Failed to accept delegation")),
+                Json(ErrorResponse::new(
+                    "DB_ERROR",
+                    "Failed to accept delegation",
+                )),
             )
         })?
         .ok_or_else(|| {
@@ -524,7 +534,10 @@ pub async fn decline_delegation(
             tracing::error!(error = %e, "Failed to decline delegation");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Failed to decline delegation")),
+                Json(ErrorResponse::new(
+                    "DB_ERROR",
+                    "Failed to decline delegation",
+                )),
             )
         })?
         .ok_or_else(|| {
@@ -602,7 +615,10 @@ pub async fn revoke_delegation(
             tracing::error!(error = %e, "Failed to revoke delegation");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Failed to revoke delegation")),
+                Json(ErrorResponse::new(
+                    "DB_ERROR",
+                    "Failed to revoke delegation",
+                )),
             )
         })?
         .ok_or_else(|| {

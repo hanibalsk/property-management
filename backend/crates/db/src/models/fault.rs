@@ -20,8 +20,16 @@ pub mod fault_category {
     pub const OTHER: &str = "other";
 
     pub const ALL: &[&str] = &[
-        PLUMBING, ELECTRICAL, HEATING, STRUCTURAL, EXTERIOR, ELEVATOR, COMMON_AREA, SECURITY,
-        CLEANING, OTHER,
+        PLUMBING,
+        ELECTRICAL,
+        HEATING,
+        STRUCTURAL,
+        EXTERIOR,
+        ELEVATOR,
+        COMMON_AREA,
+        SECURITY,
+        CLEANING,
+        OTHER,
     ];
 }
 

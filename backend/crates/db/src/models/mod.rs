@@ -5,7 +5,6 @@ pub mod delegation;
 pub mod facility;
 pub mod fault;
 pub mod organization;
-pub mod vote;
 pub mod organization_member;
 pub mod password_reset;
 pub mod person_month;
@@ -14,6 +13,7 @@ pub mod role;
 pub mod unit;
 pub mod unit_resident;
 pub mod user;
+pub mod vote;
 
 pub use building::{
     building_status, Building, BuildingContact, BuildingStatistics, BuildingSummary,
@@ -32,17 +32,9 @@ pub use facility::{
 pub use fault::{
     fault_category, fault_priority, fault_status, timeline_action, AddFaultComment, AddWorkNote,
     AiSuggestion, AssignFault, CategoryCount, ConfirmFault, CreateFault, CreateFaultAttachment,
-    CreateFaultTimelineEntry, Fault, FaultAttachment, FaultListQuery, FaultStatistics, FaultSummary,
-    FaultTimelineEntry, FaultTimelineEntryWithUser, FaultWithDetails, PriorityCount, ReopenFault,
-    ResolveFault, StatusCount, TriageFault, UpdateFault, UpdateFaultStatus,
-};
-pub use vote::{
-    audit_action, question_type, quorum_type, vote_status, CancelVote, CastVote, CreateVote,
-    CreateVoteAuditLog, CreateVoteComment, CreateVoteQuestion, EligibleUnit, HideVoteComment,
-    OptionResult, ParticipationDetail, PublishVote, QuestionOption, QuestionResult, UpdateVote,
-    UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment, VoteCommentWithUser, VoteEligibility,
-    VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData, VoteResponse, VoteResults,
-    VoteSummary, VoteWithDetails,
+    CreateFaultTimelineEntry, Fault, FaultAttachment, FaultListQuery, FaultStatistics,
+    FaultSummary, FaultTimelineEntry, FaultTimelineEntryWithUser, FaultWithDetails, PriorityCount,
+    ReopenFault, ResolveFault, StatusCount, TriageFault, UpdateFault, UpdateFaultStatus,
 };
 pub use organization::{
     CreateOrganization, Organization, OrganizationStatus, OrganizationSummary, UpdateOrganization,
@@ -68,3 +60,11 @@ pub use unit_resident::{
     UnitResidentWithUser, UpdateUnitResident,
 };
 pub use user::{CreateUser, EmailVerificationToken, Locale, UpdateUser, User, UserStatus};
+pub use vote::{
+    audit_action, question_type, quorum_type, vote_status, CancelVote, CastVote, CreateVote,
+    CreateVoteAuditLog, CreateVoteComment, CreateVoteQuestion, EligibleUnit, HideVoteComment,
+    OptionResult, ParticipationDetail, PublishVote, QuestionOption, QuestionResult, UpdateVote,
+    UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment, VoteCommentWithUser, VoteEligibility,
+    VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData, VoteResponse, VoteResults,
+    VoteSummary, VoteWithDetails,
+};

@@ -10,10 +10,10 @@ use axum::{
 use chrono::{DateTime, NaiveDate, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    CancelVote, CastVote, CreateVote, CreateVoteComment, CreateVoteQuestion,
-    HideVoteComment, PublishVote, QuestionOption, UpdateVote, UpdateVoteQuestion, Vote,
-    VoteAuditLog, VoteCommentWithUser, VoteEligibility, VoteListQuery, VoteQuestion,
-    VoteReceipt, VoteReportData, VoteResults, VoteSummary, VoteWithDetails,
+    CancelVote, CastVote, CreateVote, CreateVoteComment, CreateVoteQuestion, HideVoteComment,
+    PublishVote, QuestionOption, UpdateVote, UpdateVoteQuestion, Vote, VoteAuditLog,
+    VoteCommentWithUser, VoteEligibility, VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData,
+    VoteResults, VoteSummary, VoteWithDetails,
 };
 use serde::Deserialize;
 use sqlx::Error as SqlxError;
@@ -54,7 +54,10 @@ pub fn router() -> Router<AppState> {
         // Audit
         .route("/{id}/audit", get(get_audit_log))
         // Building votes
-        .route("/building/{building_id}/active", get(list_active_by_building))
+        .route(
+            "/building/{building_id}/active",
+            get(list_active_by_building),
+        )
 }
 
 // ============================================================================
@@ -201,7 +204,10 @@ async fn create_vote(
     let vote = state.vote_repo.create(data).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to create vote: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to create vote: {}", e),
+            )),
         )
     })?;
 
@@ -238,12 +244,19 @@ async fn list_votes(
         offset: query.offset,
     };
 
-    let votes = state.vote_repo.list(org_id, list_query).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to list votes: {}", e))),
-        )
-    })?;
+    let votes = state
+        .vote_repo
+        .list(org_id, list_query)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to list votes: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(votes))
 }
@@ -273,7 +286,10 @@ async fn get_vote(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
             )
         })?
         .ok_or_else(|| {
@@ -308,23 +324,33 @@ async fn update_vote(
     Json(req): Json<UpdateVoteRequest>,
 ) -> Result<Json<Vote>, (StatusCode, Json<ErrorResponse>)> {
     // Check vote exists and is in draft status
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if !existing.can_edit() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Vote can only be edited in draft status")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Vote can only be edited in draft status",
+            )),
         ));
     }
 
@@ -342,7 +368,10 @@ async fn update_vote(
     let vote = state.vote_repo.update(id, data).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to update vote: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to update vote: {}", e),
+            )),
         )
     })?;
 
@@ -369,30 +398,43 @@ async fn delete_vote(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Check vote exists and is in draft status
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if !existing.can_edit() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Vote can only be deleted in draft status")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Vote can only be deleted in draft status",
+            )),
         ));
     }
 
     state.vote_repo.delete(id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to delete vote: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to delete vote: {}", e),
+            )),
         )
     })?;
 
@@ -428,34 +470,53 @@ async fn publish_vote(
     let user_id = Uuid::nil();
 
     // Check vote exists and is in draft status
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if !existing.is_draft() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Only draft votes can be published")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Only draft votes can be published",
+            )),
         ));
     }
 
-    let data = PublishVote { start_at: req.start_at };
+    let data = PublishVote {
+        start_at: req.start_at,
+    };
 
-    let vote = state.vote_repo.publish(id, user_id, data).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to publish vote: {}", e))),
-        )
-    })?;
+    let vote = state
+        .vote_repo
+        .publish(id, user_id, data)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to publish vote: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(vote))
 }
@@ -484,34 +545,51 @@ async fn cancel_vote(
     // TODO: Get from auth context
     let user_id = Uuid::nil();
 
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if existing.is_closed() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Closed votes cannot be cancelled")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Closed votes cannot be cancelled",
+            )),
         ));
     }
 
     let data = CancelVote { reason: req.reason };
 
-    let vote = state.vote_repo.cancel(id, user_id, data).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to cancel vote: {}", e))),
-        )
-    })?;
+    let vote = state
+        .vote_repo
+        .cancel(id, user_id, data)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to cancel vote: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(vote))
 }
@@ -535,30 +613,43 @@ async fn close_vote(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vote>, (StatusCode, Json<ErrorResponse>)> {
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if !existing.is_active() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Only active votes can be closed")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Only active votes can be closed",
+            )),
         ));
     }
 
     let vote = state.vote_repo.close(id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to close vote: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to close vote: {}", e),
+            )),
         )
     })?;
 
@@ -591,23 +682,33 @@ async fn add_question(
     Json(req): Json<AddQuestionRequest>,
 ) -> Result<(StatusCode, Json<VoteQuestion>), (StatusCode, Json<ErrorResponse>)> {
     // Check vote exists and is in draft status
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if !existing.can_edit() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Questions can only be added to draft votes")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Questions can only be added to draft votes",
+            )),
         ));
     }
 
@@ -624,7 +725,10 @@ async fn add_question(
     let question = state.vote_repo.add_question(data).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to add question: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to add question: {}", e),
+            )),
         )
     })?;
 
@@ -652,7 +756,10 @@ async fn list_questions(
     let questions = state.vote_repo.get_questions(id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to list questions: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to list questions: {}", e),
+            )),
         )
     })?;
 
@@ -682,23 +789,33 @@ async fn update_question(
     Json(req): Json<UpdateQuestionRequest>,
 ) -> Result<Json<VoteQuestion>, (StatusCode, Json<ErrorResponse>)> {
     // Check vote exists and is in draft status
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if !existing.can_edit() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Questions can only be updated in draft votes")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Questions can only be updated in draft votes",
+            )),
         ));
     }
 
@@ -710,12 +827,19 @@ async fn update_question(
         is_required: req.is_required,
     };
 
-    let question = state.vote_repo.update_question(question_id, data).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to update question: {}", e))),
-        )
-    })?;
+    let question = state
+        .vote_repo
+        .update_question(question_id, data)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to update question: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(question))
 }
@@ -741,32 +865,49 @@ async fn delete_question(
     Path((id, question_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Check vote exists and is in draft status
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if !existing.can_edit() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Questions can only be deleted from draft votes")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Questions can only be deleted from draft votes",
+            )),
         ));
     }
 
-    state.vote_repo.delete_question(question_id, id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to delete question: {}", e))),
-        )
-    })?;
+    state
+        .vote_repo
+        .delete_question(question_id, id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to delete question: {}", e),
+                )),
+            )
+        })?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -796,16 +937,23 @@ async fn check_eligibility(
     // TODO: Get from auth context
     let user_id = Uuid::nil();
 
-    let eligibility = state.vote_repo.check_eligibility(id, user_id).await.map_err(|e| match e {
-        SqlxError::RowNotFound => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        ),
-        _ => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to check eligibility: {}", e))),
-        ),
-    })?;
+    let eligibility = state
+        .vote_repo
+        .check_eligibility(id, user_id)
+        .await
+        .map_err(|e| match e {
+            SqlxError::RowNotFound => (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to check eligibility: {}", e),
+                )),
+            ),
+        })?;
 
     Ok(Json(eligibility))
 }
@@ -835,41 +983,64 @@ async fn cast_vote(
     let user_id = Uuid::nil();
 
     // Check vote exists and is active
-    let existing = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let existing = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     if !existing.can_vote() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Vote is not currently accepting ballots")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Vote is not currently accepting ballots",
+            )),
         ));
     }
 
     // Check eligibility
-    let eligibility = state.vote_repo.check_eligibility(id, user_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to check eligibility: {}", e))),
-        )
-    })?;
+    let eligibility = state
+        .vote_repo
+        .check_eligibility(id, user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to check eligibility: {}", e),
+                )),
+            )
+        })?;
 
     // Verify the unit is in the eligible list
-    let unit_eligible = eligibility.eligible_units.iter().find(|u| u.unit_id == req.unit_id);
+    let unit_eligible = eligibility
+        .eligible_units
+        .iter()
+        .find(|u| u.unit_id == req.unit_id);
 
     if unit_eligible.is_none() {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new("FORBIDDEN", "User is not eligible to vote for this unit")),
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "User is not eligible to vote for this unit",
+            )),
         ));
     }
 
@@ -895,7 +1066,10 @@ async fn cast_vote(
     let receipt = state.vote_repo.cast_vote(data).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to cast vote: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to cast vote: {}", e),
+            )),
         )
     })?;
 
@@ -922,12 +1096,19 @@ async fn get_my_response(
     Path(id): Path<Uuid>,
     Query(params): Query<MyResponseQuery>,
 ) -> Result<Json<Option<db::models::VoteResponse>>, (StatusCode, Json<ErrorResponse>)> {
-    let response = state.vote_repo.get_user_response(id, params.unit_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get response: {}", e))),
-        )
-    })?;
+    let response = state
+        .vote_repo
+        .get_user_response(id, params.unit_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get response: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(response))
 }
@@ -960,18 +1141,25 @@ async fn add_comment(
     let user_id = Uuid::nil();
 
     // Check vote exists
-    let _ = state.vote_repo.find_by_id(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get vote: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let _ = state
+        .vote_repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get vote: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     let data = CreateVoteComment {
         vote_id: id,
@@ -984,7 +1172,10 @@ async fn add_comment(
     let comment = state.vote_repo.add_comment(data).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to add comment: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to add comment: {}", e),
+            )),
         )
     })?;
 
@@ -1009,12 +1200,19 @@ async fn list_comments(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<VoteCommentWithUser>>, (StatusCode, Json<ErrorResponse>)> {
-    let comments = state.vote_repo.list_comments(id, false).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to list comments: {}", e))),
-        )
-    })?;
+    let comments = state
+        .vote_repo
+        .list_comments(id, false)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to list comments: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(comments))
 }
@@ -1038,12 +1236,19 @@ async fn list_replies(
     State(state): State<AppState>,
     Path((id, comment_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<Vec<VoteCommentWithUser>>, (StatusCode, Json<ErrorResponse>)> {
-    let replies = state.vote_repo.list_replies(comment_id, false).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to list replies: {}", e))),
-        )
-    })?;
+    let replies = state
+        .vote_repo
+        .list_replies(comment_id, false)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to list replies: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(replies))
 }
@@ -1074,12 +1279,19 @@ async fn hide_comment(
 
     let data = HideVoteComment { reason: req.reason };
 
-    let comment = state.vote_repo.hide_comment(comment_id, user_id, data).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to hide comment: {}", e))),
-        )
-    })?;
+    let comment = state
+        .vote_repo
+        .hide_comment(comment_id, user_id, data)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to hide comment: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(comment))
 }
@@ -1106,18 +1318,25 @@ async fn get_results(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<VoteResults>, (StatusCode, Json<ErrorResponse>)> {
-    let results = state.vote_repo.get_results(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get results: {}", e))),
-        )
-    })?
-    .ok_or_else(|| {
-        (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        )
-    })?;
+    let results = state
+        .vote_repo
+        .get_results(id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to get results: {}", e),
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            )
+        })?;
 
     Ok(Json(results))
 }
@@ -1144,16 +1363,23 @@ async fn get_report_data(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<VoteReportData>, (StatusCode, Json<ErrorResponse>)> {
-    let report = state.vote_repo.generate_report_data(id).await.map_err(|e| match e {
-        SqlxError::RowNotFound => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-        ),
-        _ => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to generate report: {}", e))),
-        ),
-    })?;
+    let report = state
+        .vote_repo
+        .generate_report_data(id)
+        .await
+        .map_err(|e| match e {
+            SqlxError::RowNotFound => (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
+            ),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to generate report: {}", e),
+                )),
+            ),
+        })?;
 
     Ok(Json(report))
 }
@@ -1183,7 +1409,10 @@ async fn get_audit_log(
     let entries = state.vote_repo.get_audit_log(id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to get audit log: {}", e))),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                &format!("Failed to get audit log: {}", e),
+            )),
         )
     })?;
 
@@ -1211,12 +1440,19 @@ async fn list_active_by_building(
     State(state): State<AppState>,
     Path(building_id): Path<Uuid>,
 ) -> Result<Json<Vec<VoteSummary>>, (StatusCode, Json<ErrorResponse>)> {
-    let votes = state.vote_repo.list_active_by_building(building_id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", &format!("Failed to list votes: {}", e))),
-        )
-    })?;
+    let votes = state
+        .vote_repo
+        .list_active_by_building(building_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    &format!("Failed to list votes: {}", e),
+                )),
+            )
+        })?;
 
     Ok(Json(votes))
 }
