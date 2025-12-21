@@ -35,6 +35,11 @@ epics:
     status: in-progress
     stories_total: 3
     stories_completed: 0
+  epic-10b:
+    name: "Platform Administration"
+    status: in-progress
+    stories_total: 7
+    stories_completed: 3
 
 # Story-level development status
 development_status:
@@ -59,6 +64,14 @@ development_status:
   10a-1-oauth-authorization-server: ready-for-dev
   10a-2-oauth-client-registration: ready-for-dev
   10a-3-oauth-token-management: ready-for-dev
+  # Epic 10B: Platform Administration
+  10b-1-organization-management-dashboard: done
+  10b-2-feature-flag-management: done
+  10b-3-platform-health-monitoring: done
+  10b-4-system-announcements: ready-for-dev
+  10b-5-support-data-access: ready-for-dev
+  10b-6-user-onboarding-tour: ready-for-dev
+  10b-7-contextual-help-documentation: ready-for-dev
 
 # Notes and blockers
 notes:

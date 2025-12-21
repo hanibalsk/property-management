@@ -10,15 +10,21 @@ pub mod delegation;
 pub mod document;
 pub mod facility;
 pub mod fault;
+pub mod feature_flag;
+pub mod health_monitoring;
+pub mod help;
 pub mod messaging;
 pub mod notification_preference;
 pub mod oauth;
+pub mod onboarding;
 pub mod organization;
 pub mod organization_member;
 pub mod password_reset;
 pub mod person_month;
+pub mod platform_admin;
 pub mod role;
 pub mod session;
+pub mod system_announcement;
 pub mod two_factor_auth;
 pub mod unit;
 pub mod unit_resident;
@@ -34,15 +40,31 @@ pub use delegation::DelegationRepository;
 pub use document::DocumentRepository;
 pub use facility::FacilityRepository;
 pub use fault::FaultRepository;
+pub use feature_flag::{
+    FeatureFlagRepository, FeatureFlagWithCount, FeatureFlagWithOverrides, ResolvedFeatureFlag,
+};
+pub use health_monitoring::{
+    CurrentMetric, HealthDashboard, HealthMonitoringRepository, MetricDataPoint, MetricHistory,
+    MetricStats, MetricStatus,
+};
+pub use help::{FaqEntry, HelpArticle, HelpCategory, HelpRepository, Tooltip};
 pub use messaging::MessagingRepository;
 pub use notification_preference::NotificationPreferenceRepository;
 pub use oauth::OAuthRepository;
+pub use onboarding::{
+    OnboardingRepository, OnboardingTour, TourStep, TourWithProgress, UserOnboardingProgress,
+};
 pub use organization::OrganizationRepository;
 pub use organization_member::OrganizationMemberRepository;
 pub use password_reset::PasswordResetRepository;
 pub use person_month::PersonMonthRepository;
+pub use platform_admin::{
+    PlatformAdminRepository, PlatformStats, SupportActivityLog, SupportUserInfo,
+    SupportUserMembership, SupportUserSession,
+};
 pub use role::RoleRepository;
 pub use session::SessionRepository;
+pub use system_announcement::{ActiveAnnouncement, SystemAnnouncementRepository};
 pub use two_factor_auth::TwoFactorAuthRepository;
 pub use unit::UnitRepository;
 pub use unit_resident::UnitResidentRepository;

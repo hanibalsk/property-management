@@ -16,6 +16,7 @@ pub mod organization;
 pub mod organization_member;
 pub mod password_reset;
 pub mod person_month;
+pub mod platform_admin;
 pub mod refresh_token;
 pub mod role;
 pub mod two_factor_auth;
@@ -102,6 +103,16 @@ pub use person_month::{
     person_month_source, BuildingPersonMonthSummary, BulkPersonMonthEntry, BulkUpsertPersonMonths,
     CreatePersonMonth, MonthlyCount, PersonMonth, PersonMonthWithUnit, UpdatePersonMonth,
     YearlyPersonMonthSummary,
+};
+pub use platform_admin::{
+    AdminOrganizationDetail, AdminOrganizationSummary, AnnouncementSeverity,
+    CreateFeatureFlagOverrideRequest, CreateFeatureFlagRequest, CreateHelpArticleRequest,
+    CreateMaintenanceRequest, CreateSystemAnnouncementRequest, FeatureFlag, FeatureFlagOverride,
+    FeatureFlagScope, HelpArticle, HelpArticleRevision, MetricAlert, MetricThreshold, MetricType,
+    OnboardingStep, OnboardingTour, OrganizationDetailMetrics, OrganizationMetrics, PlatformMetric,
+    ReactivateOrganizationRequest, ScheduledMaintenance, StepPlacement, SupportAccessLog,
+    SupportAccessRequest, SupportAccessStatus, SuspendOrganizationRequest, SystemAnnouncement,
+    SystemAnnouncementAcknowledgment, UserOnboardingProgress,
 };
 pub use refresh_token::{CreateRefreshToken, LoginAttempt, RateLimitStatus, RefreshToken};
 pub use role::{permissions, system_roles, CreateRole, PermissionDefinition, Role, UpdateRole};

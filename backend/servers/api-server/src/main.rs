@@ -266,6 +266,27 @@ async fn main() -> anyhow::Result<()> {
         // OAuth 2.0 routes (Epic 10A)
         .nest("/api/v1/oauth", routes::oauth::router())
         .nest("/api/v1/admin/oauth", routes::oauth::admin_router())
+        // Platform Admin routes (Epic 10B)
+        .nest("/api/v1/platform-admin", routes::platform_admin::router())
+        // Public feature flags (Epic 10B.2)
+        .nest(
+            "/api/v1/feature-flags",
+            routes::platform_admin::public_feature_flags_router(),
+        )
+        // Public system announcements (Epic 10B.4)
+        .nest(
+            "/api/v1/system-announcements",
+            routes::platform_admin::public_announcements_router(),
+        )
+        // Public maintenance (Epic 10B.4)
+        .nest(
+            "/api/v1/maintenance",
+            routes::platform_admin::public_maintenance_router(),
+        )
+        // Onboarding routes (Epic 10B.6)
+        .nest("/api/v1/onboarding", routes::onboarding::router())
+        // Help routes (Epic 10B.7)
+        .nest("/api/v1/help", routes::help::router())
         // GDPR routes (Epic 9, Stories 9.3-9.5)
         .nest("/api/v1/gdpr", routes::gdpr::router())
         // Compliance routes (Epic 9, Story 9.7)

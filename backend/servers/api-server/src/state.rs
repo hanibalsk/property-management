@@ -5,9 +5,11 @@ use db::{
     repositories::{
         AnnouncementRepository, AuditLogRepository, BuildingRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DocumentRepository, FacilityRepository, FaultRepository, NotificationPreferenceRepository,
-        OAuthRepository, OrganizationMemberRepository, OrganizationRepository,
-        PasswordResetRepository, PersonMonthRepository, RoleRepository, SessionRepository,
+        DocumentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
+        HealthMonitoringRepository, HelpRepository, NotificationPreferenceRepository,
+        OAuthRepository, OnboardingRepository, OrganizationMemberRepository,
+        OrganizationRepository, PasswordResetRepository, PersonMonthRepository,
+        PlatformAdminRepository, RoleRepository, SessionRepository, SystemAnnouncementRepository,
         TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
         VoteRepository,
     },
@@ -40,6 +42,12 @@ pub struct AppState {
     pub audit_log_repo: AuditLogRepository,
     pub data_export_repo: DataExportRepository,
     pub oauth_repo: OAuthRepository,
+    pub platform_admin_repo: PlatformAdminRepository,
+    pub feature_flag_repo: FeatureFlagRepository,
+    pub health_monitoring_repo: HealthMonitoringRepository,
+    pub system_announcement_repo: SystemAnnouncementRepository,
+    pub onboarding_repo: OnboardingRepository,
+    pub help_repo: HelpRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -72,6 +80,12 @@ impl AppState {
         let audit_log_repo = AuditLogRepository::new(db.clone());
         let data_export_repo = DataExportRepository::new(db.clone());
         let oauth_repo = OAuthRepository::new(db.clone());
+        let platform_admin_repo = PlatformAdminRepository::new(db.clone());
+        let feature_flag_repo = FeatureFlagRepository::new(db.clone());
+        let health_monitoring_repo = HealthMonitoringRepository::new(db.clone());
+        let system_announcement_repo = SystemAnnouncementRepository::new(db.clone());
+        let onboarding_repo = OnboardingRepository::new(db.clone());
+        let help_repo = HelpRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -100,6 +114,12 @@ impl AppState {
             audit_log_repo,
             data_export_repo,
             oauth_repo,
+            platform_admin_repo,
+            feature_flag_repo,
+            health_monitoring_repo,
+            system_announcement_repo,
+            onboarding_repo,
+            help_repo,
             auth_service,
             email_service,
             jwt_service,

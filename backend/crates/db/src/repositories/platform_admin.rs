@@ -1,0 +1,498 @@
+//! Platform Admin repository (Epic 10B).
+//!
+//! Repository for platform-wide administrative operations including
+//! organization management with cross-tenant queries.
+
+use crate::models::platform_admin::{
+    AdminOrganizationDetail, OrganizationDetailMetrics, OrganizationMetrics,
+};
+use crate::models::Organization;
+use crate::DbPool;
+use chrono::{DateTime, Utc};
+use sqlx::Error as SqlxError;
+use uuid::Uuid;
+
+/// Repository for platform admin operations.
+#[derive(Clone)]
+pub struct PlatformAdminRepository {
+    pool: DbPool,
+}
+
+impl PlatformAdminRepository {
+    /// Create a new PlatformAdminRepository.
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
+    }
+
+    /// List all organizations with metrics (platform admin view).
+    /// This is a cross-tenant query that bypasses RLS.
+    pub async fn list_organizations_with_metrics(
+        &self,
+        offset: i64,
+        limit: i64,
+        status_filter: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<(Vec<OrganizationMetrics>, i64), SqlxError> {
+        // Build dynamic WHERE clause
+        let mut conditions = vec!["status != 'deleted'".to_string()];
+        let mut param_idx = 2; // $1 and $2 are limit and offset
+
+        if status_filter.is_some() {
+            param_idx += 1;
+            conditions.push(format!("status = ${}", param_idx));
+        }
+
+        if search.is_some() {
+            param_idx += 1;
+            conditions.push(format!(
+                "(LOWER(name) LIKE '%' || LOWER(${}::text) || '%' OR LOWER(slug) LIKE '%' || LOWER(${}::text) || '%')",
+                param_idx, param_idx
+            ));
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        let count_query = format!(
+            "SELECT COUNT(*) FROM organization_metrics WHERE {}",
+            where_clause
+        );
+        let data_query = format!(
+            r#"
+            SELECT
+                organization_id, name, slug, status, created_at, updated_at,
+                suspended_at, suspended_by, suspension_reason,
+                member_count, active_member_count, building_count, unit_count
+            FROM organization_metrics
+            WHERE {}
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+            where_clause
+        );
+
+        // Execute count query
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query);
+        if let Some(status) = status_filter {
+            count_q = count_q.bind(status);
+        }
+        if let Some(s) = search {
+            count_q = count_q.bind(s);
+        }
+        let total = count_q.fetch_one(&self.pool).await?;
+
+        // Execute data query
+        let mut data_q = sqlx::query_as::<_, OrganizationMetrics>(&data_query)
+            .bind(limit)
+            .bind(offset);
+        if let Some(status) = status_filter {
+            data_q = data_q.bind(status);
+        }
+        if let Some(s) = search {
+            data_q = data_q.bind(s);
+        }
+        let orgs = data_q.fetch_all(&self.pool).await?;
+
+        Ok((orgs, total))
+    }
+
+    /// Get organization details with metrics.
+    pub async fn get_organization_detail(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Option<AdminOrganizationDetail>, SqlxError> {
+        // Get organization base data
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            SELECT * FROM organizations WHERE id = $1 AND status != 'deleted'
+            "#,
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let org = match org {
+            Some(o) => o,
+            None => return Ok(None),
+        };
+
+        // Get metrics
+        let metrics = sqlx::query_as::<_, OrganizationMetrics>(
+            r#"
+            SELECT
+                organization_id, name, slug, status, created_at, updated_at,
+                suspended_at, suspended_by, suspension_reason,
+                member_count, active_member_count, building_count, unit_count
+            FROM organization_metrics
+            WHERE organization_id = $1
+            "#,
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        // Get suspension info from organizations table (may have been added by migration)
+        let suspension_info =
+            sqlx::query_as::<_, (Option<DateTime<Utc>>, Option<Uuid>, Option<String>)>(
+                r#"
+            SELECT suspended_at, suspended_by, suspension_reason
+            FROM organizations
+            WHERE id = $1
+            "#,
+            )
+            .bind(org_id)
+            .fetch_optional(&self.pool)
+            .await?
+            .unwrap_or((None, None, None));
+
+        let detail = AdminOrganizationDetail {
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            contact_email: org.contact_email,
+            logo_url: org.logo_url,
+            status: org.status,
+            created_at: org.created_at,
+            updated_at: org.updated_at,
+            suspended_at: suspension_info.0,
+            suspended_by: suspension_info.1,
+            suspension_reason: suspension_info.2,
+            metrics: metrics
+                .map(|m| OrganizationDetailMetrics {
+                    member_count: m.member_count,
+                    active_member_count: m.active_member_count,
+                    building_count: m.building_count,
+                    unit_count: m.unit_count,
+                })
+                .unwrap_or(OrganizationDetailMetrics {
+                    member_count: 0,
+                    active_member_count: 0,
+                    building_count: 0,
+                    unit_count: 0,
+                }),
+        };
+
+        Ok(Some(detail))
+    }
+
+    /// Suspend an organization with reason and admin tracking.
+    pub async fn suspend_organization(
+        &self,
+        org_id: Uuid,
+        admin_id: Uuid,
+        reason: &str,
+    ) -> Result<Option<Organization>, SqlxError> {
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            UPDATE organizations
+            SET
+                status = 'suspended',
+                suspended_at = NOW(),
+                suspended_by = $2,
+                suspension_reason = $3,
+                updated_at = NOW()
+            WHERE id = $1 AND status = 'active'
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(admin_id)
+        .bind(reason)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(org)
+    }
+
+    /// Reactivate a suspended organization.
+    pub async fn reactivate_organization(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Option<Organization>, SqlxError> {
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            UPDATE organizations
+            SET
+                status = 'active',
+                suspended_at = NULL,
+                suspended_by = NULL,
+                suspension_reason = NULL,
+                updated_at = NOW()
+            WHERE id = $1 AND status = 'suspended'
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(org)
+    }
+
+    /// Get all active session tokens for organization members.
+    /// Used for cascade session invalidation on org suspension.
+    pub async fn get_org_member_user_ids(&self, org_id: Uuid) -> Result<Vec<Uuid>, SqlxError> {
+        let user_ids = sqlx::query_scalar::<_, Uuid>(
+            r#"
+            SELECT user_id FROM organization_members
+            WHERE organization_id = $1 AND status = 'active'
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(user_ids)
+    }
+
+    /// Get platform statistics summary.
+    pub async fn get_platform_stats(&self) -> Result<PlatformStats, SqlxError> {
+        let stats = sqlx::query_as::<_, PlatformStats>(
+            r#"
+            SELECT
+                (SELECT COUNT(*) FROM organizations WHERE status = 'active') as active_orgs,
+                (SELECT COUNT(*) FROM organizations WHERE status = 'suspended') as suspended_orgs,
+                (SELECT COUNT(*) FROM users WHERE status = 'active') as active_users,
+                (SELECT COUNT(*) FROM buildings WHERE deleted_at IS NULL) as total_buildings,
+                (SELECT COUNT(*) FROM units WHERE deleted_at IS NULL) as total_units
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(stats)
+    }
+
+    // ==================== Support Data Access (Story 10B.5) ====================
+
+    /// Search users for support purposes.
+    pub async fn search_users_for_support(
+        &self,
+        query: Option<&str>,
+        status: Option<&str>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<(Vec<SupportUserInfo>, i64), SqlxError> {
+        let mut conditions = Vec::new();
+
+        if let Some(s) = status {
+            conditions.push(format!("u.status = '{}'", s.replace('\'', "''")));
+        }
+
+        if let Some(q) = query {
+            let escaped = q.replace('\'', "''");
+            conditions.push(format!(
+                "(LOWER(u.email) LIKE '%{}%' OR LOWER(u.display_name) LIKE '%{}%' OR LOWER(u.first_name) LIKE '%{}%' OR LOWER(u.last_name) LIKE '%{}%')",
+                escaped.to_lowercase(), escaped.to_lowercase(), escaped.to_lowercase(), escaped.to_lowercase()
+            ));
+        }
+
+        let where_clause = if conditions.is_empty() {
+            "1=1".to_string()
+        } else {
+            conditions.join(" AND ")
+        };
+
+        let count_query = format!("SELECT COUNT(*) FROM users u WHERE {}", where_clause);
+
+        let data_query = format!(
+            r#"
+            SELECT u.id, u.email, u.display_name, u.first_name, u.last_name, u.status,
+                   u.email_verified, u.created_at, u.updated_at, u.last_login_at
+            FROM users u
+            WHERE {}
+            ORDER BY u.created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+            where_clause
+        );
+
+        let total = sqlx::query_scalar::<_, i64>(&count_query)
+            .fetch_one(&self.pool)
+            .await?;
+
+        let users = sqlx::query_as::<_, SupportUserInfo>(&data_query)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok((users, total))
+    }
+
+    /// Get user details for support.
+    pub async fn get_user_for_support(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Option<SupportUserInfo>, SqlxError> {
+        let user = sqlx::query_as::<_, SupportUserInfo>(
+            r#"
+            SELECT id, email, display_name, first_name, last_name, status,
+                   email_verified, created_at, updated_at, last_login_at
+            FROM users
+            WHERE id = $1
+            "#,
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(user)
+    }
+
+    /// Get user organization memberships for support.
+    pub async fn get_user_memberships(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<SupportUserMembership>, SqlxError> {
+        let memberships = sqlx::query_as::<_, SupportUserMembership>(
+            r#"
+            SELECT om.organization_id, o.name as organization_name,
+                   COALESCE(r.name, 'Member') as role_name, om.created_at as joined_at
+            FROM organization_members om
+            JOIN organizations o ON o.id = om.organization_id
+            LEFT JOIN roles r ON r.id = om.role_id
+            WHERE om.user_id = $1 AND om.status = 'active'
+            ORDER BY om.created_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(memberships)
+    }
+
+    /// Get user active sessions for support.
+    pub async fn get_user_sessions(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<SupportUserSession>, SqlxError> {
+        let sessions = sqlx::query_as::<_, SupportUserSession>(
+            r#"
+            SELECT id, created_at, expires_at, last_used_at, user_agent, ip_address
+            FROM refresh_tokens
+            WHERE user_id = $1 AND is_revoked = false AND expires_at > NOW()
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(sessions)
+    }
+
+    /// Get user activity log for support.
+    pub async fn get_user_activity_log(
+        &self,
+        user_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<SupportActivityLog>, SqlxError> {
+        let logs = sqlx::query_as::<_, SupportActivityLog>(
+            r#"
+            SELECT id, action, resource_type, resource_id, details, created_at
+            FROM audit_logs
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            "#,
+        )
+        .bind(user_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(logs)
+    }
+
+    /// Revoke all sessions for a user (support action).
+    pub async fn revoke_user_sessions(&self, user_id: Uuid) -> Result<i64, SqlxError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE refresh_tokens
+            SET is_revoked = true, updated_at = NOW()
+            WHERE user_id = $1 AND is_revoked = false
+            "#,
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+}
+
+/// Platform-wide statistics.
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct PlatformStats {
+    pub active_orgs: i64,
+    pub suspended_orgs: i64,
+    pub active_users: i64,
+    pub total_buildings: i64,
+    pub total_units: i64,
+}
+
+/// User info for support purposes (read-only).
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct SupportUserInfo {
+    pub id: Uuid,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub status: String,
+    pub email_verified: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub last_login_at: Option<DateTime<Utc>>,
+}
+
+/// User organization membership for support view.
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct SupportUserMembership {
+    pub organization_id: Uuid,
+    pub organization_name: String,
+    pub role_name: String,
+    pub joined_at: DateTime<Utc>,
+}
+
+/// User session info for support.
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct SupportUserSession {
+    pub id: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: DateTime<Utc>,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub user_agent: Option<String>,
+    pub ip_address: Option<String>,
+}
+
+/// Activity log entry for support.
+#[derive(Debug, Clone, sqlx::FromRow, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct SupportActivityLog {
+    pub id: Uuid,
+    pub action: String,
+    pub resource_type: Option<String>,
+    pub resource_id: Option<String>,
+    pub details: Option<serde_json::Value>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_platform_stats_struct() {
+        let stats = PlatformStats {
+            active_orgs: 10,
+            suspended_orgs: 2,
+            active_users: 100,
+            total_buildings: 50,
+            total_units: 500,
+        };
+
+        assert_eq!(stats.active_orgs, 10);
+        assert_eq!(stats.suspended_orgs, 2);
+    }
+}
