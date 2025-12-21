@@ -488,8 +488,49 @@ async fn test_rls_coverage_validation() {
     let db = TestDb::new().await.expect("Failed to connect to test DB");
 
     // Check which tables are expected to have RLS policies
-    // Currently only organization_members and roles have RLS
-    let expected_rls_tables = vec!["organization_members", "roles"];
+    // All tenant-scoped tables should have RLS enabled
+    let expected_rls_tables = vec![
+        // Core multi-tenancy (Epic 2A)
+        "organization_members",
+        "roles",
+        // Buildings & Units (Epic 2B)
+        "buildings",
+        "units",
+        "unit_owners",
+        "unit_residents",
+        // Delegations (Epic 3)
+        "delegations",
+        "delegation_audit_log",
+        // Facilities (Epic 3)
+        "facilities",
+        "facility_bookings",
+        // Person-months
+        "person_months",
+        // Faults (Epic 4)
+        "faults",
+        "fault_attachments",
+        "fault_timeline",
+        // Voting (Epic 5)
+        "votes",
+        "vote_questions",
+        "vote_responses",
+        "vote_comments",
+        "vote_audit_log",
+        // Announcements (Epic 6)
+        "announcements",
+        "announcement_attachments",
+        "announcement_reads",
+        "announcement_comments",
+        // Messaging (Epic 6)
+        "message_threads",
+        "messages",
+        "user_blocks",
+        // Documents (Epic 7A)
+        "document_folders",
+        "documents",
+        "document_shares",
+        "document_share_access_log",
+    ];
 
     for table_name in &expected_rls_tables {
         // Check if table has RLS enabled
