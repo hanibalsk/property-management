@@ -38,3 +38,4 @@ sha2 = "0.10"
 hex = "0.4"
 thiserror = { workspace = true }
 rust_decimal = { workspace = true }
+ammonia = "4.0"

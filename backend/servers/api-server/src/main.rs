@@ -22,7 +22,8 @@ mod routes;
 mod services;
 mod state;
 
-use services::{EmailService, JwtService};
+use db::repositories::AnnouncementRepository;
+use services::{EmailService, JwtService, Scheduler, SchedulerConfig};
 use state::AppState;
 
 #[derive(OpenApi)]
@@ -148,6 +149,7 @@ use state::AppState;
         (name = "Facility Bookings", description = "Facility booking and reservation management"),
         (name = "Faults", description = "Fault reporting and tracking"),
         (name = "Voting", description = "Voting and polls"),
+        (name = "Announcements", description = "Announcements and communication"),
         (name = "Rentals", description = "Short-term rental integrations (Airbnb, Booking)"),
         (name = "Listings", description = "Real estate listing management"),
         (name = "Integrations", description = "External portal integrations")
@@ -196,7 +198,22 @@ async fn main() -> anyhow::Result<()> {
         .expect("Failed to create JWT service - secret must be at least 32 characters");
 
     // Create application state
-    let state = AppState::new(db_pool, email_service, jwt_service);
+    let state = AppState::new(db_pool.clone(), email_service, jwt_service);
+
+    // Start background scheduler for scheduled announcements
+    let scheduler_enabled = std::env::var("SCHEDULER_ENABLED")
+        .map(|v| v != "false" && v != "0")
+        .unwrap_or(true);
+    let scheduler_config = SchedulerConfig {
+        interval_secs: std::env::var("SCHEDULER_INTERVAL_SECS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(60),
+        enabled: scheduler_enabled,
+    };
+    let announcement_repo = AnnouncementRepository::new(db_pool);
+    let scheduler = Scheduler::new(announcement_repo, scheduler_config);
+    let _scheduler_handle = scheduler.start();
 
     // Build router
     let app = Router::new()
@@ -218,6 +235,12 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/faults", routes::faults::router())
         // Voting routes
         .nest("/api/v1/voting", routes::voting::router())
+        // Announcements routes (Epic 6)
+        .nest("/api/v1/announcements", routes::announcements::router())
+        // Messaging routes (Epic 6, Story 6.5)
+        .nest("/api/v1/messages", routes::messaging::router())
+        // Neighbor routes (Epic 6, Story 6.6)
+        .nest("/api/v1", routes::neighbors::router())
         // Rentals routes
         .nest("/api/v1/rentals", routes::rentals::router())
         // Listings routes (management side)

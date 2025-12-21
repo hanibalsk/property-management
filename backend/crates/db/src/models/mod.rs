@@ -1,9 +1,11 @@
 //! Database models.
 
+pub mod announcement;
 pub mod building;
 pub mod delegation;
 pub mod facility;
 pub mod fault;
+pub mod messaging;
 pub mod organization;
 pub mod organization_member;
 pub mod password_reset;
@@ -15,6 +17,14 @@ pub mod unit_resident;
 pub mod user;
 pub mod vote;
 
+pub use announcement::{
+    announcement_status, target_type, AcknowledgeAnnouncement, AcknowledgmentStats, Announcement,
+    AnnouncementAttachment, AnnouncementComment, AnnouncementListQuery, AnnouncementRead,
+    AnnouncementStatistics, AnnouncementSummary, AnnouncementWithDetails, CommentWithAuthor,
+    CommentWithAuthorRow, CreateAnnouncement, CreateAnnouncementAttachment, CreateComment,
+    DeleteComment, MarkAnnouncementRead, PinAnnouncement, PublishAnnouncement, UpdateAnnouncement,
+    UserAcknowledgmentStatus,
+};
 pub use building::{
     building_status, Building, BuildingContact, BuildingStatistics, BuildingSummary,
     CreateBuilding, UpdateBuilding,
@@ -35,6 +45,11 @@ pub use fault::{
     CreateFaultTimelineEntry, Fault, FaultAttachment, FaultListQuery, FaultStatistics,
     FaultSummary, FaultTimelineEntry, FaultTimelineEntryWithUser, FaultWithDetails, PriorityCount,
     ReopenFault, ResolveFault, StatusCount, TriageFault, UpdateFault, UpdateFaultStatus,
+};
+pub use messaging::{
+    BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,
+    MessagePreview, MessageThread, MessageWithSender, MessageWithSenderRow, ParticipantInfo,
+    ThreadWithPreview, ThreadWithPreviewRow, UserBlock,
 };
 pub use organization::{
     CreateOrganization, Organization, OrganizationStatus, OrganizationSummary, UpdateOrganization,
@@ -59,7 +74,10 @@ pub use unit_resident::{
     resident_type, CreateUnitResident, EndResidency, UnitResident, UnitResidentSummary,
     UnitResidentWithUser, UpdateUnitResident,
 };
-pub use user::{CreateUser, EmailVerificationToken, Locale, UpdateUser, User, UserStatus};
+pub use user::{
+    CreateUser, EmailVerificationToken, Locale, NeighborRow, NeighborView, PrivacySettings,
+    ProfileVisibility, UpdatePrivacySettings, UpdateUser, User, UserStatus,
+};
 pub use vote::{
     audit_action, question_type, quorum_type, vote_status, CancelVote, CastVote, CreateVote,
     CreateVoteAuditLog, CreateVoteComment, CreateVoteQuestion, EligibleUnit, HideVoteComment,

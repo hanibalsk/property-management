@@ -9,6 +9,11 @@
 // These will be populated after running `pnpm generate`
 export * from './generated';
 
+// Export domain-specific modules
+export * from './announcements';
+export * from './messaging';
+export * from './neighbors';
+
 // API client configuration
 export interface ApiConfig {
   baseUrl: string;

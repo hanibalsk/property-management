@@ -1,0 +1,40 @@
+# Sprint Status Tracking
+# Generated: 2025-12-21
+#
+# STATUS DEFINITIONS:
+#   - backlog: Not yet planned for development
+#   - ready-for-dev: Planned and ready to be picked up
+#   - in-progress: Currently being developed
+#   - review: Development complete, awaiting code review
+#   - done: Reviewed and merged
+#   - blocked: Cannot proceed due to dependency or issue
+
+sprint_name: "Epic 6 - Announcements & Communication"
+sprint_goal: "Enable managers to broadcast announcements to specific audiences with rich content support"
+started_at: 2025-12-21
+
+# Epic tracking
+epics:
+  epic-6:
+    name: "Announcements & Communication"
+    status: in-progress
+    stories_total: 6
+    stories_completed: 1
+
+# Story-level development status
+development_status:
+  # Epic 6: Announcements & Communication
+  6-1-announcement-creation-targeting: review
+  6-2-announcement-viewing-acknowledgment: ready-for-dev
+  6-3-announcement-comments-discussion: ready-for-dev
+  6-4-pinned-announcements: ready-for-dev
+  6-5-direct-messaging: ready-for-dev
+  6-6-neighbor-information: ready-for-dev
+
+# Notes and blockers
+notes:
+  - "Epic 6 depends on Epic 2B Notification Infrastructure for sending notifications on publish"
+  - "Story 6.1 is the foundation - other stories build on announcement infrastructure"
+  - "Story 6.1 completed 2025-12-21 - awaiting code review"
+
+blockers: []
