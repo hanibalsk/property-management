@@ -89,8 +89,8 @@ impl TestDb {
     async fn create_test_user(&self, email: &str, name: &str) -> Result<Uuid, sqlx::Error> {
         let row = sqlx::query(
             r#"
-            INSERT INTO users (email, password_hash, name, email_verified)
-            VALUES ($1, 'test_hash', $2, true)
+            INSERT INTO users (email, password_hash, name, status, email_verified_at)
+            VALUES ($1, 'test_hash', $2, 'active', NOW())
             RETURNING id
             "#,
         )
