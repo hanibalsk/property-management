@@ -52,7 +52,7 @@ pub async fn create_notification(
     let tenant = extract_tenant_context(&headers)?;
 
     // Verify user is admin
-    if !tenant.is_admin() {
+    if !tenant.role.is_admin() {
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -65,17 +65,12 @@ pub async fn create_notification(
     // Create the notification
     let notification = match state
         .critical_notification_repo
-        .create(
-            tenant.organization_id,
-            &req.title,
-            &req.message,
-            tenant.user_id,
-        )
+        .create(tenant.tenant_id, &req.title, &req.message, tenant.user_id)
         .await
     {
         Ok(n) => n,
         Err(e) => {
-            tracing::error!(error = %e, org_id = %tenant.organization_id, "Failed to create critical notification");
+            tracing::error!(error = %e, org_id = %tenant.tenant_id, "Failed to create critical notification");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -88,7 +83,7 @@ pub async fn create_notification(
 
     tracing::info!(
         notification_id = %notification.id,
-        org_id = %tenant.organization_id,
+        org_id = %tenant.tenant_id,
         created_by = %tenant.user_id,
         "Critical notification created"
     );
@@ -127,12 +122,12 @@ pub async fn list_notifications(
     // Get notifications with acknowledgment status
     let notifications_with_status = match state
         .critical_notification_repo
-        .get_for_org_with_status(tenant.user_id, tenant.organization_id)
+        .get_for_org_with_status(tenant.user_id, tenant.tenant_id)
         .await
     {
         Ok(n) => n,
         Err(e) => {
-            tracing::error!(error = %e, org_id = %tenant.organization_id, "Failed to get critical notifications");
+            tracing::error!(error = %e, org_id = %tenant.tenant_id, "Failed to get critical notifications");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -182,7 +177,7 @@ pub async fn get_unacknowledged(
     // Get unacknowledged notifications
     let notifications = match state
         .critical_notification_repo
-        .get_unacknowledged(tenant.user_id, tenant.organization_id)
+        .get_unacknowledged(tenant.user_id, tenant.tenant_id)
         .await
     {
         Ok(n) => n,
@@ -275,7 +270,7 @@ pub async fn acknowledge(
     };
 
     // Verify notification belongs to user's org
-    if notification.organization_id != tenant.organization_id {
+    if notification.organization_id != tenant.tenant_id {
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Notification not found")),
@@ -340,7 +335,7 @@ pub async fn get_stats(
     let tenant = extract_tenant_context(&headers)?;
 
     // Verify user is admin
-    if !tenant.is_admin() {
+    if !tenant.role.is_admin() {
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -376,7 +371,7 @@ pub async fn get_stats(
     };
 
     // Verify notification belongs to user's org
-    if notification.organization_id != tenant.organization_id {
+    if notification.organization_id != tenant.tenant_id {
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Notification not found")),
@@ -386,7 +381,7 @@ pub async fn get_stats(
     // Get stats
     let stats = match state
         .critical_notification_repo
-        .get_stats(path.notification_id, tenant.organization_id)
+        .get_stats(path.notification_id, tenant.tenant_id)
         .await
     {
         Ok(s) => s,

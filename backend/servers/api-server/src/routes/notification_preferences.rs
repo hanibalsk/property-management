@@ -9,8 +9,8 @@ use axum::{
 };
 use common::errors::ErrorResponse;
 use db::models::{
-    DisableAllWarningResponse, NotificationChannel, NotificationPreferenceResponse,
-    NotificationPreferencesResponse, UpdateNotificationPreferenceRequest,
+    NotificationChannel, NotificationPreferenceResponse, NotificationPreferencesResponse,
+    UpdateNotificationPreferenceRequest,
 };
 use serde::Deserialize;
 use utoipa::ToSchema;

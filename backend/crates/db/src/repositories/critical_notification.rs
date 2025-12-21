@@ -28,33 +28,31 @@ impl CriticalNotificationRepository {
         message: &str,
         created_by: Uuid,
     ) -> Result<CriticalNotification, sqlx::Error> {
-        sqlx::query_as!(
-            CriticalNotification,
+        sqlx::query_as::<_, CriticalNotification>(
             r#"
             INSERT INTO critical_notifications (organization_id, title, message, created_by)
             VALUES ($1, $2, $3, $4)
             RETURNING id, organization_id, title, message, created_by, created_at
             "#,
-            organization_id,
-            title,
-            message,
-            created_by
         )
+        .bind(organization_id)
+        .bind(title)
+        .bind(message)
+        .bind(created_by)
         .fetch_one(&self.pool)
         .await
     }
 
     /// Get a critical notification by ID.
     pub async fn get_by_id(&self, id: Uuid) -> Result<Option<CriticalNotification>, sqlx::Error> {
-        sqlx::query_as!(
-            CriticalNotification,
+        sqlx::query_as::<_, CriticalNotification>(
             r#"
             SELECT id, organization_id, title, message, created_by, created_at
             FROM critical_notifications
             WHERE id = $1
             "#,
-            id
         )
+        .bind(id)
         .fetch_optional(&self.pool)
         .await
     }
@@ -65,8 +63,7 @@ impl CriticalNotificationRepository {
         user_id: Uuid,
         organization_id: Uuid,
     ) -> Result<Vec<CriticalNotification>, sqlx::Error> {
-        sqlx::query_as!(
-            CriticalNotification,
+        sqlx::query_as::<_, CriticalNotification>(
             r#"
             SELECT cn.id, cn.organization_id, cn.title, cn.message, cn.created_by, cn.created_at
             FROM critical_notifications cn
@@ -77,9 +74,9 @@ impl CriticalNotificationRepository {
             )
             ORDER BY cn.created_at DESC
             "#,
-            organization_id,
-            user_id
         )
+        .bind(organization_id)
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
     }
@@ -101,8 +98,7 @@ impl CriticalNotificationRepository {
             acknowledged_at: Option<DateTime<Utc>>,
         }
 
-        let rows = sqlx::query_as!(
-            NotificationWithAck,
+        let rows = sqlx::query_as::<_, NotificationWithAck>(
             r#"
             SELECT
                 cn.id,
@@ -118,9 +114,9 @@ impl CriticalNotificationRepository {
             WHERE cn.organization_id = $1
             ORDER BY cn.created_at DESC
             "#,
-            organization_id,
-            user_id
         )
+        .bind(organization_id)
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await?;
 
@@ -148,17 +144,16 @@ impl CriticalNotificationRepository {
         notification_id: Uuid,
         user_id: Uuid,
     ) -> Result<CriticalNotificationAcknowledgment, sqlx::Error> {
-        sqlx::query_as!(
-            CriticalNotificationAcknowledgment,
+        sqlx::query_as::<_, CriticalNotificationAcknowledgment>(
             r#"
             INSERT INTO critical_notification_acknowledgments (notification_id, user_id)
             VALUES ($1, $2)
             ON CONFLICT (notification_id, user_id) DO UPDATE SET acknowledged_at = NOW()
             RETURNING id, notification_id, user_id, acknowledged_at
             "#,
-            notification_id,
-            user_id
         )
+        .bind(notification_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await
     }
@@ -169,20 +164,18 @@ impl CriticalNotificationRepository {
         notification_id: Uuid,
         user_id: Uuid,
     ) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query_scalar!(
+        let result = sqlx::query_scalar::<_, i64>(
             r#"
-            SELECT EXISTS(
-                SELECT 1 FROM critical_notification_acknowledgments
-                WHERE notification_id = $1 AND user_id = $2
-            ) as "exists!"
+            SELECT COUNT(*) FROM critical_notification_acknowledgments
+            WHERE notification_id = $1 AND user_id = $2
             "#,
-            notification_id,
-            user_id
         )
+        .bind(notification_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(result)
+        Ok(result > 0)
     }
 
     /// Get acknowledgment statistics for a notification.
@@ -191,24 +184,36 @@ impl CriticalNotificationRepository {
         notification_id: Uuid,
         organization_id: Uuid,
     ) -> Result<CriticalNotificationStats, sqlx::Error> {
-        sqlx::query_as!(
-            CriticalNotificationStats,
+        #[derive(sqlx::FromRow)]
+        struct StatsRow {
+            total_users: i64,
+            acknowledged_count: i64,
+            pending_count: i64,
+        }
+
+        let row = sqlx::query_as::<_, StatsRow>(
             r#"
             SELECT
-                $1::UUID as "notification_id!",
-                COUNT(DISTINCT om.user_id) as "total_users!",
-                COUNT(DISTINCT cna.user_id) as "acknowledged_count!",
-                COUNT(DISTINCT om.user_id) - COUNT(DISTINCT cna.user_id) as "pending_count!"
+                COUNT(DISTINCT om.user_id) as total_users,
+                COUNT(DISTINCT cna.user_id) as acknowledged_count,
+                COUNT(DISTINCT om.user_id) - COUNT(DISTINCT cna.user_id) as pending_count
             FROM organization_members om
             LEFT JOIN critical_notification_acknowledgments cna
                 ON cna.notification_id = $1 AND cna.user_id = om.user_id
             WHERE om.organization_id = $2
             AND om.status = 'active'
             "#,
-            notification_id,
-            organization_id
         )
+        .bind(notification_id)
+        .bind(organization_id)
         .fetch_one(&self.pool)
-        .await
+        .await?;
+
+        Ok(CriticalNotificationStats {
+            notification_id,
+            total_users: row.total_users,
+            acknowledged_count: row.acknowledged_count,
+            pending_count: row.pending_count,
+        })
     }
 }

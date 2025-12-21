@@ -35,10 +35,14 @@ jobs:
 
       - name: Clippy
         working-directory: backend
+        env:
+          SQLX_OFFLINE: true
         run: cargo clippy --workspace -- -D warnings
 
       - name: Check
         working-directory: backend
+        env:
+          SQLX_OFFLINE: true
         run: cargo check --workspace
 
   test:
@@ -94,6 +98,8 @@ jobs:
 
       - name: Build release
         working-directory: backend
+        env:
+          SQLX_OFFLINE: true
         run: cargo build --release --workspace
 
       - name: Upload binaries

@@ -22,21 +22,15 @@ impl NotificationPreferenceRepository {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<NotificationPreference>, sqlx::Error> {
-        sqlx::query_as!(
-            NotificationPreference,
+        sqlx::query_as::<_, NotificationPreference>(
             r#"
-            SELECT
-                id,
-                user_id,
-                channel as "channel: NotificationChannel",
-                enabled,
-                updated_at
+            SELECT id, user_id, channel, enabled, updated_at
             FROM notification_preferences
             WHERE user_id = $1
             ORDER BY channel
             "#,
-            user_id
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
     }
@@ -47,21 +41,15 @@ impl NotificationPreferenceRepository {
         user_id: Uuid,
         channel: NotificationChannel,
     ) -> Result<Option<NotificationPreference>, sqlx::Error> {
-        sqlx::query_as!(
-            NotificationPreference,
+        sqlx::query_as::<_, NotificationPreference>(
             r#"
-            SELECT
-                id,
-                user_id,
-                channel as "channel: NotificationChannel",
-                enabled,
-                updated_at
+            SELECT id, user_id, channel, enabled, updated_at
             FROM notification_preferences
             WHERE user_id = $1 AND channel = $2
             "#,
-            user_id,
-            channel as NotificationChannel
         )
+        .bind(user_id)
+        .bind(channel)
         .fetch_optional(&self.pool)
         .await
     }
@@ -73,37 +61,30 @@ impl NotificationPreferenceRepository {
         channel: NotificationChannel,
         enabled: bool,
     ) -> Result<NotificationPreference, sqlx::Error> {
-        sqlx::query_as!(
-            NotificationPreference,
+        sqlx::query_as::<_, NotificationPreference>(
             r#"
             UPDATE notification_preferences
             SET enabled = $3, updated_at = NOW()
             WHERE user_id = $1 AND channel = $2
-            RETURNING
-                id,
-                user_id,
-                channel as "channel: NotificationChannel",
-                enabled,
-                updated_at
+            RETURNING id, user_id, channel, enabled, updated_at
             "#,
-            user_id,
-            channel as NotificationChannel,
-            enabled
         )
+        .bind(user_id)
+        .bind(channel)
+        .bind(enabled)
         .fetch_one(&self.pool)
         .await
     }
 
     /// Count how many channels are disabled for a user.
     pub async fn count_disabled(&self, user_id: Uuid) -> Result<i64, sqlx::Error> {
-        let result = sqlx::query_scalar!(
+        let result = sqlx::query_scalar::<_, i64>(
             r#"
-            SELECT COUNT(*) as "count!"
-            FROM notification_preferences
+            SELECT COUNT(*) FROM notification_preferences
             WHERE user_id = $1 AND enabled = false
             "#,
-            user_id
         )
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -112,14 +93,13 @@ impl NotificationPreferenceRepository {
 
     /// Count how many channels are enabled for a user.
     pub async fn count_enabled(&self, user_id: Uuid) -> Result<i64, sqlx::Error> {
-        let result = sqlx::query_scalar!(
+        let result = sqlx::query_scalar::<_, i64>(
             r#"
-            SELECT COUNT(*) as "count!"
-            FROM notification_preferences
+            SELECT COUNT(*) FROM notification_preferences
             WHERE user_id = $1 AND enabled = true
             "#,
-            user_id
         )
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -136,15 +116,15 @@ impl NotificationPreferenceRepository {
     /// Normally handled by database trigger, but useful for testing.
     pub async fn create_defaults_for_user(&self, user_id: Uuid) -> Result<(), sqlx::Error> {
         for channel in NotificationChannel::all() {
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO notification_preferences (user_id, channel, enabled)
                 VALUES ($1, $2, true)
                 ON CONFLICT (user_id, channel) DO NOTHING
                 "#,
-                user_id,
-                channel as NotificationChannel
             )
+            .bind(user_id)
+            .bind(channel)
             .execute(&self.pool)
             .await?;
         }
