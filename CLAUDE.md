@@ -210,6 +210,6 @@ cd mobile-native && ./gradlew build
 |------|-------------|
 | `docs/CLAUDE.md` | Use cases, PRD/Epic/Story conventions |
 | `docs/spec1.0.md` | Original system specification |
-| `docs/use-cases.md` | 407 use cases catalog |
+| `docs/use-cases.md` | 508 use cases catalog |
 | `docs/project-structure.md` | Full directory structure |
 | `docs/api/README.md` | API specification index |

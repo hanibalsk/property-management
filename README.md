@@ -1,5 +1,9 @@
 # Property Management System (PPT)
 
+![Version](https://img.shields.io/badge/version-0.1.67-blue)
+![Rust](https://img.shields.io/badge/rust-1.75+-orange)
+![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue)
+
 A comprehensive property management platform with two products:
 
 - **Property Management (PPT)**: Manager/resident/owner workflows for housing cooperatives
@@ -89,7 +93,7 @@ property-management/
 │   ├── shared/           # Shared KMP code
 │   └── androidApp/       # Android application
 └── docs/                 # Documentation
-    ├── use-cases.md      # 479 use cases catalog
+    ├── use-cases.md      # 508 use cases catalog
     ├── api/              # API specifications
     │   └── typespec/     # TypeSpec definitions
     └── ARCHITECTURE_REVIEW.md
@@ -127,12 +131,20 @@ Single source of truth: `VERSION` file
 
 ## Documentation
 
+See **[docs/index.md](docs/index.md)** for the full documentation index.
+
 | Document | Description |
 |----------|-------------|
 | [CLAUDE.md](CLAUDE.md) | Architecture, conventions, quick reference |
-| [docs/use-cases.md](docs/use-cases.md) | Complete use case catalog |
-| [docs/CLAUDE.md](docs/CLAUDE.md) | API strategy, PRD/Epic/Story conventions |
-| [docs/ARCHITECTURE_REVIEW.md](docs/ARCHITECTURE_REVIEW.md) | Architecture review and roadmap |
+| [docs/use-cases.md](docs/use-cases.md) | 508 use cases across 51 categories |
+| [docs/technical-design.md](docs/technical-design.md) | ~145 API endpoints, ~127 DTOs |
+
+## Contributing
+
+1. Create feature branch: `feature/epic-{N}-{description}`
+2. Implement stories with commits: `feat(epic-N): story N.M - description`
+3. Run code review: `/bmad:bmm:workflows:code-review`
+4. Create PR via `gh pr create`
 
 ## License
 
