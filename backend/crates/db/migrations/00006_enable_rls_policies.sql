@@ -43,11 +43,18 @@ ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
 -- Force RLS even for table owner (needed for tests running as postgres user)
 ALTER TABLE roles FORCE ROW LEVEL SECURITY;
 
--- Policy: Users can see roles in their org
+-- Policy: Users can see roles in their org (requires membership verification)
 CREATE POLICY roles_select ON roles
     FOR SELECT
     USING (
-        organization_id = get_current_org_id()
+        (
+            organization_id = get_current_org_id()
+            AND EXISTS (
+                SELECT 1 FROM organization_members om
+                WHERE om.organization_id = roles.organization_id
+                  AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
+            )
+        )
         OR is_super_admin()
     );
 
