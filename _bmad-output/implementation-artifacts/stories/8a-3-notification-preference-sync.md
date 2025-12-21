@@ -1,6 +1,6 @@
 # Story 8A.3: Notification Preference Sync
 
-Status: review
+Status: done
 
 ## Story
 

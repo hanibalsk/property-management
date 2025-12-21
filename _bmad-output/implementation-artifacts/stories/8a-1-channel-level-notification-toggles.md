@@ -1,6 +1,6 @@
 # Story 8A.1: Channel-Level Notification Toggles
 
-Status: review
+Status: done
 
 ## Story
 

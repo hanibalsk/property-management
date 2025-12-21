@@ -1,6 +1,6 @@
 # Story 8A.2: Critical Notification Override
 
-Status: review
+Status: done
 
 ## Story
 
