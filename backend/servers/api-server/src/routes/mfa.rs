@@ -118,22 +118,28 @@ pub async fn setup_mfa(
         )
     })?;
 
-    // Encrypt secret before storage if encryption is enabled
-    let stored_secret = if state.totp_service.is_encryption_enabled() {
-        state.totp_service.encrypt_secret(&secret).map_err(|e| {
-            tracing::error!(error = %e, "Failed to encrypt TOTP secret");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "ENCRYPTION_ERROR",
-                    "Failed to encrypt authentication secret",
-                )),
-            )
-        })?
-    } else {
-        tracing::warn!("TOTP encryption key not configured, storing secret unencrypted");
-        secret.clone()
-    };
+    // Encrypt secret before storage - encryption is REQUIRED for security
+    if !state.totp_service.is_encryption_enabled() {
+        tracing::error!("TOTP encryption key not configured - MFA setup blocked for security");
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse::new(
+                "ENCRYPTION_NOT_CONFIGURED",
+                "Two-factor authentication is temporarily unavailable. Please contact support.",
+            )),
+        ));
+    }
+
+    let stored_secret = state.totp_service.encrypt_secret(&secret).map_err(|e| {
+        tracing::error!(error = %e, "Failed to encrypt TOTP secret");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new(
+                "ENCRYPTION_ERROR",
+                "Failed to encrypt authentication secret",
+            )),
+        )
+    })?;
 
     // Store the setup (not enabled yet)
     let create_data = CreateTwoFactorAuth {
@@ -297,7 +303,7 @@ pub async fn verify_mfa_setup(
     })?;
 
     // Log MFA enabled (Story 9.6 - Audit logging)
-    let _ = state
+    if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
             user_id: Some(user_id),
@@ -311,7 +317,10 @@ pub async fn verify_mfa_setup(
             ip_address: None,
             user_agent: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, user_id = %user_id, "Failed to create audit log for MFA enabled");
+    }
 
     tracing::info!(user_id = %user_id, "MFA enabled successfully");
 
@@ -460,7 +469,7 @@ pub async fn disable_mfa(
     })?;
 
     // Log MFA disabled (Story 9.6 - Audit logging)
-    let _ = state
+    if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
             user_id: Some(user_id),
@@ -474,7 +483,10 @@ pub async fn disable_mfa(
             ip_address: None,
             user_agent: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, user_id = %user_id, "Failed to create audit log for MFA disabled");
+    }
 
     tracing::info!(user_id = %user_id, "MFA disabled");
 
@@ -705,7 +717,7 @@ pub async fn regenerate_backup_codes(
         })?;
 
     // Log backup codes regenerated (Story 9.6 - Audit logging)
-    let _ = state
+    if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
             user_id: Some(user_id),
@@ -719,7 +731,10 @@ pub async fn regenerate_backup_codes(
             ip_address: None,
             user_agent: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, user_id = %user_id, "Failed to create audit log for backup codes regenerated");
+    }
 
     tracing::info!(user_id = %user_id, "Backup codes regenerated");
 

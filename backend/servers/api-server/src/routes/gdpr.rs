@@ -82,7 +82,7 @@ async fn request_data_export(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Log the data export request
-    let _ = state
+    if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
             user_id: Some(user.user_id),
@@ -96,7 +96,10 @@ async fn request_data_export(
             ip_address: None,
             user_agent: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, user_id = %user.user_id, export_id = %export_request.id, "Failed to create audit log for data export request");
+    }
 
     Ok(Json(DataExportRequestResponse {
         request_id: export_request.id,
@@ -148,6 +151,7 @@ async fn get_export_status(
 /// Download an export file.
 async fn download_export(
     State(state): State<AppState>,
+    user: AuthUser,
     Path(token): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let export_request = state
@@ -160,13 +164,18 @@ async fn download_export(
             "Export not found or expired".to_string(),
         ))?;
 
+    // SECURITY: Validate file ownership - user must own this export
+    if export_request.user_id != user.user_id {
+        return Err((StatusCode::FORBIDDEN, "Access denied".to_string()));
+    }
+
     // Check if expired
     if export_request.expires_at < chrono::Utc::now() {
         return Err((StatusCode::GONE, "Export link has expired".to_string()));
     }
 
     // Log the download
-    let _ = state
+    if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
             user_id: Some(export_request.user_id),
@@ -180,7 +189,10 @@ async fn download_export(
             ip_address: None,
             user_agent: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, user_id = %user.user_id, export_id = %export_request.id, "Failed to create audit log for data export download");
+    }
 
     // Mark as downloaded
     let _ = state
@@ -365,20 +377,15 @@ async fn request_data_deletion(
     // Schedule deletion for 30 days from now (GDPR grace period)
     let scheduled_for = chrono::Utc::now() + chrono::Duration::days(30);
 
-    // Update user record
-    sqlx::query(
-        r#"
-        UPDATE users SET scheduled_deletion_at = $1 WHERE id = $2
-        "#,
-    )
-    .bind(scheduled_for)
-    .bind(user.user_id)
-    .execute(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    // Update user record via repository
+    state
+        .user_repo
+        .schedule_deletion(user.user_id, scheduled_for)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Log the deletion request
-    let _ = state
+    if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
             user_id: Some(user.user_id),
@@ -392,7 +399,10 @@ async fn request_data_deletion(
             ip_address: None,
             user_agent: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, user_id = %user.user_id, "Failed to create audit log for data deletion request");
+    }
 
     Ok(Json(DeletionStatusResponse {
         has_active_request: true,
@@ -457,19 +467,15 @@ async fn cancel_deletion_request(
         ));
     }
 
-    // Clear the scheduled deletion
-    sqlx::query(
-        r#"
-        UPDATE users SET scheduled_deletion_at = NULL WHERE id = $1
-        "#,
-    )
-    .bind(user.user_id)
-    .execute(&state.db)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    // Clear the scheduled deletion via repository
+    state
+        .user_repo
+        .cancel_scheduled_deletion(user.user_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Log the cancellation
-    let _ = state
+    if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
             user_id: Some(user.user_id),
@@ -485,7 +491,10 @@ async fn cancel_deletion_request(
             ip_address: None,
             user_agent: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, user_id = %user.user_id, "Failed to create audit log for data deletion cancellation");
+    }
 
     Ok(Json(DeletionStatusResponse {
         has_active_request: false,
@@ -623,7 +632,7 @@ async fn update_privacy_settings(
     });
 
     // Log the privacy settings update
-    let _ = state
+    if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
             user_id: Some(user.user_id),
@@ -633,11 +642,14 @@ async fn update_privacy_settings(
             org_id: None,
             details: None,
             old_values: Some(old_values),
-            new_values: Some(new_values),
+            new_values: Some(new_values.clone()),
             ip_address: None,
             user_agent: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(error = %e, user_id = %user.user_id, "Failed to create audit log for privacy settings update");
+    }
 
     // Return updated settings
     get_privacy_settings(State(state), user).await

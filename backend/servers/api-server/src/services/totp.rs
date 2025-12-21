@@ -241,11 +241,15 @@ impl TotpService {
     }
 
     /// Hash a backup code using Argon2.
+    /// Normalizes the code before hashing to match verification behavior.
     fn hash_backup_code(&self, code: &str) -> Result<String, TotpError> {
+        // Normalize the code (remove any dashes/spaces, uppercase) to match verification behavior
+        let normalized_code = code.replace(['-', ' '], "").to_uppercase();
+
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
         let hash = argon2
-            .hash_password(code.as_bytes(), &salt)
+            .hash_password(normalized_code.as_bytes(), &salt)
             .map_err(|e| TotpError::HashError(e.to_string()))?;
         Ok(hash.to_string())
     }

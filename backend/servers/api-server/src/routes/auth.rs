@@ -644,7 +644,7 @@ pub async fn login(
                             .await;
 
                         // Log backup code usage (Story 9.6 - Audit logging)
-                        let _ = state
+                        if let Err(e) = state
                             .audit_log_repo
                             .create(CreateAuditLog {
                                 user_id: Some(user.id),
@@ -658,35 +658,24 @@ pub async fn login(
                                 ip_address: Some(ip_address.clone()),
                                 user_agent: None,
                             })
-                            .await;
+                            .await
+                        {
+                            tracing::error!(error = %e, user_id = %user.id, "Failed to create audit log for backup code usage");
+                        }
 
                         tracing::info!(user_id = %user.id, "Backup code used for login");
                     }
                 }
                 None => {
-                    // No code provided - return MFA required response
-                    // Generate a temporary MFA token that expires in 5 minutes
-                    let mfa_token = state
-                        .jwt_service
-                        .generate_access_token(user.id, &user.email, &user.name, None, None)
-                        .map_err(|e| {
-                            tracing::error!(error = %e, "Failed to generate MFA token");
-                            (
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                Json(ErrorResponse::new(
-                                    "TOKEN_ERROR",
-                                    "Failed to create MFA session",
-                                )),
-                            )
-                        })?;
-
+                    // No code provided - return MFA required response.
+                    // The client should retry login with the two_factor_code included.
                     return Ok(Json(LoginResponse {
                         access_token: String::new(),
                         refresh_token: String::new(),
                         expires_in: 0,
                         token_type: "Bearer".to_string(),
                         mfa_required: Some(true),
-                        mfa_token: Some(mfa_token),
+                        mfa_token: None,
                     }));
                 }
             }
