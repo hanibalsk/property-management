@@ -231,9 +231,22 @@ async fn test_cross_tenant_org_isolation() {
             .fetch_one(&mut *conn)
             .await
             .unwrap();
+
+    // Debug: check RLS status on the table
+    let rls_info: (bool, bool) = sqlx::query_as(
+        r#"SELECT relrowsecurity, relforcerowsecurity
+           FROM pg_class WHERE relname = 'organization_members'"#,
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .unwrap();
     println!(
         "DEBUG: is_super_admin={}, current_user_id={:?}, expected user_a_id={}",
         is_admin, current_uid, user_a_id
+    );
+    println!(
+        "DEBUG: RLS enabled={}, FORCE RLS={}",
+        rls_info.0, rls_info.1
     );
 
     // User A should only see Org A members (on the same connection)
