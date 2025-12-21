@@ -88,6 +88,14 @@ So that **I control how I receive alerts**.
 - API: RESTful endpoints following existing patterns
 - Frontend: React components in `ppt-web/src/features/settings/notifications/`
 
+### Authentication Pattern Note
+This story uses **JWT-based authentication** (via `Authorization: Bearer` header) rather than TenantContext because notification preferences are:
+- **User-scoped** (not organization-scoped) - a user's preferences apply across all their organizations
+- **Not tenant-isolated** - preferences belong to the user identity, not any specific tenant
+- **Cross-organization** - the same preference state should apply regardless of which organization context is active
+
+This differs from Story 8A.2 (Critical Notifications) which uses TenantContext because critical notifications ARE organization-scoped (admins send them within a specific org).
+
 ### Project Structure Notes
 
 **Backend files to create/modify:**

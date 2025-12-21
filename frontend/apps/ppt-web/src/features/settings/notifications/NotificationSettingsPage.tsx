@@ -21,12 +21,14 @@ interface NotificationSettingsPageProps {
 export function NotificationSettingsPage({ baseUrl, accessToken }: NotificationSettingsPageProps) {
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [pendingChannel, setPendingChannel] = useState<NotificationChannel | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useNotificationPreferences({ baseUrl, accessToken });
   const updatePreference = useUpdateNotificationPreference({ baseUrl, accessToken });
 
   const handleToggle = useCallback(
     async (channel: NotificationChannel, enabled: boolean) => {
+      setUpdateError(null);
       try {
         await updatePreference.mutateAsync({
           channel,
@@ -38,8 +40,8 @@ export function NotificationSettingsPage({ baseUrl, accessToken }: NotificationS
           setPendingChannel(channel);
           setShowWarningDialog(true);
         } else {
-          // Handle other errors
-          console.error('Failed to update preference:', err);
+          // Show error to user
+          setUpdateError('Failed to update preference. Please try again.');
         }
       }
     },
@@ -49,13 +51,14 @@ export function NotificationSettingsPage({ baseUrl, accessToken }: NotificationS
   const handleConfirmDisableAll = useCallback(async () => {
     if (!pendingChannel) return;
 
+    setUpdateError(null);
     try {
       await updatePreference.mutateAsync({
         channel: pendingChannel,
         request: { enabled: false, confirmDisableAll: true },
       });
-    } catch (err) {
-      console.error('Failed to disable all:', err);
+    } catch (_err) {
+      setUpdateError('Failed to disable notifications. Please try again.');
     } finally {
       setShowWarningDialog(false);
       setPendingChannel(null);
@@ -96,6 +99,41 @@ export function NotificationSettingsPage({ baseUrl, accessToken }: NotificationS
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Notification Settings</h1>
       <p className="text-gray-600 mb-6">Choose how you want to receive notifications.</p>
+
+      {/* Update error alert */}
+      {updateError && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg
+                className="h-5 w-5 text-red-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm text-red-700">{updateError}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUpdateError(null)}
+              className="ml-3 inline-flex text-red-400 hover:text-red-500"
+            >
+              <span className="sr-only">Dismiss</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* All disabled warning */}
       {data?.allDisabledWarning && (
