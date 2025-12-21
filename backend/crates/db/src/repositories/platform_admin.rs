@@ -272,17 +272,20 @@ impl PlatformAdminRepository {
         limit: i64,
         offset: i64,
     ) -> Result<(Vec<SupportUserInfo>, i64), SqlxError> {
+        // Build dynamic WHERE clause with proper parameter binding
         let mut conditions = Vec::new();
+        let mut param_idx = 2; // $1 and $2 are limit and offset
 
-        if let Some(s) = status {
-            conditions.push(format!("u.status = '{}'", s.replace('\'', "''")));
+        if status.is_some() {
+            param_idx += 1;
+            conditions.push(format!("u.status = ${}", param_idx));
         }
 
-        if let Some(q) = query {
-            let escaped = q.replace('\'', "''");
+        if query.is_some() {
+            param_idx += 1;
             conditions.push(format!(
-                "(LOWER(u.email) LIKE '%{}%' OR LOWER(u.display_name) LIKE '%{}%' OR LOWER(u.first_name) LIKE '%{}%' OR LOWER(u.last_name) LIKE '%{}%')",
-                escaped.to_lowercase(), escaped.to_lowercase(), escaped.to_lowercase(), escaped.to_lowercase()
+                "(LOWER(u.email) LIKE '%' || LOWER(${}::text) || '%' OR LOWER(u.display_name) LIKE '%' || LOWER(${}::text) || '%' OR LOWER(u.first_name) LIKE '%' || LOWER(${}::text) || '%' OR LOWER(u.last_name) LIKE '%' || LOWER(${}::text) || '%')",
+                param_idx, param_idx, param_idx, param_idx
             ));
         }
 
@@ -306,15 +309,27 @@ impl PlatformAdminRepository {
             where_clause
         );
 
-        let total = sqlx::query_scalar::<_, i64>(&count_query)
-            .fetch_one(&self.pool)
-            .await?;
+        // Execute count query with bound parameters
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query);
+        if let Some(s) = status {
+            count_q = count_q.bind(s);
+        }
+        if let Some(q) = query {
+            count_q = count_q.bind(q);
+        }
+        let total = count_q.fetch_one(&self.pool).await?;
 
-        let users = sqlx::query_as::<_, SupportUserInfo>(&data_query)
+        // Execute data query with bound parameters
+        let mut data_q = sqlx::query_as::<_, SupportUserInfo>(&data_query)
             .bind(limit)
-            .bind(offset)
-            .fetch_all(&self.pool)
-            .await?;
+            .bind(offset);
+        if let Some(s) = status {
+            data_q = data_q.bind(s);
+        }
+        if let Some(q) = query {
+            data_q = data_q.bind(q);
+        }
+        let users = data_q.fetch_all(&self.pool).await?;
 
         Ok((users, total))
     }
