@@ -531,12 +531,60 @@ impl AnnouncementRepository {
     }
 
     // ========================================================================
-    // Pinning Operations (Foundation for Story 6.4)
+    // Pinning Operations (Story 6.4)
     // ========================================================================
 
+    /// Maximum number of pinned announcements per organization.
+    const MAX_PINNED_PER_ORG: i64 = 3;
+
+    /// Count pinned announcements for an organization.
+    pub async fn count_pinned(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+        let (count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM announcements WHERE organization_id = $1 AND pinned = true",
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count)
+    }
+
     /// Pin an announcement.
+    /// Returns error if max pinned limit (3) is reached.
     pub async fn pin(&self, id: Uuid, pinned_by: Uuid) -> Result<Announcement, SqlxError> {
+        // Get announcement to check org_id and if already pinned
         let announcement = sqlx::query_as::<_, Announcement>(
+            r#"
+            SELECT
+                id, organization_id, author_id, title, content,
+                target_type::text as target_type, target_ids,
+                status::text as status, scheduled_at, published_at,
+                pinned, pinned_at, pinned_by, comments_enabled,
+                acknowledgment_required, created_at, updated_at
+            FROM announcements WHERE id = $1 AND status = 'published'
+            "#,
+        )
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // If already pinned, just return it
+        if announcement.pinned {
+            return Ok(announcement);
+        }
+
+        // Check pinned count
+        let pinned_count = self.count_pinned(announcement.organization_id).await?;
+        if pinned_count >= Self::MAX_PINNED_PER_ORG {
+            // Return a custom error - the caller should interpret this
+            return Err(SqlxError::Protocol(format!(
+                "Maximum of {} pinned announcements reached",
+                Self::MAX_PINNED_PER_ORG
+            )));
+        }
+
+        // Pin the announcement
+        let pinned = sqlx::query_as::<_, Announcement>(
             r#"
             UPDATE announcements
             SET pinned = true, pinned_at = NOW(), pinned_by = $2, updated_at = NOW()
@@ -554,7 +602,7 @@ impl AnnouncementRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(announcement)
+        Ok(pinned)
     }
 
     /// Unpin an announcement.

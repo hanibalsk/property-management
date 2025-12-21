@@ -949,9 +949,9 @@ async fn archive_announcement(
     }
 }
 
-/// Pin/unpin an announcement (Story 6.4 foundation).
+/// Pin/unpin an announcement (Story 6.4).
 ///
-/// Requires manager-level role.
+/// Requires manager-level role. Maximum 3 pinned announcements per organization.
 #[utoipa::path(
     post,
     path = "/api/v1/announcements/{id}/pin",
@@ -962,6 +962,7 @@ async fn archive_announcement(
     security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "Pin status updated", body = AnnouncementActionResponse),
+        (status = 400, description = "Maximum pinned limit reached", body = ErrorResponse),
         (status = 403, description = "Forbidden - requires manager role", body = ErrorResponse),
         (status = 404, description = "Announcement not found", body = ErrorResponse),
     ),
@@ -1007,6 +1008,13 @@ async fn pin_announcement(
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
         )),
+        Err(SqlxError::Protocol(msg)) if msg.contains("Maximum") => {
+            // Pinned limit reached
+            Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("PINNED_LIMIT_REACHED", msg)),
+            ))
+        }
         Err(e) => {
             tracing::error!("Failed to update pin status: {}", e);
             Err((
