@@ -1,5 +1,9 @@
 //! TOTP (Time-based One-Time Password) service for 2FA (Epic 9, Story 9.1).
 
+use aes_gcm::{
+    aead::{Aead, KeyInit},
+    Aes256Gcm, Nonce,
+};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -21,6 +25,12 @@ pub enum TotpError {
     HashError(String),
     #[error("Failed to verify backup code: {0}")]
     VerifyError(String),
+    #[error("Encryption error: {0}")]
+    EncryptionError(String),
+    #[error("Decryption error: {0}")]
+    DecryptionError(String),
+    #[error("Missing encryption key: TOTP_ENCRYPTION_KEY must be set")]
+    MissingEncryptionKey,
 }
 
 /// Service for TOTP operations.
@@ -32,16 +42,99 @@ pub struct TotpService {
     backup_code_count: usize,
     /// Length of each backup code
     backup_code_length: usize,
+    /// Encryption key for TOTP secrets (32 bytes for AES-256)
+    encryption_key: Option<[u8; 32]>,
 }
 
 impl TotpService {
     /// Create a new TOTP service.
     pub fn new(issuer: String) -> Self {
+        // Try to load encryption key from environment
+        let encryption_key = std::env::var("TOTP_ENCRYPTION_KEY").ok().and_then(|key| {
+            // Key should be 32 bytes hex-encoded (64 characters)
+            if key.len() == 64 {
+                let mut bytes = [0u8; 32];
+                if hex::decode_to_slice(&key, &mut bytes).is_ok() {
+                    return Some(bytes);
+                }
+            }
+            tracing::warn!(
+                "TOTP_ENCRYPTION_KEY is invalid or not set, TOTP secrets will not be encrypted"
+            );
+            None
+        });
+
         Self {
             issuer,
             backup_code_count: 10,
             backup_code_length: 8,
+            encryption_key,
         }
+    }
+
+    /// Encrypt a TOTP secret for storage.
+    /// Returns hex-encoded nonce:ciphertext.
+    pub fn encrypt_secret(&self, plaintext: &str) -> Result<String, TotpError> {
+        let key = self.encryption_key.ok_or(TotpError::MissingEncryptionKey)?;
+
+        let cipher = Aes256Gcm::new_from_slice(&key)
+            .map_err(|e| TotpError::EncryptionError(e.to_string()))?;
+
+        // Generate random 12-byte nonce
+        let mut nonce_bytes = [0u8; 12];
+        rand::thread_rng().fill(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        // Encrypt the secret
+        let ciphertext = cipher
+            .encrypt(nonce, plaintext.as_bytes())
+            .map_err(|e| TotpError::EncryptionError(e.to_string()))?;
+
+        // Return as hex: nonce:ciphertext
+        Ok(format!(
+            "{}:{}",
+            hex::encode(nonce_bytes),
+            hex::encode(ciphertext)
+        ))
+    }
+
+    /// Decrypt an encrypted TOTP secret.
+    /// Expects hex-encoded nonce:ciphertext format.
+    pub fn decrypt_secret(&self, encrypted: &str) -> Result<String, TotpError> {
+        let key = self.encryption_key.ok_or(TotpError::MissingEncryptionKey)?;
+
+        // If it doesn't contain ':', assume it's a legacy unencrypted secret
+        if !encrypted.contains(':') {
+            return Ok(encrypted.to_string());
+        }
+
+        let parts: Vec<&str> = encrypted.splitn(2, ':').collect();
+        if parts.len() != 2 {
+            return Err(TotpError::DecryptionError(
+                "Invalid encrypted format".to_string(),
+            ));
+        }
+
+        let nonce_bytes =
+            hex::decode(parts[0]).map_err(|e| TotpError::DecryptionError(e.to_string()))?;
+        let ciphertext =
+            hex::decode(parts[1]).map_err(|e| TotpError::DecryptionError(e.to_string()))?;
+
+        let cipher = Aes256Gcm::new_from_slice(&key)
+            .map_err(|e| TotpError::DecryptionError(e.to_string()))?;
+
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        let plaintext = cipher
+            .decrypt(nonce, ciphertext.as_ref())
+            .map_err(|e| TotpError::DecryptionError(e.to_string()))?;
+
+        String::from_utf8(plaintext).map_err(|e| TotpError::DecryptionError(e.to_string()))
+    }
+
+    /// Check if encryption is enabled.
+    pub fn is_encryption_enabled(&self) -> bool {
+        self.encryption_key.is_some()
     }
 
     /// Generate a new TOTP secret.
@@ -173,6 +266,19 @@ impl Default for TotpService {
     }
 }
 
+/// Create a new TotpService with a specific encryption key (for testing).
+#[cfg(test)]
+impl TotpService {
+    pub fn with_encryption_key(issuer: String, key: [u8; 32]) -> Self {
+        Self {
+            issuer,
+            backup_code_count: 10,
+            backup_code_length: 8,
+            encryption_key: Some(key),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,5 +355,54 @@ mod tests {
             .verify_backup_code(&code_with_dashes, &hashed)
             .unwrap();
         assert_eq!(result, Some(0));
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_secret() {
+        // Create service with a test encryption key
+        let key: [u8; 32] = [
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+            0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
+            0x1c, 0x1d, 0x1e, 0x1f,
+        ];
+        let service = TotpService::with_encryption_key("Test".to_string(), key);
+
+        let secret = service.generate_secret().unwrap();
+
+        // Encrypt
+        let encrypted = service.encrypt_secret(&secret).unwrap();
+        assert!(
+            encrypted.contains(':'),
+            "Encrypted format should be nonce:ciphertext"
+        );
+        assert_ne!(encrypted, secret, "Encrypted should differ from original");
+
+        // Decrypt
+        let decrypted = service.decrypt_secret(&encrypted).unwrap();
+        assert_eq!(decrypted, secret, "Decrypted should match original");
+    }
+
+    #[test]
+    fn test_decrypt_legacy_unencrypted() {
+        // Create service with encryption enabled
+        let key: [u8; 32] = [0xaa; 32];
+        let service = TotpService::with_encryption_key("Test".to_string(), key);
+
+        // Legacy secret without ':' should be returned as-is
+        let legacy_secret = "JBSWY3DPEHPK3PXP";
+        let decrypted = service.decrypt_secret(legacy_secret).unwrap();
+        assert_eq!(decrypted, legacy_secret);
+    }
+
+    #[test]
+    fn test_encryption_without_key_fails() {
+        let service = TotpService::default(); // No encryption key
+
+        let result = service.encrypt_secret("test-secret");
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            TotpError::MissingEncryptionKey
+        ));
     }
 }

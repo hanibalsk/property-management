@@ -8,7 +8,7 @@ use axum::{
     Json, Router,
 };
 use common::errors::ErrorResponse;
-use db::models::CreateTwoFactorAuth;
+use db::models::{AuditAction, CreateAuditLog, CreateTwoFactorAuth};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -118,10 +118,27 @@ pub async fn setup_mfa(
         )
     })?;
 
+    // Encrypt secret before storage if encryption is enabled
+    let stored_secret = if state.totp_service.is_encryption_enabled() {
+        state.totp_service.encrypt_secret(&secret).map_err(|e| {
+            tracing::error!(error = %e, "Failed to encrypt TOTP secret");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "ENCRYPTION_ERROR",
+                    "Failed to encrypt authentication secret",
+                )),
+            )
+        })?
+    } else {
+        tracing::warn!("TOTP encryption key not configured, storing secret unencrypted");
+        secret.clone()
+    };
+
     // Store the setup (not enabled yet)
     let create_data = CreateTwoFactorAuth {
         user_id,
-        secret: secret.clone(),
+        secret: stored_secret,
         backup_codes: hashed_codes,
     };
 
@@ -230,10 +247,25 @@ pub async fn verify_mfa_setup(
         }));
     }
 
+    // Decrypt secret if needed
+    let decrypted_secret = state
+        .totp_service
+        .decrypt_secret(&mfa_record.secret)
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to decrypt TOTP secret");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DECRYPTION_ERROR",
+                    "Failed to decrypt authentication secret",
+                )),
+            )
+        })?;
+
     // Verify the TOTP code
     let is_valid = state
         .totp_service
-        .verify_code(&mfa_record.secret, &req.code)
+        .verify_code(&decrypted_secret, &req.code)
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to verify TOTP code");
             (
@@ -263,6 +295,23 @@ pub async fn verify_mfa_setup(
             Json(ErrorResponse::new("DATABASE_ERROR", "Failed to enable MFA")),
         )
     })?;
+
+    // Log MFA enabled (Story 9.6 - Audit logging)
+    let _ = state
+        .audit_log_repo
+        .create(CreateAuditLog {
+            user_id: Some(user_id),
+            action: AuditAction::MfaEnabled,
+            resource_type: Some("two_factor_auth".to_string()),
+            resource_id: Some(user_id),
+            org_id: None,
+            details: None,
+            old_values: None,
+            new_values: None,
+            ip_address: None,
+            user_agent: None,
+        })
+        .await;
 
     tracing::info!(user_id = %user_id, "MFA enabled successfully");
 
@@ -354,10 +403,25 @@ pub async fn disable_mfa(
         ));
     }
 
+    // Decrypt secret if encrypted
+    let decrypted_secret = state
+        .totp_service
+        .decrypt_secret(&mfa_record.secret)
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to decrypt TOTP secret");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DECRYPTION_ERROR",
+                    "Failed to verify code",
+                )),
+            )
+        })?;
+
     // Try to verify as TOTP code first
     let is_totp_valid = state
         .totp_service
-        .verify_code(&mfa_record.secret, &req.code)
+        .verify_code(&decrypted_secret, &req.code)
         .unwrap_or(false);
 
     // If TOTP failed, try backup codes
@@ -394,6 +458,23 @@ pub async fn disable_mfa(
             )),
         )
     })?;
+
+    // Log MFA disabled (Story 9.6 - Audit logging)
+    let _ = state
+        .audit_log_repo
+        .create(CreateAuditLog {
+            user_id: Some(user_id),
+            action: AuditAction::MfaDisabled,
+            resource_type: Some("two_factor_auth".to_string()),
+            resource_id: Some(user_id),
+            org_id: None,
+            details: None,
+            old_values: None,
+            new_values: None,
+            ip_address: None,
+            user_agent: None,
+        })
+        .await;
 
     tracing::info!(user_id = %user_id, "MFA disabled");
 
@@ -555,10 +636,25 @@ pub async fn regenerate_backup_codes(
         ));
     }
 
+    // Decrypt secret if encrypted
+    let decrypted_secret = state
+        .totp_service
+        .decrypt_secret(&mfa_record.secret)
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to decrypt TOTP secret");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DECRYPTION_ERROR",
+                    "Failed to verify code",
+                )),
+            )
+        })?;
+
     // Verify TOTP code
     let is_valid = state
         .totp_service
-        .verify_code(&mfa_record.secret, &req.code)
+        .verify_code(&decrypted_secret, &req.code)
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to verify TOTP code");
             (
@@ -607,6 +703,23 @@ pub async fn regenerate_backup_codes(
                 )),
             )
         })?;
+
+    // Log backup codes regenerated (Story 9.6 - Audit logging)
+    let _ = state
+        .audit_log_repo
+        .create(CreateAuditLog {
+            user_id: Some(user_id),
+            action: AuditAction::MfaBackupCodesRegenerated,
+            resource_type: Some("two_factor_auth".to_string()),
+            resource_id: Some(user_id),
+            org_id: None,
+            details: None,
+            old_values: None,
+            new_values: None,
+            ip_address: None,
+            user_agent: None,
+        })
+        .await;
 
     tracing::info!(user_id = %user_id, "Backup codes regenerated");
 

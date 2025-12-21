@@ -8,7 +8,7 @@ use axum::{
     Json, Router,
 };
 use common::errors::{ErrorResponse, ValidationError};
-use db::models::{CreateUser, Locale};
+use db::models::{AuditAction, CreateAuditLog, CreateUser, Locale};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -588,10 +588,25 @@ pub async fn login(
             // 2FA is enabled - check if code was provided
             match &req.two_factor_code {
                 Some(code) => {
+                    // Decrypt secret if encrypted (Story 9.1 security fix)
+                    let decrypted_secret = state
+                        .totp_service
+                        .decrypt_secret(&mfa_record.secret)
+                        .map_err(|e| {
+                            tracing::error!(error = %e, "Failed to decrypt TOTP secret");
+                            (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(ErrorResponse::new(
+                                    "DECRYPTION_ERROR",
+                                    "Failed to verify MFA code",
+                                )),
+                            )
+                        })?;
+
                     // Verify TOTP code
                     let is_valid = state
                         .totp_service
-                        .verify_code(&mfa_record.secret, code)
+                        .verify_code(&decrypted_secret, code)
                         .unwrap_or(false);
 
                     // If TOTP failed, try backup codes
@@ -621,12 +636,30 @@ pub async fn login(
                         ));
                     }
 
-                    // If backup code was used, consume it
+                    // If backup code was used, consume it and log it
                     if let Some(code_index) = backup_result {
                         let _ = state
                             .two_factor_repo
                             .use_backup_code(user.id, code_index)
                             .await;
+
+                        // Log backup code usage (Story 9.6 - Audit logging)
+                        let _ = state
+                            .audit_log_repo
+                            .create(CreateAuditLog {
+                                user_id: Some(user.id),
+                                action: AuditAction::MfaBackupCodeUsed,
+                                resource_type: Some("two_factor_auth".to_string()),
+                                resource_id: Some(user.id),
+                                org_id: None,
+                                details: Some(serde_json::json!({ "code_index": code_index })),
+                                old_values: None,
+                                new_values: None,
+                                ip_address: Some(ip_address.clone()),
+                                user_agent: None,
+                            })
+                            .await;
+
                         tracing::info!(user_id = %user.id, "Backup code used for login");
                     }
                 }
