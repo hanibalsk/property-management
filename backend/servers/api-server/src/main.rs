@@ -150,6 +150,7 @@ use state::AppState;
         (name = "Faults", description = "Fault reporting and tracking"),
         (name = "Voting", description = "Voting and polls"),
         (name = "Announcements", description = "Announcements and communication"),
+        (name = "Documents", description = "Document management and sharing"),
         (name = "Rentals", description = "Short-term rental integrations (Airbnb, Booking)"),
         (name = "Listings", description = "Real estate listing management"),
         (name = "Integrations", description = "External portal integrations")
@@ -237,6 +238,10 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/voting", routes::voting::router())
         // Announcements routes (Epic 6)
         .nest("/api/v1/announcements", routes::announcements::router())
+        // Documents routes (Epic 7A)
+        .nest("/api/v1/documents", routes::documents::router())
+        // Public shared document routes (no auth required)
+        .merge(routes::documents::public_router())
         // Messaging routes (Epic 6, Story 6.5)
         .nest("/api/v1/messages", routes::messaging::router())
         // Neighbor routes (Epic 6, Story 6.6)

@@ -4,6 +4,7 @@
 pub mod announcement;
 pub mod building;
 pub mod delegation;
+pub mod document;
 pub mod facility;
 pub mod fault;
 pub mod messaging;
@@ -21,6 +22,7 @@ pub mod vote;
 pub use announcement::AnnouncementRepository;
 pub use building::BuildingRepository;
 pub use delegation::DelegationRepository;
+pub use document::DocumentRepository;
 pub use facility::FacilityRepository;
 pub use fault::FaultRepository;
 pub use messaging::MessagingRepository;
