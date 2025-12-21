@@ -46,7 +46,15 @@ export function CreateNotificationForm({
 
     if (!validate()) return;
 
-    await onSubmit({ title: title.trim(), message: message.trim() });
+    try {
+      await onSubmit({ title: title.trim(), message: message.trim() });
+      // Clear form on success
+      setTitle('');
+      setMessage('');
+      setErrors({});
+    } catch {
+      // If submission fails, keep form values for user correction
+    }
   };
 
   return (

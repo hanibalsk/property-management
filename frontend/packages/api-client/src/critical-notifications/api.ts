@@ -30,6 +30,18 @@ function getHeaders(options: FetchOptions): HeadersInit {
 }
 
 /**
+ * Safely parse JSON error response, returning default message if parsing fails
+ */
+async function getErrorMessage(response: Response, defaultMessage: string): Promise<string> {
+  try {
+    const error = await response.json();
+    return error.error?.message || defaultMessage;
+  } catch {
+    return defaultMessage;
+  }
+}
+
+/**
  * Get all critical notifications for an organization
  */
 export async function getCriticalNotifications(
@@ -45,7 +57,8 @@ export async function getCriticalNotifications(
   );
 
   if (!response.ok) {
-    throw new Error('Failed to fetch critical notifications');
+    const message = await getErrorMessage(response, 'Failed to fetch critical notifications');
+    throw new Error(message);
   }
 
   return response.json();
@@ -67,7 +80,8 @@ export async function getUnacknowledgedNotifications(
   );
 
   if (!response.ok) {
-    throw new Error('Failed to fetch unacknowledged notifications');
+    const message = await getErrorMessage(response, 'Failed to fetch unacknowledged notifications');
+    throw new Error(message);
   }
 
   return response.json();
@@ -94,7 +108,8 @@ export async function createCriticalNotification(
     if (response.status === 403) {
       throw new Error('Only administrators can create critical notifications');
     }
-    throw new Error('Failed to create critical notification');
+    const message = await getErrorMessage(response, 'Failed to create critical notification');
+    throw new Error(message);
   }
 
   return response.json();
@@ -120,7 +135,8 @@ export async function acknowledgeCriticalNotification(
     if (response.status === 404) {
       throw new Error('Notification not found');
     }
-    throw new Error('Failed to acknowledge notification');
+    const message = await getErrorMessage(response, 'Failed to acknowledge notification');
+    throw new Error(message);
   }
 
   return response.json();
@@ -149,7 +165,8 @@ export async function getCriticalNotificationStats(
     if (response.status === 404) {
       throw new Error('Notification not found');
     }
-    throw new Error('Failed to fetch notification statistics');
+    const message = await getErrorMessage(response, 'Failed to fetch notification statistics');
+    throw new Error(message);
   }
 
   return response.json();

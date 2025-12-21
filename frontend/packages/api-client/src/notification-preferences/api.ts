@@ -27,8 +27,14 @@ export async function getNotificationPreferences(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Failed to fetch notification preferences');
+    let errorMessage = 'Failed to fetch notification preferences';
+    try {
+      const error = await response.json();
+      errorMessage = error.error?.message || errorMessage;
+    } catch {
+      // Response is not JSON, use default message
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -53,17 +59,24 @@ export async function updateNotificationPreference(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    let errorMessage = 'Failed to update notification preference';
+    let errorData: { error?: { message?: string } } = {};
+    try {
+      errorData = await response.json();
+      errorMessage = errorData.error?.message || errorMessage;
+    } catch {
+      // Response is not JSON, use default message
+    }
 
     // Check if this is a confirmation required error (409)
     if (response.status === 409) {
       throw new ConfirmationRequiredError(
-        error.error?.message || 'Confirmation required to disable all channels',
+        errorData.error?.message || 'Confirmation required to disable all channels',
         channel
       );
     }
 
-    throw new Error(error.error?.message || 'Failed to update notification preference');
+    throw new Error(errorMessage);
   }
 
   return response.json();
