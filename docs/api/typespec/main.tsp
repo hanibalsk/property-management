@@ -15,6 +15,7 @@ import "./domains/buildings.tsp";
 import "./domains/units.tsp";
 import "./domains/faults.tsp";
 import "./domains/voting.tsp";
+import "./domains/announcements.tsp";
 import "./domains/documents.tsp";
 import "./domains/rentals.tsp";
 import "./domains/listings.tsp";
@@ -27,7 +28,7 @@ using TypeSpec.OpenAPI;
   title: "Property Management API",
 })
 @info(#{
-  version: "0.1.68",
+  version: "0.1.70",
 })
 @server("https://api.property-management.example.com", "Production")
 @server("http://localhost:8080", "Development")

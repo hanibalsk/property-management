@@ -1,6 +1,7 @@
 //! Repository pattern implementations.
 //! Each repository handles database operations for a specific domain.
 
+pub mod announcement;
 pub mod building;
 pub mod delegation;
 pub mod facility;
@@ -16,6 +17,7 @@ pub mod unit_resident;
 pub mod user;
 pub mod vote;
 
+pub use announcement::AnnouncementRepository;
 pub use building::BuildingRepository;
 pub use delegation::DelegationRepository;
 pub use facility::FacilityRepository;

@@ -1,5 +1,6 @@
 //! Database models.
 
+pub mod announcement;
 pub mod building;
 pub mod delegation;
 pub mod facility;
@@ -67,4 +68,10 @@ pub use vote::{
     UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment, VoteCommentWithUser, VoteEligibility,
     VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData, VoteResponse, VoteResults,
     VoteSummary, VoteWithDetails,
+};
+pub use announcement::{
+    announcement_status, target_type, AcknowledgeAnnouncement, Announcement,
+    AnnouncementAttachment, AnnouncementListQuery, AnnouncementRead, AnnouncementStatistics,
+    AnnouncementSummary, AnnouncementWithDetails, CreateAnnouncement, CreateAnnouncementAttachment,
+    MarkAnnouncementRead, PinAnnouncement, PublishAnnouncement, UpdateAnnouncement,
 };
