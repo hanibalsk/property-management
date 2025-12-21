@@ -1,0 +1,325 @@
+//! Organization repository (Epic 2A, Story 2A.1).
+
+use crate::models::organization::{
+    CreateOrganization, Organization, OrganizationSummary, UpdateOrganization,
+};
+use crate::DbPool;
+use sqlx::Error as SqlxError;
+use uuid::Uuid;
+
+/// Repository for organization operations.
+#[derive(Clone)]
+pub struct OrganizationRepository {
+    pool: DbPool,
+}
+
+impl OrganizationRepository {
+    /// Create a new OrganizationRepository.
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
+    }
+
+    /// Create a new organization.
+    pub async fn create(&self, data: CreateOrganization) -> Result<Organization, SqlxError> {
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            INSERT INTO organizations (name, slug, contact_email, logo_url, primary_color)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+            "#,
+        )
+        .bind(&data.name)
+        .bind(&data.slug)
+        .bind(&data.contact_email)
+        .bind(&data.logo_url)
+        .bind(&data.primary_color)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(org)
+    }
+
+    /// Find organization by ID.
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            SELECT * FROM organizations WHERE id = $1 AND status != 'deleted'
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(org)
+    }
+
+    /// Find organization by slug.
+    pub async fn find_by_slug(&self, slug: &str) -> Result<Option<Organization>, SqlxError> {
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            SELECT * FROM organizations WHERE LOWER(slug) = LOWER($1) AND status != 'deleted'
+            "#,
+        )
+        .bind(slug)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(org)
+    }
+
+    /// Check if slug exists.
+    pub async fn slug_exists(&self, slug: &str) -> Result<bool, SqlxError> {
+        let result = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*) FROM organizations
+            WHERE LOWER(slug) = LOWER($1) AND status != 'deleted'
+            "#,
+        )
+        .bind(slug)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(result > 0)
+    }
+
+    /// Update organization.
+    pub async fn update(
+        &self,
+        id: Uuid,
+        data: UpdateOrganization,
+    ) -> Result<Option<Organization>, SqlxError> {
+        // Build dynamic update query
+        let mut updates = vec!["updated_at = NOW()".to_string()];
+        let mut param_idx = 1;
+
+        if data.name.is_some() {
+            param_idx += 1;
+            updates.push(format!("name = ${}", param_idx));
+        }
+        if data.contact_email.is_some() {
+            param_idx += 1;
+            updates.push(format!("contact_email = ${}", param_idx));
+        }
+        if data.logo_url.is_some() {
+            param_idx += 1;
+            updates.push(format!("logo_url = ${}", param_idx));
+        }
+        if data.primary_color.is_some() {
+            param_idx += 1;
+            updates.push(format!("primary_color = ${}", param_idx));
+        }
+        if data.settings.is_some() {
+            param_idx += 1;
+            updates.push(format!("settings = ${}", param_idx));
+        }
+
+        let query = format!(
+            "UPDATE organizations SET {} WHERE id = $1 AND status != 'deleted' RETURNING *",
+            updates.join(", ")
+        );
+
+        let mut q = sqlx::query_as::<_, Organization>(&query).bind(id);
+
+        if let Some(name) = &data.name {
+            q = q.bind(name);
+        }
+        if let Some(contact_email) = &data.contact_email {
+            q = q.bind(contact_email);
+        }
+        if let Some(logo_url) = &data.logo_url {
+            q = q.bind(logo_url);
+        }
+        if let Some(primary_color) = &data.primary_color {
+            q = q.bind(primary_color);
+        }
+        if let Some(settings) = &data.settings {
+            q = q.bind(settings);
+        }
+
+        let org = q.fetch_optional(&self.pool).await?;
+        Ok(org)
+    }
+
+    /// Suspend organization.
+    pub async fn suspend(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            UPDATE organizations
+            SET status = 'suspended', updated_at = NOW()
+            WHERE id = $1 AND status = 'active'
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(org)
+    }
+
+    /// Reactivate suspended organization.
+    pub async fn reactivate(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            UPDATE organizations
+            SET status = 'active', updated_at = NOW()
+            WHERE id = $1 AND status = 'suspended'
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(org)
+    }
+
+    /// Soft delete organization.
+    pub async fn soft_delete(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+        let org = sqlx::query_as::<_, Organization>(
+            r#"
+            UPDATE organizations
+            SET status = 'deleted', updated_at = NOW()
+            WHERE id = $1 AND status != 'deleted'
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(org)
+    }
+
+    /// List all organizations (admin only).
+    pub async fn list(
+        &self,
+        offset: i64,
+        limit: i64,
+        status_filter: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<(Vec<OrganizationSummary>, i64), SqlxError> {
+        let mut conditions = vec!["status != 'deleted'".to_string()];
+
+        if status_filter.is_some() {
+            conditions.push("status = $3".to_string());
+        }
+
+        if search.is_some() {
+            let search_idx = if status_filter.is_some() { 4 } else { 3 };
+            conditions.push(format!(
+                "(LOWER(name) LIKE '%' || LOWER(${}::text) || '%' OR LOWER(slug) LIKE '%' || LOWER(${}::text) || '%')",
+                search_idx, search_idx
+            ));
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        let count_query = format!("SELECT COUNT(*) FROM organizations WHERE {}", where_clause);
+        let data_query = format!(
+            "SELECT id, name, slug, logo_url, status FROM organizations WHERE {} ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+            where_clause
+        );
+
+        // Execute count query
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query);
+        if let Some(status) = status_filter {
+            count_q = count_q.bind(status);
+        }
+        if let Some(s) = search {
+            count_q = count_q.bind(s);
+        }
+        let total = count_q.fetch_one(&self.pool).await?;
+
+        // Execute data query
+        let mut data_q = sqlx::query_as::<_, OrganizationSummary>(&data_query)
+            .bind(limit)
+            .bind(offset);
+        if let Some(status) = status_filter {
+            data_q = data_q.bind(status);
+        }
+        if let Some(s) = search {
+            data_q = data_q.bind(s);
+        }
+        let orgs = data_q.fetch_all(&self.pool).await?;
+
+        Ok((orgs, total))
+    }
+
+    /// List organizations with full details (for admin views).
+    /// Returns full Organization objects instead of summaries.
+    pub async fn list_full(
+        &self,
+        offset: i64,
+        limit: i64,
+        status_filter: Option<&str>,
+        search: Option<&str>,
+    ) -> Result<(Vec<Organization>, i64), SqlxError> {
+        let mut conditions = vec!["status != 'deleted'".to_string()];
+
+        if status_filter.is_some() {
+            conditions.push("status = $3".to_string());
+        }
+
+        if search.is_some() {
+            let search_idx = if status_filter.is_some() { 4 } else { 3 };
+            conditions.push(format!(
+                "(LOWER(name) LIKE '%' || LOWER(${}::text) || '%' OR LOWER(slug) LIKE '%' || LOWER(${}::text) || '%')",
+                search_idx, search_idx
+            ));
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        let count_query = format!("SELECT COUNT(*) FROM organizations WHERE {}", where_clause);
+        let data_query = format!(
+            "SELECT * FROM organizations WHERE {} ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+            where_clause
+        );
+
+        // Execute count query
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query);
+        if let Some(status) = status_filter {
+            count_q = count_q.bind(status);
+        }
+        if let Some(s) = search {
+            count_q = count_q.bind(s);
+        }
+        let total = count_q.fetch_one(&self.pool).await?;
+
+        // Execute data query
+        let mut data_q = sqlx::query_as::<_, Organization>(&data_query)
+            .bind(limit)
+            .bind(offset);
+        if let Some(status) = status_filter {
+            data_q = data_q.bind(status);
+        }
+        if let Some(s) = search {
+            data_q = data_q.bind(s);
+        }
+        let orgs = data_q.fetch_all(&self.pool).await?;
+
+        Ok((orgs, total))
+    }
+
+    /// Get organizations for a user (via memberships).
+    pub async fn get_user_organizations(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<OrganizationSummary>, SqlxError> {
+        let orgs = sqlx::query_as::<_, OrganizationSummary>(
+            r#"
+            SELECT o.id, o.name, o.slug, o.logo_url, o.status
+            FROM organizations o
+            INNER JOIN organization_members om ON om.organization_id = o.id
+            WHERE om.user_id = $1 AND om.status = 'active' AND o.status != 'deleted'
+            ORDER BY o.name
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(orgs)
+    }
+}
