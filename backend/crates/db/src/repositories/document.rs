@@ -482,6 +482,88 @@ impl DocumentRepository {
         .await
     }
 
+    /// List documents accessible by user (simplified - org-wide + own documents + role-based).
+    /// Used when building/unit context is not available.
+    pub async fn list_accessible_simple(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        user_role: &str,
+        query: DocumentListQuery,
+    ) -> Result<Vec<DocumentSummary>, SqlxError> {
+        let limit = query.limit.unwrap_or(50).min(100);
+        let offset = query.offset.unwrap_or(0);
+
+        sqlx::query_as::<_, DocumentSummary>(
+            r#"
+            SELECT
+                id, title, category, file_name, mime_type, size_bytes, folder_id, created_at
+            FROM documents
+            WHERE organization_id = $1
+              AND deleted_at IS NULL
+              AND (
+                -- Creator always has access
+                created_by = $2
+                -- Organization-wide access
+                OR access_scope = 'organization'
+                -- Role-based access (check if user's role is in the access_roles array)
+                OR (access_scope = 'role' AND access_roles ? $3)
+              )
+              AND ($4::uuid IS NULL OR folder_id = $4)
+              AND ($5::text IS NULL OR category = $5)
+              AND ($6::text IS NULL OR title ILIKE '%' || $6 || '%')
+            ORDER BY created_at DESC
+            LIMIT $7 OFFSET $8
+            "#,
+        )
+        .bind(org_id)
+        .bind(user_id)
+        .bind(user_role)
+        .bind(query.folder_id)
+        .bind(&query.category)
+        .bind(&query.search)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Count documents accessible by user (simplified).
+    pub async fn count_accessible_simple(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        user_role: &str,
+        query: DocumentListQuery,
+    ) -> Result<i64, SqlxError> {
+        let row = sqlx::query(
+            r#"
+            SELECT COUNT(*) as count
+            FROM documents
+            WHERE organization_id = $1
+              AND deleted_at IS NULL
+              AND (
+                created_by = $2
+                OR access_scope = 'organization'
+                OR (access_scope = 'role' AND access_roles ? $3)
+              )
+              AND ($4::uuid IS NULL OR folder_id = $4)
+              AND ($5::text IS NULL OR category = $5)
+              AND ($6::text IS NULL OR title ILIKE '%' || $6 || '%')
+            "#,
+        )
+        .bind(org_id)
+        .bind(user_id)
+        .bind(user_role)
+        .bind(query.folder_id)
+        .bind(&query.category)
+        .bind(&query.search)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.get("count"))
+    }
+
     /// Update a document.
     pub async fn update(&self, id: Uuid, data: UpdateDocument) -> Result<Document, SqlxError> {
         let access_target_ids = data

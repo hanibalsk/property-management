@@ -454,7 +454,7 @@ async fn list_documents(
     Query(query): Query<ListDocumentsQuery>,
 ) -> Result<Json<DocumentListResponse>, (StatusCode, Json<ErrorResponse>)> {
     let org_id = tenant.tenant_id;
-    let _user_id = auth.user_id; // Will be used for access filtering
+    let user_id = auth.user_id;
 
     // For managers, show all documents; for others, show only accessible documents
     let is_manager = tenant.role.is_manager();
@@ -481,16 +481,18 @@ async fn list_documents(
             .unwrap_or(0);
         (docs, total)
     } else {
-        // TODO: Get user's building/unit/role context for access filtering
-        // For now, show all org documents (simplified)
+        // Use simplified access control for non-managers
+        // Shows: org-wide documents + own documents + role-based documents
+        // TODO: Full implementation needs building/unit context from TenantContext
+        let user_role = tenant.role.to_string().to_lowercase().replace(' ', "_");
         let docs = state
             .document_repo
-            .list(org_id, list_query.clone())
+            .list_accessible_simple(org_id, user_id, &user_role, list_query.clone())
             .await
             .unwrap_or_default();
         let total = state
             .document_repo
-            .count(org_id, list_query)
+            .count_accessible_simple(org_id, user_id, &user_role, list_query)
             .await
             .unwrap_or(0);
         (docs, total)
@@ -1669,8 +1671,10 @@ async fn revoke_share(
 )]
 async fn access_shared_document(
     State(state): State<AppState>,
+    axum::extract::ConnectInfo(addr): axum::extract::ConnectInfo<std::net::SocketAddr>,
     Path(token): Path<String>,
 ) -> Result<Json<SharedDocumentResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let ip_address = addr.ip().to_string();
     // Find share by token
     let share = match state.document_repo.find_share_by_token(&token).await {
         Ok(Some(s)) => s,
@@ -1733,7 +1737,7 @@ async fn access_shared_document(
         .log_share_access(LogShareAccess {
             share_id: share.id,
             accessed_by: None,
-            ip_address: None, // TODO: Extract from request
+            ip_address: Some(ip_address),
         })
         .await;
 
@@ -1778,9 +1782,11 @@ async fn access_shared_document(
 )]
 async fn access_protected_share(
     State(state): State<AppState>,
+    axum::extract::ConnectInfo(addr): axum::extract::ConnectInfo<std::net::SocketAddr>,
     Path(token): Path<String>,
     Json(req): Json<AccessShareRequest>,
 ) -> Result<Json<SharedDocumentResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let ip_address = addr.ip().to_string();
     // Find share by token
     let share = match state.document_repo.find_share_by_token(&token).await {
         Ok(Some(s)) => s,
@@ -1845,7 +1851,7 @@ async fn access_protected_share(
         .log_share_access(LogShareAccess {
             share_id: share.id,
             accessed_by: None,
-            ip_address: None,
+            ip_address: Some(ip_address),
         })
         .await;
 
