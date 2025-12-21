@@ -181,6 +181,9 @@ impl TestDb {
 async fn test_cross_tenant_org_isolation() {
     let db = TestDb::new().await.expect("Failed to connect to test DB");
 
+    // Clean up any leftover data from previous test runs
+    db.cleanup().await.unwrap();
+
     // Set up as super admin to create test data (bypasses RLS)
     db.setup_as_super_admin().await.unwrap();
 
@@ -257,6 +260,9 @@ async fn test_cross_tenant_org_isolation() {
 async fn test_cross_tenant_role_isolation() {
     let db = TestDb::new().await.expect("Failed to connect to test DB");
 
+    // Clean up any leftover data from previous test runs
+    db.cleanup().await.unwrap();
+
     // Set up as super admin to create test data (bypasses RLS)
     db.setup_as_super_admin().await.unwrap();
 
@@ -320,6 +326,9 @@ async fn test_cross_tenant_role_isolation() {
 async fn test_permission_boundary_update() {
     let db = TestDb::new().await.expect("Failed to connect to test DB");
 
+    // Clean up any leftover data from previous test runs
+    db.cleanup().await.unwrap();
+
     // Set up as super admin to create test data (bypasses RLS)
     db.setup_as_super_admin().await.unwrap();
 
@@ -370,6 +379,9 @@ async fn test_permission_boundary_update() {
 async fn test_super_admin_access() {
     let db = TestDb::new().await.expect("Failed to connect to test DB");
 
+    // Clean up any leftover data from previous test runs
+    db.cleanup().await.unwrap();
+
     // Set up as super admin to create test data (bypasses RLS)
     db.setup_as_super_admin().await.unwrap();
 
@@ -410,6 +422,9 @@ async fn test_super_admin_access() {
 #[ignore]
 async fn test_null_context_blocks_access() {
     let db = TestDb::new().await.expect("Failed to connect to test DB");
+
+    // Clean up any leftover data from previous test runs
+    db.cleanup().await.unwrap();
 
     // Set up as super admin to create test data (bypasses RLS)
     db.setup_as_super_admin().await.unwrap();
@@ -495,6 +510,9 @@ async fn test_rls_coverage_validation() {
 #[ignore]
 async fn test_sql_injection_prevention() {
     let db = TestDb::new().await.expect("Failed to connect to test DB");
+
+    // Clean up any leftover data from previous test runs
+    db.cleanup().await.unwrap();
 
     // Set up as super admin to create test data (bypasses RLS)
     db.setup_as_super_admin().await.unwrap();
