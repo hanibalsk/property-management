@@ -1597,10 +1597,14 @@ fn sanitize_markdown(content: &str) -> String {
             .collect::<HashSet<_>>(),
     );
 
+    // Define allowed URL schemes (prevent javascript:, data:, vbscript: etc.)
+    let allowed_schemes: HashSet<&str> = ["http", "https", "mailto"].into_iter().collect();
+
     Builder::default()
         .tags(allowed_tags)
         .tag_attributes(tag_attributes)
         .link_rel(Some("noopener noreferrer"))
+        .url_schemes(allowed_schemes)
         .strip_comments(true)
         .clean(content)
         .to_string()

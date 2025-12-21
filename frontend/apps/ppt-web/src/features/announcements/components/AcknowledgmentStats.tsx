@@ -59,7 +59,7 @@ export function AcknowledgmentStats({ stats, className = '' }: AcknowledgmentSta
         <div className="mt-3 pt-3 border-t border-gray-200">
           <span className="text-sm text-gray-600">
             <span className="font-medium text-amber-600">{stats.pendingCount}</span> user
-            {stats.pendingCount !== 1 ? 's' : ''} haven&apos;t read yet
+            {stats.pendingCount !== 1 ? 's' : ''} haven't read yet
           </span>
         </div>
       )}
