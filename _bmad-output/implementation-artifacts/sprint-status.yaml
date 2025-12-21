@@ -9,8 +9,8 @@
 #   - done: Reviewed and merged
 #   - blocked: Cannot proceed due to dependency or issue
 
-sprint_name: "Epic 6 - Announcements & Communication"
-sprint_goal: "Enable managers to broadcast announcements to specific audiences with rich content support"
+sprint_name: "Epic 6 & 7A - Announcements & Document Management"
+sprint_goal: "Enable managers to broadcast announcements and manage documents with permissions"
 started_at: 2025-12-21
 
 # Epic tracking
@@ -20,6 +20,11 @@ epics:
     status: in-progress
     stories_total: 6
     stories_completed: 1
+  epic-7a:
+    name: "Basic Document Management"
+    status: in-progress
+    stories_total: 5
+    stories_completed: 0
 
 # Story-level development status
 development_status:
@@ -30,6 +35,12 @@ development_status:
   6-4-pinned-announcements: ready-for-dev
   6-5-direct-messaging: ready-for-dev
   6-6-neighbor-information: ready-for-dev
+  # Epic 7A: Basic Document Management
+  7a-1-document-upload-metadata: ready-for-dev
+  7a-2-folder-organization: ready-for-dev
+  7a-3-permission-based-access: ready-for-dev
+  7a-4-document-download-preview: ready-for-dev
+  7a-5-document-sharing: ready-for-dev
 
 # Notes and blockers
 notes:

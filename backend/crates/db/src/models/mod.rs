@@ -3,6 +3,7 @@
 pub mod announcement;
 pub mod building;
 pub mod delegation;
+pub mod document;
 pub mod facility;
 pub mod fault;
 pub mod messaging;
@@ -33,6 +34,13 @@ pub use delegation::{
     delegation_scope, delegation_status, AcceptDelegation, CreateDelegation, DeclineDelegation,
     Delegation, DelegationAuditLog, DelegationSummary, DelegationWithUsers, RevokeDelegation,
     UpdateDelegation,
+};
+pub use document::{
+    access_scope, document_category, share_type, CreateDocument, CreateFolder, CreateShare,
+    Document, DocumentFolder, DocumentListQuery, DocumentShare, DocumentSummary,
+    DocumentWithDetails, FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument,
+    RevokeShare, ShareAccessLog, ShareWithDocument, UpdateDocument, UpdateFolder,
+    ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
 };
 pub use facility::{
     booking_status, facility_type, ApproveBooking, AvailableSlot, BookingWithDetails,

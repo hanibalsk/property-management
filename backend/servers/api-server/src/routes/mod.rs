@@ -7,6 +7,7 @@ pub mod announcements;
 pub mod auth;
 pub mod buildings;
 pub mod delegations;
+pub mod documents;
 pub mod facilities;
 pub mod faults;
 pub mod health;
