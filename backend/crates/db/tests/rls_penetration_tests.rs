@@ -231,10 +231,11 @@ async fn test_cross_tenant_org_isolation() {
 
     // User A should NOT see Org B members (RLS should block)
     assert!(
-        org_b_members.is_empty() || org_b_members.iter().all(|m| {
-            let oid: Uuid = m.get("organization_id");
-            oid != org_b_id
-        }),
+        org_b_members.is_empty()
+            || org_b_members.iter().all(|m| {
+                let oid: Uuid = m.get("organization_id");
+                oid != org_b_id
+            }),
         "User A should NOT see Org B data"
     );
 
@@ -400,9 +401,7 @@ async fn test_null_context_blocks_access() {
         .await
         .unwrap();
 
-    db.add_org_member(org_id, user_id, "member")
-        .await
-        .unwrap();
+    db.add_org_member(org_id, user_id, "member").await.unwrap();
 
     // Clear any existing context
     db.clear_context().await.unwrap();
@@ -487,12 +486,11 @@ async fn test_sql_injection_prevention() {
     match result {
         Ok(org_id) => {
             // If it succeeded, verify the table still exists
-            let count: i64 =
-                sqlx::query_scalar("SELECT COUNT(*) FROM organizations WHERE id = $1")
-                    .bind(org_id)
-                    .fetch_one(&db.pool)
-                    .await
-                    .unwrap();
+            let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM organizations WHERE id = $1")
+                .bind(org_id)
+                .fetch_one(&db.pool)
+                .await
+                .unwrap();
 
             assert_eq!(count, 1, "Organization should be created safely");
 

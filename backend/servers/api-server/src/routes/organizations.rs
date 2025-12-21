@@ -338,7 +338,10 @@ pub async fn list_organizations(
             tracing::error!(error = %e, "Failed to fetch user");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to verify user")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to verify user",
+                )),
             ));
         }
     };
@@ -464,7 +467,11 @@ pub async fn get_organization(
     })?;
 
     // Check if user is member of this organization
-    match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -563,7 +570,11 @@ pub async fn update_organization(
     })?;
 
     // Check if user is admin of this organization
-    let membership = match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(m)) => m,
         Ok(None) => {
             return Err((
@@ -701,7 +712,11 @@ pub async fn delete_organization(
     })?;
 
     // Check if user is admin of this organization
-    let membership = match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(m)) => m,
         Ok(None) => {
             return Err((
@@ -854,7 +869,11 @@ pub async fn list_organization_members(
     })?;
 
     // Check if user is member of this organization
-    match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -878,20 +897,23 @@ pub async fn list_organization_members(
     }
 
     // Get all members with user details
-    let (members_with_users, total) =
-        match state.org_member_repo.list_org_members(id, 0, 100, None).await {
-            Ok(result) => result,
-            Err(e) => {
-                tracing::error!(error = %e, "Failed to fetch members");
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse::new(
-                        "DATABASE_ERROR",
-                        "Failed to fetch members",
-                    )),
-                ));
-            }
-        };
+    let (members_with_users, total) = match state
+        .org_member_repo
+        .list_org_members(id, 0, 100, None)
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch members");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to fetch members",
+                )),
+            ));
+        }
+    };
 
     let mut member_responses = Vec::new();
     for m in members_with_users {
@@ -1276,7 +1298,10 @@ pub async fn update_organization_member(
             tracing::error!(error = %e, "Failed to verify role");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to verify role")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to verify role",
+                )),
             ));
         }
     };
@@ -1321,7 +1346,9 @@ pub async fn update_organization_member(
     };
 
     // Derive role_type from the role name if not provided
-    let role_type = req.role_type.unwrap_or_else(|| new_role.name.to_lowercase().replace(' ', "_"));
+    let role_type = req
+        .role_type
+        .unwrap_or_else(|| new_role.name.to_lowercase().replace(' ', "_"));
 
     // Update the member
     use db::models::UpdateOrganizationMember;
@@ -1331,7 +1358,11 @@ pub async fn update_organization_member(
         status: None,
     };
 
-    match state.org_member_repo.update(target_membership.id, update_data).await {
+    match state
+        .org_member_repo
+        .update(target_membership.id, update_data)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -1346,7 +1377,10 @@ pub async fn update_organization_member(
             tracing::error!(error = %e, "Failed to update member");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to update member")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to update member",
+                )),
             ));
         }
     }
@@ -1591,7 +1625,11 @@ pub async fn list_organization_roles(
     })?;
 
     // Check if user is member of this organization
-    match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -1705,7 +1743,11 @@ pub async fn create_organization_role(
     })?;
 
     // Check membership and permissions
-    let membership = match state.org_member_repo.find_by_org_and_user(org_id, user_id).await {
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(org_id, user_id)
+        .await
+    {
         Ok(Some(m)) => m,
         Ok(None) => {
             return Err((
@@ -1720,7 +1762,10 @@ pub async fn create_organization_role(
             tracing::error!(error = %e, "Failed to check membership");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to check membership")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check membership",
+                )),
             ));
         }
     };
@@ -1765,7 +1810,10 @@ pub async fn create_organization_role(
     if req.name.trim().is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("INVALID_NAME", "Role name cannot be empty")),
+            Json(ErrorResponse::new(
+                "INVALID_NAME",
+                "Role name cannot be empty",
+            )),
         ));
     }
 
@@ -1785,7 +1833,10 @@ pub async fn create_organization_role(
             tracing::error!(error = %e, "Failed to check role name");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to check role name")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check role name",
+                )),
             ));
         }
     }
@@ -1805,7 +1856,10 @@ pub async fn create_organization_role(
             tracing::error!(error = %e, "Failed to create role");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to create role")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create role",
+                )),
             ));
         }
     };
@@ -1821,7 +1875,10 @@ pub async fn create_organization_role(
 
     tracing::info!(org_id = %org_id, role_id = %response.id, "Custom role created");
 
-    Ok((StatusCode::CREATED, Json(CreateRoleResponse { role: response })))
+    Ok((
+        StatusCode::CREATED,
+        Json(CreateRoleResponse { role: response }),
+    ))
 }
 
 // ==================== Get Organization Role ====================
@@ -1866,7 +1923,11 @@ pub async fn get_organization_role(
     })?;
 
     // Check if user is member of this organization
-    match state.org_member_repo.find_by_org_and_user(org_id, user_id).await {
+    match state
+        .org_member_repo
+        .find_by_org_and_user(org_id, user_id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -1881,7 +1942,10 @@ pub async fn get_organization_role(
             tracing::error!(error = %e, "Failed to check membership");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to check membership")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check membership",
+                )),
             ));
         }
     }
@@ -1982,7 +2046,11 @@ pub async fn update_organization_role(
     })?;
 
     // Check membership and permissions
-    let membership = match state.org_member_repo.find_by_org_and_user(org_id, user_id).await {
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(org_id, user_id)
+        .await
+    {
         Ok(Some(m)) => m,
         Ok(None) => {
             return Err((
@@ -1997,7 +2065,10 @@ pub async fn update_organization_role(
             tracing::error!(error = %e, "Failed to check membership");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to check membership")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check membership",
+                )),
             ));
         }
     };
@@ -2083,7 +2154,10 @@ pub async fn update_organization_role(
         if new_name.trim().is_empty() {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("INVALID_NAME", "Role name cannot be empty")),
+                Json(ErrorResponse::new(
+                    "INVALID_NAME",
+                    "Role name cannot be empty",
+                )),
             ));
         }
 
@@ -2103,7 +2177,10 @@ pub async fn update_organization_role(
                     tracing::error!(error = %e, "Failed to check role name");
                     return Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        Json(ErrorResponse::new("DATABASE_ERROR", "Failed to check role name")),
+                        Json(ErrorResponse::new(
+                            "DATABASE_ERROR",
+                            "Failed to check role name",
+                        )),
                     ));
                 }
             }
@@ -2133,7 +2210,10 @@ pub async fn update_organization_role(
             tracing::error!(error = %e, "Failed to update role");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to update role")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to update role",
+                )),
             ));
         }
     };
@@ -2194,7 +2274,11 @@ pub async fn delete_organization_role(
     })?;
 
     // Check membership and permissions
-    let membership = match state.org_member_repo.find_by_org_and_user(org_id, user_id).await {
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(org_id, user_id)
+        .await
+    {
         Ok(Some(m)) => m,
         Ok(None) => {
             return Err((
@@ -2209,7 +2293,10 @@ pub async fn delete_organization_role(
             tracing::error!(error = %e, "Failed to check membership");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to check membership")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check membership",
+                )),
             ));
         }
     };
@@ -2306,7 +2393,10 @@ pub async fn delete_organization_role(
             tracing::error!(error = %e, "Failed to delete role");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to delete role")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to delete role",
+                )),
             ));
         }
     }
@@ -2386,10 +2476,7 @@ fn validate_slug(slug: &str) -> Result<(), String> {
         ));
     }
     if slug.len() > MAX_SLUG_LENGTH {
-        return Err(format!(
-            "Slug cannot exceed {} characters",
-            MAX_SLUG_LENGTH
-        ));
+        return Err(format!("Slug cannot exceed {} characters", MAX_SLUG_LENGTH));
     }
 
     // Check for valid characters only
@@ -2482,7 +2569,11 @@ pub async fn get_organization_settings(
     })?;
 
     // Check if user is member of this organization
-    match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -2568,7 +2659,11 @@ pub async fn update_organization_settings(
     })?;
 
     // Check membership and permissions
-    let membership = match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(m)) => m,
         Ok(None) => {
             return Err((
@@ -2715,7 +2810,11 @@ pub async fn get_organization_branding(
     })?;
 
     // Check if user is member of this organization
-    match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -2817,7 +2916,11 @@ pub async fn update_organization_branding(
     }
 
     // Check membership and permissions
-    let membership = match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(m)) => m,
         Ok(None) => {
             return Err((
@@ -3053,7 +3156,11 @@ pub async fn export_organization_data(
     })?;
 
     // Check membership and permissions
-    let membership = match state.org_member_repo.find_by_org_and_user(id, user_id).await {
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
         Ok(Some(m)) => m,
         Ok(None) => {
             return Err((
@@ -3068,7 +3175,10 @@ pub async fn export_organization_data(
             tracing::error!(error = %e, "Failed to check membership");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to check membership")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check membership",
+                )),
             ));
         }
     };
@@ -3119,26 +3229,39 @@ pub async fn export_organization_data(
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("ORG_NOT_FOUND", "Organization not found")),
+                Json(ErrorResponse::new(
+                    "ORG_NOT_FOUND",
+                    "Organization not found",
+                )),
             ));
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to fetch organization");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to fetch organization")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to fetch organization",
+                )),
             ));
         }
     };
 
     // Get members with user info (paginated export to prevent memory issues)
-    let (members, _total_member_count) = match state.org_member_repo.list_org_members(id, 0, MAX_EXPORT_MEMBERS, None).await {
+    let (members, _total_member_count) = match state
+        .org_member_repo
+        .list_org_members(id, 0, MAX_EXPORT_MEMBERS, None)
+        .await
+    {
         Ok(m) => m,
         Err(e) => {
             tracing::error!(error = %e, "Failed to fetch members");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to fetch members")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to fetch members",
+                )),
             ));
         }
     };
@@ -3150,7 +3273,10 @@ pub async fn export_organization_data(
             tracing::error!(error = %e, "Failed to fetch roles");
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to fetch roles")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to fetch roles",
+                )),
             ));
         }
     };
@@ -3220,7 +3346,10 @@ pub async fn export_organization_data(
             StatusCode::OK,
             [
                 (axum::http::header::CONTENT_TYPE, "text/csv; charset=utf-8"),
-                (axum::http::header::CONTENT_DISPOSITION, "attachment; filename=\"organization-export.csv\""),
+                (
+                    axum::http::header::CONTENT_DISPOSITION,
+                    "attachment; filename=\"organization-export.csv\"",
+                ),
             ],
             csv_data,
         )

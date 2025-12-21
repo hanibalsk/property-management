@@ -177,7 +177,11 @@ impl RoleRepository {
     }
 
     /// Get role for a user in an organization.
-    pub async fn get_user_role(&self, user_id: Uuid, org_id: Uuid) -> Result<Option<Role>, SqlxError> {
+    pub async fn get_user_role(
+        &self,
+        user_id: Uuid,
+        org_id: Uuid,
+    ) -> Result<Option<Role>, SqlxError> {
         let role = sqlx::query_as::<_, Role>(
             r#"
             SELECT r.* FROM roles r
