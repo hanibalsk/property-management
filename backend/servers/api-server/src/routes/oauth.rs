@@ -9,6 +9,7 @@ use axum::{
     routing::{get, post},
     Form, Json, Router,
 };
+use base64::Engine;
 use common::errors::ErrorResponse;
 use db::models::{
     AuditAction, CreateAuditLog, OAuthClientSummary, OAuthError, RegisterClientRequest,
@@ -108,6 +109,7 @@ pub async fn authorize_get(
             &params.redirect_uri,
             &scopes,
             params.state,
+            params.code_challenge.as_deref(),
         )
         .await
         .map_err(|e| (StatusCode::BAD_REQUEST, Json(e.into())))?;
@@ -255,15 +257,13 @@ pub async fn token(
             .map_err(|e| (StatusCode::UNAUTHORIZED, Json(e.into())))?;
     }
 
-    match request.grant_type.as_str() {
+    let response = match request.grant_type.as_str() {
         "authorization_code" => {
-            let response = state
+            state
                 .oauth_service
                 .exchange_code_for_tokens(&request)
                 .await
-                .map_err(|e| (StatusCode::BAD_REQUEST, Json(e.into())))?;
-
-            Ok(Json(response))
+                .map_err(|e| (StatusCode::BAD_REQUEST, Json(e.into())))?
         }
         "refresh_token" => {
             let refresh_token = request.refresh_token.as_ref().ok_or_else(|| {
@@ -280,22 +280,31 @@ pub async fn token(
                 )
             })?;
 
-            let response = state
+            state
                 .oauth_service
                 .refresh_tokens(refresh_token, client_id)
                 .await
-                .map_err(|e| (StatusCode::BAD_REQUEST, Json(e.into())))?;
-
-            Ok(Json(response))
+                .map_err(|e| (StatusCode::BAD_REQUEST, Json(e.into())))?
         }
-        _ => Err((
-            StatusCode::BAD_REQUEST,
-            Json(OAuthError::invalid_request(&format!(
-                "Unsupported grant_type: {}",
-                request.grant_type
-            ))),
-        )),
-    }
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(OAuthError::invalid_request(&format!(
+                    "Unsupported grant_type: {}",
+                    request.grant_type
+                ))),
+            ));
+        }
+    };
+
+    // RFC 6749 Section 5.1: Token responses must include Cache-Control and Pragma headers
+    Ok((
+        [
+            (axum::http::header::CACHE_CONTROL, "no-store"),
+            (axum::http::header::PRAGMA, "no-cache"),
+        ],
+        Json(response),
+    ))
 }
 
 // ==================== Token Revocation ====================
@@ -331,9 +340,14 @@ pub async fn revoke(
 pub struct IntrospectionRequest {
     pub token: String,
     pub token_type_hint: Option<String>,
+    /// Client ID for authentication (alternative to Basic auth)
+    pub client_id: Option<String>,
+    /// Client secret for authentication (alternative to Basic auth)
+    pub client_secret: Option<String>,
 }
 
 /// Introspect a token (RFC 7662).
+/// Requires client authentication via Basic auth or client credentials in form.
 #[utoipa::path(
     post,
     path = "/api/v1/oauth/introspect",
@@ -346,11 +360,25 @@ pub struct IntrospectionRequest {
 )]
 pub async fn introspect(
     State(state): State<AppState>,
-    _headers: axum::http::HeaderMap,
+    headers: axum::http::HeaderMap,
     Form(request): Form<IntrospectionRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<OAuthError>)> {
-    // Introspection requires client authentication via Basic auth or form params
-    // For simplicity, we'll accept the request but in production you'd validate client credentials
+    // RFC 7662 Section 2.1: Introspection requires client authentication
+    let (client_id, client_secret) = extract_client_credentials(&headers, &request.client_id, &request.client_secret)
+        .ok_or_else(|| (
+            StatusCode::UNAUTHORIZED,
+            Json(OAuthError::invalid_client("Client authentication required")),
+        ))?;
+
+    // Validate client credentials
+    state
+        .oauth_service
+        .validate_client_credentials(&client_id, &client_secret)
+        .await
+        .map_err(|_| (
+            StatusCode::UNAUTHORIZED,
+            Json(OAuthError::invalid_client("Invalid client credentials")),
+        ))?;
 
     let response = state
         .oauth_service
@@ -870,6 +898,37 @@ fn extract_bearer_token(
     }
 
     Ok(auth_header[7..].to_string())
+}
+
+/// Extract client credentials from Basic auth header or form parameters.
+/// Returns (client_id, client_secret) if found.
+fn extract_client_credentials(
+    headers: &axum::http::HeaderMap,
+    form_client_id: &Option<String>,
+    form_client_secret: &Option<String>,
+) -> Option<(String, String)> {
+    // Try Basic auth first
+    if let Some(auth_header) = headers
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+    {
+        if let Some(encoded) = auth_header.strip_prefix("Basic ") {
+            if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(encoded) {
+                if let Ok(credentials) = String::from_utf8(decoded) {
+                    if let Some((id, secret)) = credentials.split_once(':') {
+                        return Some((id.to_string(), secret.to_string()));
+                    }
+                }
+            }
+        }
+    }
+
+    // Fall back to form parameters
+    if let (Some(client_id), Some(client_secret)) = (form_client_id, form_client_secret) {
+        return Some((client_id.clone(), client_secret.clone()));
+    }
+
+    None
 }
 
 /// JWT claims structure.

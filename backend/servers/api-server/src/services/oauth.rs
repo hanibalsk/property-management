@@ -22,6 +22,9 @@ use super::auth::AuthService;
 /// OAuth service errors.
 #[derive(Debug, Error)]
 pub enum OAuthServiceError {
+    #[error("Invalid request: {0}")]
+    InvalidRequest(String),
+
     #[error("Invalid client: {0}")]
     InvalidClient(String),
 
@@ -65,6 +68,7 @@ pub enum OAuthServiceError {
 impl From<OAuthServiceError> for OAuthError {
     fn from(e: OAuthServiceError) -> Self {
         match e {
+            OAuthServiceError::InvalidRequest(msg) => OAuthError::invalid_request(&msg),
             OAuthServiceError::InvalidClient(msg) => OAuthError::invalid_client(&msg),
             OAuthServiceError::InvalidRedirectUri => {
                 OAuthError::invalid_request("Invalid redirect URI")
@@ -267,10 +271,18 @@ impl OAuthService {
         redirect_uri: &str,
         requested_scopes: &[String],
         state: Option<String>,
+        code_challenge: Option<&str>,
     ) -> Result<ConsentPageData, OAuthServiceError> {
         // Find and validate client
         let client = self.repo.find_active_client_by_client_id(client_id).await?
             .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
+
+        // PKCE is required for public (non-confidential) clients per RFC 7636 / OAuth 2.1
+        if !client.is_confidential && code_challenge.is_none() {
+            return Err(OAuthServiceError::InvalidRequest(
+                "PKCE code_challenge required for public clients".to_string(),
+            ));
+        }
 
         // Validate redirect URI
         if !client.is_redirect_uri_allowed(redirect_uri) {
@@ -358,9 +370,9 @@ impl OAuthService {
         let redirect_uri = request.redirect_uri.as_ref()
             .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
 
-        // Find authorization code
+        // Atomically find and consume authorization code (prevents race condition)
         let code_hash = self.hash_token(code);
-        let auth_code = self.repo.find_authorization_code_by_hash(&code_hash).await?
+        let auth_code = self.repo.find_and_consume_authorization_code(&code_hash).await?
             .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
 
         // Validate redirect URI matches
@@ -377,9 +389,6 @@ impl OAuthService {
                 return Err(OAuthServiceError::InvalidCodeVerifier);
             }
         }
-
-        // Consume the authorization code (single-use)
-        self.repo.consume_authorization_code(auth_code.id).await?;
 
         // Get client for rotation settings
         let client = self.repo.find_active_client_by_client_id(&auth_code.client_id).await?
@@ -627,7 +636,9 @@ impl OAuthService {
     }
 
     /// Verify PKCE code challenge.
+    /// Only S256 method is supported per OAuth 2.1 recommendations.
     fn verify_pkce(&self, verifier: &str, challenge: &str, method: Option<&str>) -> bool {
+        // Only S256 is supported - plain method is deprecated per OAuth 2.1
         match method.unwrap_or("S256") {
             "S256" => {
                 let mut hasher = Sha256::new();
@@ -635,7 +646,7 @@ impl OAuthService {
                 let computed = URL_SAFE_NO_PAD.encode(hasher.finalize());
                 computed == challenge
             }
-            "plain" => verifier == challenge,
+            // "plain" is intentionally not supported as it defeats the purpose of PKCE
             _ => false,
         }
     }
@@ -646,6 +657,7 @@ mod tests {
     use super::*;
 
     /// Test PKCE verification directly without needing service.
+    /// Only S256 is supported.
     fn verify_pkce_helper(verifier: &str, challenge: &str, method: Option<&str>) -> bool {
         match method.unwrap_or("S256") {
             "S256" => {
@@ -654,7 +666,7 @@ mod tests {
                 let computed = URL_SAFE_NO_PAD.encode(hasher.finalize());
                 computed == challenge
             }
-            "plain" => verifier == challenge,
+            // plain is not supported
             _ => false,
         }
     }
@@ -686,9 +698,8 @@ mod tests {
         assert!(verify_pkce_helper(verifier, &expected, Some("S256")));
         assert!(!verify_pkce_helper("wrong", &expected, Some("S256")));
 
-        // Test plain method
-        assert!(verify_pkce_helper("test", "test", Some("plain")));
-        assert!(!verify_pkce_helper("test", "wrong", Some("plain")));
+        // plain method is not supported (returns false)
+        assert!(!verify_pkce_helper("test", "test", Some("plain")));
     }
 
     #[test]

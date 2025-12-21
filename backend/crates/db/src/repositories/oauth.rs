@@ -279,6 +279,28 @@ impl OAuthRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    /// Atomically find and consume authorization code in a single operation.
+    /// This prevents TOCTOU race conditions.
+    pub async fn find_and_consume_authorization_code(
+        &self,
+        code_hash: &str,
+    ) -> Result<Option<OAuthAuthorizationCode>, SqlxError> {
+        // Use UPDATE ... RETURNING to atomically mark as used and return the code
+        let code = sqlx::query_as::<_, OAuthAuthorizationCode>(
+            r#"
+            UPDATE oauth_authorization_codes
+            SET used_at = NOW()
+            WHERE code_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(code_hash)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(code)
+    }
+
     // ==================== Access Tokens ====================
 
     /// Create a new access token.
