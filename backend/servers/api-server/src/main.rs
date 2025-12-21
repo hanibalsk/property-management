@@ -151,6 +151,8 @@ use state::AppState;
         (name = "Voting", description = "Voting and polls"),
         (name = "Announcements", description = "Announcements and communication"),
         (name = "Documents", description = "Document management and sharing"),
+        (name = "Notification Preferences", description = "User notification channel preferences"),
+        (name = "Critical Notifications", description = "Critical notifications that bypass user preferences"),
         (name = "Rentals", description = "Short-term rental integrations (Airbnb, Booking)"),
         (name = "Listings", description = "Real estate listing management"),
         (name = "Integrations", description = "External portal integrations")
@@ -246,6 +248,16 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/messages", routes::messaging::router())
         // Neighbor routes (Epic 6, Story 6.6)
         .nest("/api/v1", routes::neighbors::router())
+        // Notification preferences routes (Epic 8A)
+        .nest(
+            "/api/v1/users/me/notification-preferences",
+            routes::notification_preferences::router(),
+        )
+        // Critical notifications routes (Epic 8A, Story 8A.2)
+        .nest(
+            "/api/v1/organizations/:org_id/critical-notifications",
+            routes::critical_notifications::router(),
+        )
         // Rentals routes
         .nest("/api/v1/rentals", routes::rentals::router())
         // Listings routes (management side)

@@ -11,8 +11,10 @@ export * from './generated';
 
 // Export domain-specific modules
 export * from './announcements';
+export * from './critical-notifications';
 export * from './messaging';
 export * from './neighbors';
+export * from './notification-preferences';
 
 // API client configuration
 export interface ApiConfig {

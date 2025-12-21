@@ -3,8 +3,9 @@
 use crate::services::{AuthService, EmailService, JwtService};
 use db::{
     repositories::{
-        AnnouncementRepository, BuildingRepository, DelegationRepository, DocumentRepository,
-        FacilityRepository, FaultRepository, OrganizationMemberRepository, OrganizationRepository,
+        AnnouncementRepository, BuildingRepository, CriticalNotificationRepository,
+        DelegationRepository, DocumentRepository, FacilityRepository, FaultRepository,
+        NotificationPreferenceRepository, OrganizationMemberRepository, OrganizationRepository,
         PasswordResetRepository, PersonMonthRepository, RoleRepository, SessionRepository,
         UnitRepository, UnitResidentRepository, UserRepository, VoteRepository,
     },
@@ -31,6 +32,8 @@ pub struct AppState {
     pub vote_repo: VoteRepository,
     pub announcement_repo: AnnouncementRepository,
     pub document_repo: DocumentRepository,
+    pub notification_pref_repo: NotificationPreferenceRepository,
+    pub critical_notification_repo: CriticalNotificationRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -55,6 +58,8 @@ impl AppState {
         let vote_repo = VoteRepository::new(db.clone());
         let announcement_repo = AnnouncementRepository::new(db.clone());
         let document_repo = DocumentRepository::new(db.clone());
+        let notification_pref_repo = NotificationPreferenceRepository::new(db.clone());
+        let critical_notification_repo = CriticalNotificationRepository::new(db.clone());
         let auth_service = AuthService::new();
 
         Self {
@@ -75,6 +80,8 @@ impl AppState {
             vote_repo,
             announcement_repo,
             document_repo,
+            notification_pref_repo,
+            critical_notification_repo,
             auth_service,
             email_service,
             jwt_service,

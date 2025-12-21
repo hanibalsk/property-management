@@ -3,11 +3,13 @@
 
 pub mod announcement;
 pub mod building;
+pub mod critical_notification;
 pub mod delegation;
 pub mod document;
 pub mod facility;
 pub mod fault;
 pub mod messaging;
+pub mod notification_preference;
 pub mod organization;
 pub mod organization_member;
 pub mod password_reset;
@@ -21,11 +23,13 @@ pub mod vote;
 
 pub use announcement::AnnouncementRepository;
 pub use building::BuildingRepository;
+pub use critical_notification::CriticalNotificationRepository;
 pub use delegation::DelegationRepository;
 pub use document::DocumentRepository;
 pub use facility::FacilityRepository;
 pub use fault::FaultRepository;
 pub use messaging::MessagingRepository;
+pub use notification_preference::NotificationPreferenceRepository;
 pub use organization::OrganizationRepository;
 pub use organization_member::OrganizationMemberRepository;
 pub use password_reset::PasswordResetRepository;
