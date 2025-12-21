@@ -1,6 +1,6 @@
 {
   "name": "@ppt/reality-web",
-  "version": "0.1.49",
+  "version": "0.1.50",
   "private": true,
   "description": "Reality Portal Web Application (Next.js SSR)",
   "scripts": {
