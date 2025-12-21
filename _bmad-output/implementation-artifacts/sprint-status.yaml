@@ -9,8 +9,8 @@
 #   - done: Reviewed and merged
 #   - blocked: Cannot proceed due to dependency or issue
 
-sprint_name: "Epic 6, 7A & 8A - Announcements, Documents & Notification Preferences"
-sprint_goal: "Enable managers to broadcast announcements, manage documents, and users to control notification preferences"
+sprint_name: "Epic 6, 7A, 8A & 10A - Announcements, Documents, Notifications & OAuth"
+sprint_goal: "Enable managers to broadcast announcements, manage documents, users to control notification preferences, and implement OAuth provider"
 started_at: 2025-12-21
 
 # Epic tracking
@@ -28,6 +28,11 @@ epics:
   epic-8a:
     name: "Basic Notification Preferences"
     status: review
+    stories_total: 3
+    stories_completed: 0
+  epic-10a:
+    name: "OAuth Provider Foundation"
+    status: in-progress
     stories_total: 3
     stories_completed: 0
 
@@ -50,6 +55,10 @@ development_status:
   8a-1-channel-level-notification-toggles: review
   8a-2-critical-notification-override: review
   8a-3-notification-preference-sync: review
+  # Epic 10A: OAuth Provider Foundation
+  10a-1-oauth-authorization-server: ready-for-dev
+  10a-2-oauth-client-registration: ready-for-dev
+  10a-3-oauth-token-management: ready-for-dev
 
 # Notes and blockers
 notes:
