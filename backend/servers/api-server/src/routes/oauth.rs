@@ -564,11 +564,14 @@ pub async fn register_client(
         })?;
 
     // Audit log
-    let user_id: Uuid = claims.sub.parse().unwrap_or_default();
+    let user_id: Option<Uuid> = claims.sub.parse().ok();
+    if user_id.is_none() {
+        tracing::warn!(sub = %claims.sub, "Failed to parse user_id from JWT claims for audit log");
+    }
     if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
-            user_id: Some(user_id),
+            user_id,
             action: AuditAction::OAuthClientCreate,
             resource_type: Some("oauth_client".to_string()),
             resource_id: None,
@@ -787,11 +790,14 @@ pub async fn revoke_client(
     }
 
     // Audit log
-    let user_id: Uuid = claims.sub.parse().unwrap_or_default();
+    let user_id: Option<Uuid> = claims.sub.parse().ok();
+    if user_id.is_none() {
+        tracing::warn!(sub = %claims.sub, "Failed to parse user_id from JWT claims for audit log");
+    }
     if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
-            user_id: Some(user_id),
+            user_id,
             action: AuditAction::OAuthClientRevoke,
             resource_type: Some("oauth_client".to_string()),
             resource_id: Some(id),
@@ -861,11 +867,14 @@ pub async fn regenerate_client_secret(
         })?;
 
     // Audit log
-    let user_id: Uuid = claims.sub.parse().unwrap_or_default();
+    let user_id: Option<Uuid> = claims.sub.parse().ok();
+    if user_id.is_none() {
+        tracing::warn!(sub = %claims.sub, "Failed to parse user_id from JWT claims for audit log");
+    }
     if let Err(e) = state
         .audit_log_repo
         .create(CreateAuditLog {
-            user_id: Some(user_id),
+            user_id,
             action: AuditAction::OAuthClientSecretRegenerate,
             resource_type: Some("oauth_client".to_string()),
             resource_id: Some(id),

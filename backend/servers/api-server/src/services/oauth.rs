@@ -58,6 +58,9 @@ pub enum OAuthServiceError {
     #[error("Unsupported grant type: {0}")]
     UnsupportedGrantType(String),
 
+    #[error("Client not found")]
+    ClientNotFound,
+
     #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
 
@@ -96,6 +99,7 @@ impl From<OAuthServiceError> for OAuthError {
             OAuthServiceError::UnsupportedGrantType(gt) => {
                 OAuthError::invalid_request(&format!("Unsupported grant type: {}", gt))
             }
+            OAuthServiceError::ClientNotFound => OAuthError::invalid_client("Client not found"),
             OAuthServiceError::DatabaseError(_) => OAuthError::server_error("Database error"),
             OAuthServiceError::InternalError => OAuthError::server_error("Internal error"),
         }
@@ -241,9 +245,14 @@ impl OAuthService {
             .hash_password(&client_secret)
             .map_err(|_| OAuthServiceError::InternalError)?;
 
-        self.repo
+        let updated = self
+            .repo
             .update_client_secret(id, &client_secret_hash)
             .await?;
+
+        if !updated {
+            return Err(OAuthServiceError::ClientNotFound);
+        }
 
         Ok(client_secret)
     }

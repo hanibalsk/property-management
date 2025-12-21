@@ -116,15 +116,15 @@ RETURNS void AS $$
 BEGIN
     -- Delete expired and unused authorization codes
     DELETE FROM oauth_authorization_codes
-    WHERE expires_at < NOW() OR used_at IS NOT NULL AND used_at < NOW() - INTERVAL '1 hour';
+    WHERE expires_at < NOW() OR (used_at IS NOT NULL AND used_at < NOW() - INTERVAL '1 hour');
 
     -- Delete expired access tokens
     DELETE FROM oauth_access_tokens
-    WHERE expires_at < NOW() OR revoked_at < NOW() - INTERVAL '7 days';
+    WHERE expires_at < NOW() OR (revoked_at IS NOT NULL AND revoked_at < NOW() - INTERVAL '7 days');
 
     -- Delete expired refresh tokens
     DELETE FROM oauth_refresh_tokens
-    WHERE expires_at < NOW() OR revoked_at < NOW() - INTERVAL '7 days';
+    WHERE expires_at < NOW() OR (revoked_at IS NOT NULL AND revoked_at < NOW() - INTERVAL '7 days');
 END;
 $$ LANGUAGE plpgsql;
 
