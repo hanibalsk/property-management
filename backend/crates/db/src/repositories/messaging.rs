@@ -2,8 +2,8 @@
 
 use crate::models::messaging::{
     BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,
-    MessageThread, MessageWithSender, MessageWithSenderRow, ThreadWithPreview, ThreadWithPreviewRow,
-    UserBlock,
+    MessageThread, MessageWithSender, MessageWithSenderRow, ThreadWithPreview,
+    ThreadWithPreviewRow, UserBlock,
 };
 use crate::DbPool;
 use sqlx::Error as SqlxError;
@@ -174,7 +174,11 @@ impl MessagingRepository {
     }
 
     /// Count threads for a user.
-    pub async fn count_threads(&self, user_id: Uuid, organization_id: Uuid) -> Result<i64, SqlxError> {
+    pub async fn count_threads(
+        &self,
+        user_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<i64, SqlxError> {
         let (count,): (i64,) = sqlx::query_as(
             r#"
             SELECT COUNT(*) FROM message_threads
@@ -310,7 +314,11 @@ impl MessagingRepository {
     }
 
     /// Count unread messages for a user across all threads.
-    pub async fn count_unread(&self, user_id: Uuid, organization_id: Uuid) -> Result<i64, SqlxError> {
+    pub async fn count_unread(
+        &self,
+        user_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<i64, SqlxError> {
         let (count,): (i64,) = sqlx::query_as(
             r#"
             SELECT COUNT(*)

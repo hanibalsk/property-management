@@ -493,7 +493,10 @@ impl UserRepository {
         .await?;
 
         // Transform to privacy-aware views
-        let neighbors = rows.into_iter().map(|row| row.into_neighbor_view()).collect();
+        let neighbors = rows
+            .into_iter()
+            .map(|row| row.into_neighbor_view())
+            .collect();
 
         Ok(neighbors)
     }

@@ -225,7 +225,10 @@ pub fn router() -> Router<AppState> {
         // Attachments
         .route("/{id}/attachments", get(list_attachments))
         .route("/{id}/attachments", post(add_attachment))
-        .route("/{id}/attachments/{attachment_id}", delete(delete_attachment))
+        .route(
+            "/{id}/attachments/{attachment_id}",
+            delete(delete_attachment),
+        )
         // Read/Acknowledge (Story 6.2)
         .route("/{id}/read", post(mark_read))
         .route("/{id}/acknowledge", post(acknowledge))
@@ -286,7 +289,10 @@ async fn create_announcement(
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
                 "BAD_REQUEST",
-                format!("Title exceeds maximum length of {} characters", MAX_TITLE_LENGTH),
+                format!(
+                    "Title exceeds maximum length of {} characters",
+                    MAX_TITLE_LENGTH
+                ),
             )),
         ));
     }
@@ -295,7 +301,10 @@ async fn create_announcement(
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
                 "BAD_REQUEST",
-                format!("Content exceeds maximum length of {} characters", MAX_CONTENT_LENGTH),
+                format!(
+                    "Content exceeds maximum length of {} characters",
+                    MAX_CONTENT_LENGTH
+                ),
             )),
         ));
     }
@@ -323,13 +332,8 @@ async fn create_announcement(
     // Security: Validate target_ids exist in the organization (Critical 1.3 fix)
     if req.target_type != target_type::ALL {
         if let Some(ref target_ids) = req.target_ids {
-            let validation_result = validate_target_ids(
-                &state.db,
-                org_id,
-                &req.target_type,
-                target_ids,
-            )
-            .await;
+            let validation_result =
+                validate_target_ids(&state.db, org_id, &req.target_type, target_ids).await;
 
             if let Err(err_msg) = validation_result {
                 return Err((
@@ -610,7 +614,10 @@ async fn update_announcement(
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
                     "BAD_REQUEST",
-                    format!("Title exceeds maximum length of {} characters", MAX_TITLE_LENGTH),
+                    format!(
+                        "Title exceeds maximum length of {} characters",
+                        MAX_TITLE_LENGTH
+                    ),
                 )),
             ));
         }
@@ -621,7 +628,10 @@ async fn update_announcement(
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
                     "BAD_REQUEST",
-                    format!("Content exceeds maximum length of {} characters", MAX_CONTENT_LENGTH),
+                    format!(
+                        "Content exceeds maximum length of {} characters",
+                        MAX_CONTENT_LENGTH
+                    ),
                 )),
             ));
         }
@@ -1174,7 +1184,11 @@ async fn delete_attachment(
             )),
         ));
     }
-    match state.announcement_repo.delete_attachment(attachment_id).await {
+    match state
+        .announcement_repo
+        .delete_attachment(attachment_id)
+        .await
+    {
         Ok(_) => Ok(StatusCode::NO_CONTENT),
         Err(e) => {
             tracing::error!("Failed to delete attachment: {}", e);
@@ -1513,29 +1527,76 @@ fn sanitize_markdown(content: &str) -> String {
     // Define allowed tags for markdown content
     let allowed_tags: HashSet<&str> = [
         // Text formatting
-        "p", "br", "strong", "b", "em", "i", "u", "s", "del", "ins", "mark",
+        "p",
+        "br",
+        "strong",
+        "b",
+        "em",
+        "i",
+        "u",
+        "s",
+        "del",
+        "ins",
+        "mark",
         // Headings
-        "h1", "h2", "h3", "h4", "h5", "h6",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
         // Lists
-        "ul", "ol", "li",
+        "ul",
+        "ol",
+        "li",
         // Quotes and code
-        "blockquote", "code", "pre",
+        "blockquote",
+        "code",
+        "pre",
         // Links and images
-        "a", "img",
+        "a",
+        "img",
         // Tables
-        "table", "thead", "tbody", "tr", "th", "td",
+        "table",
+        "thead",
+        "tbody",
+        "tr",
+        "th",
+        "td",
         // Misc
-        "hr", "div", "span", "sup", "sub",
+        "hr",
+        "div",
+        "span",
+        "sup",
+        "sub",
     ]
     .into_iter()
     .collect();
 
     // Define allowed attributes for specific tags
     let mut tag_attributes = std::collections::HashMap::new();
-    tag_attributes.insert("a", ["href", "title", "rel", "target"].into_iter().collect::<HashSet<_>>());
-    tag_attributes.insert("img", ["src", "alt", "title", "width", "height"].into_iter().collect::<HashSet<_>>());
-    tag_attributes.insert("td", ["colspan", "rowspan"].into_iter().collect::<HashSet<_>>());
-    tag_attributes.insert("th", ["colspan", "rowspan", "scope"].into_iter().collect::<HashSet<_>>());
+    tag_attributes.insert(
+        "a",
+        ["href", "title", "rel", "target"]
+            .into_iter()
+            .collect::<HashSet<_>>(),
+    );
+    tag_attributes.insert(
+        "img",
+        ["src", "alt", "title", "width", "height"]
+            .into_iter()
+            .collect::<HashSet<_>>(),
+    );
+    tag_attributes.insert(
+        "td",
+        ["colspan", "rowspan"].into_iter().collect::<HashSet<_>>(),
+    );
+    tag_attributes.insert(
+        "th",
+        ["colspan", "rowspan", "scope"]
+            .into_iter()
+            .collect::<HashSet<_>>(),
+    );
 
     Builder::default()
         .tags(allowed_tags)
@@ -1659,7 +1720,10 @@ async fn create_comment(
     if req.content.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("BAD_REQUEST", "Comment content is required")),
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Comment content is required",
+            )),
         ));
     }
     if req.content.len() > MAX_COMMENT_LENGTH {

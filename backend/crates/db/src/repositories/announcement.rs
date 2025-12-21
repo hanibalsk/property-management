@@ -189,7 +189,10 @@ impl AnnouncementRepository {
         let mut param_idx = 2;
 
         if query.status.is_some() {
-            conditions.push(format!("status = ANY(${}::announcement_status[])", param_idx));
+            conditions.push(format!(
+                "status = ANY(${}::announcement_status[])",
+                param_idx
+            ));
             param_idx += 1;
         }
         if query.target_type.is_some() {
@@ -293,7 +296,10 @@ impl AnnouncementRepository {
         let mut param_idx = 2;
 
         if query.status.is_some() {
-            conditions.push(format!("status = ANY(${}::announcement_status[])", param_idx));
+            conditions.push(format!(
+                "status = ANY(${}::announcement_status[])",
+                param_idx
+            ));
             param_idx += 1;
         }
         if query.target_type.is_some() {
@@ -317,7 +323,10 @@ impl AnnouncementRepository {
         }
 
         let where_clause = conditions.join(" AND ");
-        let sql = format!("SELECT COUNT(*) as count FROM announcements WHERE {}", where_clause);
+        let sql = format!(
+            "SELECT COUNT(*) as count FROM announcements WHERE {}",
+            where_clause
+        );
 
         let mut query_builder = sqlx::query_scalar::<_, i64>(&sql).bind(org_id);
 
@@ -357,7 +366,11 @@ impl AnnouncementRepository {
     }
 
     /// Update announcement details (only in draft/scheduled status).
-    pub async fn update(&self, id: Uuid, data: UpdateAnnouncement) -> Result<Announcement, SqlxError> {
+    pub async fn update(
+        &self,
+        id: Uuid,
+        data: UpdateAnnouncement,
+    ) -> Result<Announcement, SqlxError> {
         let target_ids_json = data
             .target_ids
             .as_ref()
@@ -810,12 +823,11 @@ impl AnnouncementRepository {
         announcement_id: Uuid,
     ) -> Result<AcknowledgmentStats, SqlxError> {
         // Count reads and acknowledgments
-        let (read_count,): (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1",
-        )
-        .bind(announcement_id)
-        .fetch_one(&self.pool)
-        .await?;
+        let (read_count,): (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1")
+                .bind(announcement_id)
+                .fetch_one(&self.pool)
+                .await?;
 
         let (acknowledged_count,): (i64,) = sqlx::query_as(
             "SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1 AND acknowledged_at IS NOT NULL",
@@ -892,7 +904,10 @@ impl AnnouncementRepository {
     // ========================================================================
 
     /// Create a new comment on an announcement.
-    pub async fn create_comment(&self, data: CreateComment) -> Result<AnnouncementComment, SqlxError> {
+    pub async fn create_comment(
+        &self,
+        data: CreateComment,
+    ) -> Result<AnnouncementComment, SqlxError> {
         let comment = sqlx::query_as::<_, AnnouncementComment>(
             r#"
             INSERT INTO announcement_comments (announcement_id, user_id, parent_id, content, ai_training_consent)
@@ -1039,7 +1054,10 @@ impl AnnouncementRepository {
     }
 
     /// Soft-delete a comment (author or manager moderation).
-    pub async fn delete_comment(&self, data: DeleteComment) -> Result<AnnouncementComment, SqlxError> {
+    pub async fn delete_comment(
+        &self,
+        data: DeleteComment,
+    ) -> Result<AnnouncementComment, SqlxError> {
         let comment = sqlx::query_as::<_, AnnouncementComment>(
             r#"
             UPDATE announcement_comments

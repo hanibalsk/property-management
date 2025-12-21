@@ -313,7 +313,10 @@ pub struct CommentWithAuthorRow {
 
 impl CommentWithAuthorRow {
     /// Convert to CommentWithAuthor.
-    pub fn into_comment_with_author(self, replies: Option<Vec<CommentWithAuthor>>) -> CommentWithAuthor {
+    pub fn into_comment_with_author(
+        self,
+        replies: Option<Vec<CommentWithAuthor>>,
+    ) -> CommentWithAuthor {
         CommentWithAuthor {
             id: self.id,
             announcement_id: self.announcement_id,

@@ -89,19 +89,18 @@ async fn list_neighbors(
     Path(building_id): Path<Uuid>,
 ) -> Result<Json<NeighborsResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Security: Verify building belongs to current tenant (Critical 1.4 fix)
-    let building_org: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT organization_id FROM buildings WHERE id = $1",
-    )
-    .bind(building_id)
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to verify building: {:?}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", "Failed to verify building")),
-        )
-    })?;
+    let building_org: Option<(Uuid,)> =
+        sqlx::query_as("SELECT organization_id FROM buildings WHERE id = $1")
+            .bind(building_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to verify building: {:?}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new("DB_ERROR", "Failed to verify building")),
+                )
+            })?;
 
     match building_org {
         None => {

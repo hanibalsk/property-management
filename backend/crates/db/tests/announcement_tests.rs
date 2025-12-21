@@ -202,11 +202,13 @@ async fn test_announcement_status_transitions() {
         .unwrap();
 
     // Transition: draft -> published
-    sqlx::query("UPDATE announcements SET status = 'published', published_at = NOW() WHERE id = $1")
-        .bind(announcement_id)
-        .execute(&db.pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "UPDATE announcements SET status = 'published', published_at = NOW() WHERE id = $1",
+    )
+    .bind(announcement_id)
+    .execute(&db.pool)
+    .await
+    .unwrap();
 
     let row = sqlx::query("SELECT status FROM announcements WHERE id = $1")
         .bind(announcement_id)
@@ -272,7 +274,11 @@ async fn test_scheduled_announcement() {
     .await
     .unwrap();
 
-    assert_eq!(due_announcements.len(), 1, "Should find one due announcement");
+    assert_eq!(
+        due_announcements.len(),
+        1,
+        "Should find one due announcement"
+    );
 
     db.cleanup().await.unwrap();
 }
@@ -572,12 +578,14 @@ async fn test_pin_announcement() {
         .unwrap();
 
     // Pin the announcement
-    sqlx::query("UPDATE announcements SET pinned = true, pinned_at = NOW(), pinned_by = $1 WHERE id = $2")
-        .bind(user_id)
-        .bind(announcement_id)
-        .execute(&db.pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "UPDATE announcements SET pinned = true, pinned_at = NOW(), pinned_by = $1 WHERE id = $2",
+    )
+    .bind(user_id)
+    .bind(announcement_id)
+    .execute(&db.pool)
+    .await
+    .unwrap();
 
     // Verify pinned state
     let ann = sqlx::query("SELECT pinned FROM announcements WHERE id = $1")
@@ -620,11 +628,7 @@ async fn test_announcement_rls_coverage() {
         .await
         .unwrap_or(false);
 
-        assert!(
-            rls_enabled,
-            "Table {} should have RLS enabled",
-            table_name
-        );
+        assert!(rls_enabled, "Table {} should have RLS enabled", table_name);
 
         // Check if table has at least one policy
         let policy_count: i64 = sqlx::query_scalar(

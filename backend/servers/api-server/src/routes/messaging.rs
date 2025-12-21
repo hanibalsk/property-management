@@ -215,18 +215,17 @@ async fn start_thread(
     }
 
     // Security: Verify recipient is in same organization (Critical 1.1 / 2.3 fix)
-    let recipient_org: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT organization_id FROM users WHERE id = $1",
-    )
-    .bind(body.recipient_id)
-    .fetch_optional(&state.db)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
-        )
-    })?;
+    let recipient_org: Option<(Uuid,)> =
+        sqlx::query_as("SELECT organization_id FROM users WHERE id = $1")
+            .bind(body.recipient_id)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+                )
+            })?;
 
     match recipient_org {
         None => {
@@ -462,7 +461,10 @@ async fn send_message(
     if body.content.trim().is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new("EMPTY_MESSAGE", "Message cannot be empty")),
+            Json(ErrorResponse::new(
+                "EMPTY_MESSAGE",
+                "Message cannot be empty",
+            )),
         ));
     }
 
@@ -706,10 +708,7 @@ async fn block_user(
     if user_id == auth_user.user_id {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_BLOCK",
-                "Cannot block yourself",
-            )),
+            Json(ErrorResponse::new("INVALID_BLOCK", "Cannot block yourself")),
         ));
     }
 
@@ -853,7 +852,10 @@ async fn get_other_participant(
     let (id, first_name, last_name, email) = user.ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("USER_NOT_FOUND", "Participant not found")),
+            Json(ErrorResponse::new(
+                "USER_NOT_FOUND",
+                "Participant not found",
+            )),
         )
     })?;
 
