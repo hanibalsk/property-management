@@ -249,6 +249,20 @@ async fn test_cross_tenant_org_isolation() {
         rls_info.0, rls_info.1
     );
 
+    // List all policies on the table
+    let policies: Vec<(String, String)> = sqlx::query_as(
+        r#"SELECT polname::text, polcmd::text
+           FROM pg_policy
+           WHERE polrelid = 'organization_members'::regclass"#,
+    )
+    .fetch_all(&mut *conn)
+    .await
+    .unwrap();
+    println!("DEBUG: Policies on organization_members:");
+    for (name, cmd) in &policies {
+        println!("  - {} ({})", name, cmd);
+    }
+
     // Debug: check what the policy condition evaluates to
     let policy_check: Vec<(Uuid, Uuid, bool, bool)> = sqlx::query_as(
         r#"SELECT
