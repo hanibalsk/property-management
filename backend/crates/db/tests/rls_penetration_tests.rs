@@ -219,13 +219,27 @@ async fn test_cross_tenant_org_isolation() {
         .await
         .unwrap();
 
+    // Debug: print what we're seeing
+    println!(
+        "DEBUG: User A sees {} members, org_a_id={}, org_b_id={}",
+        members.len(),
+        org_a_id,
+        org_b_id
+    );
+    for m in &members {
+        let oid: Uuid = m.get("organization_id");
+        let uid: Uuid = m.get("user_id");
+        println!("  Member: org_id={}, user_id={}", oid, uid);
+    }
+
     // With RLS, User A should only see their own membership
     assert!(
         members.iter().all(|m| {
             let oid: Uuid = m.get("organization_id");
             oid == org_a_id
         }),
-        "User A should only see Org A data"
+        "User A should only see Org A data, but saw {} members",
+        members.len()
     );
 
     // Test: User A tries to access Org B by setting wrong context
