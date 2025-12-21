@@ -202,6 +202,8 @@ pub struct UserBlock {
     pub id: Uuid,
     pub blocker_id: Uuid,
     pub blocked_id: Uuid,
+    /// Organization context for multi-tenant isolation
+    pub organization_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -246,6 +248,8 @@ impl From<BlockWithUserInfoRow> for BlockWithUserInfo {
 pub struct CreateBlock {
     pub blocker_id: Uuid,
     pub blocked_id: Uuid,
+    /// Organization context for multi-tenant isolation
+    pub organization_id: Uuid,
 }
 
 // ============================================================================

@@ -320,6 +320,26 @@ async fn create_announcement(
         ));
     }
 
+    // Security: Validate target_ids exist in the organization (Critical 1.3 fix)
+    if req.target_type != target_type::ALL {
+        if let Some(ref target_ids) = req.target_ids {
+            let validation_result = validate_target_ids(
+                &state.db,
+                org_id,
+                &req.target_type,
+                target_ids,
+            )
+            .await;
+
+            if let Err(err_msg) = validation_result {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse::new("INVALID_TARGET_IDS", err_msg)),
+                ));
+            }
+        }
+    }
+
     // Sanitize content (M-2: Basic markdown sanitization)
     let sanitized_content = sanitize_markdown(&req.content);
 
@@ -1407,52 +1427,123 @@ async fn get_acknowledgments(
 // Helper Functions
 // ============================================================================
 
-/// Sanitize markdown content by removing potentially dangerous HTML tags.
+/// Validate that target_ids exist within the organization.
 ///
-/// This uses an allowlist approach to only permit safe markdown/HTML elements.
-/// Stripped elements: script, iframe, object, embed, form, input, button,
-/// and any elements with event handlers (onclick, onerror, etc.).
+/// Security fix (Critical 1.3): Ensures managers can only target buildings/units
+/// that belong to their organization.
+async fn validate_target_ids(
+    db: &sqlx::PgPool,
+    org_id: Uuid,
+    target_type: &str,
+    target_ids: &[Uuid],
+) -> Result<(), String> {
+    if target_ids.is_empty() {
+        return Ok(());
+    }
+
+    match target_type {
+        target_type::BUILDING => {
+            // Validate buildings exist in the organization
+            let (count,): (i64,) = sqlx::query_as(
+                r#"
+                SELECT COUNT(*) FROM buildings
+                WHERE id = ANY($1) AND organization_id = $2
+                "#,
+            )
+            .bind(target_ids)
+            .bind(org_id)
+            .fetch_one(db)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
+
+            if (count as usize) != target_ids.len() {
+                return Err(format!(
+                    "One or more target buildings not found in organization (found {}/{})",
+                    count,
+                    target_ids.len()
+                ));
+            }
+        }
+        target_type::UNITS => {
+            // Validate units exist in the organization
+            let (count,): (i64,) = sqlx::query_as(
+                r#"
+                SELECT COUNT(*) FROM units u
+                JOIN buildings b ON b.id = u.building_id
+                WHERE u.id = ANY($1) AND b.organization_id = $2
+                "#,
+            )
+            .bind(target_ids)
+            .bind(org_id)
+            .fetch_one(db)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
+
+            if (count as usize) != target_ids.len() {
+                return Err(format!(
+                    "One or more target units not found in organization (found {}/{})",
+                    count,
+                    target_ids.len()
+                ));
+            }
+        }
+        target_type::ROLES => {
+            // For roles, we validate against the TenantRole enum
+            // Role IDs are typically UUIDs mapped to role names, but since our system
+            // uses enum roles, we skip validation here (roles are enforced at enum level)
+            // If you have a role_mappings table, validate against that
+        }
+        _ => {
+            // Unknown target type - already validated earlier, but be safe
+        }
+    }
+
+    Ok(())
+}
+
+/// Sanitize markdown/HTML content using ammonia.
 ///
-/// Note: For production use, consider using a proper HTML sanitizer library
-/// like `ammonia` for more robust protection.
+/// Security fix (Critical 1.5): Uses ammonia library for robust XSS protection.
+/// Allows safe markdown/HTML elements while removing all dangerous content
+/// including script tags, event handlers, and javascript: URLs.
 fn sanitize_markdown(content: &str) -> String {
-    // Remove script tags and their content
-    let re_script = regex::Regex::new(r"(?is)<script[^>]*>.*?</script>").unwrap_or_else(|_| {
-        regex::Regex::new(r"^$").unwrap()
-    });
-    let content = re_script.replace_all(content, "");
+    use ammonia::Builder;
+    use std::collections::HashSet;
 
-    // Remove iframe tags
-    let re_iframe = regex::Regex::new(r"(?is)<iframe[^>]*>.*?</iframe>").unwrap_or_else(|_| {
-        regex::Regex::new(r"^$").unwrap()
-    });
-    let content = re_iframe.replace_all(&content, "");
+    // Define allowed tags for markdown content
+    let allowed_tags: HashSet<&str> = [
+        // Text formatting
+        "p", "br", "strong", "b", "em", "i", "u", "s", "del", "ins", "mark",
+        // Headings
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        // Lists
+        "ul", "ol", "li",
+        // Quotes and code
+        "blockquote", "code", "pre",
+        // Links and images
+        "a", "img",
+        // Tables
+        "table", "thead", "tbody", "tr", "th", "td",
+        // Misc
+        "hr", "div", "span", "sup", "sub",
+    ]
+    .into_iter()
+    .collect();
 
-    // Remove object/embed tags
-    let re_object = regex::Regex::new(r"(?is)<(object|embed)[^>]*>.*?</(object|embed)>").unwrap_or_else(|_| {
-        regex::Regex::new(r"^$").unwrap()
-    });
-    let content = re_object.replace_all(&content, "");
+    // Define allowed attributes for specific tags
+    let mut tag_attributes = std::collections::HashMap::new();
+    tag_attributes.insert("a", ["href", "title", "rel", "target"].into_iter().collect::<HashSet<_>>());
+    tag_attributes.insert("img", ["src", "alt", "title", "width", "height"].into_iter().collect::<HashSet<_>>());
+    tag_attributes.insert("td", ["colspan", "rowspan"].into_iter().collect::<HashSet<_>>());
+    tag_attributes.insert("th", ["colspan", "rowspan", "scope"].into_iter().collect::<HashSet<_>>());
 
-    // Remove form elements
-    let re_form = regex::Regex::new(r"(?is)<(form|input|button|textarea|select)[^>]*>").unwrap_or_else(|_| {
-        regex::Regex::new(r"^$").unwrap()
-    });
-    let content = re_form.replace_all(&content, "");
-
-    // Remove event handlers (onclick, onerror, onload, etc.)
-    let re_events = regex::Regex::new(r#"(?i)\s+on\w+\s*=\s*["'][^"']*["']"#).unwrap_or_else(|_| {
-        regex::Regex::new(r"^$").unwrap()
-    });
-    let content = re_events.replace_all(&content, "");
-
-    // Remove javascript: URLs
-    let re_js_url = regex::Regex::new(r"(?i)javascript\s*:").unwrap_or_else(|_| {
-        regex::Regex::new(r"^$").unwrap()
-    });
-    let content = re_js_url.replace_all(&content, "");
-
-    content.to_string()
+    Builder::default()
+        .tags(allowed_tags)
+        .tag_attributes(tag_attributes)
+        .link_rel(Some("noopener noreferrer"))
+        .strip_comments(true)
+        .clean(content)
+        .to_string()
 }
 
 // ============================================================================

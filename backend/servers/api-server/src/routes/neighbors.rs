@@ -1,7 +1,7 @@
 //! Neighbor routes (Epic 6, Story 6.6: Neighbor Information).
 
 use crate::state::AppState;
-use api_core::AuthUser;
+use api_core::{AuthUser, TenantExtractor};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -84,9 +84,44 @@ pub fn router() -> Router<AppState> {
 )]
 async fn list_neighbors(
     State(state): State<AppState>,
+    tenant: TenantExtractor,
     auth_user: AuthUser,
     Path(building_id): Path<Uuid>,
 ) -> Result<Json<NeighborsResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Security: Verify building belongs to current tenant (Critical 1.4 fix)
+    let building_org: Option<(Uuid,)> = sqlx::query_as(
+        "SELECT organization_id FROM buildings WHERE id = $1",
+    )
+    .bind(building_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to verify building: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", "Failed to verify building")),
+        )
+    })?;
+
+    match building_org {
+        None => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Building not found")),
+            ));
+        }
+        Some((org_id,)) if org_id != tenant.tenant_id => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse::new(
+                    "FORBIDDEN",
+                    "Cannot access neighbors in buildings outside your organization",
+                )),
+            ));
+        }
+        _ => {} // Building is in user's org, continue
+    }
+
     let repo = UserRepository::new(state.db.clone());
 
     // Get neighbors (the repository will return empty if user is not a resident)

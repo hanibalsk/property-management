@@ -369,13 +369,14 @@ impl MessagingRepository {
 
         let block = sqlx::query_as::<_, UserBlock>(
             r#"
-            INSERT INTO user_blocks (blocker_id, blocked_id)
-            VALUES ($1, $2)
+            INSERT INTO user_blocks (blocker_id, blocked_id, organization_id)
+            VALUES ($1, $2, $3)
             RETURNING *
             "#,
         )
         .bind(data.blocker_id)
         .bind(data.blocked_id)
+        .bind(data.organization_id)
         .fetch_one(&self.pool)
         .await?;
 

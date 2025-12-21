@@ -214,6 +214,39 @@ async fn start_thread(
         ));
     }
 
+    // Security: Verify recipient is in same organization (Critical 1.1 / 2.3 fix)
+    let recipient_org: Option<(Uuid,)> = sqlx::query_as(
+        "SELECT organization_id FROM users WHERE id = $1",
+    )
+    .bind(body.recipient_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+        )
+    })?;
+
+    match recipient_org {
+        None => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("USER_NOT_FOUND", "Recipient not found")),
+            ));
+        }
+        Some((org_id,)) if org_id != tenant.tenant_id => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse::new(
+                    "CROSS_ORG_DENIED",
+                    "Cannot message users from different organizations",
+                )),
+            ));
+        }
+        _ => {} // Same org, continue
+    }
+
     let repo = MessagingRepository::new(state.db.clone());
 
     // Check if either user has blocked the other
@@ -326,6 +359,7 @@ async fn start_thread(
 )]
 async fn get_thread(
     State(state): State<AppState>,
+    tenant: TenantExtractor,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
     Query(query): Query<ListMessagesQuery>,
@@ -346,6 +380,17 @@ async fn get_thread(
             Json(ErrorResponse::new("NOT_FOUND", "Thread not found")),
         )
     })?;
+
+    // Security: Verify thread belongs to current tenant (Critical 1.1 fix)
+    if thread.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "Access denied to this thread",
+            )),
+        ));
+    }
 
     // Check if user is a participant
     if !thread.participant_ids.contains(&auth_user.user_id) {
@@ -408,6 +453,7 @@ async fn get_thread(
 )]
 async fn send_message(
     State(state): State<AppState>,
+    tenant: TenantExtractor,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
     Json(body): Json<SendMessageRequest>,
@@ -446,6 +492,17 @@ async fn send_message(
             Json(ErrorResponse::new("NOT_FOUND", "Thread not found")),
         )
     })?;
+
+    // Security: Verify thread belongs to current tenant (Critical 1.1 fix)
+    if thread.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "Access denied to this thread",
+            )),
+        ));
+    }
 
     if !thread.participant_ids.contains(&auth_user.user_id) {
         return Err((
@@ -531,23 +588,40 @@ async fn send_message(
 )]
 async fn mark_thread_read(
     State(state): State<AppState>,
+    tenant: TenantExtractor,
     auth_user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<MessageSuccessResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = MessagingRepository::new(state.db.clone());
 
-    // Check if user is participant
-    let is_participant = repo
-        .is_participant(id, auth_user.user_id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
-            )
-        })?;
+    // Get thread to verify tenant (Critical 1.1 fix)
+    let thread = repo.get_thread(id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+        )
+    })?;
 
-    if !is_participant {
+    let thread = thread.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Thread not found")),
+        )
+    })?;
+
+    // Security: Verify thread belongs to current tenant
+    if thread.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "Access denied to this thread",
+            )),
+        ));
+    }
+
+    // Check if user is participant
+    if !thread.participant_ids.contains(&auth_user.user_id) {
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -624,6 +698,7 @@ async fn list_blocked_users(
 )]
 async fn block_user(
     State(state): State<AppState>,
+    tenant: TenantExtractor,
     auth_user: AuthUser,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<MessageSuccessResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -643,6 +718,7 @@ async fn block_user(
     repo.block_user(CreateBlock {
         blocker_id: auth_user.user_id,
         blocked_id: user_id,
+        organization_id: tenant.tenant_id,
     })
     .await
     .map_err(|e| match e {
