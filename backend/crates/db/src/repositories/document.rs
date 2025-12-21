@@ -181,7 +181,11 @@ impl DocumentRepository {
 
     /// Check if a folder is a descendant of another folder.
     /// Used to prevent circular references when updating parent_id.
-    pub async fn is_descendant_of(&self, folder_id: Uuid, potential_ancestor_id: Uuid) -> Result<bool, SqlxError> {
+    pub async fn is_descendant_of(
+        &self,
+        folder_id: Uuid,
+        potential_ancestor_id: Uuid,
+    ) -> Result<bool, SqlxError> {
         let row = sqlx::query(
             r#"
             WITH RECURSIVE ancestors AS (

@@ -1279,7 +1279,11 @@ async fn update_folder(
         }
 
         // Check that new parent is not a descendant of this folder
-        match state.document_repo.is_descendant_of(new_parent_id, id).await {
+        match state
+            .document_repo
+            .is_descendant_of(new_parent_id, id)
+            .await
+        {
             Ok(true) => {
                 return Err((
                     StatusCode::BAD_REQUEST,
