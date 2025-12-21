@@ -48,10 +48,11 @@ CREATE TRIGGER update_organizations_updated_at
 
 -- Function to set tenant context for RLS
 -- This will be called by middleware before each request
+-- Note: Using FALSE for session-scoped (persists across transactions)
 CREATE OR REPLACE FUNCTION set_tenant_context(org_id UUID)
 RETURNS void AS $$
 BEGIN
-    PERFORM set_config('app.current_org_id', org_id::TEXT, TRUE);
+    PERFORM set_config('app.current_org_id', org_id::TEXT, FALSE);
 END;
 $$ LANGUAGE plpgsql;
 
