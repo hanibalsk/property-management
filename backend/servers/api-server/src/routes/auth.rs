@@ -424,14 +424,20 @@ pub struct LoginRequest {
 /// Login response.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LoginResponse {
-    /// JWT access token
+    /// JWT access token (empty if MFA required)
     pub access_token: String,
-    /// Refresh token
+    /// Refresh token (empty if MFA required)
     pub refresh_token: String,
     /// Access token expiration in seconds
     pub expires_in: i64,
     /// Token type (always "Bearer")
     pub token_type: String,
+    /// Whether MFA verification is required to complete login
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mfa_required: Option<bool>,
+    /// Temporary token for MFA verification (only present if mfa_required)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mfa_token: Option<String>,
 }
 
 /// Login endpoint.
@@ -576,8 +582,83 @@ pub async fn login(
         ));
     }
 
-    // TODO: Check 2FA if enabled (future story)
-    // if user.has_2fa_enabled() && req.two_factor_code.is_none() { ... }
+    // Check 2FA if enabled (Epic 9, Story 9.1)
+    if let Ok(Some(mfa_record)) = state.two_factor_repo.get_by_user_id(user.id).await {
+        if mfa_record.enabled {
+            // 2FA is enabled - check if code was provided
+            match &req.two_factor_code {
+                Some(code) => {
+                    // Verify TOTP code
+                    let is_valid = state
+                        .totp_service
+                        .verify_code(&mfa_record.secret, code)
+                        .unwrap_or(false);
+
+                    // If TOTP failed, try backup codes
+                    let backup_codes: Vec<String> =
+                        serde_json::from_value(mfa_record.backup_codes.clone()).unwrap_or_default();
+                    let backup_result = if !is_valid {
+                        state
+                            .totp_service
+                            .verify_backup_code(code, &backup_codes)
+                            .ok()
+                            .flatten()
+                    } else {
+                        None
+                    };
+
+                    if !is_valid && backup_result.is_none() {
+                        let _ = state
+                            .session_repo
+                            .record_login_attempt(&req.email, &ip_address, false)
+                            .await;
+                        return Err((
+                            StatusCode::UNAUTHORIZED,
+                            Json(ErrorResponse::new(
+                                "INVALID_MFA_CODE",
+                                "Invalid verification code",
+                            )),
+                        ));
+                    }
+
+                    // If backup code was used, consume it
+                    if let Some(code_index) = backup_result {
+                        let _ = state
+                            .two_factor_repo
+                            .use_backup_code(user.id, code_index)
+                            .await;
+                        tracing::info!(user_id = %user.id, "Backup code used for login");
+                    }
+                }
+                None => {
+                    // No code provided - return MFA required response
+                    // Generate a temporary MFA token that expires in 5 minutes
+                    let mfa_token = state
+                        .jwt_service
+                        .generate_access_token(user.id, &user.email, &user.name, None, None)
+                        .map_err(|e| {
+                            tracing::error!(error = %e, "Failed to generate MFA token");
+                            (
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                Json(ErrorResponse::new(
+                                    "TOKEN_ERROR",
+                                    "Failed to create MFA session",
+                                )),
+                            )
+                        })?;
+
+                    return Ok(Json(LoginResponse {
+                        access_token: String::new(),
+                        refresh_token: String::new(),
+                        expires_in: 0,
+                        token_type: "Bearer".to_string(),
+                        mfa_required: Some(true),
+                        mfa_token: Some(mfa_token),
+                    }));
+                }
+            }
+        }
+    }
 
     // Record successful login attempt
     let _ = state
@@ -658,6 +739,8 @@ pub async fn login(
         refresh_token,
         expires_in: state.jwt_service.access_token_lifetime(),
         token_type: "Bearer".to_string(),
+        mfa_required: None,
+        mfa_token: None,
     }))
 }
 
@@ -855,6 +938,8 @@ pub async fn refresh_token(
         refresh_token: new_refresh_token,
         expires_in: state.jwt_service.access_token_lifetime(),
         token_type: "Bearer".to_string(),
+        mfa_required: None,
+        mfa_token: None,
     }))
 }
 

@@ -153,6 +153,9 @@ use state::AppState;
         (name = "Documents", description = "Document management and sharing"),
         (name = "Notification Preferences", description = "User notification channel preferences"),
         (name = "Critical Notifications", description = "Critical notifications that bypass user preferences"),
+        (name = "Multi-Factor Authentication", description = "Two-factor authentication setup and management"),
+        (name = "GDPR", description = "GDPR compliance: data export, deletion, and privacy settings"),
+        (name = "Compliance", description = "Compliance reports: audit logs, security, and GDPR reports"),
         (name = "Rentals", description = "Short-term rental integrations (Airbnb, Booking)"),
         (name = "Listings", description = "Real estate listing management"),
         (name = "Integrations", description = "External portal integrations")
@@ -258,6 +261,12 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/organizations/:org_id/critical-notifications",
             routes::critical_notifications::router(),
         )
+        // MFA routes (Epic 9, Story 9.1)
+        .nest("/api/v1/auth/mfa", routes::mfa::router())
+        // GDPR routes (Epic 9, Stories 9.3-9.5)
+        .nest("/api/v1/gdpr", routes::gdpr::router())
+        // Compliance routes (Epic 9, Story 9.7)
+        .nest("/api/v1/compliance", routes::compliance::router())
         // Rentals routes
         .nest("/api/v1/rentals", routes::rentals::router())
         // Listings routes (management side)

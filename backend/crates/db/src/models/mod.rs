@@ -1,8 +1,10 @@
 //! Database models.
 
 pub mod announcement;
+pub mod audit_log;
 pub mod building;
 pub mod critical_notification;
+pub mod data_export;
 pub mod delegation;
 pub mod document;
 pub mod facility;
@@ -15,6 +17,7 @@ pub mod password_reset;
 pub mod person_month;
 pub mod refresh_token;
 pub mod role;
+pub mod two_factor_auth;
 pub mod unit;
 pub mod unit_resident;
 pub mod user;
@@ -28,6 +31,9 @@ pub use announcement::{
     DeleteComment, MarkAnnouncementRead, PinAnnouncement, PublishAnnouncement, UpdateAnnouncement,
     UserAcknowledgmentStatus,
 };
+pub use audit_log::{
+    ActionCount, AuditAction, AuditLog, AuditLogQuery, AuditLogSummary, CreateAuditLog,
+};
 pub use building::{
     building_status, Building, BuildingContact, BuildingStatistics, BuildingSummary,
     CreateBuilding, UpdateBuilding,
@@ -36,6 +42,10 @@ pub use critical_notification::{
     AcknowledgeCriticalNotificationResponse, CreateCriticalNotificationRequest,
     CreateCriticalNotificationResponse, CriticalNotification, CriticalNotificationAcknowledgment,
     CriticalNotificationResponse, CriticalNotificationStats, UnacknowledgedNotificationsResponse,
+};
+pub use data_export::{
+    CreateDataExportRequest, DataExportRequest, DataExportRequestResponse, DataExportStatus,
+    DataExportStatusResponse, ExportCategories, ExportCategory, ExportFormat, UserDataExport,
 };
 pub use delegation::{
     delegation_scope, delegation_status, AcceptDelegation, CreateDelegation, DeclineDelegation,
@@ -86,6 +96,9 @@ pub use person_month::{
 };
 pub use refresh_token::{CreateRefreshToken, LoginAttempt, RateLimitStatus, RefreshToken};
 pub use role::{permissions, system_roles, CreateRole, PermissionDefinition, Role, UpdateRole};
+pub use two_factor_auth::{
+    CreateTwoFactorAuth, TwoFactorAuth, TwoFactorStatus, UpdateTwoFactorStatus,
+};
 pub use unit::{
     occupancy_status, unit_status, unit_type, AssignUnitOwner, CreateUnit, Unit, UnitOwner,
     UnitOwnerInfo, UnitSummary, UnitWithOwners, UpdateUnit,

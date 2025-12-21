@@ -2,8 +2,10 @@
 //! Each repository handles database operations for a specific domain.
 
 pub mod announcement;
+pub mod audit_log;
 pub mod building;
 pub mod critical_notification;
+pub mod data_export;
 pub mod delegation;
 pub mod document;
 pub mod facility;
@@ -16,14 +18,17 @@ pub mod password_reset;
 pub mod person_month;
 pub mod role;
 pub mod session;
+pub mod two_factor_auth;
 pub mod unit;
 pub mod unit_resident;
 pub mod user;
 pub mod vote;
 
 pub use announcement::AnnouncementRepository;
+pub use audit_log::AuditLogRepository;
 pub use building::BuildingRepository;
 pub use critical_notification::CriticalNotificationRepository;
+pub use data_export::DataExportRepository;
 pub use delegation::DelegationRepository;
 pub use document::DocumentRepository;
 pub use facility::FacilityRepository;
@@ -36,6 +41,7 @@ pub use password_reset::PasswordResetRepository;
 pub use person_month::PersonMonthRepository;
 pub use role::RoleRepository;
 pub use session::SessionRepository;
+pub use two_factor_auth::TwoFactorAuthRepository;
 pub use unit::UnitRepository;
 pub use unit_resident::UnitResidentRepository;
 pub use user::UserRepository;
