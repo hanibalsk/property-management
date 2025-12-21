@@ -4,9 +4,9 @@
 //! including clients, authorization codes, access tokens, and refresh tokens.
 
 use crate::models::oauth::{
-    CreateAccessToken, CreateAuthorizationCode, CreateOAuthClient,
-    CreateRefreshToken, CreateUserOAuthGrant, OAuthAccessToken, OAuthAuthorizationCode,
-    OAuthClient, OAuthRefreshToken, UpdateOAuthClient, UserGrantWithClientRow, UserOAuthGrant,
+    CreateAccessToken, CreateAuthorizationCode, CreateOAuthClient, CreateRefreshToken,
+    CreateUserOAuthGrant, OAuthAccessToken, OAuthAuthorizationCode, OAuthClient, OAuthRefreshToken,
+    UpdateOAuthClient, UserGrantWithClientRow, UserOAuthGrant,
 };
 use crate::DbPool;
 use sqlx::Error as SqlxError;
@@ -169,12 +169,11 @@ impl OAuthRepository {
         let mut tx = self.pool.begin().await?;
 
         // First, get the client_id for token revocation
-        let client = sqlx::query_as::<_, OAuthClient>(
-            r#"SELECT * FROM oauth_clients WHERE id = $1"#,
-        )
-        .bind(id)
-        .fetch_optional(&mut *tx)
-        .await?;
+        let client =
+            sqlx::query_as::<_, OAuthClient>(r#"SELECT * FROM oauth_clients WHERE id = $1"#)
+                .bind(id)
+                .fetch_optional(&mut *tx)
+                .await?;
 
         let Some(client) = client else {
             return Ok(false);

@@ -32,7 +32,10 @@ pub fn router() -> Router<AppState> {
         .route("/introspect", post(introspect))
         // User grant management
         .route("/grants", get(list_user_grants))
-        .route("/grants/:client_id", axum::routing::delete(revoke_user_grant))
+        .route(
+            "/grants/:client_id",
+            axum::routing::delete(revoke_user_grant),
+        )
 }
 
 /// Create OAuth admin router (for client management).
@@ -43,7 +46,10 @@ pub fn admin_router() -> Router<AppState> {
         .route("/clients/:id", get(get_client))
         .route("/clients/:id", axum::routing::patch(update_client))
         .route("/clients/:id", axum::routing::delete(revoke_client))
-        .route("/clients/:id/regenerate-secret", post(regenerate_client_secret))
+        .route(
+            "/clients/:id/regenerate-secret",
+            post(regenerate_client_secret),
+        )
 }
 
 // ==================== Authorization Endpoint ====================
@@ -258,13 +264,11 @@ pub async fn token(
     }
 
     let response = match request.grant_type.as_str() {
-        "authorization_code" => {
-            state
-                .oauth_service
-                .exchange_code_for_tokens(&request)
-                .await
-                .map_err(|e| (StatusCode::BAD_REQUEST, Json(e.into())))?
-        }
+        "authorization_code" => state
+            .oauth_service
+            .exchange_code_for_tokens(&request)
+            .await
+            .map_err(|e| (StatusCode::BAD_REQUEST, Json(e.into())))?,
         "refresh_token" => {
             let refresh_token = request.refresh_token.as_ref().ok_or_else(|| {
                 (
@@ -364,21 +368,26 @@ pub async fn introspect(
     Form(request): Form<IntrospectionRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<OAuthError>)> {
     // RFC 7662 Section 2.1: Introspection requires client authentication
-    let (client_id, client_secret) = extract_client_credentials(&headers, &request.client_id, &request.client_secret)
-        .ok_or_else(|| (
-            StatusCode::UNAUTHORIZED,
-            Json(OAuthError::invalid_client("Client authentication required")),
-        ))?;
+    let (client_id, client_secret) =
+        extract_client_credentials(&headers, &request.client_id, &request.client_secret)
+            .ok_or_else(|| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(OAuthError::invalid_client("Client authentication required")),
+                )
+            })?;
 
     // Validate client credentials
     state
         .oauth_service
         .validate_client_credentials(&client_id, &client_secret)
         .await
-        .map_err(|_| (
-            StatusCode::UNAUTHORIZED,
-            Json(OAuthError::invalid_client("Invalid client credentials")),
-        ))?;
+        .map_err(|_| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(OAuthError::invalid_client("Invalid client credentials")),
+            )
+        })?;
 
     let response = state
         .oauth_service
@@ -424,7 +433,10 @@ pub async fn list_user_grants(
             tracing::error!(error = %e, "Failed to list user grants");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to list grants")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to list grants",
+                )),
             )
         })?;
 
@@ -467,7 +479,10 @@ pub async fn revoke_user_grant(
             tracing::error!(error = %e, "Failed to revoke user grant");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to revoke grant")),
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to revoke grant",
+                )),
             )
         })?;
 
@@ -609,7 +624,10 @@ pub async fn list_clients(
         tracing::error!(error = %e, "Failed to list OAuth clients");
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DATABASE_ERROR", "Failed to list clients")),
+            Json(ErrorResponse::new(
+                "DATABASE_ERROR",
+                "Failed to list clients",
+            )),
         )
     })?;
 
@@ -951,7 +969,10 @@ fn validate_access_token(
         .map_err(|_| {
             (
                 StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new("INVALID_TOKEN", "Token is invalid or expired")),
+                Json(ErrorResponse::new(
+                    "INVALID_TOKEN",
+                    "Token is invalid or expired",
+                )),
             )
         })
         .map(|claims| JwtClaims {

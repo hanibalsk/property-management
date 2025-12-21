@@ -76,11 +76,15 @@ impl From<OAuthServiceError> for OAuthError {
             OAuthServiceError::InvalidScope(scope) => {
                 OAuthError::invalid_scope(&format!("Invalid scope: {}", scope))
             }
-            OAuthServiceError::InvalidGrant => OAuthError::invalid_grant("Invalid authorization code"),
+            OAuthServiceError::InvalidGrant => {
+                OAuthError::invalid_grant("Invalid authorization code")
+            }
             OAuthServiceError::InvalidCodeVerifier => {
                 OAuthError::invalid_grant("Invalid code verifier")
             }
-            OAuthServiceError::CodeExpired => OAuthError::invalid_grant("Authorization code expired"),
+            OAuthServiceError::CodeExpired => {
+                OAuthError::invalid_grant("Authorization code expired")
+            }
             OAuthServiceError::CodeAlreadyUsed => {
                 OAuthError::invalid_grant("Authorization code already used")
             }
@@ -112,8 +116,8 @@ pub struct OAuthConfig {
 impl Default for OAuthConfig {
     fn default() -> Self {
         Self {
-            code_expires_secs: 600,        // 10 minutes
-            access_token_expires_secs: 900, // 15 minutes
+            code_expires_secs: 600,             // 10 minutes
+            access_token_expires_secs: 900,     // 15 minutes
             refresh_token_expires_secs: 604800, // 7 days
         }
     }
@@ -167,7 +171,9 @@ impl OAuthService {
         // Generate client_id and client_secret
         let client_id = self.generate_client_id();
         let client_secret = self.generate_client_secret();
-        let client_secret_hash = self.auth_service.hash_password(&client_secret)
+        let client_secret_hash = self
+            .auth_service
+            .hash_password(&client_secret)
             .map_err(|_| OAuthServiceError::InternalError)?;
 
         let data = CreateOAuthClient {
@@ -195,7 +201,10 @@ impl OAuthService {
     }
 
     /// Get client by client_id for validation.
-    pub async fn get_client(&self, client_id: &str) -> Result<Option<OAuthClient>, OAuthServiceError> {
+    pub async fn get_client(
+        &self,
+        client_id: &str,
+    ) -> Result<Option<OAuthClient>, OAuthServiceError> {
         Ok(self.repo.find_active_client_by_client_id(client_id).await?)
     }
 
@@ -225,15 +234,16 @@ impl OAuthService {
     }
 
     /// Regenerate client secret.
-    pub async fn regenerate_client_secret(
-        &self,
-        id: Uuid,
-    ) -> Result<String, OAuthServiceError> {
+    pub async fn regenerate_client_secret(&self, id: Uuid) -> Result<String, OAuthServiceError> {
         let client_secret = self.generate_client_secret();
-        let client_secret_hash = self.auth_service.hash_password(&client_secret)
+        let client_secret_hash = self
+            .auth_service
+            .hash_password(&client_secret)
             .map_err(|_| OAuthServiceError::InternalError)?;
 
-        self.repo.update_client_secret(id, &client_secret_hash).await?;
+        self.repo
+            .update_client_secret(id, &client_secret_hash)
+            .await?;
 
         Ok(client_secret)
     }
@@ -249,14 +259,21 @@ impl OAuthService {
         client_id: &str,
         client_secret: &str,
     ) -> Result<OAuthClient, OAuthServiceError> {
-        let client = self.repo.find_active_client_by_client_id(client_id).await?
+        let client = self
+            .repo
+            .find_active_client_by_client_id(client_id)
+            .await?
             .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
 
-        let valid = self.auth_service.verify_password(client_secret, &client.client_secret_hash)
+        let valid = self
+            .auth_service
+            .verify_password(client_secret, &client.client_secret_hash)
             .map_err(|_| OAuthServiceError::InternalError)?;
 
         if !valid {
-            return Err(OAuthServiceError::InvalidClient("Invalid client secret".to_string()));
+            return Err(OAuthServiceError::InvalidClient(
+                "Invalid client secret".to_string(),
+            ));
         }
 
         Ok(client)
@@ -274,7 +291,10 @@ impl OAuthService {
         code_challenge: Option<&str>,
     ) -> Result<ConsentPageData, OAuthServiceError> {
         // Find and validate client
-        let client = self.repo.find_active_client_by_client_id(client_id).await?
+        let client = self
+            .repo
+            .find_active_client_by_client_id(client_id)
+            .await?
             .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
 
         // PKCE is required for public (non-confidential) clients per RFC 7636 / OAuth 2.1
@@ -351,11 +371,13 @@ impl OAuthService {
         self.repo.create_authorization_code(data).await?;
 
         // Create or update user grant
-        self.repo.upsert_user_grant(CreateUserOAuthGrant {
-            user_id,
-            client_id: client_id.to_string(),
-            scopes: scopes.to_vec(),
-        }).await?;
+        self.repo
+            .upsert_user_grant(CreateUserOAuthGrant {
+                user_id,
+                client_id: client_id.to_string(),
+                scopes: scopes.to_vec(),
+            })
+            .await?;
 
         Ok(code)
     }
@@ -365,14 +387,21 @@ impl OAuthService {
         &self,
         request: &TokenRequest,
     ) -> Result<TokenResponse, OAuthServiceError> {
-        let code = request.code.as_ref()
+        let code = request
+            .code
+            .as_ref()
             .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
-        let redirect_uri = request.redirect_uri.as_ref()
+        let redirect_uri = request
+            .redirect_uri
+            .as_ref()
             .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
 
         // Atomically find and consume authorization code (prevents race condition)
         let code_hash = self.hash_token(code);
-        let auth_code = self.repo.find_and_consume_authorization_code(&code_hash).await?
+        let auth_code = self
+            .repo
+            .find_and_consume_authorization_code(&code_hash)
+            .await?
             .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
 
         // Validate redirect URI matches
@@ -382,31 +411,46 @@ impl OAuthService {
 
         // Validate PKCE if code challenge was provided
         if let Some(ref challenge) = auth_code.code_challenge {
-            let verifier = request.code_verifier.as_ref()
+            let verifier = request
+                .code_verifier
+                .as_ref()
                 .ok_or_else(|| OAuthServiceError::InvalidCodeVerifier)?;
 
-            if !self.verify_pkce(verifier, challenge, auth_code.code_challenge_method.as_deref()) {
+            if !self.verify_pkce(
+                verifier,
+                challenge,
+                auth_code.code_challenge_method.as_deref(),
+            ) {
                 return Err(OAuthServiceError::InvalidCodeVerifier);
             }
         }
 
         // Get client for rotation settings
-        let client = self.repo.find_active_client_by_client_id(&auth_code.client_id).await?
+        let client = self
+            .repo
+            .find_active_client_by_client_id(&auth_code.client_id)
+            .await?
             .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
 
         // Generate tokens
-        let (access_token, refresh_token) = self.issue_tokens(
-            auth_code.user_id,
-            &auth_code.client_id,
-            &auth_code.scopes.0,
-            None, // New token family
-        ).await?;
+        let (access_token, refresh_token) = self
+            .issue_tokens(
+                auth_code.user_id,
+                &auth_code.client_id,
+                &auth_code.scopes.0,
+                None, // New token family
+            )
+            .await?;
 
         Ok(TokenResponse {
             access_token,
             token_type: "Bearer".to_string(),
             expires_in: self.config.access_token_expires_secs,
-            refresh_token: if client.is_confidential { Some(refresh_token) } else { None },
+            refresh_token: if client.is_confidential {
+                Some(refresh_token)
+            } else {
+                None
+            },
             scope: auth_code.scopes.0.join(" "),
         })
     }
@@ -419,18 +463,25 @@ impl OAuthService {
     ) -> Result<TokenResponse, OAuthServiceError> {
         // Find refresh token
         let token_hash = self.hash_token(refresh_token_str);
-        let refresh_token = self.repo.find_refresh_token_by_hash(&token_hash).await?
+        let refresh_token = self
+            .repo
+            .find_refresh_token_by_hash(&token_hash)
+            .await?
             .ok_or_else(|| OAuthServiceError::InvalidGrant)?;
 
         // Validate token belongs to client
         if refresh_token.client_id != client_id {
-            return Err(OAuthServiceError::InvalidClient("Token doesn't belong to client".to_string()));
+            return Err(OAuthServiceError::InvalidClient(
+                "Token doesn't belong to client".to_string(),
+            ));
         }
 
         // Check if token was already revoked (reuse detection)
         if refresh_token.is_revoked() {
             // Security breach! Revoke entire token family
-            self.repo.revoke_token_family(refresh_token.family_id).await?;
+            self.repo
+                .revoke_token_family(refresh_token.family_id)
+                .await?;
             return Err(OAuthServiceError::TokenReuseDetected);
         }
 
@@ -440,7 +491,10 @@ impl OAuthService {
         }
 
         // Get client for rotation settings
-        let client = self.repo.find_active_client_by_client_id(client_id).await?
+        let client = self
+            .repo
+            .find_active_client_by_client_id(client_id)
+            .await?
             .ok_or_else(|| OAuthServiceError::InvalidClient("Client not found".to_string()))?;
 
         // Revoke old refresh token
@@ -453,12 +507,14 @@ impl OAuthService {
             None
         };
 
-        let (access_token, new_refresh_token) = self.issue_tokens(
-            refresh_token.user_id,
-            client_id,
-            &refresh_token.scopes.0,
-            family_id,
-        ).await?;
+        let (access_token, new_refresh_token) = self
+            .issue_tokens(
+                refresh_token.user_id,
+                client_id,
+                &refresh_token.scopes.0,
+                family_id,
+            )
+            .await?;
 
         Ok(TokenResponse {
             access_token,
@@ -583,26 +639,31 @@ impl OAuthService {
         let refresh_token_hash = self.hash_token(&refresh_token);
 
         let access_expires = Utc::now() + Duration::seconds(self.config.access_token_expires_secs);
-        let refresh_expires = Utc::now() + Duration::seconds(self.config.refresh_token_expires_secs);
+        let refresh_expires =
+            Utc::now() + Duration::seconds(self.config.refresh_token_expires_secs);
 
         // Create access token
-        self.repo.create_access_token(CreateAccessToken {
-            user_id,
-            client_id: client_id.to_string(),
-            token_hash: access_token_hash,
-            scopes: scopes.to_vec(),
-            expires_at: access_expires,
-        }).await?;
+        self.repo
+            .create_access_token(CreateAccessToken {
+                user_id,
+                client_id: client_id.to_string(),
+                token_hash: access_token_hash,
+                scopes: scopes.to_vec(),
+                expires_at: access_expires,
+            })
+            .await?;
 
         // Create refresh token
-        self.repo.create_refresh_token(CreateRefreshToken {
-            user_id,
-            client_id: client_id.to_string(),
-            token_hash: refresh_token_hash,
-            scopes: scopes.to_vec(),
-            family_id: family_id.unwrap_or_else(Uuid::new_v4),
-            expires_at: refresh_expires,
-        }).await?;
+        self.repo
+            .create_refresh_token(CreateRefreshToken {
+                user_id,
+                client_id: client_id.to_string(),
+                token_hash: refresh_token_hash,
+                scopes: scopes.to_vec(),
+                family_id: family_id.unwrap_or_else(Uuid::new_v4),
+                expires_at: refresh_expires,
+            })
+            .await?;
 
         Ok((access_token, refresh_token))
     }
