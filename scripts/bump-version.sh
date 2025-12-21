@@ -65,6 +65,22 @@ esac
 
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 
+# Validate new version won't overflow Android versionCode
+# Formula: MAJOR * 1000000 + MINOR * 1000 + PATCH
+# Max int32: 2147483647 -> MAJOR 0-2147, MINOR 0-999, PATCH 0-999
+if [[ $MAJOR -gt 2147 ]]; then
+    echo -e "${RED}ERROR: Cannot bump - MAJOR version $MAJOR would exceed maximum 2147${NC}"
+    exit 1
+fi
+if [[ $MINOR -gt 999 ]]; then
+    echo -e "${RED}ERROR: Cannot bump - MINOR version $MINOR would exceed maximum 999${NC}"
+    exit 1
+fi
+if [[ $PATCH -gt 999 ]]; then
+    echo -e "${RED}ERROR: Cannot bump - PATCH version $PATCH would exceed maximum 999${NC}"
+    exit 1
+fi
+
 echo -e "${YELLOW}Bumping version: $CURRENT_VERSION -> $NEW_VERSION ($BUMP_TYPE)${NC}"
 
 # Write new version

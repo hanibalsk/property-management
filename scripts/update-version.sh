@@ -43,8 +43,36 @@ fi
 # Parse version components
 IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
 
-# Calculate Android versionCode: MAJOR * 10000 + MINOR * 100 + PATCH
-VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+# Validate version components for versionCode calculation
+# Using formula: MAJOR * 1000000 + MINOR * 1000 + PATCH
+# Max int32: 2147483647
+# This allows: MAJOR 0-2147, MINOR 0-999, PATCH 0-999
+if [[ $MAJOR -gt 2147 ]]; then
+    echo -e "${RED}ERROR: MAJOR version $MAJOR exceeds maximum 2147 for Android versionCode${NC}"
+    exit 1
+fi
+if [[ $MINOR -gt 999 ]]; then
+    echo -e "${RED}ERROR: MINOR version $MINOR exceeds maximum 999 for Android versionCode${NC}"
+    exit 1
+fi
+if [[ $PATCH -gt 999 ]]; then
+    echo -e "${RED}ERROR: PATCH version $PATCH exceeds maximum 999 for Android versionCode${NC}"
+    exit 1
+fi
+
+# Calculate Android versionCode: MAJOR * 1000000 + MINOR * 1000 + PATCH
+# This gives each component proper space without overflow:
+# - MAJOR: millions place (0-2147)
+# - MINOR: thousands place (0-999)
+# - PATCH: ones place (0-999)
+# Example: 1.2.3 -> 1002003, 2.15.128 -> 2015128
+VERSION_CODE=$((MAJOR * 1000000 + MINOR * 1000 + PATCH))
+
+# Final safety check for int32 overflow
+if [[ $VERSION_CODE -gt 2147483647 ]]; then
+    echo -e "${RED}ERROR: Calculated versionCode $VERSION_CODE exceeds Android maximum 2147483647${NC}"
+    exit 1
+fi
 
 echo -e "${GREEN}Version: $VERSION${NC}"
 echo -e "${GREEN}Version Code: $VERSION_CODE${NC}"
