@@ -239,6 +239,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/announcements", routes::announcements::router())
         // Messaging routes (Epic 6, Story 6.5)
         .nest("/api/v1/messages", routes::messaging::router())
+        // Neighbor routes (Epic 6, Story 6.6)
+        .nest("/api/v1", routes::neighbors::router())
         // Rentals routes
         .nest("/api/v1/rentals", routes::rentals::router())
         // Listings routes (management side)

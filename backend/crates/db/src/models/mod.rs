@@ -61,7 +61,10 @@ pub use unit_resident::{
     resident_type, CreateUnitResident, EndResidency, UnitResident, UnitResidentSummary,
     UnitResidentWithUser, UpdateUnitResident,
 };
-pub use user::{CreateUser, EmailVerificationToken, Locale, UpdateUser, User, UserStatus};
+pub use user::{
+    CreateUser, EmailVerificationToken, Locale, NeighborRow, NeighborView, PrivacySettings,
+    ProfileVisibility, UpdatePrivacySettings, UpdateUser, User, UserStatus,
+};
 pub use vote::{
     audit_action, question_type, quorum_type, vote_status, CancelVote, CastVote, CreateVote,
     CreateVoteAuditLog, CreateVoteComment, CreateVoteQuestion, EligibleUnit, HideVoteComment,

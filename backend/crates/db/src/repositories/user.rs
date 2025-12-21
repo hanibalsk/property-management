@@ -1,6 +1,9 @@
 //! User repository (Epic 1, Story 1.1).
 
-use crate::models::user::{CreateUser, EmailVerificationToken, UpdateUser, User};
+use crate::models::user::{
+    CreateUser, EmailVerificationToken, NeighborRow, NeighborView, PrivacySettings,
+    ProfileVisibility, UpdatePrivacySettings, UpdateUser, User,
+};
 use crate::DbPool;
 use chrono::{Duration, Utc};
 use sqlx::Error as SqlxError;
@@ -368,5 +371,178 @@ impl UserRepository {
         .await?;
 
         Ok(user)
+    }
+
+    // ==================== Privacy & Neighbor Operations (Story 6.6) ====================
+
+    /// Get user's privacy settings.
+    pub async fn get_privacy_settings(&self, user_id: Uuid) -> Result<PrivacySettings, SqlxError> {
+        let (visibility, show_contact): (String, bool) = sqlx::query_as(
+            r#"
+            SELECT profile_visibility, show_contact_info
+            FROM users WHERE id = $1
+            "#,
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(PrivacySettings {
+            profile_visibility: ProfileVisibility::parse(&visibility),
+            show_contact_info: show_contact,
+        })
+    }
+
+    /// Update user's privacy settings.
+    pub async fn update_privacy_settings(
+        &self,
+        user_id: Uuid,
+        data: UpdatePrivacySettings,
+    ) -> Result<PrivacySettings, SqlxError> {
+        let mut updates = vec!["updated_at = NOW()".to_string()];
+        let mut param_idx = 1;
+
+        if data.profile_visibility.is_some() {
+            param_idx += 1;
+            updates.push(format!("profile_visibility = ${}", param_idx));
+        }
+        if data.show_contact_info.is_some() {
+            param_idx += 1;
+            updates.push(format!("show_contact_info = ${}", param_idx));
+        }
+
+        let query = format!(
+            "UPDATE users SET {} WHERE id = $1 RETURNING profile_visibility, show_contact_info",
+            updates.join(", ")
+        );
+
+        let mut q = sqlx::query_as::<_, (String, bool)>(&query).bind(user_id);
+
+        if let Some(ref visibility) = data.profile_visibility {
+            q = q.bind(visibility.as_str());
+        }
+        if let Some(show_contact) = data.show_contact_info {
+            q = q.bind(show_contact);
+        }
+
+        let (visibility, show_contact) = q.fetch_one(&self.pool).await?;
+
+        Ok(PrivacySettings {
+            profile_visibility: ProfileVisibility::parse(&visibility),
+            show_contact_info: show_contact,
+        })
+    }
+
+    /// Get neighbors for a user (residents in the same building but different units).
+    /// Respects privacy settings of each neighbor.
+    pub async fn get_neighbors(
+        &self,
+        user_id: Uuid,
+        building_id: Uuid,
+    ) -> Result<Vec<NeighborView>, SqlxError> {
+        // First find the user's unit(s) in this building
+        let user_unit_ids: Vec<Uuid> = sqlx::query_scalar(
+            r#"
+            SELECT ur.unit_id
+            FROM unit_residents ur
+            JOIN units u ON u.id = ur.unit_id
+            WHERE ur.user_id = $1
+              AND u.building_id = $2
+              AND ur.end_date IS NULL
+            "#,
+        )
+        .bind(user_id)
+        .bind(building_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        if user_unit_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Get neighbors: same building, different unit, active residents
+        let rows = sqlx::query_as::<_, NeighborRow>(
+            r#"
+            SELECT
+                u.id as user_id,
+                u.name as user_name,
+                u.email as user_email,
+                u.phone as user_phone,
+                u.profile_visibility,
+                u.show_contact_info,
+                un.id as unit_id,
+                un.unit_number,
+                b.name as building_name,
+                ur.resident_type
+            FROM unit_residents ur
+            JOIN users u ON u.id = ur.user_id
+            JOIN units un ON un.id = ur.unit_id
+            JOIN buildings b ON b.id = un.building_id
+            WHERE un.building_id = $1
+              AND ur.user_id != $2
+              AND NOT (ur.unit_id = ANY($3))
+              AND ur.end_date IS NULL
+              AND u.status = 'active'
+            ORDER BY un.unit_number, u.name
+            "#,
+        )
+        .bind(building_id)
+        .bind(user_id)
+        .bind(&user_unit_ids)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Transform to privacy-aware views
+        let neighbors = rows.into_iter().map(|row| row.into_neighbor_view()).collect();
+
+        Ok(neighbors)
+    }
+
+    /// Count neighbors in a building for a user.
+    pub async fn count_neighbors(
+        &self,
+        user_id: Uuid,
+        building_id: Uuid,
+    ) -> Result<i64, SqlxError> {
+        // First find the user's unit(s) in this building
+        let user_unit_ids: Vec<Uuid> = sqlx::query_scalar(
+            r#"
+            SELECT ur.unit_id
+            FROM unit_residents ur
+            JOIN units u ON u.id = ur.unit_id
+            WHERE ur.user_id = $1
+              AND u.building_id = $2
+              AND ur.end_date IS NULL
+            "#,
+        )
+        .bind(user_id)
+        .bind(building_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        if user_unit_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let (count,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(DISTINCT ur.user_id)
+            FROM unit_residents ur
+            JOIN users u ON u.id = ur.user_id
+            JOIN units un ON un.id = ur.unit_id
+            WHERE un.building_id = $1
+              AND ur.user_id != $2
+              AND NOT (ur.unit_id = ANY($3))
+              AND ur.end_date IS NULL
+              AND u.status = 'active'
+            "#,
+        )
+        .bind(building_id)
+        .bind(user_id)
+        .bind(&user_unit_ids)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count)
     }
 }

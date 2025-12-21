@@ -13,6 +13,7 @@ pub mod health;
 pub mod integrations;
 pub mod listings;
 pub mod messaging;
+pub mod neighbors;
 pub mod organizations;
 pub mod rentals;
 pub mod voting;
