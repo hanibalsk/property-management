@@ -5,6 +5,7 @@ pub mod delegation;
 pub mod facility;
 pub mod fault;
 pub mod organization;
+pub mod vote;
 pub mod organization_member;
 pub mod password_reset;
 pub mod person_month;
@@ -34,6 +35,14 @@ pub use fault::{
     CreateFaultTimelineEntry, Fault, FaultAttachment, FaultListQuery, FaultStatistics, FaultSummary,
     FaultTimelineEntry, FaultTimelineEntryWithUser, FaultWithDetails, PriorityCount, ReopenFault,
     ResolveFault, StatusCount, TriageFault, UpdateFault, UpdateFaultStatus,
+};
+pub use vote::{
+    audit_action, question_type, quorum_type, vote_status, CancelVote, CastVote, CreateVote,
+    CreateVoteAuditLog, CreateVoteComment, CreateVoteQuestion, EligibleUnit, HideVoteComment,
+    OptionResult, ParticipationDetail, PublishVote, QuestionOption, QuestionResult, UpdateVote,
+    UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment, VoteCommentWithUser, VoteEligibility,
+    VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData, VoteResponse, VoteResults,
+    VoteSummary, VoteWithDetails,
 };
 pub use organization::{
     CreateOrganization, Organization, OrganizationStatus, OrganizationSummary, UpdateOrganization,

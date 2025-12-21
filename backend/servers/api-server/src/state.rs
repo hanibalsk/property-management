@@ -6,7 +6,7 @@ use db::{
         BuildingRepository, DelegationRepository, FacilityRepository, FaultRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
         PersonMonthRepository, RoleRepository, SessionRepository, UnitRepository,
-        UnitResidentRepository, UserRepository,
+        UnitResidentRepository, UserRepository, VoteRepository,
     },
     DbPool,
 };
@@ -28,6 +28,7 @@ pub struct AppState {
     pub person_month_repo: PersonMonthRepository,
     pub facility_repo: FacilityRepository,
     pub fault_repo: FaultRepository,
+    pub vote_repo: VoteRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -49,6 +50,7 @@ impl AppState {
         let person_month_repo = PersonMonthRepository::new(db.clone());
         let facility_repo = FacilityRepository::new(db.clone());
         let fault_repo = FaultRepository::new(db.clone());
+        let vote_repo = VoteRepository::new(db.clone());
         let auth_service = AuthService::new();
 
         Self {
@@ -66,6 +68,7 @@ impl AppState {
             person_month_repo,
             facility_repo,
             fault_repo,
+            vote_repo,
             auth_service,
             email_service,
             jwt_service,
