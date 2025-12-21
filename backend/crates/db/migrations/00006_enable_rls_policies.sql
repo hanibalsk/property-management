@@ -3,6 +3,8 @@
 
 -- Enable RLS on organization_members (users can only see their own memberships)
 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
+-- Force RLS even for table owner (needed for tests running as postgres user)
+ALTER TABLE organization_members FORCE ROW LEVEL SECURITY;
 
 -- Policy: Users can see their own memberships
 CREATE POLICY organization_members_select_own ON organization_members
@@ -38,6 +40,8 @@ CREATE POLICY organization_members_delete ON organization_members
 
 -- Enable RLS on roles (org-scoped)
 ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
+-- Force RLS even for table owner (needed for tests running as postgres user)
+ALTER TABLE roles FORCE ROW LEVEL SECURITY;
 
 -- Policy: Users can see roles in their org
 CREATE POLICY roles_select ON roles
