@@ -2,11 +2,13 @@
 
 pub mod announcement;
 pub mod building;
+pub mod critical_notification;
 pub mod delegation;
 pub mod document;
 pub mod facility;
 pub mod fault;
 pub mod messaging;
+pub mod notification_preference;
 pub mod organization;
 pub mod organization_member;
 pub mod password_reset;
@@ -29,6 +31,11 @@ pub use announcement::{
 pub use building::{
     building_status, Building, BuildingContact, BuildingStatistics, BuildingSummary,
     CreateBuilding, UpdateBuilding,
+};
+pub use critical_notification::{
+    AcknowledgeCriticalNotificationResponse, CreateCriticalNotificationRequest,
+    CreateCriticalNotificationResponse, CriticalNotification, CriticalNotificationAcknowledgment,
+    CriticalNotificationResponse, CriticalNotificationStats, UnacknowledgedNotificationsResponse,
 };
 pub use delegation::{
     delegation_scope, delegation_status, AcceptDelegation, CreateDelegation, DeclineDelegation,
@@ -58,6 +65,11 @@ pub use messaging::{
     BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,
     MessagePreview, MessageThread, MessageWithSender, MessageWithSenderRow, ParticipantInfo,
     ThreadWithPreview, ThreadWithPreviewRow, UserBlock,
+};
+pub use notification_preference::{
+    DisableAllWarningResponse, NotificationChannel, NotificationPreference,
+    NotificationPreferenceResponse, NotificationPreferencesResponse,
+    UpdateNotificationPreferenceRequest,
 };
 pub use organization::{
     CreateOrganization, Organization, OrganizationStatus, OrganizationSummary, UpdateOrganization,
