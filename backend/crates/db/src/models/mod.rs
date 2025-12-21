@@ -5,6 +5,7 @@ pub mod building;
 pub mod delegation;
 pub mod facility;
 pub mod fault;
+pub mod messaging;
 pub mod organization;
 pub mod organization_member;
 pub mod password_reset;
@@ -76,4 +77,9 @@ pub use announcement::{
     CommentWithAuthorRow, CreateAnnouncement, CreateAnnouncementAttachment, CreateComment,
     DeleteComment, MarkAnnouncementRead, PinAnnouncement, PublishAnnouncement, UpdateAnnouncement,
     UserAcknowledgmentStatus,
+};
+pub use messaging::{
+    BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,
+    MessagePreview, MessageThread, MessageWithSender, MessageWithSenderRow, ParticipantInfo,
+    ThreadWithPreview, ThreadWithPreviewRow, UserBlock,
 };

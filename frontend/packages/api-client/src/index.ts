@@ -11,6 +11,7 @@ export * from './generated';
 
 // Export domain-specific modules
 export * from './announcements';
+export * from './messaging';
 
 // API client configuration
 export interface ApiConfig {

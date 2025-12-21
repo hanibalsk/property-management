@@ -1,0 +1,790 @@
+//! Messaging routes (Epic 6, Story 6.5: Direct Messaging).
+
+use crate::state::AppState;
+use api_core::{AuthUser, TenantExtractor};
+use axum::{
+    extract::{Path, Query, State},
+    http::StatusCode,
+    routing::{delete, get, post},
+    Json, Router,
+};
+use common::errors::ErrorResponse;
+use db::models::{
+    BlockWithUserInfo, CreateBlock, CreateMessage, CreateThread, Message, MessageThread,
+    MessageWithSender, ParticipantInfo, ThreadWithPreview,
+};
+use db::repositories::MessagingRepository;
+use serde::{Deserialize, Serialize};
+use sqlx::Error as SqlxError;
+use utoipa::ToSchema;
+use uuid::Uuid;
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/// Maximum allowed message content length (characters).
+const MAX_MESSAGE_LENGTH: usize = 10_000;
+
+// ============================================================================
+// Response Types
+// ============================================================================
+
+/// Response for thread list.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ThreadListResponse {
+    pub threads: Vec<ThreadWithPreview>,
+    pub count: usize,
+    pub total: i64,
+}
+
+/// Response for thread detail with messages.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ThreadDetailResponse {
+    pub thread: MessageThread,
+    pub other_participant: ParticipantInfo,
+    pub messages: Vec<MessageWithSender>,
+    pub message_count: i64,
+}
+
+/// Response for message creation.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SendMessageResponse {
+    pub message: String,
+    pub sent_message: Message,
+}
+
+/// Response for unread count.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UnreadMessagesResponse {
+    pub unread_count: i64,
+}
+
+/// Response for blocked users list.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct BlockedUsersResponse {
+    pub blocked_users: Vec<BlockWithUserInfo>,
+    pub count: usize,
+}
+
+/// Generic success response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct MessageSuccessResponse {
+    pub message: String,
+}
+
+// ============================================================================
+// Request Types
+// ============================================================================
+
+/// Request for starting a new thread.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct StartThreadRequest {
+    /// The user ID to start a conversation with.
+    pub recipient_id: Uuid,
+    /// Optional initial message.
+    pub initial_message: Option<String>,
+}
+
+/// Request for sending a message.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SendMessageRequest {
+    pub content: String,
+}
+
+/// Query for listing threads.
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, utoipa::IntoParams)]
+pub struct ListThreadsQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+/// Query for listing messages.
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, utoipa::IntoParams)]
+pub struct ListMessagesQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+// ============================================================================
+// Router
+// ============================================================================
+
+/// Create the messaging router.
+pub fn router() -> Router<AppState> {
+    Router::new()
+        // Thread endpoints
+        .route("/threads", get(list_threads))
+        .route("/threads", post(start_thread))
+        .route("/threads/{id}", get(get_thread))
+        .route("/threads/{id}/messages", post(send_message))
+        .route("/threads/{id}/read", post(mark_thread_read))
+        // Block endpoints
+        .route("/users/blocked", get(list_blocked_users))
+        .route("/users/{id}/block", post(block_user))
+        .route("/users/{id}/block", delete(unblock_user))
+        // Stats
+        .route("/unread-count", get(get_unread_count))
+}
+
+// ============================================================================
+// Thread Handlers
+// ============================================================================
+
+/// List message threads for the current user.
+#[utoipa::path(
+    get,
+    path = "/api/v1/messages/threads",
+    params(ListThreadsQuery),
+    responses(
+        (status = 200, description = "Threads retrieved successfully", body = ThreadListResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn list_threads(
+    State(state): State<AppState>,
+    tenant: TenantExtractor,
+    auth_user: AuthUser,
+    Query(query): Query<ListThreadsQuery>,
+) -> Result<Json<ThreadListResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let repo = MessagingRepository::new(state.db.clone());
+
+    let threads = repo
+        .list_threads(
+            auth_user.user_id,
+            tenant.tenant_id,
+            query.limit,
+            query.offset,
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to list threads: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    let total = repo
+        .count_threads(auth_user.user_id, tenant.tenant_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to count threads: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    Ok(Json(ThreadListResponse {
+        count: threads.len(),
+        threads,
+        total,
+    }))
+}
+
+/// Start a new thread or get existing thread with another user.
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages/threads",
+    request_body = StartThreadRequest,
+    responses(
+        (status = 200, description = "Thread created or retrieved", body = ThreadDetailResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 403, description = "User is blocked", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn start_thread(
+    State(state): State<AppState>,
+    tenant: TenantExtractor,
+    auth_user: AuthUser,
+    Json(body): Json<StartThreadRequest>,
+) -> Result<Json<ThreadDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Can't message yourself
+    if body.recipient_id == auth_user.user_id {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_RECIPIENT",
+                "Cannot start a conversation with yourself",
+            )),
+        ));
+    }
+
+    let repo = MessagingRepository::new(state.db.clone());
+
+    // Check if either user has blocked the other
+    let is_blocked = repo
+        .is_blocked(auth_user.user_id, body.recipient_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to check block status: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    if is_blocked {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "USER_BLOCKED",
+                "Cannot message this user",
+            )),
+        ));
+    }
+
+    // Get or create thread
+    let thread = repo
+        .get_or_create_thread(CreateThread {
+            organization_id: tenant.tenant_id,
+            participant_ids: vec![auth_user.user_id, body.recipient_id],
+        })
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to create thread: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    // Send initial message if provided
+    if let Some(content) = body.initial_message {
+        if content.len() > MAX_MESSAGE_LENGTH {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "MESSAGE_TOO_LONG",
+                    format!("Message cannot exceed {} characters", MAX_MESSAGE_LENGTH),
+                )),
+            ));
+        }
+
+        repo.create_message(CreateMessage {
+            thread_id: thread.id,
+            sender_id: auth_user.user_id,
+            content,
+        })
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to send initial message: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+    }
+
+    // Get messages and other participant info
+    let messages = repo
+        .get_thread_messages(thread.id, Some(50), None)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    let message_count = repo.count_thread_messages(thread.id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+        )
+    })?;
+
+    // Get other participant info
+    let other_participant = get_other_participant(&state, &thread, auth_user.user_id).await?;
+
+    Ok(Json(ThreadDetailResponse {
+        thread,
+        other_participant,
+        messages,
+        message_count,
+    }))
+}
+
+/// Get thread details with messages.
+#[utoipa::path(
+    get,
+    path = "/api/v1/messages/threads/{id}",
+    params(
+        ("id" = Uuid, Path, description = "Thread ID"),
+        ListMessagesQuery,
+    ),
+    responses(
+        (status = 200, description = "Thread retrieved successfully", body = ThreadDetailResponse),
+        (status = 403, description = "Not a participant", body = ErrorResponse),
+        (status = 404, description = "Thread not found", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn get_thread(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(id): Path<Uuid>,
+    Query(query): Query<ListMessagesQuery>,
+) -> Result<Json<ThreadDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let repo = MessagingRepository::new(state.db.clone());
+
+    // Get thread
+    let thread = repo.get_thread(id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+        )
+    })?;
+
+    let thread = thread.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Thread not found")),
+        )
+    })?;
+
+    // Check if user is a participant
+    if !thread.participant_ids.contains(&auth_user.user_id) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_PARTICIPANT",
+                "You are not a participant in this thread",
+            )),
+        ));
+    }
+
+    // Get messages
+    let messages = repo
+        .get_thread_messages(id, query.limit, query.offset)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    let message_count = repo.count_thread_messages(id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+        )
+    })?;
+
+    // Get other participant info
+    let other_participant = get_other_participant(&state, &thread, auth_user.user_id).await?;
+
+    // Mark thread as read
+    let _ = repo.mark_thread_read(id, auth_user.user_id).await;
+
+    Ok(Json(ThreadDetailResponse {
+        thread,
+        other_participant,
+        messages,
+        message_count,
+    }))
+}
+
+/// Send a message in a thread.
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages/threads/{id}/messages",
+    params(
+        ("id" = Uuid, Path, description = "Thread ID"),
+    ),
+    request_body = SendMessageRequest,
+    responses(
+        (status = 200, description = "Message sent successfully", body = SendMessageResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 403, description = "Not a participant or blocked", body = ErrorResponse),
+        (status = 404, description = "Thread not found", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn send_message(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(body): Json<SendMessageRequest>,
+) -> Result<Json<SendMessageResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Validate content
+    if body.content.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new("EMPTY_MESSAGE", "Message cannot be empty")),
+        ));
+    }
+
+    if body.content.len() > MAX_MESSAGE_LENGTH {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "MESSAGE_TOO_LONG",
+                format!("Message cannot exceed {} characters", MAX_MESSAGE_LENGTH),
+            )),
+        ));
+    }
+
+    let repo = MessagingRepository::new(state.db.clone());
+
+    // Get thread and verify participation
+    let thread = repo.get_thread(id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+        )
+    })?;
+
+    let thread = thread.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Thread not found")),
+        )
+    })?;
+
+    if !thread.participant_ids.contains(&auth_user.user_id) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_PARTICIPANT",
+                "You are not a participant in this thread",
+            )),
+        ));
+    }
+
+    // Check if blocked
+    let other_user_id = thread
+        .participant_ids
+        .iter()
+        .find(|&&uid| uid != auth_user.user_id)
+        .copied()
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INVALID_THREAD",
+                    "Thread has invalid participants",
+                )),
+            )
+        })?;
+
+    let is_blocked = repo
+        .is_blocked(auth_user.user_id, other_user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    if is_blocked {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "USER_BLOCKED",
+                "Cannot message this user",
+            )),
+        ));
+    }
+
+    // Send message
+    let message = repo
+        .create_message(CreateMessage {
+            thread_id: id,
+            sender_id: auth_user.user_id,
+            content: body.content,
+        })
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to send message: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    Ok(Json(SendMessageResponse {
+        message: "Message sent successfully".to_string(),
+        sent_message: message,
+    }))
+}
+
+/// Mark all messages in a thread as read.
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages/threads/{id}/read",
+    params(
+        ("id" = Uuid, Path, description = "Thread ID"),
+    ),
+    responses(
+        (status = 200, description = "Thread marked as read", body = MessageSuccessResponse),
+        (status = 403, description = "Not a participant", body = ErrorResponse),
+        (status = 404, description = "Thread not found", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn mark_thread_read(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<MessageSuccessResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let repo = MessagingRepository::new(state.db.clone());
+
+    // Check if user is participant
+    let is_participant = repo
+        .is_participant(id, auth_user.user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    if !is_participant {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_PARTICIPANT",
+                "You are not a participant in this thread",
+            )),
+        ));
+    }
+
+    let marked = repo
+        .mark_thread_read(id, auth_user.user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    Ok(Json(MessageSuccessResponse {
+        message: format!("{} messages marked as read", marked),
+    }))
+}
+
+// ============================================================================
+// Block Handlers
+// ============================================================================
+
+/// List blocked users.
+#[utoipa::path(
+    get,
+    path = "/api/v1/messages/users/blocked",
+    responses(
+        (status = 200, description = "Blocked users retrieved", body = BlockedUsersResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn list_blocked_users(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+) -> Result<Json<BlockedUsersResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let repo = MessagingRepository::new(state.db.clone());
+
+    let blocked_users = repo
+        .list_blocked_users(auth_user.user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    Ok(Json(BlockedUsersResponse {
+        count: blocked_users.len(),
+        blocked_users,
+    }))
+}
+
+/// Block a user.
+#[utoipa::path(
+    post,
+    path = "/api/v1/messages/users/{id}/block",
+    params(
+        ("id" = Uuid, Path, description = "User ID to block"),
+    ),
+    responses(
+        (status = 200, description = "User blocked", body = MessageSuccessResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn block_user(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(user_id): Path<Uuid>,
+) -> Result<Json<MessageSuccessResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Can't block yourself
+    if user_id == auth_user.user_id {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_BLOCK",
+                "Cannot block yourself",
+            )),
+        ));
+    }
+
+    let repo = MessagingRepository::new(state.db.clone());
+
+    repo.block_user(CreateBlock {
+        blocker_id: auth_user.user_id,
+        blocked_id: user_id,
+    })
+    .await
+    .map_err(|e| match e {
+        SqlxError::Protocol(msg) if msg.contains("already blocked") => (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new("ALREADY_BLOCKED", msg)),
+        ),
+        _ => {
+            tracing::error!("Failed to block user: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        }
+    })?;
+
+    Ok(Json(MessageSuccessResponse {
+        message: "User blocked successfully".to_string(),
+    }))
+}
+
+/// Unblock a user.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/messages/users/{id}/block",
+    params(
+        ("id" = Uuid, Path, description = "User ID to unblock"),
+    ),
+    responses(
+        (status = 200, description = "User unblocked", body = MessageSuccessResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn unblock_user(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(user_id): Path<Uuid>,
+) -> Result<Json<MessageSuccessResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let repo = MessagingRepository::new(state.db.clone());
+
+    repo.unblock_user(auth_user.user_id, user_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to unblock user: {:?}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    Ok(Json(MessageSuccessResponse {
+        message: "User unblocked successfully".to_string(),
+    }))
+}
+
+// ============================================================================
+// Stats Handlers
+// ============================================================================
+
+/// Get unread message count.
+#[utoipa::path(
+    get,
+    path = "/api/v1/messages/unread-count",
+    responses(
+        (status = 200, description = "Unread count retrieved", body = UnreadMessagesResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "messaging"
+)]
+async fn get_unread_count(
+    State(state): State<AppState>,
+    tenant: TenantExtractor,
+    auth_user: AuthUser,
+) -> Result<Json<UnreadMessagesResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let repo = MessagingRepository::new(state.db.clone());
+
+    let unread_count = repo
+        .count_unread(auth_user.user_id, tenant.tenant_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    Ok(Json(UnreadMessagesResponse { unread_count }))
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Get the other participant's info from a thread.
+async fn get_other_participant(
+    state: &AppState,
+    thread: &MessageThread,
+    current_user_id: Uuid,
+) -> Result<ParticipantInfo, (StatusCode, Json<ErrorResponse>)> {
+    let other_user_id = thread
+        .participant_ids
+        .iter()
+        .find(|&&uid| uid != current_user_id)
+        .copied()
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INVALID_THREAD",
+                    "Thread has invalid participants",
+                )),
+            )
+        })?;
+
+    // Get user info
+    let user = sqlx::query_as::<_, (Uuid, String, String, String)>(
+        r#"
+        SELECT id, first_name, last_name, email FROM users WHERE id = $1
+        "#,
+    )
+    .bind(other_user_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+        )
+    })?;
+
+    let (id, first_name, last_name, email) = user.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("USER_NOT_FOUND", "Participant not found")),
+        )
+    })?;
+
+    Ok(ParticipantInfo {
+        id,
+        first_name,
+        last_name,
+        email,
+    })
+}
