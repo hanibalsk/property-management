@@ -23,8 +23,10 @@ impl TestDb {
         let database_url = std::env::var("TEST_DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/ppt_test".to_string());
 
+        // Use a single connection to ensure session variables (RLS context)
+        // are consistent across all queries in a test
         let pool = PgPoolOptions::new()
-            .max_connections(5)
+            .max_connections(1)
             .acquire_timeout(Duration::from_secs(5))
             .connect(&database_url)
             .await?;
