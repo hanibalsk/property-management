@@ -9,7 +9,7 @@
 //! 3. Context manipulation tests - Ensure session variables cannot be spoofed
 //! 4. Null context tests - Verify behavior when no tenant context is set
 
-use sqlx::{postgres::PgPoolOptions, Acquire, Executor, PgPool, Row};
+use sqlx::{postgres::PgPoolOptions, PgPool, Row};
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -240,18 +240,39 @@ async fn test_cross_tenant_org_isolation() {
     .fetch_one(&mut *conn)
     .await
     .unwrap();
+
+    // Debug: check database user and superuser status
+    let db_user: String = sqlx::query_scalar("SELECT current_user::text")
+        .fetch_one(&mut *conn)
+        .await
+        .unwrap();
+    let is_superuser: bool =
+        sqlx::query_scalar("SELECT usesuper FROM pg_user WHERE usename = current_user")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+
     println!(
-        "DEBUG: is_super_admin={}, current_user_id={:?}, expected user_a_id={}",
-        is_admin, current_uid, user_a_id
+        "DEBUG: db_user={}, is_superuser={}, is_super_admin={}, current_user_id={:?}",
+        db_user, is_superuser, is_admin, current_uid
     );
     println!(
         "DEBUG: RLS enabled={}, FORCE RLS={}",
         rls_info.0, rls_info.1
     );
 
-    // List all policies on the table
-    let policies: Vec<(String, String)> = sqlx::query_as(
-        r#"SELECT polname::text, polcmd::text
+    // Check if role has BYPASSRLS
+    let has_bypassrls: bool = sqlx::query_scalar(
+        "SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user",
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .unwrap();
+    println!("DEBUG: has_bypassrls={}", has_bypassrls);
+
+    // List all policies on the table with their expressions
+    let policies: Vec<(String, String, Option<String>)> = sqlx::query_as(
+        r#"SELECT polname::text, polcmd::text, pg_get_expr(polqual, polrelid)::text
            FROM pg_policy
            WHERE polrelid = 'organization_members'::regclass"#,
     )
@@ -259,8 +280,8 @@ async fn test_cross_tenant_org_isolation() {
     .await
     .unwrap();
     println!("DEBUG: Policies on organization_members:");
-    for (name, cmd) in &policies {
-        println!("  - {} ({})", name, cmd);
+    for (name, cmd, expr) in &policies {
+        println!("  - {} ({}) -> {:?}", name, cmd, expr);
     }
 
     // Debug: check what the policy condition evaluates to
