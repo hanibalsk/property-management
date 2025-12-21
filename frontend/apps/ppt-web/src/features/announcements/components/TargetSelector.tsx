@@ -134,7 +134,7 @@ export function TargetSelector({
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
+      <span className="block text-sm font-medium text-gray-700 mb-2">Target Audience</span>
 
       <div className="flex flex-wrap gap-2 mb-3">
         {(['all', 'building', 'units', 'roles'] as const).map((type) => (

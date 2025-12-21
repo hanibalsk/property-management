@@ -45,7 +45,8 @@ export function AnnouncementCard({
           <div className="flex items-center gap-2">
             {announcement.pinned && (
               <span className="text-amber-500" title="Pinned">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-label="Pinned">
+                  <title>Pinned</title>
                   <path d="M9.828.722a.5.5 0 01.354 0l7 3A.5.5 0 0117.5 4v1.5a.5.5 0 01-.5.5h-1v4.5a.5.5 0 01-.5.5H13v5.5a.5.5 0 01-.5.5h-5a.5.5 0 01-.5-.5V11H4.5a.5.5 0 01-.5-.5V6h-1a.5.5 0 01-.5-.5V4a.5.5 0 01.328-.472l7-3z" />
                 </svg>
               </span>

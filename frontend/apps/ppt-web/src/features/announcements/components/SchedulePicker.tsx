@@ -40,11 +40,12 @@ export function SchedulePicker({ scheduledAt, onScheduleChange }: SchedulePicker
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label htmlFor="schedule-picker" className="block text-sm font-medium text-gray-700 mb-2">
         Schedule for Later (Optional)
       </label>
       <div className="flex items-center gap-3">
         <input
+          id="schedule-picker"
           type="datetime-local"
           value={formatForInput(scheduledAt)}
           onChange={(e) => handleDateChange(e.target.value)}

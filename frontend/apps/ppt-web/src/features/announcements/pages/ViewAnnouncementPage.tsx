@@ -62,7 +62,7 @@ export function ViewAnnouncementPage({
         onClick={onBack}
         className="mb-4 text-blue-600 hover:text-blue-800 flex items-center gap-1"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Back to Announcements
@@ -76,7 +76,8 @@ export function ViewAnnouncementPage({
               <div className="flex items-center gap-2 mb-2">
                 {announcement.pinned && (
                   <span className="text-amber-500" title="Pinned">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-label="Pinned">
+                      <title>Pinned</title>
                       <path d="M9.828.722a.5.5 0 01.354 0l7 3A.5.5 0 0117.5 4v1.5a.5.5 0 01-.5.5h-1v4.5a.5.5 0 01-.5.5H13v5.5a.5.5 0 01-.5.5h-5a.5.5 0 01-.5-.5V11H4.5a.5.5 0 01-.5-.5V6h-1a.5.5 0 01-.5-.5V4a.5.5 0 01.328-.472l7-3z" />
                     </svg>
                   </span>
@@ -132,7 +133,7 @@ export function ViewAnnouncementPage({
             <ul className="space-y-2">
               {attachments.map((attachment) => (
                 <li key={attachment.id} className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                   </svg>
                   <span className="text-blue-600 hover:underline cursor-pointer">
