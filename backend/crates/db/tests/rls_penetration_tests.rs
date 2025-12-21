@@ -221,105 +221,11 @@ async fn test_cross_tenant_org_isolation() {
         .await
         .unwrap();
 
-    // Debug: check session variables on the SAME connection
-    let is_admin: bool = sqlx::query_scalar("SELECT is_super_admin()")
-        .fetch_one(&mut *conn)
-        .await
-        .unwrap();
-    let current_uid: Option<String> =
-        sqlx::query_scalar("SELECT current_setting('app.current_user_id', TRUE)")
-            .fetch_one(&mut *conn)
-            .await
-            .unwrap();
-
-    // Debug: check RLS status on the table
-    let rls_info: (bool, bool) = sqlx::query_as(
-        r#"SELECT relrowsecurity, relforcerowsecurity
-           FROM pg_class WHERE relname = 'organization_members'"#,
-    )
-    .fetch_one(&mut *conn)
-    .await
-    .unwrap();
-
-    // Debug: check database user and superuser status
-    let db_user: String = sqlx::query_scalar("SELECT current_user::text")
-        .fetch_one(&mut *conn)
-        .await
-        .unwrap();
-    let is_superuser: bool =
-        sqlx::query_scalar("SELECT usesuper FROM pg_user WHERE usename = current_user")
-            .fetch_one(&mut *conn)
-            .await
-            .unwrap();
-
-    println!(
-        "DEBUG: db_user={}, is_superuser={}, is_super_admin={}, current_user_id={:?}",
-        db_user, is_superuser, is_admin, current_uid
-    );
-    println!(
-        "DEBUG: RLS enabled={}, FORCE RLS={}",
-        rls_info.0, rls_info.1
-    );
-
-    // Check if role has BYPASSRLS
-    let has_bypassrls: bool =
-        sqlx::query_scalar("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")
-            .fetch_one(&mut *conn)
-            .await
-            .unwrap();
-    println!("DEBUG: has_bypassrls={}", has_bypassrls);
-
-    // List all policies on the table with their expressions
-    let policies: Vec<(String, String, Option<String>)> = sqlx::query_as(
-        r#"SELECT polname::text, polcmd::text, pg_get_expr(polqual, polrelid)::text
-           FROM pg_policy
-           WHERE polrelid = 'organization_members'::regclass"#,
-    )
-    .fetch_all(&mut *conn)
-    .await
-    .unwrap();
-    println!("DEBUG: Policies on organization_members:");
-    for (name, cmd, expr) in &policies {
-        println!("  - {} ({}) -> {:?}", name, cmd, expr);
-    }
-
-    // Debug: check what the policy condition evaluates to
-    let policy_check: Vec<(Uuid, Uuid, bool, bool)> = sqlx::query_as(
-        r#"SELECT
-            organization_id,
-            user_id,
-            user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID as user_match,
-            is_super_admin() as is_admin
-           FROM organization_members"#,
-    )
-    .fetch_all(&mut *conn)
-    .await
-    .unwrap();
-    for row in &policy_check {
-        println!(
-            "DEBUG: Policy check - org_id={}, user_id={}, user_match={}, is_admin={}",
-            row.0, row.1, row.2, row.3
-        );
-    }
-
     // User A should only see Org A members (on the same connection)
     let members: Vec<_> = sqlx::query("SELECT * FROM organization_members")
         .fetch_all(&mut *conn)
         .await
         .unwrap();
-
-    // Debug: print what we're seeing
-    println!(
-        "DEBUG: User A sees {} members, org_a_id={}, org_b_id={}",
-        members.len(),
-        org_a_id,
-        org_b_id
-    );
-    for m in &members {
-        let oid: Uuid = m.get("organization_id");
-        let uid: Uuid = m.get("user_id");
-        println!("  Member: org_id={}, user_id={}", oid, uid);
-    }
 
     // With RLS, User A should only see their own membership
     assert!(
