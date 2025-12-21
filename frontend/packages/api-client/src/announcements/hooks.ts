@@ -131,7 +131,7 @@ export const createAnnouncementHooks = (api: AnnouncementsApi) => ({
     const queryClient = useQueryClient();
     return useMutation({
       mutationFn: (id: string) => api.publish(id),
-      onSuccess: (_, id) => {
+      onSuccess: (_data: unknown, id: string) => {
         queryClient.invalidateQueries({ queryKey: announcementKeys.detail(id) });
         queryClient.invalidateQueries({ queryKey: announcementKeys.lists() });
         queryClient.invalidateQueries({ queryKey: announcementKeys.published() });
@@ -163,7 +163,7 @@ export const createAnnouncementHooks = (api: AnnouncementsApi) => ({
     const queryClient = useQueryClient();
     return useMutation({
       mutationFn: (id: string) => api.archive(id),
-      onSuccess: (_, id) => {
+      onSuccess: (_data: unknown, id: string) => {
         queryClient.invalidateQueries({ queryKey: announcementKeys.detail(id) });
         queryClient.invalidateQueries({ queryKey: announcementKeys.lists() });
         queryClient.invalidateQueries({ queryKey: announcementKeys.published() });
@@ -224,7 +224,7 @@ export const createAnnouncementHooks = (api: AnnouncementsApi) => ({
     const queryClient = useQueryClient();
     return useMutation({
       mutationFn: (id: string) => api.markRead(id),
-      onSuccess: (_, id) => {
+      onSuccess: (_data: unknown, id: string) => {
         queryClient.invalidateQueries({ queryKey: announcementKeys.detail(id) });
         queryClient.invalidateQueries({ queryKey: announcementKeys.unreadCount() });
       },
@@ -238,7 +238,7 @@ export const createAnnouncementHooks = (api: AnnouncementsApi) => ({
     const queryClient = useQueryClient();
     return useMutation({
       mutationFn: (id: string) => api.acknowledge(id),
-      onSuccess: (_, id) => {
+      onSuccess: (_data: unknown, id: string) => {
         queryClient.invalidateQueries({ queryKey: announcementKeys.detail(id) });
         queryClient.invalidateQueries({ queryKey: announcementKeys.acknowledgments(id) });
       },

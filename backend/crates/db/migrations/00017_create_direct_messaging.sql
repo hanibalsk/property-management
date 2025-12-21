@@ -124,13 +124,13 @@ CREATE TRIGGER trigger_update_thread_last_message
 CREATE TRIGGER trigger_message_threads_updated_at
     BEFORE UPDATE ON message_threads
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at();
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- Update updated_at on messages changes
 CREATE TRIGGER trigger_messages_updated_at
     BEFORE UPDATE ON messages
     FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at();
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
 -- ROW LEVEL SECURITY

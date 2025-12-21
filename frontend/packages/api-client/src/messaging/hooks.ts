@@ -98,7 +98,7 @@ export const createMessagingHooks = (api: MessagingApi) => ({
     const queryClient = useQueryClient();
     return useMutation({
       mutationFn: (threadId: string) => api.markThreadRead(threadId),
-      onSuccess: (_, threadId) => {
+      onSuccess: (_data: unknown, threadId: string) => {
         queryClient.invalidateQueries({ queryKey: messagingKeys.threadDetail(threadId) });
         queryClient.invalidateQueries({ queryKey: messagingKeys.threads() });
         queryClient.invalidateQueries({ queryKey: messagingKeys.unreadCount() });
