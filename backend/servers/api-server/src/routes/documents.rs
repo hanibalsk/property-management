@@ -348,7 +348,7 @@ async fn create_document(
             Json(ErrorResponse::new(
                 "UNSUPPORTED_FILE_TYPE",
                 format!(
-                    "File type '{}' is not supported. Allowed types: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG, GIF, TXT",
+                    "File type '{}' is not supported. Allowed types: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG, GIF, WEBP, TXT",
                     req.mime_type
                 ),
             )),
@@ -1262,6 +1262,44 @@ async fn update_folder(
                     ),
                 )),
             ));
+        }
+    }
+
+    // Validate parent_id to prevent circular references
+    if let Some(new_parent_id) = req.parent_id {
+        // Cannot set a folder as its own parent
+        if new_parent_id == id {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "CIRCULAR_REFERENCE",
+                    "A folder cannot be its own parent",
+                )),
+            ));
+        }
+
+        // Check that new parent is not a descendant of this folder
+        match state.document_repo.is_descendant_of(new_parent_id, id).await {
+            Ok(true) => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse::new(
+                        "CIRCULAR_REFERENCE",
+                        "Cannot move a folder into one of its descendants",
+                    )),
+                ));
+            }
+            Ok(false) => {}
+            Err(e) => {
+                tracing::error!("Failed to check folder hierarchy: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "INTERNAL_ERROR",
+                        "Failed to validate folder hierarchy",
+                    )),
+                ));
+            }
         }
     }
 

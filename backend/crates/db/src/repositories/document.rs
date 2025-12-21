@@ -179,6 +179,29 @@ impl DocumentRepository {
         .await
     }
 
+    /// Check if a folder is a descendant of another folder.
+    /// Used to prevent circular references when updating parent_id.
+    pub async fn is_descendant_of(&self, folder_id: Uuid, potential_ancestor_id: Uuid) -> Result<bool, SqlxError> {
+        let row = sqlx::query(
+            r#"
+            WITH RECURSIVE ancestors AS (
+                SELECT id, parent_id FROM document_folders WHERE id = $1
+                UNION ALL
+                SELECT f.id, f.parent_id FROM document_folders f
+                JOIN ancestors a ON f.id = a.parent_id
+                WHERE f.deleted_at IS NULL
+            )
+            SELECT EXISTS(SELECT 1 FROM ancestors WHERE id = $2) as is_descendant
+            "#,
+        )
+        .bind(folder_id)
+        .bind(potential_ancestor_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.get("is_descendant"))
+    }
+
     /// Delete a folder (soft delete).
     pub async fn delete_folder(&self, id: Uuid, cascade: bool) -> Result<(), SqlxError> {
         if cascade {
@@ -683,10 +706,10 @@ impl DocumentRepository {
             None
         };
 
-        let password_hash = data
-            .password
-            .as_ref()
-            .map(|password| hash_password(password));
+        let password_hash = match data.password.as_ref() {
+            Some(password) => Some(hash_password(password)?),
+            None => None,
+        };
 
         sqlx::query_as::<_, DocumentShare>(
             r#"
@@ -927,7 +950,7 @@ fn generate_share_token() -> String {
 }
 
 /// Hash a password using Argon2.
-fn hash_password(password: &str) -> String {
+fn hash_password(password: &str) -> Result<String, SqlxError> {
     use argon2::{
         password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
         Argon2,
@@ -936,8 +959,11 @@ fn hash_password(password: &str) -> String {
     let argon2 = Argon2::default();
     argon2
         .hash_password(password.as_bytes(), &salt)
-        .expect("Failed to hash password")
-        .to_string()
+        .map(|h| h.to_string())
+        .map_err(|e| {
+            tracing::error!("Failed to hash password: {}", e);
+            SqlxError::Protocol("Password hashing failed".to_string())
+        })
 }
 
 /// Verify a password against a hash.
