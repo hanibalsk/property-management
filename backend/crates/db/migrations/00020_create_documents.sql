@@ -189,15 +189,15 @@ CREATE POLICY access_log_tenant_isolation ON document_share_access_log
 -- Trigger for updated_at
 -- ============================================================================
 
-CREATE TRIGGER set_documents_updated_at
+CREATE TRIGGER update_documents_updated_at
     BEFORE UPDATE ON documents
     FOR EACH ROW
-    EXECUTE FUNCTION trigger_set_updated_at();
+    EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER set_document_folders_updated_at
+CREATE TRIGGER update_document_folders_updated_at
     BEFORE UPDATE ON document_folders
     FOR EACH ROW
-    EXECUTE FUNCTION trigger_set_updated_at();
+    EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
 -- Function to check folder depth (max 5 levels)
