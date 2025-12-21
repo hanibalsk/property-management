@@ -1,12 +1,12 @@
 import type {
+  Announcement,
   AnnouncementTargetType,
   CreateAnnouncementRequest,
   UpdateAnnouncementRequest,
-  Announcement,
 } from '@ppt/api-client';
-import { useState, useEffect } from 'react';
-import { TargetSelector } from './TargetSelector';
+import { useEffect, useState } from 'react';
 import { SchedulePicker } from './SchedulePicker';
+import { TargetSelector } from './TargetSelector';
 
 interface AnnouncementFormProps {
   announcement?: Announcement;
@@ -32,9 +32,7 @@ export function AnnouncementForm({
   const [targetType, setTargetType] = useState<AnnouncementTargetType>(
     announcement?.targetType ?? 'all'
   );
-  const [targetIds, setTargetIds] = useState<string[]>(
-    (announcement?.targetIds as string[]) ?? []
-  );
+  const [targetIds, setTargetIds] = useState<string[]>((announcement?.targetIds as string[]) ?? []);
   const [scheduledAt, setScheduledAt] = useState<string | undefined>(
     announcement?.scheduledAt ?? undefined
   );

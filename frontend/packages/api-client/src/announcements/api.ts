@@ -6,12 +6,13 @@
 
 import type { ApiConfig } from '../index';
 import type {
+  AcknowledgmentStatsResponse,
+  AddAttachmentRequest,
   Announcement,
   AnnouncementAttachment,
   AnnouncementStatistics,
   AnnouncementSummary,
   AnnouncementWithDetails,
-  AddAttachmentRequest,
   CreateAnnouncementRequest,
   ListAnnouncementsParams,
   PaginatedResponse,
@@ -42,7 +43,9 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
     /**
      * List announcements with filters (managers)
      */
-    list: async (params?: ListAnnouncementsParams): Promise<PaginatedResponse<AnnouncementSummary>> => {
+    list: async (
+      params?: ListAnnouncementsParams
+    ): Promise<PaginatedResponse<AnnouncementSummary>> => {
       const searchParams = new URLSearchParams();
       if (params?.page) searchParams.set('page', params.page.toString());
       if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
@@ -61,12 +64,16 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
     /**
      * List published announcements (all users)
      */
-    listPublished: async (params?: { page?: number; pageSize?: number }): Promise<PaginatedResponse<AnnouncementSummary>> => {
+    listPublished: async (params?: { page?: number; pageSize?: number }): Promise<
+      PaginatedResponse<AnnouncementSummary>
+    > => {
       const searchParams = new URLSearchParams();
       if (params?.page) searchParams.set('page', params.page.toString());
       if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
 
-      const url = searchParams.toString() ? `${baseUrl}/published?${searchParams}` : `${baseUrl}/published`;
+      const url = searchParams.toString()
+        ? `${baseUrl}/published?${searchParams}`
+        : `${baseUrl}/published`;
       const response = await fetch(url, { headers });
       return handleResponse(response);
     },
@@ -86,7 +93,12 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
     /**
      * Get announcement details
      */
-    get: async (id: string): Promise<{ announcement: AnnouncementWithDetails; attachments: AnnouncementAttachment[] }> => {
+    get: async (
+      id: string
+    ): Promise<{
+      announcement: AnnouncementWithDetails;
+      attachments: AnnouncementAttachment[];
+    }> => {
       const response = await fetch(`${baseUrl}/${id}`, { headers });
       return handleResponse(response);
     },
@@ -94,7 +106,10 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
     /**
      * Update an announcement (draft/scheduled only)
      */
-    update: async (id: string, data: UpdateAnnouncementRequest): Promise<{ message: string; announcement: Announcement }> => {
+    update: async (
+      id: string,
+      data: UpdateAnnouncementRequest
+    ): Promise<{ message: string; announcement: Announcement }> => {
       const response = await fetch(`${baseUrl}/${id}`, {
         method: 'PUT',
         headers,
@@ -131,7 +146,10 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
     /**
      * Schedule an announcement for future publishing
      */
-    schedule: async (id: string, data: ScheduleAnnouncementRequest): Promise<{ message: string; announcement: Announcement }> => {
+    schedule: async (
+      id: string,
+      data: ScheduleAnnouncementRequest
+    ): Promise<{ message: string; announcement: Announcement }> => {
       const response = await fetch(`${baseUrl}/${id}/schedule`, {
         method: 'POST',
         headers,
@@ -154,7 +172,10 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
     /**
      * Pin or unpin an announcement
      */
-    pin: async (id: string, data: PinAnnouncementRequest): Promise<{ message: string; announcement: Announcement }> => {
+    pin: async (
+      id: string,
+      data: PinAnnouncementRequest
+    ): Promise<{ message: string; announcement: Announcement }> => {
       const response = await fetch(`${baseUrl}/${id}/pin`, {
         method: 'POST',
         headers,
@@ -174,7 +195,10 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
     /**
      * Add an attachment to an announcement
      */
-    addAttachment: async (id: string, data: AddAttachmentRequest): Promise<AnnouncementAttachment> => {
+    addAttachment: async (
+      id: string,
+      data: AddAttachmentRequest
+    ): Promise<AnnouncementAttachment> => {
       const response = await fetch(`${baseUrl}/${id}/attachments`, {
         method: 'POST',
         headers,
@@ -238,6 +262,14 @@ export const createAnnouncementsApi = (config: ApiConfig) => {
      */
     getUnreadCount: async (): Promise<{ unreadCount: number }> => {
       const response = await fetch(`${baseUrl}/unread-count`, { headers });
+      return handleResponse(response);
+    },
+
+    /**
+     * Get acknowledgment statistics for an announcement (Story 6.2)
+     */
+    getAcknowledgmentStats: async (id: string): Promise<AcknowledgmentStatsResponse> => {
+      const response = await fetch(`${baseUrl}/${id}/acknowledgments`, { headers });
       return handleResponse(response);
     },
   };

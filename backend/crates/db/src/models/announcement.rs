@@ -223,3 +223,22 @@ pub struct AnnouncementStatistics {
     pub scheduled: i64,
     pub archived: i64,
 }
+
+/// Acknowledgment statistics for a single announcement (Story 6.2).
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct AcknowledgmentStats {
+    pub announcement_id: Uuid,
+    pub total_targeted: i64,
+    pub read_count: i64,
+    pub acknowledged_count: i64,
+    pub pending_count: i64,
+}
+
+/// Individual user's acknowledgment status for an announcement (Story 6.2).
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct UserAcknowledgmentStatus {
+    pub user_id: Uuid,
+    pub user_name: String,
+    pub read_at: Option<DateTime<Utc>>,
+    pub acknowledged_at: Option<DateTime<Utc>>,
+}

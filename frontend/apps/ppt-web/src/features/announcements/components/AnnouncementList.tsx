@@ -1,4 +1,8 @@
-import type { AnnouncementSummary, AnnouncementStatus, AnnouncementTargetType } from '@ppt/api-client';
+import type {
+  AnnouncementStatus,
+  AnnouncementSummary,
+  AnnouncementTargetType,
+} from '@ppt/api-client';
 import { useState } from 'react';
 import { AnnouncementCard } from './AnnouncementCard';
 

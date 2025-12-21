@@ -11,9 +11,9 @@ use axum::{
 use chrono::{DateTime, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    target_type, Announcement, AnnouncementAttachment, AnnouncementListQuery,
+    target_type, AcknowledgmentStats, Announcement, AnnouncementAttachment, AnnouncementListQuery,
     AnnouncementStatistics, AnnouncementSummary, AnnouncementWithDetails, CreateAnnouncement,
-    CreateAnnouncementAttachment, UpdateAnnouncement,
+    CreateAnnouncementAttachment, UpdateAnnouncement, UserAcknowledgmentStatus,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Error as SqlxError;
@@ -81,6 +81,19 @@ pub struct StatisticsResponse {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct UnreadCountResponse {
     pub unread_count: i64,
+}
+
+/// Response for acknowledgment statistics (Story 6.2).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AcknowledgmentStatsResponse {
+    pub stats: AcknowledgmentStats,
+}
+
+/// Response for acknowledgment list (Story 6.2).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AcknowledgmentListResponse {
+    pub users: Vec<UserAcknowledgmentStatus>,
+    pub count: usize,
 }
 
 // ============================================================================
@@ -169,9 +182,10 @@ pub fn router() -> Router<AppState> {
         .route("/{id}/attachments", get(list_attachments))
         .route("/{id}/attachments", post(add_attachment))
         .route("/{id}/attachments/{attachment_id}", delete(delete_attachment))
-        // Read/Acknowledge
+        // Read/Acknowledge (Story 6.2)
         .route("/{id}/read", post(mark_read))
         .route("/{id}/acknowledge", post(acknowledge))
+        .route("/{id}/acknowledgments", get(get_acknowledgments))
         // Statistics
         .route("/statistics", get(get_statistics))
         .route("/unread-count", get(get_unread_count))
@@ -1248,6 +1262,85 @@ async fn get_unread_count(
                 Json(ErrorResponse::new(
                     "INTERNAL_ERROR",
                     "Failed to get unread count",
+                )),
+            ))
+        }
+    }
+}
+
+/// Query for acknowledgment list pagination.
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, utoipa::IntoParams)]
+pub struct AcknowledgmentListQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+/// Get acknowledgment statistics and list for an announcement (Story 6.2).
+///
+/// Requires manager-level role.
+#[utoipa::path(
+    get,
+    path = "/api/v1/announcements/{id}/acknowledgments",
+    params(
+        ("id" = Uuid, Path, description = "Announcement ID"),
+        AcknowledgmentListQuery
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Acknowledgment stats and list", body = AcknowledgmentStatsResponse),
+        (status = 403, description = "Forbidden - requires manager role", body = ErrorResponse),
+        (status = 404, description = "Announcement not found", body = ErrorResponse),
+    ),
+    tag = "Announcements"
+)]
+async fn get_acknowledgments(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+    Query(_query): Query<AcknowledgmentListQuery>,
+) -> Result<Json<AcknowledgmentStatsResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Authorization: require manager-level role
+    if !tenant.role.is_manager() {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "Only managers can view acknowledgment statistics",
+            )),
+        ));
+    }
+
+    // Check announcement exists
+    match state.announcement_repo.find_by_id(id).await {
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find announcement: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find announcement",
+                )),
+            ));
+        }
+        Ok(Some(_)) => {}
+    }
+
+    match state.announcement_repo.get_acknowledgment_stats(id).await {
+        Ok(stats) => Ok(Json(AcknowledgmentStatsResponse { stats })),
+        Err(e) => {
+            tracing::error!("Failed to get acknowledgment stats: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get acknowledgment statistics",
                 )),
             ))
         }

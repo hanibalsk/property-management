@@ -25,11 +25,11 @@ epics:
 development_status:
   # Epic 6: Announcements & Communication
   6-1-announcement-creation-targeting: review
-  6-2-announcement-viewing-acknowledgment: backlog
-  6-3-announcement-comments-discussion: backlog
-  6-4-pinned-announcements: backlog
-  6-5-direct-messaging: backlog
-  6-6-neighbor-information: backlog
+  6-2-announcement-viewing-acknowledgment: ready-for-dev
+  6-3-announcement-comments-discussion: ready-for-dev
+  6-4-pinned-announcements: ready-for-dev
+  6-5-direct-messaging: ready-for-dev
+  6-6-neighbor-information: ready-for-dev
 
 # Notes and blockers
 notes:

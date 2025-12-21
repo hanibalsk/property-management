@@ -1,7 +1,11 @@
-import type { AnnouncementStatus, AnnouncementTargetType, ListAnnouncementsParams } from '@ppt/api-client';
+import type {
+  AnnouncementStatus,
+  AnnouncementTargetType,
+  ListAnnouncementsParams,
+} from '@ppt/api-client';
+import type { AnnouncementSummary } from '@ppt/api-client';
 import { useState } from 'react';
 import { AnnouncementList } from '../components/AnnouncementList';
-import type { AnnouncementSummary } from '@ppt/api-client';
 
 interface AnnouncementsPageProps {
   announcements: AnnouncementSummary[];

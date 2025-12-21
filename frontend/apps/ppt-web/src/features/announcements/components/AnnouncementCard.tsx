@@ -1,4 +1,4 @@
-import type { AnnouncementSummary, AnnouncementStatus } from '@ppt/api-client';
+import type { AnnouncementStatus, AnnouncementSummary } from '@ppt/api-client';
 
 interface AnnouncementCardProps {
   announcement: AnnouncementSummary;
@@ -45,7 +45,12 @@ export function AnnouncementCard({
           <div className="flex items-center gap-2">
             {announcement.pinned && (
               <span className="text-amber-500" title="Pinned">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-label="Pinned">
+                <svg
+                  className="w-4 h-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-label="Pinned"
+                >
                   <title>Pinned</title>
                   <path d="M9.828.722a.5.5 0 01.354 0l7 3A.5.5 0 0117.5 4v1.5a.5.5 0 01-.5.5h-1v4.5a.5.5 0 01-.5.5H13v5.5a.5.5 0 01-.5.5h-5a.5.5 0 01-.5-.5V11H4.5a.5.5 0 01-.5-.5V6h-1a.5.5 0 01-.5-.5V4a.5.5 0 01.328-.472l7-3z" />
                 </svg>
@@ -54,7 +59,9 @@ export function AnnouncementCard({
             <h3 className="text-lg font-semibold text-gray-900">{announcement.title}</h3>
           </div>
           <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <span className={`px-2 py-1 text-xs font-medium rounded ${statusColors[announcement.status]}`}>
+            <span
+              className={`px-2 py-1 text-xs font-medium rounded ${statusColors[announcement.status]}`}
+            >
               {announcement.status.charAt(0).toUpperCase() + announcement.status.slice(1)}
             </span>
             <span className="text-xs text-gray-500">

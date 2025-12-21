@@ -117,3 +117,41 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   totalPages: number;
 }
+
+// Story 6.2: Announcement Viewing & Acknowledgment
+
+export interface AnnouncementRead {
+  id: string;
+  announcementId: string;
+  userId: string;
+  readAt: string;
+  acknowledgedAt?: string;
+}
+
+export interface UnreadCountResponse {
+  unreadCount: number;
+}
+
+export interface AcknowledgmentStats {
+  announcementId: string;
+  totalTargeted: number;
+  readCount: number;
+  acknowledgedCount: number;
+  pendingCount: number;
+}
+
+export interface UserAcknowledgmentStatus {
+  userId: string;
+  userName: string;
+  readAt?: string;
+  acknowledgedAt?: string;
+}
+
+export interface AcknowledgmentStatsResponse {
+  stats: AcknowledgmentStats;
+}
+
+export interface AcknowledgmentListResponse {
+  users: UserAcknowledgmentStatus[];
+  count: number;
+}

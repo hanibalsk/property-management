@@ -1,5 +1,5 @@
 import type { AnnouncementTargetType } from '@ppt/api-client';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface TargetSelectorProps {
   targetType: AnnouncementTargetType;

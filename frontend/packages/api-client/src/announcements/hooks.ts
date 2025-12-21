@@ -24,6 +24,7 @@ export const announcementKeys = {
   details: () => [...announcementKeys.all, 'detail'] as const,
   detail: (id: string) => [...announcementKeys.details(), id] as const,
   attachments: (id: string) => [...announcementKeys.detail(id), 'attachments'] as const,
+  acknowledgments: (id: string) => [...announcementKeys.detail(id), 'acknowledgments'] as const,
   statistics: () => [...announcementKeys.all, 'statistics'] as const,
   unreadCount: () => [...announcementKeys.all, 'unread-count'] as const,
 };
@@ -173,8 +174,7 @@ export const createAnnouncementHooks = (api: AnnouncementsApi) => ({
   usePin: () => {
     const queryClient = useQueryClient();
     return useMutation({
-      mutationFn: ({ id, data }: { id: string; data: PinAnnouncementRequest }) =>
-        api.pin(id, data),
+      mutationFn: ({ id, data }: { id: string; data: PinAnnouncementRequest }) => api.pin(id, data),
       onSuccess: (_, { id }) => {
         queryClient.invalidateQueries({ queryKey: announcementKeys.detail(id) });
         queryClient.invalidateQueries({ queryKey: announcementKeys.lists() });
@@ -236,9 +236,20 @@ export const createAnnouncementHooks = (api: AnnouncementsApi) => ({
       mutationFn: (id: string) => api.acknowledge(id),
       onSuccess: (_, id) => {
         queryClient.invalidateQueries({ queryKey: announcementKeys.detail(id) });
+        queryClient.invalidateQueries({ queryKey: announcementKeys.acknowledgments(id) });
       },
     });
   },
+
+  /**
+   * Get acknowledgment statistics for an announcement (Story 6.2)
+   */
+  useAcknowledgmentStats: (id: string, enabled = true) =>
+    useQuery({
+      queryKey: announcementKeys.acknowledgments(id),
+      queryFn: () => api.getAcknowledgmentStats(id),
+      enabled: enabled && !!id,
+    }),
 });
 
 export type AnnouncementHooks = ReturnType<typeof createAnnouncementHooks>;

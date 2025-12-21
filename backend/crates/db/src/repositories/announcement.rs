@@ -1,9 +1,10 @@
 //! Announcement repository (Epic 6: Announcements & Communication).
 
 use crate::models::announcement::{
-    announcement_status, Announcement, AnnouncementAttachment, AnnouncementListQuery,
-    AnnouncementRead, AnnouncementStatistics, AnnouncementSummary, AnnouncementWithDetails,
-    CreateAnnouncement, CreateAnnouncementAttachment, UpdateAnnouncement,
+    announcement_status, AcknowledgmentStats, Announcement, AnnouncementAttachment,
+    AnnouncementListQuery, AnnouncementRead, AnnouncementStatistics, AnnouncementSummary,
+    AnnouncementWithDetails, CreateAnnouncement, CreateAnnouncementAttachment, UpdateAnnouncement,
+    UserAcknowledgmentStatus,
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
@@ -748,5 +749,92 @@ impl AnnouncementRepository {
         .await?;
 
         Ok(count.0)
+    }
+
+    // ========================================================================
+    // Acknowledgment Stats (Story 6.2)
+    // ========================================================================
+
+    /// Get acknowledgment statistics for an announcement (for managers).
+    pub async fn get_acknowledgment_stats(
+        &self,
+        announcement_id: Uuid,
+    ) -> Result<AcknowledgmentStats, SqlxError> {
+        // Count reads and acknowledgments
+        let (read_count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1",
+        )
+        .bind(announcement_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let (acknowledged_count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1 AND acknowledged_at IS NOT NULL",
+        )
+        .bind(announcement_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // For now, total_targeted is based on all org users
+        // In future, this should respect target_type and target_ids
+        let (total_targeted,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(DISTINCT u.id)
+            FROM users u
+            JOIN announcements a ON a.organization_id = u.organization_id
+            WHERE a.id = $1
+            "#,
+        )
+        .bind(announcement_id)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or((0,));
+
+        let pending_count = total_targeted - read_count;
+
+        Ok(AcknowledgmentStats {
+            announcement_id,
+            total_targeted,
+            read_count,
+            acknowledged_count,
+            pending_count: pending_count.max(0),
+        })
+    }
+
+    /// Get list of users with their acknowledgment status for an announcement.
+    pub async fn get_acknowledgment_list(
+        &self,
+        announcement_id: Uuid,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<UserAcknowledgmentStatus>, SqlxError> {
+        let limit = limit.unwrap_or(50).min(100);
+        let offset = offset.unwrap_or(0);
+
+        let users = sqlx::query_as::<_, UserAcknowledgmentStatus>(
+            r#"
+            SELECT
+                u.id as user_id,
+                u.name as user_name,
+                ar.read_at,
+                ar.acknowledged_at
+            FROM users u
+            JOIN announcements a ON a.organization_id = u.organization_id
+            LEFT JOIN announcement_reads ar ON ar.announcement_id = a.id AND ar.user_id = u.id
+            WHERE a.id = $1
+            ORDER BY
+                ar.acknowledged_at DESC NULLS LAST,
+                ar.read_at DESC NULLS LAST,
+                u.name
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(announcement_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(users)
     }
 }
