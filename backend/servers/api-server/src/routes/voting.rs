@@ -206,7 +206,7 @@ async fn create_vote(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to create vote: {}", e),
+                format!("Failed to create vote: {}", e),
             )),
         )
     })?;
@@ -253,7 +253,7 @@ async fn list_votes(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to list votes: {}", e),
+                    format!("Failed to list votes: {}", e),
                 )),
             )
         })?;
@@ -288,7 +288,7 @@ async fn get_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -333,7 +333,7 @@ async fn update_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -370,7 +370,7 @@ async fn update_vote(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to update vote: {}", e),
+                format!("Failed to update vote: {}", e),
             )),
         )
     })?;
@@ -407,7 +407,7 @@ async fn delete_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -433,7 +433,7 @@ async fn delete_vote(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to delete vote: {}", e),
+                format!("Failed to delete vote: {}", e),
             )),
         )
     })?;
@@ -479,7 +479,7 @@ async fn publish_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -513,7 +513,7 @@ async fn publish_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to publish vote: {}", e),
+                    format!("Failed to publish vote: {}", e),
                 )),
             )
         })?;
@@ -554,7 +554,7 @@ async fn cancel_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -586,7 +586,7 @@ async fn cancel_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to cancel vote: {}", e),
+                    format!("Failed to cancel vote: {}", e),
                 )),
             )
         })?;
@@ -622,7 +622,7 @@ async fn close_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -648,7 +648,7 @@ async fn close_vote(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to close vote: {}", e),
+                format!("Failed to close vote: {}", e),
             )),
         )
     })?;
@@ -691,7 +691,7 @@ async fn add_question(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -727,7 +727,7 @@ async fn add_question(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to add question: {}", e),
+                format!("Failed to add question: {}", e),
             )),
         )
     })?;
@@ -758,7 +758,7 @@ async fn list_questions(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to list questions: {}", e),
+                format!("Failed to list questions: {}", e),
             )),
         )
     })?;
@@ -798,7 +798,7 @@ async fn update_question(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -836,7 +836,7 @@ async fn update_question(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to update question: {}", e),
+                    format!("Failed to update question: {}", e),
                 )),
             )
         })?;
@@ -874,7 +874,7 @@ async fn delete_question(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -904,7 +904,7 @@ async fn delete_question(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to delete question: {}", e),
+                    format!("Failed to delete question: {}", e),
                 )),
             )
         })?;
@@ -950,7 +950,7 @@ async fn check_eligibility(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to check eligibility: {}", e),
+                    format!("Failed to check eligibility: {}", e),
                 )),
             ),
         })?;
@@ -992,7 +992,7 @@ async fn cast_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -1023,7 +1023,7 @@ async fn cast_vote(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to check eligibility: {}", e),
+                    format!("Failed to check eligibility: {}", e),
                 )),
             )
         })?;
@@ -1068,7 +1068,7 @@ async fn cast_vote(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to cast vote: {}", e),
+                format!("Failed to cast vote: {}", e),
             )),
         )
     })?;
@@ -1105,7 +1105,7 @@ async fn get_my_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get response: {}", e),
+                    format!("Failed to get response: {}", e),
                 )),
             )
         })?;
@@ -1150,7 +1150,7 @@ async fn add_comment(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get vote: {}", e),
+                    format!("Failed to get vote: {}", e),
                 )),
             )
         })?
@@ -1174,7 +1174,7 @@ async fn add_comment(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to add comment: {}", e),
+                format!("Failed to add comment: {}", e),
             )),
         )
     })?;
@@ -1209,7 +1209,7 @@ async fn list_comments(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to list comments: {}", e),
+                    format!("Failed to list comments: {}", e),
                 )),
             )
         })?;
@@ -1234,7 +1234,7 @@ async fn list_comments(
 )]
 async fn list_replies(
     State(state): State<AppState>,
-    Path((id, comment_id)): Path<(Uuid, Uuid)>,
+    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<Vec<VoteCommentWithUser>>, (StatusCode, Json<ErrorResponse>)> {
     let replies = state
         .vote_repo
@@ -1245,7 +1245,7 @@ async fn list_replies(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to list replies: {}", e),
+                    format!("Failed to list replies: {}", e),
                 )),
             )
         })?;
@@ -1271,7 +1271,7 @@ async fn list_replies(
 )]
 async fn hide_comment(
     State(state): State<AppState>,
-    Path((id, comment_id)): Path<(Uuid, Uuid)>,
+    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<HideCommentRequest>,
 ) -> Result<Json<db::models::VoteComment>, (StatusCode, Json<ErrorResponse>)> {
     // TODO: Get from auth context
@@ -1288,7 +1288,7 @@ async fn hide_comment(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to hide comment: {}", e),
+                    format!("Failed to hide comment: {}", e),
                 )),
             )
         })?;
@@ -1327,7 +1327,7 @@ async fn get_results(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to get results: {}", e),
+                    format!("Failed to get results: {}", e),
                 )),
             )
         })?
@@ -1376,7 +1376,7 @@ async fn get_report_data(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to generate report: {}", e),
+                    format!("Failed to generate report: {}", e),
                 )),
             ),
         })?;
@@ -1411,7 +1411,7 @@ async fn get_audit_log(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "DATABASE_ERROR",
-                &format!("Failed to get audit log: {}", e),
+                format!("Failed to get audit log: {}", e),
             )),
         )
     })?;
@@ -1449,7 +1449,7 @@ async fn list_active_by_building(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DATABASE_ERROR",
-                    &format!("Failed to list votes: {}", e),
+                    format!("Failed to list votes: {}", e),
                 )),
             )
         })?;

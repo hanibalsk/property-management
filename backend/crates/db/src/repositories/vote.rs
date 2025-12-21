@@ -1,7 +1,7 @@
 //! Vote repository (Epic 5: Building Voting & Decisions).
 
 use crate::models::vote::{
-    audit_action, question_type, vote_status, CancelVote, CastVote, CreateVote, CreateVoteAuditLog,
+    audit_action, vote_status, CancelVote, CastVote, CreateVote, CreateVoteAuditLog,
     CreateVoteComment, CreateVoteQuestion, EligibleUnit, HideVoteComment, OptionResult,
     PublishVote, QuestionResult, UpdateVote, UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment,
     VoteCommentWithUser, VoteEligibility, VoteListQuery, VoteQuestion, VoteReceipt, VoteResponse,
@@ -1225,7 +1225,7 @@ impl VoteRepository {
 
         // Count votes based on question type
         for response in responses {
-            if let Some(answer) = response.answers.get(&question.id.to_string()) {
+            if let Some(answer) = response.answers.get(question.id.to_string()) {
                 let weight: f64 = response.vote_weight.try_into().unwrap_or(1.0);
 
                 match question.question_type.as_str() {
