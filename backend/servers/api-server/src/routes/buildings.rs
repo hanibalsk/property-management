@@ -70,6 +70,21 @@ pub fn router() -> Router<AppState> {
             "/{building_id}/units/{unit_id}/owners/{user_id}",
             delete(remove_unit_owner),
         )
+        // Unit residents (Epic 3, Story 3.3)
+        .nest(
+            "/{building_id}/units/{unit_id}/residents",
+            super::unit_residents::router(),
+        )
+        // Person months (Epic 3, Story 3.5) - unit level
+        .nest(
+            "/{building_id}/units/{unit_id}/person-months",
+            super::person_months::router(),
+        )
+        // Person months (Epic 3, Story 3.5) - building level
+        .nest(
+            "/{building_id}/person-months",
+            super::person_months::building_router(),
+        )
 }
 
 // ==================== Request/Response Types ====================
