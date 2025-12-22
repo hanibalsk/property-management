@@ -48,7 +48,7 @@ LEFT JOIN (
         organization_id,
         COUNT(*) as building_count
     FROM buildings
-    WHERE deleted_at IS NULL
+    WHERE status = 'active'
     GROUP BY organization_id
 ) building_counts ON o.id = building_counts.organization_id
 LEFT JOIN (
@@ -56,8 +56,8 @@ LEFT JOIN (
         b.organization_id,
         COUNT(u.id) as unit_count
     FROM buildings b
-    LEFT JOIN units u ON u.building_id = b.id AND u.deleted_at IS NULL
-    WHERE b.deleted_at IS NULL
+    LEFT JOIN units u ON u.building_id = b.id AND u.status = 'active'
+    WHERE b.status = 'active'
     GROUP BY b.organization_id
 ) unit_counts ON o.id = unit_counts.organization_id
 WHERE o.status != 'deleted';
