@@ -10,8 +10,8 @@ use db::{
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
         PersonMonthRepository, PlatformAdminRepository, RoleRepository, SessionRepository,
-        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
-        UnitResidentRepository, UserRepository, VoteRepository,
+        SignatureRequestRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
+        UnitRepository, UnitResidentRepository, UserRepository, VoteRepository,
     },
     DbPool,
 };
@@ -49,6 +49,7 @@ pub struct AppState {
     pub system_announcement_repo: SystemAnnouncementRepository,
     pub onboarding_repo: OnboardingRepository,
     pub help_repo: HelpRepository,
+    pub signature_request_repo: SignatureRequestRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -88,6 +89,7 @@ impl AppState {
         let system_announcement_repo = SystemAnnouncementRepository::new(db.clone());
         let onboarding_repo = OnboardingRepository::new(db.clone());
         let help_repo = HelpRepository::new(db.clone());
+        let signature_request_repo = SignatureRequestRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -123,6 +125,7 @@ impl AppState {
             system_announcement_repo,
             onboarding_repo,
             help_repo,
+            signature_request_repo,
             auth_service,
             email_service,
             jwt_service,

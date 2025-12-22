@@ -20,6 +20,7 @@ pub mod person_month;
 pub mod platform_admin;
 pub mod refresh_token;
 pub mod role;
+pub mod signature_request;
 pub mod two_factor_auth;
 pub mod unit;
 pub mod unit_resident;
@@ -123,6 +124,13 @@ pub use platform_admin::{
 };
 pub use refresh_token::{CreateRefreshToken, LoginAttempt, RateLimitStatus, RefreshToken};
 pub use role::{permissions, system_roles, CreateRole, PermissionDefinition, Role, UpdateRole};
+pub use signature_request::{
+    CancelSignatureRequestRequest, CancelSignatureRequestResponse, CreateSignatureRequest,
+    CreateSignatureRequestResponse, CreateSigner, ListSignatureRequestsResponse,
+    SendReminderRequest, SendReminderResponse, SignatureRequest, SignatureRequestResponse,
+    SignatureRequestStatus, SignatureRequestWithDocument, SignatureWebhookEvent, Signer,
+    SignerCounts, SignerStatus, WebhookResponse,
+};
 pub use two_factor_auth::{
     CreateTwoFactorAuth, TwoFactorAuth, TwoFactorStatus, UpdateTwoFactorStatus,
 };

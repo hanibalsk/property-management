@@ -25,6 +25,7 @@ pub mod person_month;
 pub mod platform_admin;
 pub mod role;
 pub mod session;
+pub mod signature_request;
 pub mod system_announcement;
 pub mod two_factor_auth;
 pub mod unit;
@@ -66,6 +67,7 @@ pub use platform_admin::{
 };
 pub use role::RoleRepository;
 pub use session::SessionRepository;
+pub use signature_request::SignatureRequestRepository;
 pub use system_announcement::{ActiveAnnouncement, SystemAnnouncementRepository};
 pub use two_factor_auth::TwoFactorAuthRepository;
 pub use unit::UnitRepository;
