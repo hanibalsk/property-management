@@ -12,6 +12,7 @@ pub mod document_template;
 pub mod facility;
 pub mod fault;
 pub mod feature_flag;
+pub mod granular_notification;
 pub mod health_monitoring;
 pub mod help;
 pub mod messaging;
@@ -46,6 +47,7 @@ pub use fault::FaultRepository;
 pub use feature_flag::{
     FeatureFlagRepository, FeatureFlagWithCount, FeatureFlagWithOverrides, ResolvedFeatureFlag,
 };
+pub use granular_notification::GranularNotificationRepository;
 pub use health_monitoring::{
     CurrentMetric, HealthDashboard, HealthMonitoringRepository, MetricDataPoint, MetricHistory,
     MetricStats, MetricStatus,

@@ -261,6 +261,11 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/users/me/notification-preferences",
             routes::notification_preferences::router(),
         )
+        // Granular notification preferences routes (Epic 8B)
+        .nest(
+            "/api/v1/users/me/notification-preferences/granular",
+            routes::granular_notifications::router(),
+        )
         // Critical notifications routes (Epic 8A, Story 8A.2)
         .nest(
             "/api/v1/organizations/:org_id/critical-notifications",

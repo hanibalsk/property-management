@@ -1,0 +1,492 @@
+//! Granular notification preferences repository (Epic 8B).
+//!
+//! Provides database operations for per-event and per-channel notification preferences.
+
+use chrono::{NaiveTime, Utc};
+use sqlx::{Error as SqlxError, PgPool, Row};
+use uuid::Uuid;
+
+use crate::models::{
+    CreateHeldNotification, EventNotificationPreference, EventPreferenceWithDetails,
+    HeldNotification, NotificationEventCategory, NotificationEventType, NotificationSchedule,
+    RoleNotificationDefaults,
+};
+
+/// Repository for granular notification preferences.
+#[derive(Clone)]
+pub struct GranularNotificationRepository {
+    pool: PgPool,
+}
+
+impl GranularNotificationRepository {
+    /// Create a new repository.
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
+    // ========================================================================
+    // Event Types (Reference Data)
+    // ========================================================================
+
+    /// List all available notification event types.
+    pub async fn list_event_types(&self) -> Result<Vec<NotificationEventType>, SqlxError> {
+        sqlx::query_as::<_, NotificationEventType>(
+            r#"
+            SELECT * FROM notification_event_types
+            ORDER BY category, event_type
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// List event types by category.
+    pub async fn list_event_types_by_category(
+        &self,
+        category: NotificationEventCategory,
+    ) -> Result<Vec<NotificationEventType>, SqlxError> {
+        sqlx::query_as::<_, NotificationEventType>(
+            r#"
+            SELECT * FROM notification_event_types
+            WHERE category = $1
+            ORDER BY event_type
+            "#,
+        )
+        .bind(category)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    // ========================================================================
+    // Event Notification Preferences (Stories 8B.1 & 8B.2)
+    // ========================================================================
+
+    /// Get all event preferences for a user with event type details.
+    pub async fn get_user_event_preferences(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<EventPreferenceWithDetails>, SqlxError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                et.event_type,
+                et.category,
+                et.display_name,
+                et.description,
+                et.is_priority,
+                COALESCE(ep.push_enabled, et.default_push) as push_enabled,
+                COALESCE(ep.email_enabled, et.default_email) as email_enabled,
+                COALESCE(ep.in_app_enabled, et.default_in_app) as in_app_enabled,
+                ep.updated_at
+            FROM notification_event_types et
+            LEFT JOIN event_notification_preferences ep
+                ON ep.event_type = et.event_type AND ep.user_id = $1
+            ORDER BY et.category, et.event_type
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| EventPreferenceWithDetails {
+                event_type: r.get("event_type"),
+                category: r.get("category"),
+                display_name: r.get("display_name"),
+                description: r.get("description"),
+                is_priority: r.get("is_priority"),
+                push_enabled: r.get("push_enabled"),
+                email_enabled: r.get("email_enabled"),
+                in_app_enabled: r.get("in_app_enabled"),
+                updated_at: r.get("updated_at"),
+            })
+            .collect())
+    }
+
+    /// Get preference for a specific event type.
+    pub async fn get_user_event_preference(
+        &self,
+        user_id: Uuid,
+        event_type: &str,
+    ) -> Result<Option<EventNotificationPreference>, SqlxError> {
+        sqlx::query_as::<_, EventNotificationPreference>(
+            r#"
+            SELECT * FROM event_notification_preferences
+            WHERE user_id = $1 AND event_type = $2
+            "#,
+        )
+        .bind(user_id)
+        .bind(event_type)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Update or create event preference for a user.
+    pub async fn upsert_event_preference(
+        &self,
+        user_id: Uuid,
+        event_type: &str,
+        push_enabled: Option<bool>,
+        email_enabled: Option<bool>,
+        in_app_enabled: Option<bool>,
+    ) -> Result<EventNotificationPreference, SqlxError> {
+        // Get the category from event types
+        let event_type_row = sqlx::query(
+            "SELECT category FROM notification_event_types WHERE event_type = $1",
+        )
+        .bind(event_type)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| SqlxError::RowNotFound)?;
+
+        let category: NotificationEventCategory = event_type_row.get("category");
+
+        sqlx::query_as::<_, EventNotificationPreference>(
+            r#"
+            INSERT INTO event_notification_preferences (
+                user_id, event_type, event_category, push_enabled, email_enabled, in_app_enabled
+            )
+            VALUES ($1, $2, $3, COALESCE($4, true), COALESCE($5, true), COALESCE($6, true))
+            ON CONFLICT (user_id, event_type) DO UPDATE SET
+                push_enabled = COALESCE($4, event_notification_preferences.push_enabled),
+                email_enabled = COALESCE($5, event_notification_preferences.email_enabled),
+                in_app_enabled = COALESCE($6, event_notification_preferences.in_app_enabled),
+                updated_at = now()
+            RETURNING *
+            "#,
+        )
+        .bind(user_id)
+        .bind(event_type)
+        .bind(category)
+        .bind(push_enabled)
+        .bind(email_enabled)
+        .bind(in_app_enabled)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Reset all event preferences for a user to defaults.
+    pub async fn reset_event_preferences(&self, user_id: Uuid) -> Result<i64, SqlxError> {
+        let result = sqlx::query("DELETE FROM event_notification_preferences WHERE user_id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+
+    /// Bulk update event preferences for a category.
+    pub async fn update_category_preferences(
+        &self,
+        user_id: Uuid,
+        category: NotificationEventCategory,
+        push_enabled: Option<bool>,
+        email_enabled: Option<bool>,
+        in_app_enabled: Option<bool>,
+    ) -> Result<i64, SqlxError> {
+        // Get all event types for this category
+        let event_types = self.list_event_types_by_category(category).await?;
+
+        let mut updated = 0i64;
+        for et in event_types {
+            self.upsert_event_preference(
+                user_id,
+                &et.event_type,
+                push_enabled,
+                email_enabled,
+                in_app_enabled,
+            )
+            .await?;
+            updated += 1;
+        }
+
+        Ok(updated)
+    }
+
+    // ========================================================================
+    // Notification Schedule (Story 8B.3)
+    // ========================================================================
+
+    /// Get user's notification schedule.
+    pub async fn get_user_schedule(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Option<NotificationSchedule>, SqlxError> {
+        sqlx::query_as::<_, NotificationSchedule>(
+            "SELECT * FROM notification_schedule WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Create or update user's notification schedule.
+    pub async fn upsert_schedule(
+        &self,
+        user_id: Uuid,
+        quiet_hours_enabled: Option<bool>,
+        quiet_hours_start: Option<NaiveTime>,
+        quiet_hours_end: Option<NaiveTime>,
+        timezone: Option<&str>,
+        weekend_quiet_hours_enabled: Option<bool>,
+        weekend_quiet_hours_start: Option<NaiveTime>,
+        weekend_quiet_hours_end: Option<NaiveTime>,
+        digest_enabled: Option<bool>,
+        digest_frequency: Option<&str>,
+        digest_time: Option<NaiveTime>,
+        digest_day_of_week: Option<i32>,
+    ) -> Result<NotificationSchedule, SqlxError> {
+        sqlx::query_as::<_, NotificationSchedule>(
+            r#"
+            INSERT INTO notification_schedule (
+                user_id, quiet_hours_enabled, quiet_hours_start, quiet_hours_end, timezone,
+                weekend_quiet_hours_enabled, weekend_quiet_hours_start, weekend_quiet_hours_end,
+                digest_enabled, digest_frequency, digest_time, digest_day_of_week
+            )
+            VALUES ($1, COALESCE($2, false), $3, $4, COALESCE($5, 'UTC'),
+                    COALESCE($6, false), $7, $8,
+                    COALESCE($9, false), $10, $11, $12)
+            ON CONFLICT (user_id) DO UPDATE SET
+                quiet_hours_enabled = COALESCE($2, notification_schedule.quiet_hours_enabled),
+                quiet_hours_start = COALESCE($3, notification_schedule.quiet_hours_start),
+                quiet_hours_end = COALESCE($4, notification_schedule.quiet_hours_end),
+                timezone = COALESCE($5, notification_schedule.timezone),
+                weekend_quiet_hours_enabled = COALESCE($6, notification_schedule.weekend_quiet_hours_enabled),
+                weekend_quiet_hours_start = COALESCE($7, notification_schedule.weekend_quiet_hours_start),
+                weekend_quiet_hours_end = COALESCE($8, notification_schedule.weekend_quiet_hours_end),
+                digest_enabled = COALESCE($9, notification_schedule.digest_enabled),
+                digest_frequency = COALESCE($10, notification_schedule.digest_frequency),
+                digest_time = COALESCE($11, notification_schedule.digest_time),
+                digest_day_of_week = COALESCE($12, notification_schedule.digest_day_of_week),
+                updated_at = now()
+            RETURNING *
+            "#,
+        )
+        .bind(user_id)
+        .bind(quiet_hours_enabled)
+        .bind(quiet_hours_start)
+        .bind(quiet_hours_end)
+        .bind(timezone)
+        .bind(weekend_quiet_hours_enabled)
+        .bind(weekend_quiet_hours_start)
+        .bind(weekend_quiet_hours_end)
+        .bind(digest_enabled)
+        .bind(digest_frequency)
+        .bind(digest_time)
+        .bind(digest_day_of_week)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    // ========================================================================
+    // Held Notifications (Story 8B.3)
+    // ========================================================================
+
+    /// Create a held notification.
+    pub async fn create_held_notification(
+        &self,
+        notification: CreateHeldNotification,
+    ) -> Result<HeldNotification, SqlxError> {
+        sqlx::query_as::<_, HeldNotification>(
+            r#"
+            INSERT INTO held_notifications (
+                user_id, event_type, title, body, data, channels, release_at, is_priority
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+            "#,
+        )
+        .bind(notification.user_id)
+        .bind(&notification.event_type)
+        .bind(&notification.title)
+        .bind(&notification.body)
+        .bind(&notification.data)
+        .bind(&notification.channels)
+        .bind(notification.release_at)
+        .bind(notification.is_priority)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Get pending held notifications for a user.
+    pub async fn get_pending_held_notifications(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<HeldNotification>, SqlxError> {
+        sqlx::query_as::<_, HeldNotification>(
+            r#"
+            SELECT * FROM held_notifications
+            WHERE user_id = $1 AND released_at IS NULL
+            ORDER BY held_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Get held notifications ready for release.
+    pub async fn get_notifications_to_release(&self) -> Result<Vec<HeldNotification>, SqlxError> {
+        sqlx::query_as::<_, HeldNotification>(
+            r#"
+            SELECT * FROM held_notifications
+            WHERE released_at IS NULL AND release_at <= $1
+            ORDER BY release_at
+            "#,
+        )
+        .bind(Utc::now())
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Mark held notification as released.
+    pub async fn mark_notification_released(&self, id: Uuid) -> Result<(), SqlxError> {
+        sqlx::query("UPDATE held_notifications SET released_at = now() WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    // ========================================================================
+    // Role-Based Defaults (Story 8B.4)
+    // ========================================================================
+
+    /// Get role notification defaults for an organization.
+    pub async fn get_role_defaults(
+        &self,
+        organization_id: Uuid,
+    ) -> Result<Vec<RoleNotificationDefaults>, SqlxError> {
+        sqlx::query_as::<_, RoleNotificationDefaults>(
+            r#"
+            SELECT * FROM role_notification_defaults
+            WHERE organization_id = $1
+            ORDER BY role
+            "#,
+        )
+        .bind(organization_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Get role defaults for a specific role.
+    pub async fn get_role_default(
+        &self,
+        organization_id: Uuid,
+        role: &str,
+    ) -> Result<Option<RoleNotificationDefaults>, SqlxError> {
+        sqlx::query_as::<_, RoleNotificationDefaults>(
+            r#"
+            SELECT * FROM role_notification_defaults
+            WHERE organization_id = $1 AND role = $2
+            "#,
+        )
+        .bind(organization_id)
+        .bind(role)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Create or update role notification defaults.
+    pub async fn upsert_role_defaults(
+        &self,
+        organization_id: Uuid,
+        role: &str,
+        event_preferences: serde_json::Value,
+        default_quiet_hours_enabled: Option<bool>,
+        default_quiet_hours_start: Option<NaiveTime>,
+        default_quiet_hours_end: Option<NaiveTime>,
+        created_by: Uuid,
+    ) -> Result<RoleNotificationDefaults, SqlxError> {
+        sqlx::query_as::<_, RoleNotificationDefaults>(
+            r#"
+            INSERT INTO role_notification_defaults (
+                organization_id, role, event_preferences,
+                default_quiet_hours_enabled, default_quiet_hours_start, default_quiet_hours_end,
+                created_by
+            )
+            VALUES ($1, $2, $3, COALESCE($4, false), $5, $6, $7)
+            ON CONFLICT (organization_id, role) DO UPDATE SET
+                event_preferences = $3,
+                default_quiet_hours_enabled = COALESCE($4, role_notification_defaults.default_quiet_hours_enabled),
+                default_quiet_hours_start = COALESCE($5, role_notification_defaults.default_quiet_hours_start),
+                default_quiet_hours_end = COALESCE($6, role_notification_defaults.default_quiet_hours_end),
+                updated_at = now()
+            RETURNING *
+            "#,
+        )
+        .bind(organization_id)
+        .bind(role)
+        .bind(&event_preferences)
+        .bind(default_quiet_hours_enabled)
+        .bind(default_quiet_hours_start)
+        .bind(default_quiet_hours_end)
+        .bind(created_by)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Delete role defaults.
+    pub async fn delete_role_defaults(
+        &self,
+        organization_id: Uuid,
+        role: &str,
+    ) -> Result<(), SqlxError> {
+        sqlx::query("DELETE FROM role_notification_defaults WHERE organization_id = $1 AND role = $2")
+            .bind(organization_id)
+            .bind(role)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Apply role defaults to a new user.
+    pub async fn apply_role_defaults_to_user(
+        &self,
+        user_id: Uuid,
+        organization_id: Uuid,
+        role: &str,
+    ) -> Result<i64, SqlxError> {
+        // Get role defaults
+        let defaults = match self.get_role_default(organization_id, role).await? {
+            Some(d) => d,
+            None => return Ok(0),
+        };
+
+        // Parse event preferences from JSONB
+        if let serde_json::Value::Object(prefs) = defaults.event_preferences {
+            for (event_type, settings) in prefs {
+                if let serde_json::Value::Object(channels) = settings {
+                    let push = channels.get("push").and_then(|v| v.as_bool());
+                    let email = channels.get("email").and_then(|v| v.as_bool());
+                    let in_app = channels.get("in_app").and_then(|v| v.as_bool());
+
+                    self.upsert_event_preference(user_id, &event_type, push, email, in_app)
+                        .await?;
+                }
+            }
+        }
+
+        // Apply quiet hours if set
+        if defaults.default_quiet_hours_enabled {
+            self.upsert_schedule(
+                user_id,
+                Some(true),
+                defaults.default_quiet_hours_start,
+                defaults.default_quiet_hours_end,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .await?;
+        }
+
+        Ok(1)
+    }
+}

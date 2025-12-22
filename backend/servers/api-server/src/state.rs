@@ -6,8 +6,8 @@ use db::{
         AnnouncementRepository, AuditLogRepository, BuildingRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
         DocumentRepository, DocumentTemplateRepository, FacilityRepository, FaultRepository,
-        FeatureFlagRepository, HealthMonitoringRepository, HelpRepository,
-        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        FeatureFlagRepository, GranularNotificationRepository, HealthMonitoringRepository,
+        HelpRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
         PersonMonthRepository, PlatformAdminRepository, RoleRepository, SessionRepository,
         SignatureRequestRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
@@ -45,6 +45,7 @@ pub struct AppState {
     pub oauth_repo: OAuthRepository,
     pub platform_admin_repo: PlatformAdminRepository,
     pub feature_flag_repo: FeatureFlagRepository,
+    pub granular_notification_repo: GranularNotificationRepository,
     pub health_monitoring_repo: HealthMonitoringRepository,
     pub system_announcement_repo: SystemAnnouncementRepository,
     pub onboarding_repo: OnboardingRepository,
@@ -85,6 +86,7 @@ impl AppState {
         let oauth_repo = OAuthRepository::new(db.clone());
         let platform_admin_repo = PlatformAdminRepository::new(db.clone());
         let feature_flag_repo = FeatureFlagRepository::new(db.clone());
+        let granular_notification_repo = GranularNotificationRepository::new(db.clone());
         let health_monitoring_repo = HealthMonitoringRepository::new(db.clone());
         let system_announcement_repo = SystemAnnouncementRepository::new(db.clone());
         let onboarding_repo = OnboardingRepository::new(db.clone());
@@ -121,6 +123,7 @@ impl AppState {
             oauth_repo,
             platform_admin_repo,
             feature_flag_repo,
+            granular_notification_repo,
             health_monitoring_repo,
             system_announcement_repo,
             onboarding_repo,

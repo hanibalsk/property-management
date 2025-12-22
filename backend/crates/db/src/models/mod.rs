@@ -10,6 +10,7 @@ pub mod document;
 pub mod document_template;
 pub mod facility;
 pub mod fault;
+pub mod granular_notification;
 pub mod messaging;
 pub mod notification_preference;
 pub mod oauth;
@@ -73,6 +74,13 @@ pub use facility::{
     booking_status, facility_type, ApproveBooking, AvailableSlot, BookingWithDetails,
     CancelBooking, CreateFacility, CreateFacilityBooking, Facility, FacilityBooking,
     FacilitySummary, RejectBooking, UpdateFacility, UpdateFacilityBooking,
+};
+pub use granular_notification::{
+    CategorySummary, CreateHeldNotification, EventNotificationPreference, EventPreferenceWithDetails,
+    EventPreferencesResponse, HeldNotification, NotificationEventCategory, NotificationEventType,
+    NotificationSchedule, NotificationScheduleResponse, RoleDefaultsListResponse,
+    RoleNotificationDefaults, UpdateEventPreferenceRequest, UpdateNotificationScheduleRequest,
+    UpdateRoleDefaultsRequest,
 };
 pub use fault::{
     fault_category, fault_priority, fault_status, timeline_action, AddFaultComment, AddWorkNote,

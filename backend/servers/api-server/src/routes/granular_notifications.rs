@@ -1,0 +1,611 @@
+//! Granular notification preference API routes (Epic 8B).
+//!
+//! Stories covered:
+//! - 8B.1: Per-Event Type Preferences
+//! - 8B.2: Per-Channel Delivery Preferences
+//! - 8B.3: Notification Schedule (Do Not Disturb)
+//! - 8B.4: Role-Based Default Preferences
+
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    routing::{get, post, put},
+    Json, Router,
+};
+use chrono::NaiveTime;
+use common::errors::ErrorResponse;
+use db::models::{
+    CategorySummary, EventPreferenceWithDetails, EventPreferencesResponse,
+    NotificationEventCategory, NotificationSchedule, NotificationScheduleResponse,
+    RoleDefaultsListResponse, RoleNotificationDefaults, UpdateEventPreferenceRequest,
+    UpdateNotificationScheduleRequest, UpdateRoleDefaultsRequest,
+};
+use tracing::info;
+use uuid::Uuid;
+
+use crate::state::AppState;
+
+/// Create router for granular notification preference endpoints.
+pub fn router() -> Router<AppState> {
+    Router::new()
+        // Event type preferences (Stories 8B.1 & 8B.2)
+        .route("/events", get(list_event_preferences))
+        .route("/events/:event_type", put(update_event_preference))
+        .route("/events/reset", post(reset_event_preferences))
+        .route("/events/category/:category", put(update_category_preferences))
+        // Schedule / quiet hours (Story 8B.3)
+        .route("/schedule", get(get_schedule).put(update_schedule))
+        // Role defaults (Story 8B.4) - admin endpoints
+        .route("/roles", get(list_role_defaults))
+        .route("/roles/:role", get(get_role_defaults).put(update_role_defaults).delete(delete_role_defaults))
+        .route("/roles/:role/apply", post(apply_role_defaults))
+}
+
+// ============================================================================
+// Event Type Preferences (Stories 8B.1 & 8B.2)
+// ============================================================================
+
+/// List all event preferences for the current user.
+pub async fn list_event_preferences(
+    State(state): State<AppState>,
+) -> Result<Json<EventPreferencesResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get actual user ID from auth context
+    let user_id = Uuid::nil();
+
+    let preferences = state
+        .granular_notification_repo
+        .get_user_event_preferences(user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    // Group by category for summary
+    let mut category_map: std::collections::HashMap<NotificationEventCategory, (i32, i32)> =
+        std::collections::HashMap::new();
+
+    for pref in &preferences {
+        let entry = category_map.entry(pref.category).or_insert((0, 0));
+        entry.0 += 1; // total
+        if pref.push_enabled || pref.email_enabled || pref.in_app_enabled {
+            entry.1 += 1; // enabled (at least one channel)
+        }
+    }
+
+    let categories: Vec<CategorySummary> = NotificationEventCategory::all()
+        .into_iter()
+        .filter_map(|cat| {
+            category_map.get(&cat).map(|(total, enabled)| CategorySummary {
+                category: cat,
+                display_name: format!("{:?}", cat),
+                total_events: *total,
+                enabled_events: *enabled,
+            })
+        })
+        .collect();
+
+    Ok(Json(EventPreferencesResponse {
+        preferences,
+        categories,
+    }))
+}
+
+/// Update preference for a specific event type.
+pub async fn update_event_preference(
+    State(state): State<AppState>,
+    Path(event_type): Path<String>,
+    Json(request): Json<UpdateEventPreferenceRequest>,
+) -> Result<Json<EventPreferenceWithDetails>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get actual user ID from auth context
+    let user_id = Uuid::nil();
+
+    let _pref = state
+        .granular_notification_repo
+        .upsert_event_preference(
+            user_id,
+            &event_type,
+            request.push_enabled,
+            request.email_enabled,
+            request.in_app_enabled,
+        )
+        .await
+        .map_err(|e| {
+            if e.to_string().contains("RowNotFound") {
+                (
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse::new(
+                        "EVENT_TYPE_NOT_FOUND",
+                        "Unknown event type",
+                    )),
+                )
+            } else {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                )
+            }
+        })?;
+
+    // Re-fetch with details
+    let preferences = state
+        .granular_notification_repo
+        .get_user_event_preferences(user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    let updated = preferences
+        .into_iter()
+        .find(|p| p.event_type == event_type)
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("PREFERENCE_NOT_FOUND", "Failed to update")),
+            )
+        })?;
+
+    info!(
+        user_id = %user_id,
+        event_type = %event_type,
+        "Updated event notification preference"
+    );
+
+    Ok(Json(updated))
+}
+
+/// Reset all event preferences to defaults.
+pub async fn reset_event_preferences(
+    State(state): State<AppState>,
+) -> Result<Json<EventPreferencesResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get actual user ID from auth context
+    let user_id = Uuid::nil();
+
+    let deleted = state
+        .granular_notification_repo
+        .reset_event_preferences(user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    info!(
+        user_id = %user_id,
+        deleted = deleted,
+        "Reset event notification preferences to defaults"
+    );
+
+    // Return fresh preferences (all defaults)
+    list_event_preferences(State(state)).await
+}
+
+/// Update all preferences for a category.
+pub async fn update_category_preferences(
+    State(state): State<AppState>,
+    Path(category): Path<String>,
+    Json(request): Json<UpdateEventPreferenceRequest>,
+) -> Result<Json<EventPreferencesResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get actual user ID from auth context
+    let user_id = Uuid::nil();
+
+    // Parse category
+    let category = match category.to_lowercase().as_str() {
+        "fault" => NotificationEventCategory::Fault,
+        "vote" => NotificationEventCategory::Vote,
+        "announcement" => NotificationEventCategory::Announcement,
+        "document" => NotificationEventCategory::Document,
+        "message" => NotificationEventCategory::Message,
+        "critical" => NotificationEventCategory::Critical,
+        "finance" => NotificationEventCategory::Finance,
+        "facility" => NotificationEventCategory::Facility,
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("INVALID_CATEGORY", "Unknown category")),
+            ))
+        }
+    };
+
+    let updated = state
+        .granular_notification_repo
+        .update_category_preferences(
+            user_id,
+            category,
+            request.push_enabled,
+            request.email_enabled,
+            request.in_app_enabled,
+        )
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    info!(
+        user_id = %user_id,
+        category = %category,
+        updated = updated,
+        "Updated category notification preferences"
+    );
+
+    list_event_preferences(State(state)).await
+}
+
+// ============================================================================
+// Notification Schedule (Story 8B.3)
+// ============================================================================
+
+/// Get user's notification schedule.
+pub async fn get_schedule(
+    State(state): State<AppState>,
+) -> Result<Json<NotificationScheduleResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get actual user ID from auth context
+    let user_id = Uuid::nil();
+
+    let schedule = state
+        .granular_notification_repo
+        .get_user_schedule(user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    match schedule {
+        Some(s) => {
+            // Check if currently in quiet hours
+            let is_currently_quiet = check_quiet_hours(&s);
+            Ok(Json(NotificationScheduleResponse {
+                schedule: s,
+                is_currently_quiet,
+            }))
+        }
+        None => {
+            // Return default schedule
+            let default_schedule = NotificationSchedule {
+                id: Uuid::nil(),
+                user_id,
+                quiet_hours_enabled: false,
+                quiet_hours_start: None,
+                quiet_hours_end: None,
+                timezone: "UTC".to_string(),
+                weekend_quiet_hours_enabled: false,
+                weekend_quiet_hours_start: None,
+                weekend_quiet_hours_end: None,
+                digest_enabled: false,
+                digest_frequency: None,
+                digest_time: None,
+                digest_day_of_week: None,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            };
+            Ok(Json(NotificationScheduleResponse {
+                schedule: default_schedule,
+                is_currently_quiet: false,
+            }))
+        }
+    }
+}
+
+/// Update user's notification schedule.
+pub async fn update_schedule(
+    State(state): State<AppState>,
+    Json(request): Json<UpdateNotificationScheduleRequest>,
+) -> Result<Json<NotificationScheduleResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get actual user ID from auth context
+    let user_id = Uuid::nil();
+
+    // Parse time strings
+    let quiet_start = request
+        .quiet_hours_start
+        .as_ref()
+        .map(|s| parse_time(s))
+        .transpose()
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("INVALID_TIME", &e)),
+            )
+        })?;
+
+    let quiet_end = request
+        .quiet_hours_end
+        .as_ref()
+        .map(|s| parse_time(s))
+        .transpose()
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("INVALID_TIME", &e)),
+            )
+        })?;
+
+    let weekend_start = request
+        .weekend_quiet_hours_start
+        .as_ref()
+        .map(|s| parse_time(s))
+        .transpose()
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("INVALID_TIME", &e)),
+            )
+        })?;
+
+    let weekend_end = request
+        .weekend_quiet_hours_end
+        .as_ref()
+        .map(|s| parse_time(s))
+        .transpose()
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("INVALID_TIME", &e)),
+            )
+        })?;
+
+    let digest_time = request
+        .digest_time
+        .as_ref()
+        .map(|s| parse_time(s))
+        .transpose()
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("INVALID_TIME", &e)),
+            )
+        })?;
+
+    let schedule = state
+        .granular_notification_repo
+        .upsert_schedule(
+            user_id,
+            request.quiet_hours_enabled,
+            quiet_start,
+            quiet_end,
+            request.timezone.as_deref(),
+            request.weekend_quiet_hours_enabled,
+            weekend_start,
+            weekend_end,
+            request.digest_enabled,
+            request.digest_frequency.as_deref(),
+            digest_time,
+            request.digest_day_of_week,
+        )
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    let is_currently_quiet = check_quiet_hours(&schedule);
+
+    info!(
+        user_id = %user_id,
+        quiet_hours_enabled = schedule.quiet_hours_enabled,
+        "Updated notification schedule"
+    );
+
+    Ok(Json(NotificationScheduleResponse {
+        schedule,
+        is_currently_quiet,
+    }))
+}
+
+fn parse_time(s: &str) -> Result<NaiveTime, String> {
+    NaiveTime::parse_from_str(s, "%H:%M")
+        .or_else(|_| NaiveTime::parse_from_str(s, "%H:%M:%S"))
+        .map_err(|_| format!("Invalid time format: {}. Use HH:MM or HH:MM:SS", s))
+}
+
+fn check_quiet_hours(schedule: &NotificationSchedule) -> bool {
+    if !schedule.quiet_hours_enabled {
+        return false;
+    }
+
+    // Simple check - doesn't handle timezone or weekends
+    // Full implementation would use the schedule's timezone
+    if let (Some(start), Some(end)) = (schedule.quiet_hours_start, schedule.quiet_hours_end) {
+        let now = chrono::Utc::now().time();
+        if start <= end {
+            // Normal case: e.g., 22:00 to 07:00 doesn't cross midnight... wait that does
+            // Actually 09:00 to 17:00 doesn't cross midnight
+            now >= start && now <= end
+        } else {
+            // Crosses midnight: e.g., 22:00 to 07:00
+            now >= start || now <= end
+        }
+    } else {
+        false
+    }
+}
+
+// ============================================================================
+// Role-Based Defaults (Story 8B.4)
+// ============================================================================
+
+/// List role notification defaults for an organization.
+pub async fn list_role_defaults(
+    State(state): State<AppState>,
+) -> Result<Json<RoleDefaultsListResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get organization ID from auth context
+    let organization_id = Uuid::nil();
+
+    let role_defaults = state
+        .granular_notification_repo
+        .get_role_defaults(organization_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    Ok(Json(RoleDefaultsListResponse { role_defaults }))
+}
+
+/// Get role defaults for a specific role.
+pub async fn get_role_defaults(
+    State(state): State<AppState>,
+    Path(role): Path<String>,
+) -> Result<Json<RoleNotificationDefaults>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get organization ID from auth context
+    let organization_id = Uuid::nil();
+
+    let defaults = state
+        .granular_notification_repo
+        .get_role_default(organization_id, &role)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "ROLE_DEFAULTS_NOT_FOUND",
+                    "No defaults configured for this role",
+                )),
+            )
+        })?;
+
+    Ok(Json(defaults))
+}
+
+/// Update role notification defaults.
+pub async fn update_role_defaults(
+    State(state): State<AppState>,
+    Path(role): Path<String>,
+    Json(request): Json<UpdateRoleDefaultsRequest>,
+) -> Result<Json<RoleNotificationDefaults>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get org ID and user ID from auth context
+    let organization_id = Uuid::nil();
+    let created_by = Uuid::nil();
+
+    let quiet_start = request
+        .default_quiet_hours_start
+        .as_ref()
+        .map(|s| parse_time(s))
+        .transpose()
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("INVALID_TIME", &e)),
+            )
+        })?;
+
+    let quiet_end = request
+        .default_quiet_hours_end
+        .as_ref()
+        .map(|s| parse_time(s))
+        .transpose()
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("INVALID_TIME", &e)),
+            )
+        })?;
+
+    let defaults = state
+        .granular_notification_repo
+        .upsert_role_defaults(
+            organization_id,
+            &role,
+            request.event_preferences,
+            request.default_quiet_hours_enabled,
+            quiet_start,
+            quiet_end,
+            created_by,
+        )
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    info!(
+        organization_id = %organization_id,
+        role = %role,
+        "Updated role notification defaults"
+    );
+
+    Ok(Json(defaults))
+}
+
+/// Delete role notification defaults.
+pub async fn delete_role_defaults(
+    State(state): State<AppState>,
+    Path(role): Path<String>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get organization ID from auth context
+    let organization_id = Uuid::nil();
+
+    state
+        .granular_notification_repo
+        .delete_role_defaults(organization_id, &role)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    info!(
+        organization_id = %organization_id,
+        role = %role,
+        "Deleted role notification defaults"
+    );
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Apply role defaults to the current user.
+pub async fn apply_role_defaults(
+    State(state): State<AppState>,
+    Path(role): Path<String>,
+) -> Result<Json<EventPreferencesResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Get IDs from auth context
+    let user_id = Uuid::nil();
+    let organization_id = Uuid::nil();
+
+    state
+        .granular_notification_repo
+        .apply_role_defaults_to_user(user_id, organization_id, &role)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+            )
+        })?;
+
+    info!(
+        user_id = %user_id,
+        role = %role,
+        "Applied role defaults to user"
+    );
+
+    list_event_preferences(State(state)).await
+}
