@@ -6,5 +6,6 @@ pub mod favorites;
 pub mod health;
 pub mod inquiries;
 pub mod listings;
+pub mod saved_searches;
 pub mod sso;
 pub mod users;

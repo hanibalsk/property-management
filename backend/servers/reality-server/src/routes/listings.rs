@@ -1,25 +1,25 @@
-//! Public listing routes - search and view.
+//! Public listing routes - search and view (Story 16.1).
 
+use crate::state::AppState;
 use axum::{
-    extract::{Path, Query},
+    extract::{Path, Query, State},
     routing::get,
     Json, Router,
 };
+use db::models::{PublicListingQuery, PublicListingSummary};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 /// Create listings router.
-pub fn router<S>() -> Router<S>
-where
-    S: Clone + Send + Sync + 'static,
-{
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", get(search))
         .route("/:id", get(get_listing))
+        .route("/suggestions", get(get_suggestions))
 }
 
-/// Listing search request.
+/// Listing search request (maps to PublicListingQuery).
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct ListingSearchRequest {
     /// Search query (address, city, description)
@@ -36,8 +36,10 @@ pub struct ListingSearchRequest {
     pub area_min: Option<i32>,
     /// Maximum area (m2)
     pub area_max: Option<i32>,
-    /// Number of rooms
-    pub rooms: Option<i32>,
+    /// Minimum rooms
+    pub rooms_min: Option<i32>,
+    /// Maximum rooms
+    pub rooms_max: Option<i32>,
     /// City
     pub city: Option<String>,
     /// Country code (SK, CZ, etc.)
@@ -48,6 +50,27 @@ pub struct ListingSearchRequest {
     pub limit: Option<i32>,
     /// Sort by (price_asc, price_desc, date_desc, area_asc)
     pub sort: Option<String>,
+}
+
+impl From<ListingSearchRequest> for PublicListingQuery {
+    fn from(req: ListingSearchRequest) -> Self {
+        Self {
+            q: req.q,
+            property_type: req.property_type,
+            transaction_type: req.transaction_type,
+            price_min: req.price_min,
+            price_max: req.price_max,
+            area_min: req.area_min,
+            area_max: req.area_max,
+            rooms_min: req.rooms_min,
+            rooms_max: req.rooms_max,
+            city: req.city,
+            country: req.country,
+            page: req.page,
+            limit: req.limit,
+            sort: req.sort,
+        }
+    }
 }
 
 /// Listing search response.
@@ -71,13 +94,13 @@ pub struct ListingSummary {
     /// Title
     pub title: String,
     /// Short description
-    pub description: String,
+    pub description: Option<String>,
     /// Price
     pub price: i64,
     /// Currency
     pub currency: String,
     /// Area in m2
-    pub area: i32,
+    pub area: Option<i32>,
     /// Number of rooms
     pub rooms: Option<i32>,
     /// City
@@ -92,6 +115,25 @@ pub struct ListingSummary {
     pub published_at: String,
 }
 
+impl From<PublicListingSummary> for ListingSummary {
+    fn from(summary: PublicListingSummary) -> Self {
+        Self {
+            id: summary.id,
+            title: summary.title,
+            description: summary.description,
+            price: summary.price,
+            currency: summary.currency,
+            area: summary.size_sqm,
+            rooms: summary.rooms,
+            city: summary.city,
+            photo_url: summary.photo_url,
+            property_type: summary.property_type,
+            transaction_type: summary.transaction_type,
+            published_at: summary.published_at.to_rfc3339(),
+        }
+    }
+}
+
 /// Full listing detail.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ListingDetail {
@@ -100,13 +142,13 @@ pub struct ListingDetail {
     /// Title
     pub title: String,
     /// Full description
-    pub description: String,
+    pub description: Option<String>,
     /// Price
     pub price: i64,
     /// Currency
     pub currency: String,
     /// Area in m2
-    pub area: i32,
+    pub area: Option<i32>,
     /// Number of rooms
     pub rooms: Option<i32>,
     /// Number of bathrooms
@@ -139,6 +181,15 @@ pub struct ListingDetail {
     pub view_count: i64,
 }
 
+/// Search suggestions response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SuggestionsResponse {
+    /// Nearby cities
+    pub cities: Vec<String>,
+    /// Popular searches
+    pub popular_searches: Vec<String>,
+}
+
 /// Search listings.
 #[utoipa::path(
     get,
@@ -149,16 +200,47 @@ pub struct ListingDetail {
         (status = 200, description = "Search results", body = ListingSearchResponse)
     )
 )]
-pub async fn search(Query(req): Query<ListingSearchRequest>) -> Json<ListingSearchResponse> {
-    // TODO: Implement actual search
-    tracing::info!(?req, "Listing search");
+pub async fn search(
+    State(state): State<AppState>,
+    Query(req): Query<ListingSearchRequest>,
+) -> Result<Json<ListingSearchResponse>, (axum::http::StatusCode, String)> {
+    let page = req.page.unwrap_or(1);
+    let limit = req.limit.unwrap_or(20);
+    let query: PublicListingQuery = req.into();
 
-    Json(ListingSearchResponse {
-        listings: vec![],
-        total: 0,
-        page: req.page.unwrap_or(1),
-        limit: req.limit.unwrap_or(20),
-    })
+    // Search listings
+    let listings = state
+        .portal_repo
+        .search_listings(&query)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to search listings: {}", e),
+            )
+        })?;
+
+    // Count total
+    let total = state
+        .portal_repo
+        .count_listings(&query)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to count listings: {}", e),
+            )
+        })?;
+
+    // Convert to response types
+    let listings: Vec<ListingSummary> = listings.into_iter().map(Into::into).collect();
+
+    Ok(Json(ListingSearchResponse {
+        listings,
+        total,
+        page,
+        limit,
+    }))
 }
 
 /// Get listing detail.
@@ -174,17 +256,22 @@ pub async fn search(Query(req): Query<ListingSearchRequest>) -> Json<ListingSear
         (status = 404, description = "Listing not found")
     )
 )]
-pub async fn get_listing(Path(id): Path<Uuid>) -> Json<ListingDetail> {
-    // TODO: Implement actual listing retrieval
+pub async fn get_listing(
+    State(_state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ListingDetail>, (axum::http::StatusCode, String)> {
+    // TODO: Implement actual listing retrieval from database
+    // For now, return placeholder data
     tracing::info!(%id, "Get listing detail");
 
-    Json(ListingDetail {
+    // This would be replaced with actual database query
+    Ok(Json(ListingDetail {
         id,
         title: "Sample Listing".to_string(),
-        description: "A beautiful property".to_string(),
+        description: Some("A beautiful property".to_string()),
         price: 150000,
         currency: "EUR".to_string(),
-        area: 75,
+        area: Some(75),
         rooms: Some(3),
         bathrooms: Some(1),
         floor: Some(2),
@@ -200,5 +287,47 @@ pub async fn get_listing(Path(id): Path<Uuid>) -> Json<ListingDetail> {
         features: vec!["parking".to_string(), "balcony".to_string()],
         published_at: "2024-01-01T00:00:00Z".to_string(),
         view_count: 0,
-    })
+    }))
+}
+
+/// Get search suggestions.
+#[utoipa::path(
+    get,
+    path = "/api/v1/listings/suggestions",
+    tag = "Listings",
+    params(
+        ("city" = Option<String>, Query, description = "Current city for nearby suggestions")
+    ),
+    responses(
+        (status = 200, description = "Search suggestions", body = SuggestionsResponse)
+    )
+)]
+pub async fn get_suggestions(
+    State(state): State<AppState>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<SuggestionsResponse>, (axum::http::StatusCode, String)> {
+    let city = params
+        .get("city")
+        .map(|s| s.as_str())
+        .unwrap_or("Bratislava");
+
+    let cities = state
+        .portal_repo
+        .get_nearby_cities(city, 10)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get cities: {}", e),
+            )
+        })?;
+
+    Ok(Json(SuggestionsResponse {
+        cities,
+        popular_searches: vec![
+            "2-izbový byt Bratislava".to_string(),
+            "Dom Košice".to_string(),
+            "Pozemok Žilina".to_string(),
+        ],
+    }))
 }

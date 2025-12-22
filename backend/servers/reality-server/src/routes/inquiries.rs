@@ -1,12 +1,10 @@
 //! Inquiries routes - contact and viewing requests.
 
+use crate::state::AppState;
 use axum::Router;
 
 /// Create inquiries router.
-pub fn router<S>() -> Router<S>
-where
-    S: Clone + Send + Sync + 'static,
-{
+pub fn router() -> Router<AppState> {
     Router::new()
     // TODO: Add inquiry routes
     // POST /contact/:listing_id    - Send contact message

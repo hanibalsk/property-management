@@ -43,6 +43,9 @@ pub mod sensor;
 // Epic 15: Property Listings & Multi-Portal Sync
 pub mod listing;
 
+// Epic 16: Portal Search & Discovery
+pub mod portal;
+
 pub use ai_chat::{
     message_role, AiChatMessage, AiChatSession, AiResponse, AiSource, AiTrainingFeedback,
     ChatSessionSummary, CreateChatSession, ProvideFeedback, SendChatMessage,
@@ -226,9 +229,18 @@ pub use vote::{
 
 // Epic 15: Property Listings & Multi-Portal Sync
 pub use listing::{
-    currency, listing_status, portal, property_type, syndication_status, transaction_type,
-    CreateListing, CreateListingFromUnit, CreateListingPhoto, CreateSyndication, Listing,
-    ListingListQuery, ListingPhoto, ListingStatistics, ListingSummary, ListingSyndication,
+    currency, listing_status, portal as listing_portal, property_type, syndication_status,
+    transaction_type, CreateListing, CreateListingFromUnit, CreateListingPhoto, CreateSyndication,
+    Listing, ListingListQuery, ListingPhoto, ListingStatistics, ListingSummary, ListingSyndication,
     ListingWithDetails, PropertyTypeCount, PublishListingResponse, ReorderPhotos,
     SyndicationResult, UpdateListing, UpdateListingStatus,
+};
+
+// Epic 16: Portal Search & Discovery
+pub use portal::{
+    alert_frequency, AddFavorite, CreatePortalUser, CreateSavedSearch, Favorite,
+    FavoriteWithListing, FavoriteWithListingRow, FavoritesResponse, MatchedListing, PortalSession,
+    PortalUser, PublicListingDetail, PublicListingQuery, PublicListingSearchResponse,
+    PublicListingSummary, SavedSearch, SavedSearchesResponse, SearchAlert, SearchCriteria,
+    SearchSuggestions, UpdatePortalUser, UpdateSavedSearch,
 };

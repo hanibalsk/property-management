@@ -48,6 +48,9 @@ pub mod sensor;
 // Epic 15: Property Listings & Multi-Portal Sync
 pub mod listing;
 
+// Epic 16: Portal Search & Discovery
+pub mod portal;
+
 pub use ai_chat::AiChatRepository;
 pub use equipment::EquipmentRepository;
 pub use sentiment::SentimentRepository;
@@ -103,3 +106,6 @@ pub use vote::VoteRepository;
 
 // Epic 15: Property Listings & Multi-Portal Sync
 pub use listing::ListingRepository;
+
+// Epic 16: Portal Search & Discovery
+pub use portal::PortalRepository;

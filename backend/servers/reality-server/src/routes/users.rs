@@ -2,13 +2,11 @@
 //!
 //! Supports SSO with Property Management via OAuth 2.0.
 
+use crate::state::AppState;
 use axum::Router;
 
 /// Create users router.
-pub fn router<S>() -> Router<S>
-where
-    S: Clone + Send + Sync + 'static,
-{
+pub fn router() -> Router<AppState> {
     Router::new()
     // TODO: Add user routes
     // POST /register           - Register portal user
