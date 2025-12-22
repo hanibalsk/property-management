@@ -288,3 +288,15 @@ pub use lease::{
     TenantApplication, TenantScreening, TerminateLease, UpdateApplication, UpdateLease,
     UpdateLeaseTemplate, UpdateScreeningResult,
 };
+
+// Epic 20: Maintenance Scheduling & Work Orders
+pub mod work_order;
+
+pub use work_order::{
+    schedule_execution_status, schedule_frequency, update_type, work_order_priority,
+    work_order_source, work_order_status, work_order_type, AddWorkOrderUpdate,
+    CreateMaintenanceSchedule, CreateWorkOrder, MaintenanceCostSummary, MaintenanceSchedule,
+    ScheduleExecution, ScheduleQuery, ServiceHistoryEntry, UpcomingSchedule,
+    UpdateMaintenanceSchedule, UpdateWorkOrder, WorkOrder, WorkOrderQuery, WorkOrderStatistics,
+    WorkOrderUpdate, WorkOrderWithDetails,
+};

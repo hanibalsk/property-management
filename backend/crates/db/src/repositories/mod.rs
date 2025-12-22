@@ -126,3 +126,8 @@ pub use rental::RentalRepository;
 pub mod lease;
 
 pub use lease::LeaseRepository;
+
+// Epic 20: Maintenance Scheduling & Work Orders
+pub mod work_order;
+
+pub use work_order::WorkOrderRepository;

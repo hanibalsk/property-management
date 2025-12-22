@@ -1,6 +1,6 @@
 {
   "name": "@ppt/mobile",
-  "version": "0.2.36",
+  "version": "0.2.38",
   "private": true,
   "description": "Property Management Mobile App (React Native)",
   "scripts": {

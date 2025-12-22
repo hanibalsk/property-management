@@ -14,7 +14,8 @@ use db::{
         PlatformAdminRepository, RentalRepository, RoleRepository, SensorRepository,
         SentimentRepository, SessionRepository, SignatureRequestRepository,
         SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
-        UnitResidentRepository, UserRepository, VoteRepository, WorkflowRepository,
+        UnitResidentRepository, UserRepository, VoteRepository, WorkOrderRepository,
+        WorkflowRepository,
     },
     DbPool,
 };
@@ -71,6 +72,8 @@ pub struct AppState {
     pub rental_repo: RentalRepository,
     // Epic 19: Lease Management & Tenant Screening
     pub lease_repo: LeaseRepository,
+    // Epic 20: Maintenance Scheduling & Work Orders
+    pub work_order_repo: WorkOrderRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -129,6 +132,8 @@ impl AppState {
         let rental_repo = RentalRepository::new(db.clone());
         // Epic 19: Lease Management & Tenant Screening
         let lease_repo = LeaseRepository::new(db.clone());
+        // Epic 20: Maintenance Scheduling & Work Orders
+        let work_order_repo = WorkOrderRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -177,6 +182,7 @@ impl AppState {
             agency_repo,
             rental_repo,
             lease_repo,
+            work_order_repo,
             auth_service,
             email_service,
             jwt_service,
