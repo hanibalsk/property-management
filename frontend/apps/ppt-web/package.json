@@ -1,6 +1,6 @@
 {
   "name": "@ppt/web",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "private": true,
   "description": "Property Management Web Application (React SPA)",
   "type": "module",

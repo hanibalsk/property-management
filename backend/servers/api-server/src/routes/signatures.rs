@@ -23,7 +23,10 @@ use crate::state::AppState;
 /// Create router for signature endpoints.
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/", get(list_signature_requests).post(create_signature_request))
+        .route(
+            "/",
+            get(list_signature_requests).post(create_signature_request),
+        )
         .route("/:id", get(get_signature_request))
         .route("/:id/remind", post(send_reminder))
         .route("/:id/cancel", post(cancel_signature_request))
@@ -56,7 +59,7 @@ pub async fn create_signature_request(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?
         .ok_or_else(|| {
@@ -74,7 +77,7 @@ pub async fn create_signature_request(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -103,7 +106,7 @@ pub async fn create_signature_request(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -138,7 +141,7 @@ pub async fn list_signature_requests(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?
         .ok_or_else(|| {
@@ -155,7 +158,7 @@ pub async fn list_signature_requests(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -179,13 +182,16 @@ pub async fn get_signature_request(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?
         .ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Signature request not found")),
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Signature request not found",
+                )),
             )
         })?;
 
@@ -210,13 +216,16 @@ pub async fn send_reminder(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?
         .ok_or_else(|| {
             (
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Signature request not found")),
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Signature request not found",
+                )),
             )
         })?;
 
@@ -333,7 +342,7 @@ pub async fn handle_webhook(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?
         .ok_or_else(|| {
@@ -344,7 +353,10 @@ pub async fn handle_webhook(
             );
             (
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Signature request not found")),
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Signature request not found",
+                )),
             )
         })?;
 
@@ -362,7 +374,7 @@ pub async fn handle_webhook(
             .map_err(|e| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                    Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
                 )
             })?;
 

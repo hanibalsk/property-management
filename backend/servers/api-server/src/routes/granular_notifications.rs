@@ -33,12 +33,20 @@ pub fn router() -> Router<AppState> {
         .route("/events", get(list_event_preferences))
         .route("/events/:event_type", put(update_event_preference))
         .route("/events/reset", post(reset_event_preferences))
-        .route("/events/category/:category", put(update_category_preferences))
+        .route(
+            "/events/category/:category",
+            put(update_category_preferences),
+        )
         // Schedule / quiet hours (Story 8B.3)
         .route("/schedule", get(get_schedule).put(update_schedule))
         // Role defaults (Story 8B.4) - admin endpoints
         .route("/roles", get(list_role_defaults))
-        .route("/roles/:role", get(get_role_defaults).put(update_role_defaults).delete(delete_role_defaults))
+        .route(
+            "/roles/:role",
+            get(get_role_defaults)
+                .put(update_role_defaults)
+                .delete(delete_role_defaults),
+        )
         .route("/roles/:role/apply", post(apply_role_defaults))
 }
 
@@ -60,7 +68,7 @@ pub async fn list_event_preferences(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -79,12 +87,14 @@ pub async fn list_event_preferences(
     let categories: Vec<CategorySummary> = NotificationEventCategory::all()
         .into_iter()
         .filter_map(|cat| {
-            category_map.get(&cat).map(|(total, enabled)| CategorySummary {
-                category: cat,
-                display_name: format!("{:?}", cat),
-                total_events: *total,
-                enabled_events: *enabled,
-            })
+            category_map
+                .get(&cat)
+                .map(|(total, enabled)| CategorySummary {
+                    category: cat,
+                    display_name: format!("{:?}", cat),
+                    total_events: *total,
+                    enabled_events: *enabled,
+                })
         })
         .collect();
 
@@ -125,7 +135,7 @@ pub async fn update_event_preference(
             } else {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                    Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
                 )
             }
         })?;
@@ -138,7 +148,7 @@ pub async fn update_event_preference(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -148,7 +158,10 @@ pub async fn update_event_preference(
         .ok_or_else(|| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("PREFERENCE_NOT_FOUND", "Failed to update")),
+                Json(ErrorResponse::new(
+                    "PREFERENCE_NOT_FOUND",
+                    "Failed to update",
+                )),
             )
         })?;
 
@@ -175,7 +188,7 @@ pub async fn reset_event_preferences(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -229,7 +242,7 @@ pub async fn update_category_preferences(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -261,7 +274,7 @@ pub async fn get_schedule(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -390,7 +403,7 @@ pub async fn update_schedule(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -455,7 +468,7 @@ pub async fn list_role_defaults(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -478,7 +491,7 @@ pub async fn get_role_defaults(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?
         .ok_or_else(|| {
@@ -544,7 +557,7 @@ pub async fn update_role_defaults(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -573,7 +586,7 @@ pub async fn delete_role_defaults(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 
@@ -603,7 +616,7 @@ pub async fn apply_role_defaults(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", &e.to_string())),
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
             )
         })?;
 

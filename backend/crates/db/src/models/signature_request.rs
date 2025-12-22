@@ -10,11 +10,14 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// Status of a signature request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, sqlx::Type, ToSchema,
+)]
 #[sqlx(type_name = "signature_request_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum SignatureRequestStatus {
     /// Request created, waiting for signers
+    #[default]
     Pending,
     /// At least one signer has signed
     InProgress,
@@ -26,12 +29,6 @@ pub enum SignatureRequestStatus {
     Expired,
     /// Request was cancelled by requester
     Cancelled,
-}
-
-impl Default for SignatureRequestStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 impl std::fmt::Display for SignatureRequestStatus {
@@ -48,10 +45,11 @@ impl std::fmt::Display for SignatureRequestStatus {
 }
 
 /// Status of an individual signer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SignerStatus {
     /// Waiting for signature
+    #[default]
     Pending,
     /// Email sent, awaiting response
     Sent,
@@ -61,12 +59,6 @@ pub enum SignerStatus {
     Signed,
     /// Signer declined to sign
     Declined,
-}
-
-impl Default for SignerStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 /// Individual signer in a signature request.
@@ -213,7 +205,7 @@ impl SignatureRequest {
 
     /// Check if the request is expired.
     pub fn is_expired(&self) -> bool {
-        self.expires_at.map_or(false, |exp| exp < Utc::now())
+        self.expires_at.is_some_and(|exp| exp < Utc::now())
     }
 
     /// Check if the request can be cancelled.

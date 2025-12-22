@@ -593,7 +593,10 @@ async fn generate_document(
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
                 "MISSING_PLACEHOLDERS",
-                format!("Missing required placeholder values: {}", missing.join(", ")),
+                format!(
+                    "Missing required placeholder values: {}",
+                    missing.join(", ")
+                ),
             )),
         ));
     }
@@ -612,11 +615,7 @@ async fn generate_document(
     // Create a document with the generated content
     // Note: In a full implementation, this would create an actual file (e.g., PDF)
     // For now, we store the content as a text file reference
-    let file_key = format!(
-        "generated/{}/{}.md",
-        org_id,
-        uuid::Uuid::new_v4()
-    );
+    let file_key = format!("generated/{}/{}.md", org_id, uuid::Uuid::new_v4());
     let file_name = format!("{}.md", req.title.replace(['/', '\\'], "_"));
 
     let _generation_metadata = serde_json::to_value(&req.values).unwrap();
@@ -646,10 +645,7 @@ async fn generate_document(
                 StatusCode::CREATED,
                 Json(GenerateDocumentResponse {
                     document_id: document.id,
-                    message: format!(
-                        "Document generated from template '{}'",
-                        template.name
-                    ),
+                    message: format!("Document generated from template '{}'", template.name),
                 }),
             ))
         }

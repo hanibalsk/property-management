@@ -69,7 +69,10 @@ impl DocumentTemplate {
     }
 
     /// Validate that all required placeholders have values.
-    pub fn validate_values(&self, values: &std::collections::HashMap<String, String>) -> Result<(), Vec<String>> {
+    pub fn validate_values(
+        &self,
+        values: &std::collections::HashMap<String, String>,
+    ) -> Result<(), Vec<String>> {
         let missing: Vec<String> = self
             .required_placeholders()
             .iter()

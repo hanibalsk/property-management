@@ -132,13 +132,12 @@ impl GranularNotificationRepository {
         in_app_enabled: Option<bool>,
     ) -> Result<EventNotificationPreference, SqlxError> {
         // Get the category from event types
-        let event_type_row = sqlx::query(
-            "SELECT category FROM notification_event_types WHERE event_type = $1",
-        )
-        .bind(event_type)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or_else(|| SqlxError::RowNotFound)?;
+        let event_type_row =
+            sqlx::query("SELECT category FROM notification_event_types WHERE event_type = $1")
+                .bind(event_type)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or_else(|| SqlxError::RowNotFound)?;
 
         let category: NotificationEventCategory = event_type_row.get("category");
 
@@ -222,6 +221,7 @@ impl GranularNotificationRepository {
     }
 
     /// Create or update user's notification schedule.
+    #[allow(clippy::too_many_arguments)]
     pub async fn upsert_schedule(
         &self,
         user_id: Uuid,
@@ -389,6 +389,7 @@ impl GranularNotificationRepository {
     }
 
     /// Create or update role notification defaults.
+    #[allow(clippy::too_many_arguments)]
     pub async fn upsert_role_defaults(
         &self,
         organization_id: Uuid,
@@ -433,11 +434,13 @@ impl GranularNotificationRepository {
         organization_id: Uuid,
         role: &str,
     ) -> Result<(), SqlxError> {
-        sqlx::query("DELETE FROM role_notification_defaults WHERE organization_id = $1 AND role = $2")
-            .bind(organization_id)
-            .bind(role)
-            .execute(&self.pool)
-            .await?;
+        sqlx::query(
+            "DELETE FROM role_notification_defaults WHERE organization_id = $1 AND role = $2",
+        )
+        .bind(organization_id)
+        .bind(role)
+        .execute(&self.pool)
+        .await?;
         Ok(())
     }
 

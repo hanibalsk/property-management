@@ -1080,7 +1080,10 @@ impl DocumentRepository {
     }
 
     /// Get the current (latest) version of a document.
-    pub async fn get_current_version(&self, document_id: Uuid) -> Result<Option<Document>, SqlxError> {
+    pub async fn get_current_version(
+        &self,
+        document_id: Uuid,
+    ) -> Result<Option<Document>, SqlxError> {
         // Get the document to find the root
         let doc = match self.find_by_id(document_id).await? {
             Some(d) => d,

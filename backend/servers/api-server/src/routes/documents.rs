@@ -1152,10 +1152,7 @@ async fn create_version(
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
                 "UNSUPPORTED_FILE_TYPE",
-                format!(
-                    "File type '{}' is not supported",
-                    req.mime_type
-                ),
+                format!("File type '{}' is not supported", req.mime_type),
             )),
         ));
     }
@@ -1174,7 +1171,10 @@ async fn create_version(
             Json(CreateVersionResponse {
                 id: new_version.id,
                 version_number: new_version.version_number,
-                message: format!("Version {} created successfully", new_version.version_number),
+                message: format!(
+                    "Version {} created successfully",
+                    new_version.version_number
+                ),
             }),
         )),
         Err(e) => {
@@ -1291,7 +1291,10 @@ async fn restore_version(
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Version not found in this document")),
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Version not found in this document",
+                )),
             ))
         }
         Err(e) => {
@@ -1307,7 +1310,11 @@ async fn restore_version(
         Ok(Some(_)) => {}
     }
 
-    match state.document_repo.restore_version(id, version_id, user_id).await {
+    match state
+        .document_repo
+        .restore_version(id, version_id, user_id)
+        .await
+    {
         Ok(new_version) => Ok((
             StatusCode::CREATED,
             Json(CreateVersionResponse {
