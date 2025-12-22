@@ -274,3 +274,17 @@ pub use rental::{
     ReportPreview, ReportSummary, SubmitReport, UnitAvailability, UpdateBooking,
     UpdateBookingStatus, UpdateGuest, UpdateICalFeed, UpdatePlatformConnection,
 };
+
+// Epic 19: Lease Management & Tenant Screening
+pub mod lease;
+
+pub use lease::{
+    application_status, lease_status, screening_status, screening_type, termination_reason,
+    ApplicationListQuery, ApplicationSummary, CreateAmendment, CreateApplication, CreateLease,
+    CreateLeaseTemplate, CreateReminder, ExpirationOverview, InitiateScreening, Lease,
+    LeaseAmendment, LeaseListQuery, LeasePayment, LeaseReminder, LeaseStatistics, LeaseSummary,
+    LeaseTemplate, LeaseWithDetails, PaymentSummary, RecordPayment as RecordLeasePayment,
+    RenewLease, ReviewApplication, ScreeningConsent, ScreeningSummary, SubmitApplication,
+    TenantApplication, TenantScreening, TerminateLease, UpdateApplication, UpdateLease,
+    UpdateLeaseTemplate, UpdateScreeningResult,
+};

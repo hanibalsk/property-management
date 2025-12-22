@@ -121,3 +121,8 @@ pub use agency::AgencyRepository;
 
 // Epic 18: Short-Term Rental Integration
 pub use rental::RentalRepository;
+
+// Epic 19: Lease Management & Tenant Screening
+pub mod lease;
+
+pub use lease::LeaseRepository;
