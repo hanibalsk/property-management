@@ -371,3 +371,18 @@ pub use legal::{
     NoticeTypeCount, NoticeWithRecipients, UpcomingVerification, UpdateComplianceRequirement,
     UpdateComplianceTemplate, UpdateLegalDocument, UpdateLegalNotice,
 };
+
+// Epic 26: Platform Subscription & Billing
+pub mod subscription;
+
+pub use subscription::{
+    billing_cycle, coupon_duration, discount_type, line_item_type, metric_type,
+    payment_method_type, subscription_invoice_status, subscription_status,
+    CancelSubscriptionRequest, ChangePlanRequest, CouponRedemption, CreateOrganizationSubscription,
+    CreateSubscriptionCoupon, CreateSubscriptionEvent, CreateSubscriptionPaymentMethod,
+    CreateSubscriptionPlan, CreateUsageRecord, InvoiceLineItem, InvoiceQueryParams,
+    InvoiceWithDetails, OrganizationSubscription, PlanSubscriptionCount, RedeemCouponRequest,
+    SubscriptionCoupon, SubscriptionEvent, SubscriptionInvoice, SubscriptionPaymentMethod,
+    SubscriptionPlan, SubscriptionStatistics, SubscriptionWithPlan, UpdateOrganizationSubscription,
+    UpdateSubscriptionCoupon, UpdateSubscriptionPlan, UsageRecord, UsageSummary,
+};

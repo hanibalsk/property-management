@@ -34,8 +34,8 @@ pub mod payment_method_type {
     pub const ALL: &[&str] = &[CARD, BANK_TRANSFER, SEPA_DEBIT, INVOICE];
 }
 
-/// Invoice status constants.
-pub mod invoice_status {
+/// Subscription invoice status constants.
+pub mod subscription_invoice_status {
     pub const DRAFT: &str = "draft";
     pub const OPEN: &str = "open";
     pub const PAID: &str = "paid";
@@ -63,7 +63,9 @@ pub mod metric_type {
     pub const BUILDINGS: &str = "buildings";
     pub const UNITS: &str = "units";
     pub const USERS: &str = "users";
-    pub const ALL: &[&str] = &[STORAGE_GB, API_CALLS, EMAIL_SENT, SMS_SENT, BUILDINGS, UNITS, USERS];
+    pub const ALL: &[&str] = &[
+        STORAGE_GB, API_CALLS, EMAIL_SENT, SMS_SENT, BUILDINGS, UNITS, USERS,
+    ];
 }
 
 /// Coupon discount type constants.
@@ -238,9 +240,9 @@ pub struct CancelSubscriptionRequest {
 
 // ==================== Payment Method ====================
 
-/// Payment method entity.
+/// Payment method entity for subscriptions.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
-pub struct PaymentMethod {
+pub struct SubscriptionPaymentMethod {
     pub id: Uuid,
     pub organization_id: Uuid,
 
@@ -271,9 +273,9 @@ pub struct PaymentMethod {
     pub updated_at: Option<DateTime<Utc>>,
 }
 
-/// Create payment method request.
+/// Create payment method request for subscriptions.
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct CreatePaymentMethod {
+pub struct CreateSubscriptionPaymentMethod {
     pub method_type: String,
     pub stripe_payment_method_id: Option<String>,
     pub is_default: Option<bool>,
@@ -403,7 +405,7 @@ pub struct CreateUsageRecord {
 }
 
 /// Usage summary.
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct UsageSummary {
     pub metric_type: String,
     pub total_quantity: Decimal,
