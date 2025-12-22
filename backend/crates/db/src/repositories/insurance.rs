@@ -62,9 +62,9 @@ impl InsuranceRepository {
         .bind(&data.provider_phone)
         .bind(&data.provider_email)
         .bind(&data.policy_type)
-        .bind(&data.coverage_amount)
-        .bind(&data.deductible)
-        .bind(&data.premium_amount)
+        .bind(data.coverage_amount)
+        .bind(data.deductible)
+        .bind(data.premium_amount)
         .bind(&data.premium_frequency)
         .bind(data.building_id)
         .bind(data.unit_id)
@@ -175,9 +175,9 @@ impl InsuranceRepository {
         .bind(&data.provider_phone)
         .bind(&data.provider_email)
         .bind(&data.policy_type)
-        .bind(&data.coverage_amount)
-        .bind(&data.deductible)
-        .bind(&data.premium_amount)
+        .bind(data.coverage_amount)
+        .bind(data.deductible)
+        .bind(data.premium_amount)
         .bind(&data.premium_frequency)
         .bind(data.building_id)
         .bind(data.unit_id)
@@ -324,7 +324,7 @@ impl InsuranceRepository {
         .bind(data.building_id)
         .bind(data.unit_id)
         .bind(data.fault_id)
-        .bind(&data.claimed_amount)
+        .bind(data.claimed_amount)
         .bind(&data.currency)
         .bind(submitted_by)
         .bind(&data.metadata)
@@ -458,9 +458,9 @@ impl InsuranceRepository {
         .bind(data.building_id)
         .bind(data.unit_id)
         .bind(data.fault_id)
-        .bind(&data.claimed_amount)
-        .bind(&data.approved_amount)
-        .bind(&data.deductible_applied)
+        .bind(data.claimed_amount)
+        .bind(data.approved_amount)
+        .bind(data.deductible_applied)
         .bind(&data.status)
         .bind(&data.adjuster_name)
         .bind(&data.adjuster_phone)
@@ -498,6 +498,7 @@ impl InsuranceRepository {
     }
 
     /// Review a claim (approve, deny, etc.).
+    #[allow(clippy::too_many_arguments)]
     pub async fn review_claim(
         &self,
         organization_id: Uuid,
