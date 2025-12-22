@@ -1,0 +1,271 @@
+//! Sentiment analysis repository (Epic 13, Story 13.2).
+
+use crate::models::{
+    CreateSentimentAlert, SentimentAlert, SentimentThresholds, SentimentTrend, SentimentTrendQuery,
+    UpdateSentimentThresholds, UpsertSentimentTrend,
+};
+use chrono::NaiveDate;
+use sqlx::PgPool;
+use uuid::Uuid;
+
+/// Repository for sentiment analysis operations.
+#[derive(Clone)]
+pub struct SentimentRepository {
+    pool: PgPool,
+}
+
+impl SentimentRepository {
+    /// Create a new repository instance.
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
+    /// Upsert a sentiment trend record.
+    pub async fn upsert_trend(
+        &self,
+        data: UpsertSentimentTrend,
+    ) -> Result<SentimentTrend, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO sentiment_trends
+                (organization_id, building_id, date, avg_sentiment, message_count, negative_count, neutral_count, positive_count)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (organization_id, building_id, date) DO UPDATE SET
+                avg_sentiment = EXCLUDED.avg_sentiment,
+                message_count = EXCLUDED.message_count,
+                negative_count = EXCLUDED.negative_count,
+                neutral_count = EXCLUDED.neutral_count,
+                positive_count = EXCLUDED.positive_count,
+                updated_at = NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(data.organization_id)
+        .bind(data.building_id)
+        .bind(data.date)
+        .bind(data.avg_sentiment)
+        .bind(data.message_count)
+        .bind(data.negative_count)
+        .bind(data.neutral_count)
+        .bind(data.positive_count)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Get sentiment trends.
+    pub async fn list_trends(
+        &self,
+        org_id: Uuid,
+        query: SentimentTrendQuery,
+    ) -> Result<Vec<SentimentTrend>, sqlx::Error> {
+        let limit = query.limit.unwrap_or(30);
+        let from_date = query
+            .from_date
+            .unwrap_or_else(|| chrono::Utc::now().date_naive() - chrono::Duration::days(30));
+        let to_date = query
+            .to_date
+            .unwrap_or_else(|| chrono::Utc::now().date_naive());
+
+        if let Some(building_id) = query.building_id {
+            sqlx::query_as(
+                r#"
+                SELECT * FROM sentiment_trends
+                WHERE organization_id = $1 AND building_id = $2
+                    AND date >= $3 AND date <= $4
+                ORDER BY date DESC
+                LIMIT $5
+                "#,
+            )
+            .bind(org_id)
+            .bind(building_id)
+            .bind(from_date)
+            .bind(to_date)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
+        } else {
+            sqlx::query_as(
+                r#"
+                SELECT * FROM sentiment_trends
+                WHERE organization_id = $1 AND building_id IS NULL
+                    AND date >= $2 AND date <= $3
+                ORDER BY date DESC
+                LIMIT $4
+                "#,
+            )
+            .bind(org_id)
+            .bind(from_date)
+            .bind(to_date)
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await
+        }
+    }
+
+    /// Create a sentiment alert.
+    pub async fn create_alert(
+        &self,
+        data: CreateSentimentAlert,
+    ) -> Result<SentimentAlert, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO sentiment_alerts
+                (organization_id, building_id, alert_type, threshold_breached, current_sentiment, previous_sentiment, sample_message_ids)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+            "#,
+        )
+        .bind(data.organization_id)
+        .bind(data.building_id)
+        .bind(data.alert_type)
+        .bind(data.threshold_breached)
+        .bind(data.current_sentiment)
+        .bind(data.previous_sentiment)
+        .bind(&data.sample_message_ids)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// List alerts for organization.
+    pub async fn list_alerts(
+        &self,
+        org_id: Uuid,
+        acknowledged: Option<bool>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<SentimentAlert>, sqlx::Error> {
+        match acknowledged {
+            Some(ack) => {
+                sqlx::query_as(
+                    r#"
+                    SELECT * FROM sentiment_alerts
+                    WHERE organization_id = $1 AND acknowledged = $2
+                    ORDER BY created_at DESC
+                    LIMIT $3 OFFSET $4
+                    "#,
+                )
+                .bind(org_id)
+                .bind(ack)
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&self.pool)
+                .await
+            }
+            None => {
+                sqlx::query_as(
+                    r#"
+                    SELECT * FROM sentiment_alerts
+                    WHERE organization_id = $1
+                    ORDER BY created_at DESC
+                    LIMIT $2 OFFSET $3
+                    "#,
+                )
+                .bind(org_id)
+                .bind(limit)
+                .bind(offset)
+                .fetch_all(&self.pool)
+                .await
+            }
+        }
+    }
+
+    /// Acknowledge an alert.
+    pub async fn acknowledge_alert(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+    ) -> Result<SentimentAlert, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE sentiment_alerts
+            SET acknowledged = TRUE, acknowledged_by = $2, acknowledged_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Get or create sentiment thresholds for organization.
+    pub async fn get_thresholds(&self, org_id: Uuid) -> Result<SentimentThresholds, sqlx::Error> {
+        // Try to get existing
+        let existing: Option<SentimentThresholds> =
+            sqlx::query_as("SELECT * FROM sentiment_thresholds WHERE organization_id = $1")
+                .bind(org_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        match existing {
+            Some(t) => Ok(t),
+            None => {
+                // Create default
+                sqlx::query_as(
+                    r#"
+                    INSERT INTO sentiment_thresholds (organization_id)
+                    VALUES ($1)
+                    RETURNING *
+                    "#,
+                )
+                .bind(org_id)
+                .fetch_one(&self.pool)
+                .await
+            }
+        }
+    }
+
+    /// Update sentiment thresholds.
+    pub async fn update_thresholds(
+        &self,
+        org_id: Uuid,
+        data: UpdateSentimentThresholds,
+    ) -> Result<SentimentThresholds, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE sentiment_thresholds SET
+                negative_threshold = COALESCE($2, negative_threshold),
+                alert_on_spike = COALESCE($3, alert_on_spike),
+                spike_threshold_change = COALESCE($4, spike_threshold_change),
+                min_messages_for_alert = COALESCE($5, min_messages_for_alert),
+                enabled = COALESCE($6, enabled),
+                updated_at = NOW()
+            WHERE organization_id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.negative_threshold)
+        .bind(data.alert_on_spike)
+        .bind(data.spike_threshold_change)
+        .bind(data.min_messages_for_alert)
+        .bind(data.enabled)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Get organization average sentiment for a date range.
+    pub async fn get_org_average_sentiment(
+        &self,
+        org_id: Uuid,
+        from_date: NaiveDate,
+        to_date: NaiveDate,
+    ) -> Result<f64, sqlx::Error> {
+        let result: (Option<f64>,) = sqlx::query_as(
+            r#"
+            SELECT AVG(avg_sentiment) as avg
+            FROM sentiment_trends
+            WHERE organization_id = $1 AND building_id IS NULL
+                AND date >= $2 AND date <= $3
+            "#,
+        )
+        .bind(org_id)
+        .bind(from_date)
+        .bind(to_date)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(result.0.unwrap_or(0.0))
+    }
+}

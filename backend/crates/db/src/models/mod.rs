@@ -31,6 +31,33 @@ pub mod unit_resident;
 pub mod user;
 pub mod vote;
 
+// Epic 13: AI Assistant & Automation
+pub mod ai_chat;
+pub mod equipment;
+pub mod sentiment;
+pub mod workflow;
+
+pub use ai_chat::{
+    message_role, AiChatMessage, AiChatSession, AiResponse, AiSource, AiTrainingFeedback,
+    ChatSessionSummary, CreateChatSession, ProvideFeedback, SendChatMessage,
+};
+pub use equipment::{
+    equipment_status, maintenance_status, maintenance_type, CreateEquipment, CreateMaintenance,
+    Equipment, EquipmentMaintenance, EquipmentQuery, EquipmentWithSummary, MaintenancePrediction,
+    UpdateEquipment, UpdateMaintenance,
+};
+pub use sentiment::{
+    alert_type, BuildingSentiment, CreateSentimentAlert, SentimentAlert, SentimentDashboard,
+    SentimentThresholds, SentimentTrend, SentimentTrendQuery, UpdateSentimentThresholds,
+    UpsertSentimentTrend,
+};
+pub use workflow::{
+    action_type, execution_status, on_failure, step_status, trigger_type, CreateWorkflow,
+    CreateWorkflowAction, ExecutionQuery, TriggerWorkflow, UpdateWorkflow, Workflow,
+    WorkflowAction, WorkflowExecution, WorkflowExecutionStep, WorkflowQuery, WorkflowSchedule,
+    WorkflowSummary, WorkflowWithDetails,
+};
+
 pub use announcement::{
     announcement_status, target_type, AcknowledgeAnnouncement, AcknowledgmentStats, Announcement,
     AnnouncementAttachment, AnnouncementComment, AnnouncementListQuery, AnnouncementRead,

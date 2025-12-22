@@ -36,6 +36,17 @@ pub mod unit_resident;
 pub mod user;
 pub mod vote;
 
+// Epic 13: AI Assistant & Automation
+pub mod ai_chat;
+pub mod equipment;
+pub mod sentiment;
+pub mod workflow;
+
+pub use ai_chat::AiChatRepository;
+pub use equipment::EquipmentRepository;
+pub use sentiment::SentimentRepository;
+pub use workflow::WorkflowRepository;
+
 pub use announcement::AnnouncementRepository;
 pub use audit_log::AuditLogRepository;
 pub use building::BuildingRepository;
