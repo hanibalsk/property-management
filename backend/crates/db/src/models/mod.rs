@@ -40,6 +40,9 @@ pub mod workflow;
 // Epic 14: IoT & Smart Building
 pub mod sensor;
 
+// Epic 15: Property Listings & Multi-Portal Sync
+pub mod listing;
+
 // Epic 17: Agency & Realtor Management
 pub mod agency;
 
@@ -222,6 +225,15 @@ pub use vote::{
     UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment, VoteCommentWithUser, VoteEligibility,
     VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData, VoteResponse, VoteResults,
     VoteSummary, VoteWithDetails,
+};
+
+// Epic 15: Property Listings & Multi-Portal Sync
+pub use listing::{
+    currency, listing_status, portal as listing_portal, property_type, syndication_status,
+    transaction_type, CreateListing, CreateListingFromUnit, CreateListingPhoto, CreateSyndication,
+    Listing, ListingListQuery, ListingPhoto, ListingStatistics, ListingSummary, ListingSyndication,
+    ListingWithDetails, PropertyTypeCount, PublishListingResponse, ReorderPhotos,
+    SyndicationResult, UpdateListing, UpdateListingStatus,
 };
 
 // Epic 17: Agency & Realtor Management

@@ -8,10 +8,10 @@ use db::{
         DelegationRepository, DocumentRepository, DocumentTemplateRepository, EquipmentRepository,
         FacilityRepository, FaultRepository, FeatureFlagRepository, FinancialRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
-        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
-        PersonMonthRepository, PlatformAdminRepository, RoleRepository, SensorRepository,
-        SentimentRepository, SessionRepository, SignatureRequestRepository,
+        ListingRepository, MeterRepository, NotificationPreferenceRepository, OAuthRepository,
+        OnboardingRepository, OrganizationMemberRepository, OrganizationRepository,
+        PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository, RoleRepository,
+        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
         SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
         UnitResidentRepository, UserRepository, VoteRepository, WorkflowRepository,
     },
@@ -62,6 +62,8 @@ pub struct AppState {
     pub workflow_repo: WorkflowRepository,
     // Epic 14: IoT & Smart Building
     pub sensor_repo: SensorRepository,
+    // Epic 15: Property Listings & Multi-Portal Sync
+    pub listing_repo: ListingRepository,
     // Epic 17: Agency & Realtor Management
     pub agency_repo: AgencyRepository,
     pub auth_service: AuthService,
@@ -114,6 +116,8 @@ impl AppState {
         let workflow_repo = WorkflowRepository::new(db.clone());
         // Epic 14: IoT & Smart Building
         let sensor_repo = SensorRepository::new(db.clone());
+        // Epic 15: Property Listings & Multi-Portal Sync
+        let listing_repo = ListingRepository::new(db.clone());
         // Epic 17: Agency & Realtor Management
         let agency_repo = AgencyRepository::new(db.clone());
         let auth_service = AuthService::new();
@@ -160,6 +164,7 @@ impl AppState {
             equipment_repo,
             workflow_repo,
             sensor_repo,
+            listing_repo,
             agency_repo,
             auth_service,
             email_service,

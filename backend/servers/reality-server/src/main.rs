@@ -19,6 +19,9 @@ use utoipa_swagger_ui::SwaggerUi;
 
 mod handlers;
 mod routes;
+pub mod state;
+
+use state::AppState;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -39,16 +42,31 @@ mod routes;
         routes::health::health,
         routes::listings::search,
         routes::listings::get_listing,
+        routes::sso::sso_login,
+        routes::sso::sso_callback,
+        routes::sso::sso_logout,
+        routes::sso::create_mobile_sso_token,
+        routes::sso::validate_mobile_sso_token,
+        routes::sso::get_session,
+        routes::sso::refresh_session,
     ),
     components(schemas(
         routes::health::HealthResponse,
         routes::listings::ListingSearchRequest,
         routes::listings::ListingSearchResponse,
         routes::listings::ListingDetail,
+        routes::sso::SsoError,
+        routes::sso::SsoUserInfo,
+        routes::sso::SessionInfo,
+        routes::sso::CreateMobileSsoTokenRequest,
+        routes::sso::MobileSsoTokenResponse,
+        routes::sso::ValidateMobileSsoTokenRequest,
+        routes::sso::SessionResponse,
     )),
     tags(
         (name = "Health", description = "Health check endpoints"),
         (name = "Listings", description = "Public listing search and detail"),
+        (name = "SSO", description = "Single Sign-On with Property Management"),
         (name = "Users", description = "Portal user accounts (separate from PM)"),
         (name = "Favorites", description = "Save and manage favorite listings"),
         (name = "Inquiries", description = "Contact and viewing requests")
@@ -70,6 +88,9 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    // Initialize application state
+    let app_state = AppState::new();
+
     // Build router
     let app = Router::new()
         // Health check
@@ -82,8 +103,12 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/favorites", routes::favorites::router())
         // Inquiries routes
         .nest("/api/v1/inquiries", routes::inquiries::router())
+        // SSO routes (Epic 10A-SSO)
+        .nest("/api/v1/sso", routes::sso::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        // Application state
+        .with_state(app_state)
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive());
