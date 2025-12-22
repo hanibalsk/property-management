@@ -64,6 +64,7 @@ impl WorkOrderRepository {
     }
 
     /// Create work order from a fault (Story 20.2 - fault-triggered work orders).
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_from_fault(
         &self,
         org_id: Uuid,
