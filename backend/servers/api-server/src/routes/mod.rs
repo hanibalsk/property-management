@@ -3,6 +3,7 @@
 //! Each module handles a specific domain and provides its own router.
 
 pub mod admin;
+pub mod agencies;
 pub mod ai;
 pub mod announcements;
 pub mod auth;

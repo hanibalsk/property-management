@@ -3,10 +3,10 @@
 use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpService};
 use db::{
     repositories::{
-        AiChatRepository, AnnouncementRepository, AuditLogRepository, BuildingRepository,
-        CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DocumentRepository, DocumentTemplateRepository, EquipmentRepository, FacilityRepository,
-        FaultRepository, FeatureFlagRepository, FinancialRepository,
+        AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
+        BuildingRepository, CriticalNotificationRepository, DataExportRepository,
+        DelegationRepository, DocumentRepository, DocumentTemplateRepository, EquipmentRepository,
+        FacilityRepository, FaultRepository, FeatureFlagRepository, FinancialRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
@@ -62,6 +62,8 @@ pub struct AppState {
     pub workflow_repo: WorkflowRepository,
     // Epic 14: IoT & Smart Building
     pub sensor_repo: SensorRepository,
+    // Epic 17: Agency & Realtor Management
+    pub agency_repo: AgencyRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -112,6 +114,8 @@ impl AppState {
         let workflow_repo = WorkflowRepository::new(db.clone());
         // Epic 14: IoT & Smart Building
         let sensor_repo = SensorRepository::new(db.clone());
+        // Epic 17: Agency & Realtor Management
+        let agency_repo = AgencyRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -156,6 +160,7 @@ impl AppState {
             equipment_repo,
             workflow_repo,
             sensor_repo,
+            agency_repo,
             auth_service,
             email_service,
             jwt_service,

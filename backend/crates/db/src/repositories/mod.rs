@@ -45,6 +45,9 @@ pub mod workflow;
 // Epic 14: IoT & Smart Building
 pub mod sensor;
 
+// Epic 17: Agency & Realtor Management
+pub mod agency;
+
 pub use ai_chat::AiChatRepository;
 pub use equipment::EquipmentRepository;
 pub use sentiment::SentimentRepository;
@@ -97,3 +100,6 @@ pub use unit::UnitRepository;
 pub use unit_resident::UnitResidentRepository;
 pub use user::UserRepository;
 pub use vote::VoteRepository;
+
+// Epic 17: Agency & Realtor Management
+pub use agency::AgencyRepository;

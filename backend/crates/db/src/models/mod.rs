@@ -40,6 +40,9 @@ pub mod workflow;
 // Epic 14: IoT & Smart Building
 pub mod sensor;
 
+// Epic 17: Agency & Realtor Management
+pub mod agency;
+
 pub use ai_chat::{
     message_role, AiChatMessage, AiChatSession, AiResponse, AiSource, AiTrainingFeedback,
     ChatSessionSummary, CreateChatSession, ProvideFeedback, SendChatMessage,
@@ -219,4 +222,15 @@ pub use vote::{
     UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment, VoteCommentWithUser, VoteEligibility,
     VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData, VoteResponse, VoteResults,
     VoteSummary, VoteWithDetails,
+};
+
+// Epic 17: Agency & Realtor Management
+pub use agency::{
+    agency_status, import_source, import_status, inquiry_assignment, listing_visibility,
+    member_role, AcceptInvitation, Agency, AgencyBranding, AgencyInvitation, AgencyListing,
+    AgencyListingSummary, AgencyListingsResponse, AgencyMember, AgencyMemberWithUser,
+    AgencyMemberWithUserRow, AgencyMembersResponse, AgencyProfile, AgencySummary, CreateAgency,
+    CreateAgencyListing, CreateImportJob, FieldMapping, ImportConfig, ImportError, ImportPreview,
+    ImportResult, InviteMember, ListingCollaborator, ListingEditHistory, ListingImportJob,
+    UpdateAgency, UpdateListingVisibility, UpdateMemberRole,
 };
