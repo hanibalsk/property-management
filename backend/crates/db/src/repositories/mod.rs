@@ -136,3 +136,8 @@ pub use work_order::WorkOrderRepository;
 pub mod vendor;
 
 pub use vendor::VendorRepository;
+
+// Epic 22: Insurance Management
+pub mod insurance;
+
+pub use insurance::InsuranceRepository;

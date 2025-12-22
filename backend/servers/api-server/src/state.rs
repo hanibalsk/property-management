@@ -8,11 +8,11 @@ use db::{
         DelegationRepository, DocumentRepository, DocumentTemplateRepository, EquipmentRepository,
         FacilityRepository, FaultRepository, FeatureFlagRepository, FinancialRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        LeaseRepository, ListingRepository, MeterRepository, NotificationPreferenceRepository,
-        OAuthRepository, OnboardingRepository, OrganizationMemberRepository,
-        OrganizationRepository, PasswordResetRepository, PersonMonthRepository,
-        PlatformAdminRepository, RentalRepository, RoleRepository, SensorRepository,
-        SentimentRepository, SessionRepository, SignatureRequestRepository,
+        InsuranceRepository, LeaseRepository, ListingRepository, MeterRepository,
+        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
+        PersonMonthRepository, PlatformAdminRepository, RentalRepository, RoleRepository,
+        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
         SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
         UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
         WorkOrderRepository, WorkflowRepository,
@@ -76,6 +76,8 @@ pub struct AppState {
     pub work_order_repo: WorkOrderRepository,
     // Epic 21: Supplier & Vendor Management
     pub vendor_repo: VendorRepository,
+    // Epic 22: Insurance Management
+    pub insurance_repo: InsuranceRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -138,6 +140,8 @@ impl AppState {
         let work_order_repo = WorkOrderRepository::new(db.clone());
         // Epic 21: Supplier & Vendor Management
         let vendor_repo = VendorRepository::new(db.clone());
+        // Epic 22: Insurance Management
+        let insurance_repo = InsuranceRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -188,6 +192,7 @@ impl AppState {
             lease_repo,
             work_order_repo,
             vendor_repo,
+            insurance_repo,
             auth_service,
             email_service,
             jwt_service,
