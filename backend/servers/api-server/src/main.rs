@@ -327,6 +327,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/iot/sensors", routes::iot::sensor_router())
         // Agency routes (Epic 17)
         .nest("/api/v1/agencies", routes::agencies::router())
+        // Lease routes (Epic 19)
+        .nest("/api/v1/leases", routes::leases::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
