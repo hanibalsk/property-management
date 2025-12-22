@@ -3,16 +3,17 @@
 use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpService};
 use db::{
     repositories::{
-        AnnouncementRepository, AuditLogRepository, BuildingRepository,
+        AiChatRepository, AnnouncementRepository, AuditLogRepository, BuildingRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DocumentRepository, DocumentTemplateRepository, FacilityRepository, FaultRepository,
-        FeatureFlagRepository, FinancialRepository, GranularNotificationRepository,
-        HealthMonitoringRepository, HelpRepository, MeterRepository,
-        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        DocumentRepository, DocumentTemplateRepository, EquipmentRepository, FacilityRepository,
+        FaultRepository, FeatureFlagRepository, FinancialRepository,
+        GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
+        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
-        PersonMonthRepository, PlatformAdminRepository, RoleRepository, SessionRepository,
-        SignatureRequestRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
-        UnitRepository, UnitResidentRepository, UserRepository, VoteRepository,
+        PersonMonthRepository, PlatformAdminRepository, RoleRepository, SentimentRepository,
+        SessionRepository, SignatureRequestRepository, SystemAnnouncementRepository,
+        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
+        VoteRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -54,6 +55,11 @@ pub struct AppState {
     pub signature_request_repo: SignatureRequestRepository,
     pub financial_repo: FinancialRepository,
     pub meter_repo: MeterRepository,
+    // Epic 13: AI Assistant & Automation
+    pub ai_chat_repo: AiChatRepository,
+    pub sentiment_repo: SentimentRepository,
+    pub equipment_repo: EquipmentRepository,
+    pub workflow_repo: WorkflowRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -97,6 +103,11 @@ impl AppState {
         let signature_request_repo = SignatureRequestRepository::new(db.clone());
         let financial_repo = FinancialRepository::new(db.clone());
         let meter_repo = MeterRepository::new(db.clone());
+        // Epic 13: AI Assistant & Automation
+        let ai_chat_repo = AiChatRepository::new(db.clone());
+        let sentiment_repo = SentimentRepository::new(db.clone());
+        let equipment_repo = EquipmentRepository::new(db.clone());
+        let workflow_repo = WorkflowRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -136,6 +147,10 @@ impl AppState {
             signature_request_repo,
             financial_repo,
             meter_repo,
+            ai_chat_repo,
+            sentiment_repo,
+            equipment_repo,
+            workflow_repo,
             auth_service,
             email_service,
             jwt_service,
