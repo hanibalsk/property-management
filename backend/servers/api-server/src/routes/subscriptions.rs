@@ -3,7 +3,7 @@
 use api_core::extractors::AuthUser;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header::AUTHORIZATION, HeaderMap, StatusCode},
     routing::{delete, get, patch, post},
     Json, Router,
 };
@@ -22,6 +22,189 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::state::AppState;
+
+// ==================== Authorization Helpers ====================
+
+/// Super admin role names for platform-level operations.
+const SUPER_ADMIN_ROLES: &[&str] = &[
+    "SuperAdministrator",
+    "super_admin",
+    "superadmin",
+    "platform_admin",
+];
+
+/// Check if the user has super admin role.
+fn has_super_admin_role(roles: &Option<Vec<String>>) -> bool {
+    match roles {
+        Some(user_roles) => user_roles.iter().any(|r| {
+            SUPER_ADMIN_ROLES
+                .iter()
+                .any(|admin| r.eq_ignore_ascii_case(admin))
+        }),
+        None => false,
+    }
+}
+
+/// Require super admin role for platform-level operations.
+fn require_super_admin(
+    headers: &HeaderMap,
+    state: &AppState,
+) -> Result<Uuid, (StatusCode, Json<ErrorResponse>)> {
+    let auth_header = headers
+        .get(AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new(
+                    "MISSING_TOKEN",
+                    "Authorization header required",
+                )),
+            )
+        })?;
+
+    if !auth_header.starts_with("Bearer ") {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("INVALID_TOKEN", "Bearer token required")),
+        ));
+    }
+
+    let token = &auth_header[7..];
+    let claims = state
+        .jwt_service
+        .validate_access_token(token)
+        .map_err(|e| {
+            tracing::debug!(error = %e, "Invalid access token");
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new(
+                    "INVALID_TOKEN",
+                    "Invalid or expired token",
+                )),
+            )
+        })?;
+
+    let user_id: Uuid = claims.sub.parse().map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("INVALID_TOKEN", "Invalid token format")),
+        )
+    })?;
+
+    if !has_super_admin_role(&claims.roles) {
+        tracing::warn!(
+            user_id = %user_id,
+            email = %claims.email,
+            roles = ?claims.roles,
+            "Unauthorized subscription admin access attempt"
+        );
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "INSUFFICIENT_PERMISSIONS",
+                "Super Admin role required for subscription management",
+            )),
+        ));
+    }
+
+    Ok(user_id)
+}
+
+/// Verify user has access to the organization.
+async fn verify_org_access(
+    state: &AppState,
+    user_id: Uuid,
+    org_id: Uuid,
+) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    let is_member: Option<(bool,)> = sqlx::query_as(
+        "SELECT EXISTS(SELECT 1 FROM organization_members WHERE user_id = $1 AND organization_id = $2)",
+    )
+    .bind(user_id)
+    .bind(org_id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!(error = %e, "Failed to check org membership");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new("DB_ERROR", "Database error")),
+        )
+    })?;
+
+    match is_member {
+        Some((true,)) => Ok(()),
+        _ => Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "You do not have access to this organization",
+            )),
+        )),
+    }
+}
+
+/// Verify user has access to an invoice by its ID.
+async fn verify_invoice_access(
+    state: &AppState,
+    user_id: Uuid,
+    invoice_id: Uuid,
+) -> Result<Uuid, (StatusCode, Json<ErrorResponse>)> {
+    // Get invoice to find org_id
+    let invoice = state
+        .subscription_repo
+        .find_invoice_by_id(invoice_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to find invoice");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", "Database error")),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Invoice not found")),
+            )
+        })?;
+
+    // Verify user has access to this organization
+    verify_org_access(state, user_id, invoice.organization_id).await?;
+
+    Ok(invoice.organization_id)
+}
+
+/// Verify user has access to a subscription by its ID.
+async fn verify_subscription_access(
+    state: &AppState,
+    user_id: Uuid,
+    subscription_id: Uuid,
+) -> Result<Uuid, (StatusCode, Json<ErrorResponse>)> {
+    // Get subscription to find org_id
+    let subscription = state
+        .subscription_repo
+        .find_subscription_by_id(subscription_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to find subscription");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", "Database error")),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Subscription not found")),
+            )
+        })?;
+
+    // Verify user has access to this organization
+    verify_org_access(state, user_id, subscription.organization_id).await?;
+
+    Ok(subscription.organization_id)
+}
 
 /// Create subscription routes router.
 pub fn router() -> Router<AppState> {
@@ -197,11 +380,13 @@ pub struct RecordUsageRequest {
     tag = "Subscriptions"
 )]
 async fn create_plan(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    _auth: AuthUser,
     Json(data): Json<CreateSubscriptionPlan>,
 ) -> Result<(StatusCode, Json<SubscriptionPlan>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Check platform admin role
+    // Require super admin role for plan management
+    let _admin_id = require_super_admin(&headers, &state)?;
+
     let plan = state
         .subscription_repo
         .create_plan(data)
@@ -325,11 +510,14 @@ async fn get_plan(
     tag = "Subscriptions"
 )]
 async fn update_plan(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    _auth: AuthUser,
     Path(id): Path<Uuid>,
     Json(data): Json<UpdateSubscriptionPlan>,
 ) -> Result<Json<SubscriptionPlan>, (StatusCode, Json<ErrorResponse>)> {
+    // Require super admin role for plan management
+    let _admin_id = require_super_admin(&headers, &state)?;
+
     let plan = state
         .subscription_repo
         .update_plan(id, data)
@@ -359,10 +547,13 @@ async fn update_plan(
     tag = "Subscriptions"
 )]
 async fn delete_plan(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    _auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    // Require super admin role for plan management
+    let _admin_id = require_super_admin(&headers, &state)?;
+
     let deleted = state.subscription_repo.delete_plan(id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -396,9 +587,12 @@ async fn delete_plan(
 )]
 async fn create_subscription(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Json(request): Json<CreateSubscriptionRequest>,
 ) -> Result<(StatusCode, Json<OrganizationSubscription>), (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, request.organization_id).await?;
+
     let subscription = state
         .subscription_repo
         .create_subscription(request.organization_id, request.data)
@@ -427,9 +621,12 @@ async fn create_subscription(
 )]
 async fn get_subscription(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     let subscription = state
         .subscription_repo
         .find_subscription_by_org(query.organization_id)
@@ -464,9 +661,12 @@ async fn get_subscription(
 )]
 async fn get_subscription_with_plan(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<SubscriptionWithPlan>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     let subscription = state
         .subscription_repo
         .get_subscription_with_plan(query.organization_id)
@@ -502,10 +702,13 @@ async fn get_subscription_with_plan(
 )]
 async fn update_subscription(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
     Json(data): Json<UpdateOrganizationSubscription>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this subscription's organization
+    let _org_id = verify_subscription_access(&state, auth.user_id, id).await?;
+
     let subscription = state
         .subscription_repo
         .update_subscription(id, data)
@@ -535,10 +738,13 @@ async fn update_subscription(
 )]
 async fn change_plan(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
     Json(data): Json<ChangePlanRequest>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this subscription's organization
+    let _org_id = verify_subscription_access(&state, auth.user_id, id).await?;
+
     let subscription = state
         .subscription_repo
         .change_plan(id, data)
@@ -568,10 +774,13 @@ async fn change_plan(
 )]
 async fn cancel_subscription(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
     Json(data): Json<CancelSubscriptionRequest>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this subscription's organization
+    let _org_id = verify_subscription_access(&state, auth.user_id, id).await?;
+
     let subscription = state
         .subscription_repo
         .cancel_subscription(id, data)
@@ -600,9 +809,12 @@ async fn cancel_subscription(
 )]
 async fn reactivate_subscription(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this subscription's organization
+    let _org_id = verify_subscription_access(&state, auth.user_id, id).await?;
+
     let subscription = state
         .subscription_repo
         .reactivate_subscription(id)
@@ -631,10 +843,13 @@ async fn reactivate_subscription(
     tag = "Subscriptions Admin"
 )]
 async fn list_all_subscriptions(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    _auth: AuthUser,
     Query(query): Query<ListSubscriptionsQuery>,
 ) -> Result<Json<Vec<SubscriptionWithPlan>>, (StatusCode, Json<ErrorResponse>)> {
+    // Require super admin role for admin dashboard
+    let _admin_id = require_super_admin(&headers, &state)?;
+
     let subscriptions = state
         .subscription_repo
         .list_all_subscriptions(
@@ -669,10 +884,13 @@ async fn list_all_subscriptions(
 )]
 async fn create_payment_method(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<OrgQuery>,
     Json(data): Json<CreateSubscriptionPaymentMethod>,
 ) -> Result<(StatusCode, Json<SubscriptionPaymentMethod>), (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     let method = state
         .subscription_repo
         .create_payment_method(query.organization_id, data)
@@ -701,9 +919,12 @@ async fn create_payment_method(
 )]
 async fn list_payment_methods(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<Vec<SubscriptionPaymentMethod>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     let methods = state
         .subscription_repo
         .list_payment_methods(query.organization_id)
@@ -735,10 +956,13 @@ async fn list_payment_methods(
 )]
 async fn set_default_payment_method(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     state
         .subscription_repo
         .set_default_payment_method(query.organization_id, id)
@@ -771,10 +995,13 @@ async fn set_default_payment_method(
 )]
 async fn delete_payment_method(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     let deleted = state
         .subscription_repo
         .delete_payment_method(id, query.organization_id)
@@ -812,9 +1039,12 @@ async fn delete_payment_method(
 )]
 async fn list_invoices(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<ListInvoicesQuery>,
 ) -> Result<Json<Vec<SubscriptionInvoice>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     let invoices = state
         .subscription_repo
         .list_invoices(query.organization_id, InvoiceQueryParams::from(&query))
@@ -843,9 +1073,12 @@ async fn list_invoices(
 )]
 async fn get_invoice(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SubscriptionInvoice>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify access and get the invoice
+    let _org_id = verify_invoice_access(&state, auth.user_id, id).await?;
+
     let invoice = state
         .subscription_repo
         .find_invoice_by_id(id)
@@ -879,9 +1112,12 @@ async fn get_invoice(
 )]
 async fn get_invoice_line_items(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<InvoiceLineItem>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this invoice's organization
+    let _org_id = verify_invoice_access(&state, auth.user_id, id).await?;
+
     let items = state
         .subscription_repo
         .get_invoice_line_items(id)
@@ -910,9 +1146,12 @@ async fn get_invoice_line_items(
 )]
 async fn mark_invoice_paid(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SubscriptionInvoice>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this invoice's organization
+    let _org_id = verify_invoice_access(&state, auth.user_id, id).await?;
+
     let invoice = state
         .subscription_repo
         .mark_invoice_paid(id, None)
@@ -941,9 +1180,12 @@ async fn mark_invoice_paid(
 )]
 async fn void_invoice(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SubscriptionInvoice>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this invoice's organization
+    let _org_id = verify_invoice_access(&state, auth.user_id, id).await?;
+
     let invoice = state
         .subscription_repo
         .void_invoice(id)
@@ -972,10 +1214,13 @@ async fn void_invoice(
     tag = "Subscriptions Admin"
 )]
 async fn list_all_invoices(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    _auth: AuthUser,
     Query(query): Query<ListAllInvoicesQuery>,
 ) -> Result<Json<Vec<InvoiceWithDetails>>, (StatusCode, Json<ErrorResponse>)> {
+    // Require super admin role for admin dashboard
+    let _admin_id = require_super_admin(&headers, &state)?;
+
     let invoices = state
         .subscription_repo
         .list_all_invoices(InvoiceQueryParams::from(&query))
@@ -1006,9 +1251,12 @@ async fn list_all_invoices(
 )]
 async fn record_usage(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Json(request): Json<RecordUsageRequest>,
 ) -> Result<(StatusCode, Json<db::models::UsageRecord>), (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, request.organization_id).await?;
+
     // Get subscription for org
     let subscription = state
         .subscription_repo
@@ -1053,9 +1301,12 @@ async fn record_usage(
 )]
 async fn get_usage_summary(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<UsageSummaryQuery>,
 ) -> Result<Json<Vec<UsageSummary>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     let now = Utc::now();
     let period_start = query.period_start.unwrap_or(
         now.checked_sub_signed(chrono::Duration::days(30))
@@ -1091,9 +1342,12 @@ async fn get_usage_summary(
 )]
 async fn get_current_usage(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<CurrentUsageResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     let (buildings, units, users, storage) = state
         .subscription_repo
         .get_current_usage(query.organization_id)
@@ -1129,10 +1383,13 @@ async fn get_current_usage(
     tag = "Subscriptions"
 )]
 async fn create_coupon(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    _auth: AuthUser,
     Json(data): Json<CreateSubscriptionCoupon>,
 ) -> Result<(StatusCode, Json<SubscriptionCoupon>), (StatusCode, Json<ErrorResponse>)> {
+    // Require super admin role for coupon management
+    let _admin_id = require_super_admin(&headers, &state)?;
+
     let coupon = state
         .subscription_repo
         .create_coupon(data)
@@ -1193,11 +1450,14 @@ async fn list_coupons(
     tag = "Subscriptions"
 )]
 async fn update_coupon(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    _auth: AuthUser,
     Path(id): Path<Uuid>,
     Json(data): Json<UpdateSubscriptionCoupon>,
 ) -> Result<Json<SubscriptionCoupon>, (StatusCode, Json<ErrorResponse>)> {
+    // Require super admin role for coupon management
+    let _admin_id = require_super_admin(&headers, &state)?;
+
     let coupon = state
         .subscription_repo
         .update_coupon(id, data)
@@ -1231,6 +1491,9 @@ async fn redeem_coupon(
     Query(query): Query<OrgQuery>,
     Json(data): Json<RedeemCouponRequest>,
 ) -> Result<Json<CouponRedemption>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user has access to this organization
+    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+
     // Find the coupon
     let coupon = state
         .subscription_repo
@@ -1298,9 +1561,12 @@ async fn redeem_coupon(
     tag = "Subscriptions"
 )]
 async fn get_statistics(
+    headers: HeaderMap,
     State(state): State<AppState>,
-    _auth: AuthUser,
 ) -> Result<Json<SubscriptionStatistics>, (StatusCode, Json<ErrorResponse>)> {
+    // Require super admin role for statistics dashboard
+    let _admin_id = require_super_admin(&headers, &state)?;
+
     let stats = state
         .subscription_repo
         .get_statistics()
