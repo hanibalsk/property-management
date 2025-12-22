@@ -1,0 +1,595 @@
+//! Portal repository (Epic 16: Portal Search & Discovery).
+
+use crate::models::portal::{
+    CreatePortalUser, CreateSavedSearch, Favorite, FavoriteWithListing, FavoriteWithListingRow,
+    PortalUser, PublicListingQuery, PublicListingSummary, SavedSearch, SearchCriteria,
+    UpdatePortalUser, UpdateSavedSearch,
+};
+use crate::DbPool;
+use chrono::Utc;
+use sqlx::{Error as SqlxError, FromRow};
+use uuid::Uuid;
+
+/// Row for public listing summary.
+#[derive(Debug, FromRow)]
+struct PublicListingRow {
+    pub id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub price: rust_decimal::Decimal,
+    pub currency: String,
+    pub size_sqm: Option<rust_decimal::Decimal>,
+    pub rooms: Option<i32>,
+    pub city: String,
+    pub property_type: String,
+    pub transaction_type: String,
+    pub photo_url: Option<String>,
+    pub published_at: chrono::DateTime<Utc>,
+}
+
+/// Repository for portal operations.
+#[derive(Clone)]
+pub struct PortalRepository {
+    pool: DbPool,
+}
+
+impl PortalRepository {
+    /// Create a new PortalRepository.
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
+    }
+
+    // ========================================================================
+    // Portal Users
+    // ========================================================================
+
+    /// Create a new portal user.
+    pub async fn create_user(&self, data: CreatePortalUser) -> Result<PortalUser, SqlxError> {
+        let user = sqlx::query_as::<_, PortalUser>(
+            r#"
+            INSERT INTO portal_users (email, name, password_hash, pm_user_id, provider)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+            "#,
+        )
+        .bind(&data.email)
+        .bind(&data.name)
+        .bind(&data.password)
+        .bind(data.pm_user_id)
+        .bind(&data.provider)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(user)
+    }
+
+    /// Find portal user by ID.
+    pub async fn find_user_by_id(&self, id: Uuid) -> Result<Option<PortalUser>, SqlxError> {
+        let user = sqlx::query_as::<_, PortalUser>(r#"SELECT * FROM portal_users WHERE id = $1"#)
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(user)
+    }
+
+    /// Find portal user by email.
+    pub async fn find_user_by_email(&self, email: &str) -> Result<Option<PortalUser>, SqlxError> {
+        let user =
+            sqlx::query_as::<_, PortalUser>(r#"SELECT * FROM portal_users WHERE email = $1"#)
+                .bind(email)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        Ok(user)
+    }
+
+    /// Find portal user by PM user ID (for SSO).
+    pub async fn find_user_by_pm_id(
+        &self,
+        pm_user_id: Uuid,
+    ) -> Result<Option<PortalUser>, SqlxError> {
+        let user =
+            sqlx::query_as::<_, PortalUser>(r#"SELECT * FROM portal_users WHERE pm_user_id = $1"#)
+                .bind(pm_user_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        Ok(user)
+    }
+
+    /// Update portal user.
+    pub async fn update_user(
+        &self,
+        id: Uuid,
+        data: UpdatePortalUser,
+    ) -> Result<PortalUser, SqlxError> {
+        let user = sqlx::query_as::<_, PortalUser>(
+            r#"
+            UPDATE portal_users SET
+                name = COALESCE($2, name),
+                profile_image_url = COALESCE($3, profile_image_url),
+                locale = COALESCE($4, locale),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.name)
+        .bind(&data.profile_image_url)
+        .bind(&data.locale)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(user)
+    }
+
+    // ========================================================================
+    // Public Listing Search (Story 16.1)
+    // ========================================================================
+
+    /// Search public listings.
+    pub async fn search_listings(
+        &self,
+        query: &PublicListingQuery,
+    ) -> Result<Vec<PublicListingSummary>, SqlxError> {
+        let page = query.page.unwrap_or(1).max(1);
+        let limit = query.limit.unwrap_or(20).min(100);
+        let offset = (page - 1) * limit;
+
+        // Sort order
+        let order_by = match query.sort.as_deref() {
+            Some("price_asc") => "l.price ASC",
+            Some("price_desc") => "l.price DESC",
+            Some("area_asc") => "l.size_sqm ASC",
+            Some("date_desc") | _ => "l.published_at DESC",
+        };
+
+        let rows = sqlx::query_as::<_, PublicListingRow>(&format!(
+            r#"
+            SELECT
+                l.id, l.title, l.description, l.price, l.currency,
+                l.size_sqm, l.rooms, l.city, l.property_type, l.transaction_type,
+                (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY display_order LIMIT 1) as photo_url,
+                l.published_at
+            FROM listings l
+            WHERE l.status = 'active'
+                AND ($1::text IS NULL OR l.title ILIKE '%' || $1 || '%' OR l.description ILIKE '%' || $1 || '%' OR l.city ILIKE '%' || $1 || '%')
+                AND ($2::text IS NULL OR l.property_type = $2)
+                AND ($3::text IS NULL OR l.transaction_type = $3)
+                AND ($4::bigint IS NULL OR l.price >= $4)
+                AND ($5::bigint IS NULL OR l.price <= $5)
+                AND ($6::int IS NULL OR l.size_sqm >= $6)
+                AND ($7::int IS NULL OR l.size_sqm <= $7)
+                AND ($8::int IS NULL OR l.rooms >= $8)
+                AND ($9::int IS NULL OR l.rooms <= $9)
+                AND ($10::text IS NULL OR l.city ILIKE '%' || $10 || '%')
+                AND ($11::text IS NULL OR l.country = $11)
+            ORDER BY {}
+            LIMIT $12 OFFSET $13
+            "#,
+            order_by
+        ))
+        .bind(&query.q)
+        .bind(&query.property_type)
+        .bind(&query.transaction_type)
+        .bind(query.price_min)
+        .bind(query.price_max)
+        .bind(query.area_min)
+        .bind(query.area_max)
+        .bind(query.rooms_min)
+        .bind(query.rooms_max)
+        .bind(&query.city)
+        .bind(&query.country)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Convert to PublicListingSummary
+        let listings = rows
+            .into_iter()
+            .map(|r| PublicListingSummary {
+                id: r.id,
+                title: r.title,
+                description: r.description,
+                price: r.price.try_into().unwrap_or(0),
+                currency: r.currency,
+                size_sqm: r.size_sqm.map(|d| d.try_into().unwrap_or(0)),
+                rooms: r.rooms,
+                city: r.city,
+                property_type: r.property_type,
+                transaction_type: r.transaction_type,
+                photo_url: r.photo_url,
+                published_at: r.published_at,
+            })
+            .collect();
+
+        Ok(listings)
+    }
+
+    /// Count public listings matching query.
+    pub async fn count_listings(&self, query: &PublicListingQuery) -> Result<i64, SqlxError> {
+        let row: (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*)
+            FROM listings l
+            WHERE l.status = 'active'
+                AND ($1::text IS NULL OR l.title ILIKE '%' || $1 || '%' OR l.description ILIKE '%' || $1 || '%' OR l.city ILIKE '%' || $1 || '%')
+                AND ($2::text IS NULL OR l.property_type = $2)
+                AND ($3::text IS NULL OR l.transaction_type = $3)
+                AND ($4::bigint IS NULL OR l.price >= $4)
+                AND ($5::bigint IS NULL OR l.price <= $5)
+                AND ($6::int IS NULL OR l.size_sqm >= $6)
+                AND ($7::int IS NULL OR l.size_sqm <= $7)
+                AND ($8::int IS NULL OR l.rooms >= $8)
+                AND ($9::int IS NULL OR l.rooms <= $9)
+                AND ($10::text IS NULL OR l.city ILIKE '%' || $10 || '%')
+                AND ($11::text IS NULL OR l.country = $11)
+            "#,
+        )
+        .bind(&query.q)
+        .bind(&query.property_type)
+        .bind(&query.transaction_type)
+        .bind(query.price_min)
+        .bind(query.price_max)
+        .bind(query.area_min)
+        .bind(query.area_max)
+        .bind(query.rooms_min)
+        .bind(query.rooms_max)
+        .bind(&query.city)
+        .bind(&query.country)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.0)
+    }
+
+    /// Get nearby cities for suggestions.
+    pub async fn get_nearby_cities(
+        &self,
+        city: &str,
+        limit: i32,
+    ) -> Result<Vec<String>, SqlxError> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT city
+            FROM listings
+            WHERE status = 'active' AND city != $1
+            ORDER BY city
+            LIMIT $2
+            "#,
+        )
+        .bind(city)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows.into_iter().map(|(c,)| c).collect())
+    }
+
+    // ========================================================================
+    // Favorites (Story 16.2)
+    // ========================================================================
+
+    /// Add listing to favorites.
+    pub async fn add_favorite(
+        &self,
+        user_id: Uuid,
+        listing_id: Uuid,
+        notes: Option<String>,
+    ) -> Result<Favorite, SqlxError> {
+        // Store original price for tracking price changes
+        let favorite = sqlx::query_as::<_, Favorite>(
+            r#"
+            INSERT INTO favorites (user_id, listing_id, notes)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (user_id, listing_id) DO UPDATE SET
+                notes = COALESCE($3, favorites.notes),
+                created_at = favorites.created_at
+            RETURNING *
+            "#,
+        )
+        .bind(user_id)
+        .bind(listing_id)
+        .bind(&notes)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(favorite)
+    }
+
+    /// Remove listing from favorites.
+    pub async fn remove_favorite(
+        &self,
+        user_id: Uuid,
+        listing_id: Uuid,
+    ) -> Result<bool, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM favorites WHERE user_id = $1 AND listing_id = $2"#)
+            .bind(user_id)
+            .bind(listing_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Get user's favorites with listing details.
+    pub async fn get_favorites(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<FavoriteWithListing>, SqlxError> {
+        let rows = sqlx::query_as::<_, FavoriteWithListingRow>(
+            r#"
+            SELECT
+                f.id, f.listing_id, l.title, l.price, l.currency, l.city,
+                l.property_type, l.transaction_type,
+                (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY display_order LIMIT 1) as photo_url,
+                l.status,
+                f.notes as original_price,
+                f.created_at
+            FROM favorites f
+            JOIN listings l ON l.id = f.listing_id
+            WHERE f.user_id = $1
+            ORDER BY f.created_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Convert to FavoriteWithListing
+        let favorites = rows
+            .into_iter()
+            .map(|r| FavoriteWithListing {
+                id: r.id,
+                listing_id: r.listing_id,
+                title: r.title,
+                price: r.price,
+                currency: r.currency,
+                city: r.city,
+                property_type: r.property_type,
+                transaction_type: r.transaction_type,
+                photo_url: r.photo_url,
+                status: r.status,
+                price_changed: false, // TODO: Implement price tracking
+                original_price: r.original_price,
+                created_at: r.created_at,
+            })
+            .collect();
+
+        Ok(favorites)
+    }
+
+    /// Count user's favorites.
+    pub async fn count_favorites(&self, user_id: Uuid) -> Result<i64, SqlxError> {
+        let row: (i64,) = sqlx::query_as(r#"SELECT COUNT(*) FROM favorites WHERE user_id = $1"#)
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(row.0)
+    }
+
+    /// Check if listing is favorited by user.
+    pub async fn is_favorited(&self, user_id: Uuid, listing_id: Uuid) -> Result<bool, SqlxError> {
+        let row: (bool,) = sqlx::query_as(
+            r#"SELECT EXISTS(SELECT 1 FROM favorites WHERE user_id = $1 AND listing_id = $2)"#,
+        )
+        .bind(user_id)
+        .bind(listing_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.0)
+    }
+
+    // ========================================================================
+    // Saved Searches (Story 16.3)
+    // ========================================================================
+
+    /// Create a saved search.
+    pub async fn create_saved_search(
+        &self,
+        user_id: Uuid,
+        data: CreateSavedSearch,
+    ) -> Result<SavedSearch, SqlxError> {
+        let criteria_json = serde_json::to_value(&data.criteria).unwrap_or(serde_json::json!({}));
+
+        let search = sqlx::query_as::<_, SavedSearch>(
+            r#"
+            INSERT INTO saved_searches (user_id, name, criteria, alerts_enabled, alert_frequency)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+            "#,
+        )
+        .bind(user_id)
+        .bind(&data.name)
+        .bind(&criteria_json)
+        .bind(data.alerts_enabled)
+        .bind(&data.alert_frequency)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(search)
+    }
+
+    /// Get saved search by ID.
+    pub async fn get_saved_search(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<SavedSearch>, SqlxError> {
+        let search = sqlx::query_as::<_, SavedSearch>(
+            r#"SELECT * FROM saved_searches WHERE id = $1 AND user_id = $2"#,
+        )
+        .bind(id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(search)
+    }
+
+    /// Get user's saved searches.
+    pub async fn get_saved_searches(&self, user_id: Uuid) -> Result<Vec<SavedSearch>, SqlxError> {
+        let searches = sqlx::query_as::<_, SavedSearch>(
+            r#"SELECT * FROM saved_searches WHERE user_id = $1 ORDER BY created_at DESC"#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(searches)
+    }
+
+    /// Update a saved search.
+    pub async fn update_saved_search(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+        data: UpdateSavedSearch,
+    ) -> Result<SavedSearch, SqlxError> {
+        let search = sqlx::query_as::<_, SavedSearch>(
+            r#"
+            UPDATE saved_searches SET
+                name = COALESCE($3, name),
+                alerts_enabled = COALESCE($4, alerts_enabled),
+                alert_frequency = COALESCE($5, alert_frequency),
+                updated_at = NOW()
+            WHERE id = $1 AND user_id = $2
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(user_id)
+        .bind(&data.name)
+        .bind(data.alerts_enabled)
+        .bind(&data.alert_frequency)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(search)
+    }
+
+    /// Delete a saved search.
+    pub async fn delete_saved_search(&self, id: Uuid, user_id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM saved_searches WHERE id = $1 AND user_id = $2"#)
+            .bind(id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Count user's saved searches.
+    pub async fn count_saved_searches(&self, user_id: Uuid) -> Result<i64, SqlxError> {
+        let row: (i64,) =
+            sqlx::query_as(r#"SELECT COUNT(*) FROM saved_searches WHERE user_id = $1"#)
+                .bind(user_id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        Ok(row.0)
+    }
+
+    /// Find matching listings for a saved search (for alerts).
+    pub async fn find_matching_listings(
+        &self,
+        criteria: &SearchCriteria,
+        since: chrono::DateTime<Utc>,
+    ) -> Result<Vec<PublicListingSummary>, SqlxError> {
+        let query = PublicListingQuery {
+            q: criteria.q.clone(),
+            property_type: criteria.property_type.clone(),
+            transaction_type: criteria.transaction_type.clone(),
+            price_min: criteria.price_min,
+            price_max: criteria.price_max,
+            area_min: criteria.area_min,
+            area_max: criteria.area_max,
+            rooms_min: criteria.rooms_min,
+            rooms_max: criteria.rooms_max,
+            city: criteria.city.clone(),
+            country: criteria.country.clone(),
+            page: Some(1),
+            limit: Some(50), // Max 50 matches per alert
+            sort: Some("date_desc".to_string()),
+        };
+
+        // Search with additional filter for new listings
+        let rows = sqlx::query_as::<_, PublicListingRow>(
+            r#"
+            SELECT
+                l.id, l.title, l.description, l.price, l.currency,
+                l.size_sqm, l.rooms, l.city, l.property_type, l.transaction_type,
+                (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY display_order LIMIT 1) as photo_url,
+                l.published_at
+            FROM listings l
+            WHERE l.status = 'active'
+                AND l.published_at > $12
+                AND ($1::text IS NULL OR l.title ILIKE '%' || $1 || '%' OR l.description ILIKE '%' || $1 || '%')
+                AND ($2::text IS NULL OR l.property_type = $2)
+                AND ($3::text IS NULL OR l.transaction_type = $3)
+                AND ($4::bigint IS NULL OR l.price >= $4)
+                AND ($5::bigint IS NULL OR l.price <= $5)
+                AND ($6::int IS NULL OR l.size_sqm >= $6)
+                AND ($7::int IS NULL OR l.size_sqm <= $7)
+                AND ($8::int IS NULL OR l.rooms >= $8)
+                AND ($9::int IS NULL OR l.rooms <= $9)
+                AND ($10::text IS NULL OR l.city ILIKE '%' || $10 || '%')
+                AND ($11::text IS NULL OR l.country = $11)
+            ORDER BY l.published_at DESC
+            LIMIT 50
+            "#,
+        )
+        .bind(&query.q)
+        .bind(&query.property_type)
+        .bind(&query.transaction_type)
+        .bind(query.price_min)
+        .bind(query.price_max)
+        .bind(query.area_min)
+        .bind(query.area_max)
+        .bind(query.rooms_min)
+        .bind(query.rooms_max)
+        .bind(&query.city)
+        .bind(&query.country)
+        .bind(since)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let listings = rows
+            .into_iter()
+            .map(|r| PublicListingSummary {
+                id: r.id,
+                title: r.title,
+                description: r.description,
+                price: r.price.try_into().unwrap_or(0),
+                currency: r.currency,
+                size_sqm: r.size_sqm.map(|d| d.try_into().unwrap_or(0)),
+                rooms: r.rooms,
+                city: r.city,
+                property_type: r.property_type,
+                transaction_type: r.transaction_type,
+                photo_url: r.photo_url,
+                published_at: r.published_at,
+            })
+            .collect();
+
+        Ok(listings)
+    }
+
+    /// Update saved search match count.
+    pub async fn update_match_count(&self, id: Uuid, count: i32) -> Result<(), SqlxError> {
+        sqlx::query(
+            r#"UPDATE saved_searches SET match_count = $2, last_matched_at = NOW() WHERE id = $1"#,
+        )
+        .bind(id)
+        .bind(count)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+}

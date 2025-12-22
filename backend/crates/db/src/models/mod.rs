@@ -40,6 +40,9 @@ pub mod workflow;
 // Epic 14: IoT & Smart Building
 pub mod sensor;
 
+// Epic 16: Portal Search & Discovery
+pub mod portal;
+
 pub use ai_chat::{
     message_role, AiChatMessage, AiChatSession, AiResponse, AiSource, AiTrainingFeedback,
     ChatSessionSummary, CreateChatSession, ProvideFeedback, SendChatMessage,
@@ -219,4 +222,13 @@ pub use vote::{
     UpdateVoteQuestion, Vote, VoteAuditLog, VoteComment, VoteCommentWithUser, VoteEligibility,
     VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData, VoteResponse, VoteResults,
     VoteSummary, VoteWithDetails,
+};
+
+// Epic 16: Portal Search & Discovery
+pub use portal::{
+    alert_frequency, AddFavorite, CreatePortalUser, CreateSavedSearch, Favorite,
+    FavoriteWithListing, FavoriteWithListingRow, FavoritesResponse, MatchedListing, PortalSession,
+    PortalUser, PublicListingDetail, PublicListingQuery, PublicListingSearchResponse,
+    PublicListingSummary, SavedSearch, SavedSearchesResponse, SearchAlert, SearchCriteria,
+    SearchSuggestions, UpdatePortalUser, UpdateSavedSearch,
 };
