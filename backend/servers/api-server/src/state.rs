@@ -10,10 +10,10 @@ use db::{
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
-        PersonMonthRepository, PlatformAdminRepository, RoleRepository, SentimentRepository,
-        SessionRepository, SignatureRequestRepository, SystemAnnouncementRepository,
-        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
-        VoteRepository, WorkflowRepository,
+        PersonMonthRepository, PlatformAdminRepository, RoleRepository, SensorRepository,
+        SentimentRepository, SessionRepository, SignatureRequestRepository,
+        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
+        UnitResidentRepository, UserRepository, VoteRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -60,6 +60,8 @@ pub struct AppState {
     pub sentiment_repo: SentimentRepository,
     pub equipment_repo: EquipmentRepository,
     pub workflow_repo: WorkflowRepository,
+    // Epic 14: IoT & Smart Building
+    pub sensor_repo: SensorRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -108,6 +110,8 @@ impl AppState {
         let sentiment_repo = SentimentRepository::new(db.clone());
         let equipment_repo = EquipmentRepository::new(db.clone());
         let workflow_repo = WorkflowRepository::new(db.clone());
+        // Epic 14: IoT & Smart Building
+        let sensor_repo = SensorRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -151,6 +155,7 @@ impl AppState {
             sentiment_repo,
             equipment_repo,
             workflow_repo,
+            sensor_repo,
             auth_service,
             email_service,
             jwt_service,

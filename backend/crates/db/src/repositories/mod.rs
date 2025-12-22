@@ -42,10 +42,16 @@ pub mod equipment;
 pub mod sentiment;
 pub mod workflow;
 
+// Epic 14: IoT & Smart Building
+pub mod sensor;
+
 pub use ai_chat::AiChatRepository;
 pub use equipment::EquipmentRepository;
 pub use sentiment::SentimentRepository;
 pub use workflow::WorkflowRepository;
+
+// Epic 14: IoT & Smart Building
+pub use sensor::SensorRepository;
 
 pub use announcement::AnnouncementRepository;
 pub use audit_log::AuditLogRepository;

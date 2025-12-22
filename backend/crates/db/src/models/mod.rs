@@ -37,6 +37,9 @@ pub mod equipment;
 pub mod sentiment;
 pub mod workflow;
 
+// Epic 14: IoT & Smart Building
+pub mod sensor;
+
 pub use ai_chat::{
     message_role, AiChatMessage, AiChatSession, AiResponse, AiSource, AiTrainingFeedback,
     ChatSessionSummary, CreateChatSession, ProvideFeedback, SendChatMessage,
@@ -45,6 +48,13 @@ pub use equipment::{
     equipment_status, maintenance_status, maintenance_type, CreateEquipment, CreateMaintenance,
     Equipment, EquipmentMaintenance, EquipmentQuery, EquipmentWithSummary, MaintenancePrediction,
     UpdateEquipment, UpdateMaintenance,
+};
+pub use sensor::{
+    sensor_status, sensor_type, AggregatedReading, AlertQuery, BatchSensorReadings, CreateSensor,
+    CreateSensorAlert, CreateSensorFaultCorrelation, CreateSensorReading, CreateSensorThreshold,
+    ReadingQuery, Sensor, SensorAlert, SensorDashboard, SensorFaultCorrelation, SensorQuery,
+    SensorReading, SensorSummary, SensorThreshold, SensorThresholdTemplate, SensorTypeCount,
+    SingleReading, UpdateSensor, UpdateSensorThreshold,
 };
 pub use sentiment::{
     alert_type, BuildingSentiment, CreateSentimentAlert, SentimentAlert, SentimentDashboard,

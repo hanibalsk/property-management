@@ -161,7 +161,12 @@ use state::AppState;
         (name = "Listings", description = "Real estate listing management"),
         (name = "Integrations", description = "External portal integrations"),
         (name = "financial", description = "Financial management: accounts, invoices, payments"),
-        (name = "meters", description = "Meter readings and utility management")
+        (name = "meters", description = "Meter readings and utility management"),
+        (name = "AI Chat", description = "AI-powered chat assistant"),
+        (name = "Sentiment Analysis", description = "Resident sentiment tracking"),
+        (name = "Equipment", description = "Equipment and predictive maintenance"),
+        (name = "Workflows", description = "Automated workflow management"),
+        (name = "IoT Sensors", description = "IoT sensor registration and management")
     )
 )]
 struct ApiDoc;
@@ -313,6 +318,13 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/financial", routes::financial::router())
         // Meters routes (Epic 12)
         .nest("/api/v1/meters", routes::meters::router())
+        // AI routes (Epic 13)
+        .nest("/api/v1/ai/chat", routes::ai::ai_chat_router())
+        .nest("/api/v1/ai/sentiment", routes::ai::sentiment_router())
+        .nest("/api/v1/ai/equipment", routes::ai::equipment_router())
+        .nest("/api/v1/ai/workflows", routes::ai::workflow_router())
+        // IoT routes (Epic 14)
+        .nest("/api/v1/iot/sensors", routes::iot::sensor_router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
