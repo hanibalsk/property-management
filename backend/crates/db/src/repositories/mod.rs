@@ -45,6 +45,9 @@ pub mod workflow;
 // Epic 14: IoT & Smart Building
 pub mod sensor;
 
+// Epic 15: Property Listings & Multi-Portal Sync
+pub mod listing;
+
 pub use ai_chat::AiChatRepository;
 pub use equipment::EquipmentRepository;
 pub use sentiment::SentimentRepository;
@@ -97,3 +100,6 @@ pub use unit::UnitRepository;
 pub use unit_resident::UnitResidentRepository;
 pub use user::UserRepository;
 pub use vote::VoteRepository;
+
+// Epic 15: Property Listings & Multi-Portal Sync
+pub use listing::ListingRepository;
