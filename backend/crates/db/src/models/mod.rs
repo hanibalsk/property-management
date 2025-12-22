@@ -43,6 +43,9 @@ pub mod sensor;
 // Epic 15: Property Listings & Multi-Portal Sync
 pub mod listing;
 
+// Epic 16: Portal Search & Discovery
+pub mod portal;
+
 // Epic 17: Agency & Realtor Management
 pub mod agency;
 
@@ -234,6 +237,15 @@ pub use listing::{
     Listing, ListingListQuery, ListingPhoto, ListingStatistics, ListingSummary, ListingSyndication,
     ListingWithDetails, PropertyTypeCount, PublishListingResponse, ReorderPhotos,
     SyndicationResult, UpdateListing, UpdateListingStatus,
+};
+
+// Epic 16: Portal Search & Discovery
+pub use portal::{
+    alert_frequency, AddFavorite, CreatePortalUser, CreateSavedSearch, Favorite,
+    FavoriteWithListing, FavoriteWithListingRow, FavoritesResponse, MatchedListing, PortalSession,
+    PortalUser, PublicListingDetail, PublicListingQuery, PublicListingSearchResponse,
+    PublicListingSummary, SavedSearch, SavedSearchesResponse, SearchAlert, SearchCriteria,
+    SearchSuggestions, UpdatePortalUser, UpdateSavedSearch,
 };
 
 // Epic 17: Agency & Realtor Management

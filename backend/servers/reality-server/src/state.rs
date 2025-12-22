@@ -1,10 +1,12 @@
-//! Application state for Reality server.
+//! Application state for Reality Server.
 //!
-//! Contains shared services and configuration for SSO and user management.
+//! Contains shared services and configuration for SSO, user management, and portal repositories.
 
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+use db::{repositories::PortalRepository, DbPool};
 
 use crate::routes::sso::{OAuthTokens, PendingSsoSession, SessionInfo, SsoUserInfo};
 
@@ -329,35 +331,41 @@ impl SsoTokenService {
     }
 }
 
-/// Shared application state.
+/// Application state shared across all handlers.
 #[derive(Clone)]
 pub struct AppState {
+    /// Database connection pool
+    pub db: DbPool,
+    /// Portal repository for search, favorites, saved searches
+    pub portal_repo: PortalRepository,
+    /// Application configuration
     pub config: AppConfig,
+    /// Pending SSO sessions (OAuth flow state)
     pub sso_sessions: Arc<Mutex<HashMap<String, PendingSsoSession>>>,
+    /// User service for portal users
     pub user_service: UserService,
+    /// Session service for managing user sessions
     pub session_service: SessionService,
+    /// SSO token service for mobile deep-link flow
     pub sso_token_service: SsoTokenService,
 }
 
 impl AppState {
-    /// Create new application state from environment.
-    pub fn new() -> Self {
+    /// Create a new AppState with database pool.
+    pub fn new(db: DbPool) -> Self {
+        let portal_repo = PortalRepository::new(db.clone());
         let config = AppConfig::from_env();
         let jwt_secret = config.jwt_secret.clone();
 
         Self {
+            db,
+            portal_repo,
             config,
             sso_sessions: Arc::new(Mutex::new(HashMap::new())),
             user_service: UserService::new(),
             session_service: SessionService::new(jwt_secret),
             sso_token_service: SsoTokenService::new(),
         }
-    }
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

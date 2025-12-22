@@ -10,6 +10,10 @@
 #![allow(dead_code)]
 
 use axum::{routing::get, Router};
+use db::models::{
+    CreateSavedSearch, FavoritesResponse, PublicListingSearchResponse, SavedSearch,
+    SavedSearchesResponse, UpdateSavedSearch,
+};
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
@@ -42,6 +46,17 @@ use state::AppState;
         routes::health::health,
         routes::listings::search,
         routes::listings::get_listing,
+        routes::listings::get_suggestions,
+        routes::favorites::list_favorites,
+        routes::favorites::add_favorite,
+        routes::favorites::remove_favorite,
+        routes::favorites::check_favorite,
+        routes::saved_searches::list_saved_searches,
+        routes::saved_searches::create_saved_search,
+        routes::saved_searches::get_saved_search,
+        routes::saved_searches::update_saved_search,
+        routes::saved_searches::delete_saved_search,
+        routes::saved_searches::run_saved_search,
         routes::sso::sso_login,
         routes::sso::sso_callback,
         routes::sso::sso_logout,
@@ -54,7 +69,19 @@ use state::AppState;
         routes::health::HealthResponse,
         routes::listings::ListingSearchRequest,
         routes::listings::ListingSearchResponse,
+        routes::listings::ListingSummary,
         routes::listings::ListingDetail,
+        routes::listings::SuggestionsResponse,
+        routes::favorites::CheckFavoriteResponse,
+        routes::saved_searches::RunSavedSearchResponse,
+        db::models::AddFavorite,
+        db::models::FavoriteWithListing,
+        FavoritesResponse,
+        PublicListingSearchResponse,
+        CreateSavedSearch,
+        UpdateSavedSearch,
+        SavedSearch,
+        SavedSearchesResponse,
         routes::sso::SsoError,
         routes::sso::SsoUserInfo,
         routes::sso::SessionInfo,
@@ -69,6 +96,7 @@ use state::AppState;
         (name = "SSO", description = "Single Sign-On with Property Management"),
         (name = "Users", description = "Portal user accounts (separate from PM)"),
         (name = "Favorites", description = "Save and manage favorite listings"),
+        (name = "SavedSearches", description = "Saved search criteria and alerts"),
         (name = "Inquiries", description = "Contact and viewing requests")
     )
 )]
@@ -88,12 +116,20 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // Initialize application state
-    let app_state = AppState::new();
+    // Get database URL
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://localhost:5432/ppt".to_string());
 
-    // Build router
+    // Create database pool
+    let db = db::create_pool(&database_url).await?;
+    tracing::info!("Connected to database");
+
+    // Create application state
+    let state = AppState::new(db);
+
+    // Build router with state
     let app = Router::new()
-        // Health check
+        // Health check (stateless)
         .route("/health", get(routes::health::health))
         // Public listing routes
         .nest("/api/v1/listings", routes::listings::router())
@@ -101,14 +137,16 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/users", routes::users::router())
         // Favorites routes
         .nest("/api/v1/favorites", routes::favorites::router())
+        // Saved searches routes
+        .nest("/api/v1/saved-searches", routes::saved_searches::router())
         // Inquiries routes
         .nest("/api/v1/inquiries", routes::inquiries::router())
         // SSO routes (Epic 10A-SSO)
         .nest("/api/v1/sso", routes::sso::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        // Application state
-        .with_state(app_state)
+        // Add state
+        .with_state(state)
         // Middleware
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive());

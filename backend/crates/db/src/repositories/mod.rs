@@ -48,6 +48,9 @@ pub mod sensor;
 // Epic 15: Property Listings & Multi-Portal Sync
 pub mod listing;
 
+// Epic 16: Portal Search & Discovery
+pub mod portal;
+
 // Epic 17: Agency & Realtor Management
 pub mod agency;
 
@@ -106,6 +109,9 @@ pub use vote::VoteRepository;
 
 // Epic 15: Property Listings & Multi-Portal Sync
 pub use listing::ListingRepository;
+
+// Epic 16: Portal Search & Discovery
+pub use portal::PortalRepository;
 
 // Epic 17: Agency & Realtor Management
 pub use agency::AgencyRepository;
