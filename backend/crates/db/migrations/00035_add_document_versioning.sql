@@ -55,7 +55,7 @@ SELECT
     d.created_by,
     d.created_at,
     u.email AS created_by_email,
-    CONCAT(u.first_name, ' ', u.last_name) AS created_by_name
+    u.name AS created_by_name
 FROM documents d
 JOIN users u ON u.id = d.created_by
 WHERE d.deleted_at IS NULL
