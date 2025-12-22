@@ -11,7 +11,7 @@ use crate::models::{
     NoticeWithRecipients, UpcomingVerification, UpdateComplianceRequirement,
     UpdateComplianceTemplate, UpdateLegalDocument, UpdateLegalNotice,
 };
-use chrono::NaiveDate;
+use chrono::{Months, NaiveDate};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -37,8 +37,12 @@ impl LegalRepository {
         data: CreateLegalDocument,
     ) -> Result<LegalDocument, sqlx::Error> {
         // Calculate retention expiry date if retention period is provided
+        // Using proper month arithmetic for accuracy
         let retention_expires_at = data.retention_period_months.map(|months| {
-            chrono::Utc::now().date_naive() + chrono::Duration::days(months as i64 * 30)
+            chrono::Utc::now()
+                .date_naive()
+                .checked_add_months(Months::new(months as u32))
+                .unwrap_or_else(|| chrono::Utc::now().date_naive())
         });
 
         sqlx::query_as(
@@ -756,6 +760,10 @@ impl LegalRepository {
     }
 
     /// Send a notice (mark as sent and update delivery status).
+    ///
+    /// Note: This is a synchronous database operation that marks all recipients as 'sent'.
+    /// In production, actual email/mail delivery should be handled by a background job
+    /// that can retry failures and update individual recipient statuses accordingly.
     pub async fn send_notice(&self, id: Uuid) -> Result<LegalNotice, sqlx::Error> {
         // Update notice sent_at
         let notice: LegalNotice = sqlx::query_as(
@@ -769,7 +777,8 @@ impl LegalRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        // Update recipients status to sent
+        // Update recipients status to sent.
+        // In a real system, this should be updated asynchronously after actual delivery.
         sqlx::query(
             r#"
             UPDATE legal_notice_recipients SET
@@ -804,13 +813,16 @@ impl LegalRepository {
         .await
     }
 
-    /// Acknowledge a notice.
+    /// Acknowledge a notice by recipient record ID.
+    /// Uses the unique (notice_id, recipient_id) constraint to identify the recipient.
     pub async fn acknowledge_notice(
         &self,
         notice_id: Uuid,
         recipient_id: Uuid,
         data: AcknowledgeNotice,
     ) -> Result<LegalNoticeRecipient, sqlx::Error> {
+        // The unique constraint on (notice_id, recipient_id) ensures this update
+        // will only affect exactly one row.
         sqlx::query_as(
             r#"
             UPDATE legal_notice_recipients SET
@@ -862,15 +874,16 @@ impl LegalRepository {
         .fetch_all(&self.pool)
         .await?;
 
+        // Count at recipient level for consistency (all counts are recipient-based)
         let ack_counts: (i64, i64, i64, i64) = sqlx::query_as(
             r#"
             SELECT
-                COUNT(*) FILTER (WHERE n.requires_acknowledgment = TRUE) as total_requiring,
+                COUNT(r.id) FILTER (WHERE n.requires_acknowledgment = TRUE) as total_requiring,
                 COUNT(r.id) FILTER (WHERE n.requires_acknowledgment = TRUE AND r.acknowledged_at IS NOT NULL) as acknowledged,
                 COUNT(r.id) FILTER (WHERE n.requires_acknowledgment = TRUE AND r.acknowledged_at IS NULL) as pending,
                 COUNT(r.id) FILTER (WHERE n.requires_acknowledgment = TRUE AND r.acknowledged_at IS NULL AND n.acknowledgment_deadline < NOW()) as overdue
             FROM legal_notices n
-            LEFT JOIN legal_notice_recipients r ON r.notice_id = n.id
+            INNER JOIN legal_notice_recipients r ON r.notice_id = n.id
             WHERE n.organization_id = $1
             "#,
         )
@@ -1087,18 +1100,17 @@ impl LegalRepository {
     }
 }
 
-/// Calculate next due date based on frequency.
+/// Calculate next due date based on frequency using proper month arithmetic.
 fn calculate_next_due_date(frequency: &str) -> Option<NaiveDate> {
     let today = chrono::Utc::now().date_naive();
-    let days = match frequency {
-        "once" => return None,
-        "monthly" => 30,
-        "quarterly" => 90,
-        "semi_annually" => 180,
-        "annually" => 365,
-        "biennially" => 730,
-        "as_needed" => return None,
-        _ => 365,
-    };
-    Some(today + chrono::Duration::days(days))
+    match frequency {
+        "once" | "as_needed" => None,
+        "monthly" => today.checked_add_months(Months::new(1)),
+        "quarterly" => today.checked_add_months(Months::new(3)),
+        "semi_annually" => today.checked_add_months(Months::new(6)),
+        "annually" => today.checked_add_months(Months::new(12)),
+        "biennially" => today.checked_add_months(Months::new(24)),
+        // Default to one year if frequency is unrecognized.
+        _ => today.checked_add_months(Months::new(12)),
+    }
 }

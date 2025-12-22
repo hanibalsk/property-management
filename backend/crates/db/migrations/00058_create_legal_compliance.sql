@@ -7,8 +7,8 @@
 -- ===========================================
 CREATE TABLE IF NOT EXISTS legal_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL,
-    building_id UUID,
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    building_id UUID REFERENCES buildings(id) ON DELETE SET NULL,
     document_type VARCHAR(100) NOT NULL,
     title VARCHAR(500) NOT NULL,
     description TEXT,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS legal_documents (
     retention_expires_at DATE,
     tags TEXT[],
     metadata JSONB DEFAULT '{}',
-    created_by UUID NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS legal_document_versions (
     file_size BIGINT,
     mime_type VARCHAR(100),
     change_notes TEXT,
-    created_by UUID NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(document_id, version_number)
 );
@@ -57,15 +57,15 @@ COMMENT ON TABLE legal_document_versions IS 'Version history for legal documents
 -- ===========================================
 CREATE TABLE IF NOT EXISTS compliance_requirements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL,
-    building_id UUID,
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    building_id UUID REFERENCES buildings(id) ON DELETE SET NULL,
     name VARCHAR(500) NOT NULL,
     description TEXT,
     category VARCHAR(100) NOT NULL,
     regulation_reference VARCHAR(255),
     frequency VARCHAR(50) NOT NULL DEFAULT 'annually',
     last_verified_at TIMESTAMPTZ,
-    last_verified_by UUID,
+    last_verified_by UUID REFERENCES users(id),
     next_due_date DATE,
     status VARCHAR(50) NOT NULL DEFAULT 'pending',
     is_mandatory BOOLEAN DEFAULT TRUE,
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS compliance_verifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     requirement_id UUID NOT NULL REFERENCES compliance_requirements(id) ON DELETE CASCADE,
     verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    verified_by UUID NOT NULL,
+    verified_by UUID NOT NULL REFERENCES users(id),
     status VARCHAR(50) NOT NULL,
     notes TEXT,
     evidence_document_id UUID REFERENCES legal_documents(id),
@@ -106,8 +106,8 @@ COMMENT ON TABLE compliance_verifications IS 'History of compliance verification
 -- ===========================================
 CREATE TABLE IF NOT EXISTS legal_notices (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL,
-    building_id UUID,
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    building_id UUID REFERENCES buildings(id) ON DELETE SET NULL,
     notice_type VARCHAR(100) NOT NULL,
     subject VARCHAR(500) NOT NULL,
     content TEXT NOT NULL,
@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS legal_notices (
     requires_acknowledgment BOOLEAN DEFAULT FALSE,
     acknowledgment_deadline TIMESTAMPTZ,
     sent_at TIMESTAMPTZ,
-    created_by UUID NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -141,7 +141,8 @@ CREATE TABLE IF NOT EXISTS legal_notice_recipients (
     delivery_error TEXT,
     acknowledged_at TIMESTAMPTZ,
     acknowledgment_method VARCHAR(50),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (notice_id, recipient_id)
 );
 
 COMMENT ON TABLE legal_notice_recipients IS 'Recipients of legal notices';
@@ -153,7 +154,7 @@ COMMENT ON COLUMN legal_notice_recipients.delivery_status IS 'pending, sent, del
 -- ===========================================
 CREATE TABLE IF NOT EXISTS compliance_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID,
+    organization_id UUID REFERENCES organizations(id),
     name VARCHAR(255) NOT NULL,
     category VARCHAR(100) NOT NULL,
     description TEXT,
@@ -171,12 +172,12 @@ COMMENT ON TABLE compliance_templates IS 'Templates for common compliance requir
 -- ===========================================
 CREATE TABLE IF NOT EXISTS compliance_audit_trail (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL,
+    organization_id UUID NOT NULL REFERENCES organizations(id),
     requirement_id UUID REFERENCES compliance_requirements(id),
     document_id UUID REFERENCES legal_documents(id),
     notice_id UUID REFERENCES legal_notices(id),
     action VARCHAR(100) NOT NULL,
-    action_by UUID NOT NULL,
+    action_by UUID NOT NULL REFERENCES users(id),
     action_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     old_values JSONB,
     new_values JSONB,
@@ -292,8 +293,12 @@ CREATE TRIGGER set_compliance_templates_updated_at
 CREATE OR REPLACE FUNCTION update_compliance_status()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- If due date passed and status is not compliant, mark as expired
-    IF NEW.next_due_date < CURRENT_DATE AND NEW.status = 'pending' THEN
+    -- If due date passed and status is pending, mark as expired.
+    -- Explicitly require a non-NULL due date to avoid ambiguous NULL comparisons.
+    IF NEW.next_due_date IS NOT NULL
+        AND NEW.next_due_date < CURRENT_DATE
+        AND NEW.status = 'pending'
+    THEN
         NEW.status := 'expired';
     END IF;
     RETURN NEW;
