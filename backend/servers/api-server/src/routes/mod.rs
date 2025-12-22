@@ -44,3 +44,6 @@ pub mod work_orders;
 
 // Epic 23: Emergency Management
 pub mod emergency;
+
+// Epic 24: Budget & Financial Planning
+pub mod budgets;

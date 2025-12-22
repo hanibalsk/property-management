@@ -4,7 +4,7 @@ use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpS
 use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
-        BuildingRepository, CriticalNotificationRepository, DataExportRepository,
+        BudgetRepository, BuildingRepository, CriticalNotificationRepository, DataExportRepository,
         DelegationRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
         EquipmentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
         FinancialRepository, GranularNotificationRepository, HealthMonitoringRepository,
@@ -80,6 +80,8 @@ pub struct AppState {
     pub insurance_repo: InsuranceRepository,
     // Epic 23: Emergency Management
     pub emergency_repo: EmergencyRepository,
+    // Epic 24: Budget & Financial Planning
+    pub budget_repo: BudgetRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -146,6 +148,8 @@ impl AppState {
         let insurance_repo = InsuranceRepository::new(db.clone());
         // Epic 23: Emergency Management
         let emergency_repo = EmergencyRepository::new(db.clone());
+        // Epic 24: Budget & Financial Planning
+        let budget_repo = BudgetRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -198,6 +202,7 @@ impl AppState {
             vendor_repo,
             insurance_repo,
             emergency_repo,
+            budget_repo,
             auth_service,
             email_service,
             jwt_service,
