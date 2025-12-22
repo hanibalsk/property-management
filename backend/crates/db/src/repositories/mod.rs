@@ -146,3 +146,8 @@ pub use insurance::InsuranceRepository;
 pub mod emergency;
 
 pub use emergency::EmergencyRepository;
+
+// Epic 24: Budget & Financial Planning
+pub mod budget;
+
+pub use budget::BudgetRepository;

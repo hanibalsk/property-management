@@ -1,0 +1,1191 @@
+//! Budget repository for Epic 24.
+//!
+//! Provides CRUD operations for budgets, budget items, capital plans, reserve funds, and forecasts.
+
+use crate::models::{
+    budget_status, AcknowledgeVarianceAlert, Budget, BudgetActual, BudgetCategory, BudgetDashboard,
+    BudgetItem, BudgetQuery, BudgetSummary, BudgetVarianceAlert, CapitalPlan, CapitalPlanQuery,
+    CategoryVariance, CreateBudget, CreateBudgetCategory, CreateBudgetItem, CreateCapitalPlan,
+    CreateFinancialForecast, CreateReserveFund, FinancialForecast, ForecastQuery,
+    RecordBudgetActual, RecordReserveTransaction, ReserveFund, ReserveFundProjection,
+    ReserveFundTransaction, UpdateBudget, UpdateBudgetCategory, UpdateBudgetItem,
+    UpdateCapitalPlan, UpdateFinancialForecast, UpdateReserveFund, YearlyCapitalSummary,
+};
+use rust_decimal::Decimal;
+use sqlx::PgPool;
+use uuid::Uuid;
+
+/// Repository for budget and financial planning operations.
+#[derive(Clone)]
+pub struct BudgetRepository {
+    pool: PgPool,
+}
+
+impl BudgetRepository {
+    /// Create a new budget repository.
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
+    // ===========================================
+    // Budget Operations
+    // ===========================================
+
+    /// Create a new budget.
+    pub async fn create_budget(
+        &self,
+        organization_id: Uuid,
+        user_id: Uuid,
+        data: CreateBudget,
+    ) -> Result<Budget, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO budgets (organization_id, building_id, fiscal_year, name, notes, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            "#,
+        )
+        .bind(organization_id)
+        .bind(data.building_id)
+        .bind(data.fiscal_year)
+        .bind(&data.name)
+        .bind(&data.notes)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Find budget by ID.
+    pub async fn find_budget_by_id(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<Budget>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM budgets
+            WHERE id = $1 AND organization_id = $2
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// List budgets with filters.
+    pub async fn list_budgets(
+        &self,
+        organization_id: Uuid,
+        query: BudgetQuery,
+    ) -> Result<Vec<Budget>, sqlx::Error> {
+        let limit = query.limit.unwrap_or(50);
+        let offset = query.offset.unwrap_or(0);
+
+        sqlx::query_as(
+            r#"
+            SELECT * FROM budgets
+            WHERE organization_id = $1
+              AND ($2::uuid IS NULL OR building_id = $2)
+              AND ($3::integer IS NULL OR fiscal_year = $3)
+              AND ($4::text IS NULL OR status = $4)
+            ORDER BY fiscal_year DESC, created_at DESC
+            LIMIT $5 OFFSET $6
+            "#,
+        )
+        .bind(organization_id)
+        .bind(query.building_id)
+        .bind(query.fiscal_year)
+        .bind(&query.status)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a budget.
+    pub async fn update_budget(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+        data: UpdateBudget,
+    ) -> Result<Option<Budget>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE budgets
+            SET name = COALESCE($3, name),
+                notes = COALESCE($4, notes),
+                updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(&data.name)
+        .bind(&data.notes)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Submit budget for approval.
+    pub async fn submit_budget_for_approval(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<Budget>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE budgets
+            SET status = $3, updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2 AND status = 'draft'
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(budget_status::PENDING_APPROVAL)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Approve a budget.
+    pub async fn approve_budget(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+        approved_by: Uuid,
+    ) -> Result<Option<Budget>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE budgets
+            SET status = $3, approved_by = $4, approved_at = NOW(), updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2 AND status = 'pending_approval'
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(budget_status::APPROVED)
+        .bind(approved_by)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Activate a budget.
+    pub async fn activate_budget(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<Budget>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE budgets
+            SET status = $3, updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2 AND status = 'approved'
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(budget_status::ACTIVE)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Close a budget.
+    pub async fn close_budget(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<Budget>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE budgets
+            SET status = $3, updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2 AND status = 'active'
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(budget_status::CLOSED)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Delete a draft budget.
+    pub async fn delete_budget(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM budgets
+            WHERE id = $1 AND organization_id = $2 AND status = 'draft'
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ===========================================
+    // Budget Category Operations
+    // ===========================================
+
+    /// Create a budget category.
+    pub async fn create_category(
+        &self,
+        organization_id: Uuid,
+        data: CreateBudgetCategory,
+    ) -> Result<BudgetCategory, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO budget_categories (organization_id, name, description, parent_id, sort_order)
+            VALUES ($1, $2, $3, $4, COALESCE($5, 0))
+            RETURNING *
+            "#,
+        )
+        .bind(organization_id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(data.parent_id)
+        .bind(data.sort_order)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// List categories for an organization.
+    pub async fn list_categories(
+        &self,
+        organization_id: Uuid,
+    ) -> Result<Vec<BudgetCategory>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM budget_categories
+            WHERE organization_id = $1
+            ORDER BY sort_order, name
+            "#,
+        )
+        .bind(organization_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a category.
+    pub async fn update_category(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+        data: UpdateBudgetCategory,
+    ) -> Result<Option<BudgetCategory>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE budget_categories
+            SET name = COALESCE($3, name),
+                description = COALESCE($4, description),
+                sort_order = COALESCE($5, sort_order)
+            WHERE id = $1 AND organization_id = $2 AND is_system = false
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(data.sort_order)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Delete a category.
+    pub async fn delete_category(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM budget_categories
+            WHERE id = $1 AND organization_id = $2 AND is_system = false
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ===========================================
+    // Budget Item Operations
+    // ===========================================
+
+    /// Add an item to a budget.
+    pub async fn add_budget_item(
+        &self,
+        budget_id: Uuid,
+        data: CreateBudgetItem,
+    ) -> Result<BudgetItem, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO budget_items (budget_id, category_id, name, description, budgeted_amount, notes)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            "#,
+        )
+        .bind(budget_id)
+        .bind(data.category_id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(data.budgeted_amount)
+        .bind(&data.notes)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// List items for a budget.
+    pub async fn list_budget_items(&self, budget_id: Uuid) -> Result<Vec<BudgetItem>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT bi.* FROM budget_items bi
+            JOIN budget_categories bc ON bc.id = bi.category_id
+            WHERE bi.budget_id = $1
+            ORDER BY bc.sort_order, bc.name, bi.name
+            "#,
+        )
+        .bind(budget_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a budget item.
+    pub async fn update_budget_item(
+        &self,
+        id: Uuid,
+        data: UpdateBudgetItem,
+    ) -> Result<Option<BudgetItem>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE budget_items
+            SET name = COALESCE($2, name),
+                description = COALESCE($3, description),
+                budgeted_amount = COALESCE($4, budgeted_amount),
+                notes = COALESCE($5, notes),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(data.budgeted_amount)
+        .bind(&data.notes)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Delete a budget item.
+    pub async fn delete_budget_item(&self, id: Uuid) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM budget_items WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ===========================================
+    // Budget Actuals Operations
+    // ===========================================
+
+    /// Record an actual expense against a budget item.
+    pub async fn record_actual(
+        &self,
+        budget_item_id: Uuid,
+        user_id: Uuid,
+        data: RecordBudgetActual,
+    ) -> Result<BudgetActual, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO budget_actuals (budget_item_id, transaction_id, amount, description, transaction_date, recorded_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            "#,
+        )
+        .bind(budget_item_id)
+        .bind(data.transaction_id)
+        .bind(data.amount)
+        .bind(&data.description)
+        .bind(data.transaction_date)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// List actuals for a budget item.
+    pub async fn list_actuals(
+        &self,
+        budget_item_id: Uuid,
+    ) -> Result<Vec<BudgetActual>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM budget_actuals
+            WHERE budget_item_id = $1
+            ORDER BY transaction_date DESC, created_at DESC
+            "#,
+        )
+        .bind(budget_item_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    // ===========================================
+    // Capital Plan Operations
+    // ===========================================
+
+    /// Create a capital plan.
+    pub async fn create_capital_plan(
+        &self,
+        organization_id: Uuid,
+        user_id: Uuid,
+        data: CreateCapitalPlan,
+    ) -> Result<CapitalPlan, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO capital_plans (
+                organization_id, building_id, name, description, estimated_cost,
+                funding_source, target_year, target_quarter, priority, notes, created_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, 'medium'), $10, $11)
+            RETURNING *
+            "#,
+        )
+        .bind(organization_id)
+        .bind(data.building_id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(data.estimated_cost)
+        .bind(&data.funding_source)
+        .bind(data.target_year)
+        .bind(data.target_quarter)
+        .bind(&data.priority)
+        .bind(&data.notes)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Find capital plan by ID.
+    pub async fn find_capital_plan_by_id(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<CapitalPlan>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM capital_plans
+            WHERE id = $1 AND organization_id = $2
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// List capital plans with filters.
+    pub async fn list_capital_plans(
+        &self,
+        organization_id: Uuid,
+        query: CapitalPlanQuery,
+    ) -> Result<Vec<CapitalPlan>, sqlx::Error> {
+        let limit = query.limit.unwrap_or(50);
+        let offset = query.offset.unwrap_or(0);
+
+        sqlx::query_as(
+            r#"
+            SELECT * FROM capital_plans
+            WHERE organization_id = $1
+              AND ($2::uuid IS NULL OR building_id = $2)
+              AND ($3::integer IS NULL OR target_year = $3)
+              AND ($4::text IS NULL OR status = $4)
+              AND ($5::text IS NULL OR priority = $5)
+            ORDER BY target_year, target_quarter NULLS LAST, priority DESC
+            LIMIT $6 OFFSET $7
+            "#,
+        )
+        .bind(organization_id)
+        .bind(query.building_id)
+        .bind(query.target_year)
+        .bind(&query.status)
+        .bind(&query.priority)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a capital plan.
+    pub async fn update_capital_plan(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+        data: UpdateCapitalPlan,
+    ) -> Result<Option<CapitalPlan>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE capital_plans
+            SET name = COALESCE($3, name),
+                description = COALESCE($4, description),
+                estimated_cost = COALESCE($5, estimated_cost),
+                actual_cost = COALESCE($6, actual_cost),
+                funding_source = COALESCE($7, funding_source),
+                target_year = COALESCE($8, target_year),
+                target_quarter = COALESCE($9, target_quarter),
+                priority = COALESCE($10, priority),
+                start_date = COALESCE($11, start_date),
+                completion_date = COALESCE($12, completion_date),
+                notes = COALESCE($13, notes),
+                updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(data.estimated_cost)
+        .bind(data.actual_cost)
+        .bind(&data.funding_source)
+        .bind(data.target_year)
+        .bind(data.target_quarter)
+        .bind(&data.priority)
+        .bind(data.start_date)
+        .bind(data.completion_date)
+        .bind(&data.notes)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Start a capital plan.
+    pub async fn start_capital_plan(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<CapitalPlan>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE capital_plans
+            SET status = 'in_progress', start_date = CURRENT_DATE, updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2 AND status IN ('planned', 'approved')
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Complete a capital plan.
+    pub async fn complete_capital_plan(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+        actual_cost: Decimal,
+    ) -> Result<Option<CapitalPlan>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE capital_plans
+            SET status = 'completed', actual_cost = $3, completion_date = CURRENT_DATE, updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2 AND status = 'in_progress'
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(actual_cost)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Delete a capital plan.
+    pub async fn delete_capital_plan(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM capital_plans
+            WHERE id = $1 AND organization_id = $2 AND status = 'planned'
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ===========================================
+    // Reserve Fund Operations
+    // ===========================================
+
+    /// Create a reserve fund.
+    pub async fn create_reserve_fund(
+        &self,
+        organization_id: Uuid,
+        data: CreateReserveFund,
+    ) -> Result<ReserveFund, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO reserve_funds (organization_id, building_id, name, target_balance, annual_contribution, notes)
+            VALUES ($1, $2, COALESCE($3, 'General Reserve'), $4, $5, $6)
+            RETURNING *
+            "#,
+        )
+        .bind(organization_id)
+        .bind(data.building_id)
+        .bind(&data.name)
+        .bind(data.target_balance)
+        .bind(data.annual_contribution)
+        .bind(&data.notes)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Find reserve fund by ID.
+    pub async fn find_reserve_fund_by_id(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<ReserveFund>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM reserve_funds
+            WHERE id = $1 AND organization_id = $2
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// List reserve funds.
+    pub async fn list_reserve_funds(
+        &self,
+        organization_id: Uuid,
+        building_id: Option<Uuid>,
+    ) -> Result<Vec<ReserveFund>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM reserve_funds
+            WHERE organization_id = $1
+              AND ($2::uuid IS NULL OR building_id = $2)
+            ORDER BY name
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a reserve fund.
+    pub async fn update_reserve_fund(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+        data: UpdateReserveFund,
+    ) -> Result<Option<ReserveFund>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE reserve_funds
+            SET name = COALESCE($3, name),
+                target_balance = COALESCE($4, target_balance),
+                annual_contribution = COALESCE($5, annual_contribution),
+                notes = COALESCE($6, notes),
+                updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(&data.name)
+        .bind(data.target_balance)
+        .bind(data.annual_contribution)
+        .bind(&data.notes)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Record a reserve fund transaction.
+    pub async fn record_reserve_transaction(
+        &self,
+        reserve_fund_id: Uuid,
+        user_id: Uuid,
+        data: RecordReserveTransaction,
+    ) -> Result<ReserveFundTransaction, sqlx::Error> {
+        // Get current balance
+        let fund: ReserveFund = sqlx::query_as("SELECT * FROM reserve_funds WHERE id = $1")
+            .bind(reserve_fund_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        let balance_after = match data.transaction_type.as_str() {
+            "contribution" | "interest" => fund.current_balance + data.amount,
+            "withdrawal" => fund.current_balance - data.amount,
+            _ => fund.current_balance + data.amount, // adjustment
+        };
+
+        sqlx::query_as(
+            r#"
+            INSERT INTO reserve_fund_transactions (
+                reserve_fund_id, transaction_type, amount, description,
+                reference_type, reference_id, balance_after, transaction_date, recorded_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *
+            "#,
+        )
+        .bind(reserve_fund_id)
+        .bind(&data.transaction_type)
+        .bind(data.amount)
+        .bind(&data.description)
+        .bind(&data.reference_type)
+        .bind(data.reference_id)
+        .bind(balance_after)
+        .bind(data.transaction_date)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// List reserve fund transactions.
+    pub async fn list_reserve_transactions(
+        &self,
+        reserve_fund_id: Uuid,
+    ) -> Result<Vec<ReserveFundTransaction>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM reserve_fund_transactions
+            WHERE reserve_fund_id = $1
+            ORDER BY transaction_date DESC, created_at DESC
+            "#,
+        )
+        .bind(reserve_fund_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    // ===========================================
+    // Financial Forecast Operations
+    // ===========================================
+
+    /// Create a financial forecast.
+    pub async fn create_forecast(
+        &self,
+        organization_id: Uuid,
+        user_id: Uuid,
+        data: CreateFinancialForecast,
+    ) -> Result<FinancialForecast, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO financial_forecasts (
+                organization_id, building_id, name, forecast_type, start_year, end_year,
+                inflation_rate, parameters, notes, created_by
+            )
+            VALUES ($1, $2, $3, COALESCE($4, 'expense'), $5, $6, COALESCE($7, 3.00), COALESCE($8, '{}'), $9, $10)
+            RETURNING *
+            "#,
+        )
+        .bind(organization_id)
+        .bind(data.building_id)
+        .bind(&data.name)
+        .bind(&data.forecast_type)
+        .bind(data.start_year)
+        .bind(data.end_year)
+        .bind(data.inflation_rate)
+        .bind(&data.parameters)
+        .bind(&data.notes)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Find forecast by ID.
+    pub async fn find_forecast_by_id(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<Option<FinancialForecast>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM financial_forecasts
+            WHERE id = $1 AND organization_id = $2
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// List forecasts.
+    pub async fn list_forecasts(
+        &self,
+        organization_id: Uuid,
+        query: ForecastQuery,
+    ) -> Result<Vec<FinancialForecast>, sqlx::Error> {
+        let limit = query.limit.unwrap_or(50);
+        let offset = query.offset.unwrap_or(0);
+
+        sqlx::query_as(
+            r#"
+            SELECT * FROM financial_forecasts
+            WHERE organization_id = $1
+              AND ($2::uuid IS NULL OR building_id = $2)
+              AND ($3::text IS NULL OR forecast_type = $3)
+            ORDER BY created_at DESC
+            LIMIT $4 OFFSET $5
+            "#,
+        )
+        .bind(organization_id)
+        .bind(query.building_id)
+        .bind(&query.forecast_type)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a forecast.
+    pub async fn update_forecast(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+        data: UpdateFinancialForecast,
+    ) -> Result<Option<FinancialForecast>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE financial_forecasts
+            SET name = COALESCE($3, name),
+                inflation_rate = COALESCE($4, inflation_rate),
+                parameters = COALESCE($5, parameters),
+                forecast_data = COALESCE($6, forecast_data),
+                notes = COALESCE($7, notes),
+                updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .bind(&data.name)
+        .bind(data.inflation_rate)
+        .bind(&data.parameters)
+        .bind(&data.forecast_data)
+        .bind(&data.notes)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Delete a forecast.
+    pub async fn delete_forecast(
+        &self,
+        organization_id: Uuid,
+        id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM financial_forecasts
+            WHERE id = $1 AND organization_id = $2
+            "#,
+        )
+        .bind(id)
+        .bind(organization_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ===========================================
+    // Variance Alert Operations
+    // ===========================================
+
+    /// List pending variance alerts for a budget.
+    pub async fn list_variance_alerts(
+        &self,
+        budget_id: Uuid,
+        acknowledged: Option<bool>,
+    ) -> Result<Vec<BudgetVarianceAlert>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT bva.* FROM budget_variance_alerts bva
+            JOIN budget_items bi ON bi.id = bva.budget_item_id
+            WHERE bi.budget_id = $1
+              AND ($2::boolean IS NULL OR bva.is_acknowledged = $2)
+            ORDER BY bva.created_at DESC
+            "#,
+        )
+        .bind(budget_id)
+        .bind(acknowledged)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Acknowledge a variance alert.
+    pub async fn acknowledge_alert(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+        _data: AcknowledgeVarianceAlert,
+    ) -> Result<Option<BudgetVarianceAlert>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE budget_variance_alerts
+            SET is_acknowledged = true, acknowledged_by = $2, acknowledged_at = NOW()
+            WHERE id = $1 AND is_acknowledged = false
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    // ===========================================
+    // Statistics & Reporting
+    // ===========================================
+
+    /// Get budget summary.
+    pub async fn get_budget_summary(&self, budget_id: Uuid) -> Result<BudgetSummary, sqlx::Error> {
+        let result: (Decimal, Decimal, Decimal, Decimal, i64, i64) = sqlx::query_as(
+            r#"
+            SELECT
+                COALESCE(SUM(budgeted_amount), 0) as total_budgeted,
+                COALESCE(SUM(actual_amount), 0) as total_actual,
+                COALESCE(SUM(variance_amount), 0) as total_variance,
+                CASE WHEN SUM(budgeted_amount) = 0 THEN 0
+                     ELSE ROUND((SUM(actual_amount) - SUM(budgeted_amount)) / SUM(budgeted_amount) * 100, 2)
+                END as variance_percent,
+                COUNT(*) FILTER (WHERE variance_amount > 0) as items_over_budget,
+                COUNT(*) FILTER (WHERE variance_amount < 0) as items_under_budget
+            FROM budget_items
+            WHERE budget_id = $1
+            "#,
+        )
+        .bind(budget_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(BudgetSummary {
+            total_budgeted: result.0,
+            total_actual: result.1,
+            total_variance: result.2,
+            variance_percent: result.3,
+            items_over_budget: result.4,
+            items_under_budget: result.5,
+        })
+    }
+
+    /// Get variance by category.
+    pub async fn get_category_variance(
+        &self,
+        budget_id: Uuid,
+    ) -> Result<Vec<CategoryVariance>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT
+                bc.id as category_id,
+                bc.name as category_name,
+                COALESCE(SUM(bi.budgeted_amount), 0) as budgeted_amount,
+                COALESCE(SUM(bi.actual_amount), 0) as actual_amount,
+                COALESCE(SUM(bi.variance_amount), 0) as variance_amount,
+                CASE WHEN SUM(bi.budgeted_amount) = 0 THEN 0
+                     ELSE ROUND((SUM(bi.actual_amount) - SUM(bi.budgeted_amount)) / SUM(bi.budgeted_amount) * 100, 2)
+                END as variance_percent
+            FROM budget_categories bc
+            LEFT JOIN budget_items bi ON bi.category_id = bc.id AND bi.budget_id = $1
+            WHERE bc.organization_id = (SELECT organization_id FROM budgets WHERE id = $1)
+            GROUP BY bc.id, bc.name
+            ORDER BY bc.sort_order, bc.name
+            "#,
+        )
+        .bind(budget_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Get yearly capital plan summary.
+    pub async fn get_yearly_capital_summary(
+        &self,
+        organization_id: Uuid,
+    ) -> Result<Vec<YearlyCapitalSummary>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT
+                target_year,
+                COALESCE(SUM(estimated_cost), 0) as total_estimated,
+                COALESCE(SUM(actual_cost), 0) as total_actual,
+                COUNT(*) as plan_count
+            FROM capital_plans
+            WHERE organization_id = $1
+            GROUP BY target_year
+            ORDER BY target_year
+            "#,
+        )
+        .bind(organization_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Generate reserve fund projection.
+    pub async fn generate_reserve_projection(
+        &self,
+        reserve_fund_id: Uuid,
+        years: i32,
+    ) -> Result<Vec<ReserveFundProjection>, sqlx::Error> {
+        let fund: ReserveFund = sqlx::query_as("SELECT * FROM reserve_funds WHERE id = $1")
+            .bind(reserve_fund_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        // Get planned capital withdrawals
+        let org_id = fund.organization_id;
+        let building_id = fund.building_id;
+
+        let plans: Vec<CapitalPlan> = sqlx::query_as(
+            r#"
+            SELECT * FROM capital_plans
+            WHERE organization_id = $1
+              AND ($2::uuid IS NULL OR building_id = $2)
+              AND funding_source = 'reserve_fund'
+              AND status NOT IN ('completed', 'cancelled')
+            ORDER BY target_year
+            "#,
+        )
+        .bind(org_id)
+        .bind(building_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let current_year = chrono::Utc::now().year();
+        let mut projections = Vec::new();
+        let mut balance = fund.current_balance;
+
+        for year_offset in 0..years {
+            let year = current_year + year_offset;
+            let starting_balance = balance;
+            let contributions = fund.annual_contribution;
+
+            let planned_withdrawals: Decimal = plans
+                .iter()
+                .filter(|p| p.target_year == year)
+                .map(|p| p.estimated_cost)
+                .sum();
+
+            balance = starting_balance + contributions - planned_withdrawals;
+
+            projections.push(ReserveFundProjection {
+                year,
+                starting_balance,
+                contributions,
+                planned_withdrawals,
+                ending_balance: balance,
+            });
+        }
+
+        Ok(projections)
+    }
+
+    /// Get budget dashboard.
+    pub async fn get_dashboard(
+        &self,
+        organization_id: Uuid,
+        building_id: Option<Uuid>,
+    ) -> Result<BudgetDashboard, sqlx::Error> {
+        // Get active budget
+        let active_budget: Option<Budget> = sqlx::query_as(
+            r#"
+            SELECT * FROM budgets
+            WHERE organization_id = $1
+              AND ($2::uuid IS NULL OR building_id = $2)
+              AND status = 'active'
+            ORDER BY fiscal_year DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let summary = if let Some(ref budget) = active_budget {
+            Some(self.get_budget_summary(budget.id).await?)
+        } else {
+            None
+        };
+
+        let categories = if let Some(ref budget) = active_budget {
+            self.get_category_variance(budget.id).await?
+        } else {
+            Vec::new()
+        };
+
+        // Count pending alerts
+        let pending_alerts: (i64,) = if let Some(ref budget) = active_budget {
+            sqlx::query_as(
+                r#"
+                SELECT COUNT(*) FROM budget_variance_alerts bva
+                JOIN budget_items bi ON bi.id = bva.budget_item_id
+                WHERE bi.budget_id = $1 AND bva.is_acknowledged = false
+                "#,
+            )
+            .bind(budget.id)
+            .fetch_one(&self.pool)
+            .await?
+        } else {
+            (0,)
+        };
+
+        // Get total reserve balance
+        let reserve_balance: (Decimal,) = sqlx::query_as(
+            r#"
+            SELECT COALESCE(SUM(current_balance), 0)
+            FROM reserve_funds
+            WHERE organization_id = $1
+              AND ($2::uuid IS NULL OR building_id = $2)
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(BudgetDashboard {
+            active_budget,
+            summary,
+            categories,
+            pending_alerts: pending_alerts.0,
+            reserve_balance: reserve_balance.0,
+        })
+    }
+}
+
+use chrono::Datelike;
