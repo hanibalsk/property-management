@@ -153,6 +153,15 @@ CREATE POLICY role_notification_defaults_admin_access ON role_notification_defau
             AND om.role_type = 'org_admin'
         )
         OR is_super_admin()
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM organization_members om
+            WHERE om.organization_id = role_notification_defaults.organization_id
+            AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
+            AND om.role_type = 'org_admin'
+        )
+        OR is_super_admin()
     );
 
 -- All members can read role defaults
