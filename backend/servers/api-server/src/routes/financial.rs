@@ -3,6 +3,7 @@
 //! Implements financial management including accounts, transactions,
 //! invoices, payments, and reporting.
 
+use api_core::extractors::AuthUser;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -291,16 +292,15 @@ async fn list_transactions(
 
 async fn create_transaction(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(id): Path<Uuid>,
     Json(mut payload): Json<CreateTransaction>,
 ) -> Result<(StatusCode, Json<db::models::AccountTransaction>), (StatusCode, Json<ErrorResponse>)> {
     payload.account_id = id;
-    // TODO: Get user_id from auth context
-    let user_id = Uuid::nil();
 
     state
         .financial_repo
-        .create_transaction(user_id, payload)
+        .create_transaction(auth.user_id, payload)
         .await
         .map(|tx| (StatusCode::CREATED, Json(tx)))
         .map_err(|e| {

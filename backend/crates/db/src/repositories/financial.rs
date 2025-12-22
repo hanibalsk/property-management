@@ -392,15 +392,15 @@ impl FinancialRepository {
         }
         let total = subtotal + tax_amount;
 
-        // Create invoice
+        // Create invoice with generated invoice number
         let invoice = sqlx::query_as::<_, Invoice>(
             r#"
             INSERT INTO invoices (
                 organization_id, unit_id, billing_period_start, billing_period_end,
                 issue_date, due_date, subtotal, tax_amount, total, balance_due,
-                currency, notes, created_by
+                currency, notes, created_by, invoice_number
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12, generate_invoice_number($1))
             RETURNING *
             "#,
         )
