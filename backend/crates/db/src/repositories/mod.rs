@@ -156,3 +156,8 @@ pub use budget::BudgetRepository;
 pub mod legal;
 
 pub use legal::LegalRepository;
+
+// Epic 26: Platform Subscription & Billing
+pub mod subscription;
+
+pub use subscription::SubscriptionRepository;

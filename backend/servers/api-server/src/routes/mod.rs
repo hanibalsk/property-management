@@ -50,3 +50,6 @@ pub mod budgets;
 
 // Epic 25: Legal Document & Compliance
 pub mod legal;
+
+// Epic 26: Platform Subscription & Billing
+pub mod subscriptions;
