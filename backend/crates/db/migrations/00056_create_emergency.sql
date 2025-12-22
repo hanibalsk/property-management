@@ -1,5 +1,5 @@
 -- Epic 23: Emergency Management
--- Stories: 23.1 (Emergency Protocols), 23.2 (Emergency Contacts), 23.3 (Incident Reporting), 23.4 (Emergency Broadcast)
+-- Stories: 23.1 through 23.6 (Emergency Protocols, Contacts, Incident Reporting, Broadcast, Drills, Statistics)
 
 -- Emergency Protocols
 -- Defines emergency procedures and response plans per organization/building
@@ -102,7 +102,7 @@ COMMENT ON COLUMN emergency_incident_attachments.attachment_type IS 'Type: photo
 CREATE TABLE IF NOT EXISTS emergency_incident_updates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     incident_id UUID NOT NULL REFERENCES emergency_incidents(id) ON DELETE CASCADE,
-    update_type VARCHAR(50) NOT NULL DEFAULT 'status_change',
+    update_type VARCHAR(50) NOT NULL DEFAULT 'note',
     previous_status VARCHAR(50),
     new_status VARCHAR(50),
     message TEXT NOT NULL,

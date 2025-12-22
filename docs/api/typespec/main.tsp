@@ -29,6 +29,7 @@ using TypeSpec.OpenAPI;
 })
 @info(#{
   version: "0.2.43",
+  version: "0.2.43",
 })
 @server("https://api.property-management.example.com", "Production")
 @server("http://localhost:8080", "Development")

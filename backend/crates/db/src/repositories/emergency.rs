@@ -463,6 +463,7 @@ impl EmergencyRepository {
     }
 
     /// Resolve an incident.
+    /// Only incidents that are not already resolved or closed can be resolved.
     pub async fn resolve_incident(
         &self,
         organization_id: Uuid,
@@ -479,6 +480,7 @@ impl EmergencyRepository {
                 resolved_at = NOW(),
                 updated_at = NOW()
             WHERE id = $1 AND organization_id = $2
+              AND status NOT IN ('resolved', 'closed')
             RETURNING *
             "#,
         )
@@ -1092,7 +1094,7 @@ impl EmergencyRepository {
             WHERE organization_id = $1
               AND status = 'scheduled'
               AND scheduled_at >= NOW()
-              AND scheduled_at <= NOW() + ($2 || ' days')::INTERVAL
+              AND scheduled_at <= NOW() + make_interval(days => $2)
             ORDER BY scheduled_at ASC
             "#,
         )
