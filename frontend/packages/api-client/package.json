@@ -1,6 +1,6 @@
 {
   "name": "@ppt/api-client",
-  "version": "0.2.23",
+  "version": "0.2.24",
   "private": true,
   "description": "API client for Property Management (api-server)",
   "type": "module",

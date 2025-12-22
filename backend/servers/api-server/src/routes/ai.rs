@@ -5,11 +5,11 @@
 use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     routing::{delete, get, post, put},
     Json, Router,
 };
-use common::errors::ErrorResponse;
+use common::{errors::ErrorResponse, TenantContext};
 use db::models::{
     CreateChatSession, CreateEquipment, CreateMaintenance, CreateWorkflow, CreateWorkflowAction,
     EquipmentQuery, ExecutionQuery, ProvideFeedback, SendChatMessage, SentimentTrendQuery,
@@ -19,6 +19,38 @@ use db::models::{
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Extract tenant context from request headers.
+fn extract_tenant_context(
+    headers: &HeaderMap,
+) -> Result<TenantContext, (StatusCode, Json<ErrorResponse>)> {
+    let tenant_header = headers
+        .get("X-Tenant-Context")
+        .and_then(|h| h.to_str().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new(
+                    "MISSING_CONTEXT",
+                    "Tenant context required",
+                )),
+            )
+        })?;
+
+    serde_json::from_str(tenant_header).map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_CONTEXT",
+                "Invalid tenant context format",
+            )),
+        )
+    })
+}
 
 // ============================================================================
 // Response Types
@@ -103,15 +135,15 @@ async fn create_session(
 )]
 async fn list_sessions(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<PaginationQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
     match state
         .ai_chat_repo
         .list_user_sessions(
-            user_id,
+            tenant.user_id,
             query.limit.unwrap_or(50),
             query.offset.unwrap_or(0),
         )
@@ -294,14 +326,18 @@ async fn provide_feedback(
 
 async fn list_escalated(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<PaginationQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
     match state
         .ai_chat_repo
-        .list_escalated_messages(org_id, query.limit.unwrap_or(50), query.offset.unwrap_or(0))
+        .list_escalated_messages(
+            tenant.tenant_id,
+            query.limit.unwrap_or(50),
+            query.offset.unwrap_or(0),
+        )
         .await
     {
         Ok(messages) => Ok(Json(serde_json::json!({ "messages": messages }))),
@@ -334,12 +370,16 @@ pub fn sentiment_router() -> Router<AppState> {
 
 async fn get_trends(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<SentimentTrendQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
-    match state.sentiment_repo.list_trends(org_id, query).await {
+    match state
+        .sentiment_repo
+        .list_trends(tenant.tenant_id, query)
+        .await
+    {
         Ok(trends) => Ok(Json(serde_json::json!({ "trends": trends }))),
         Err(e) => {
             tracing::error!("Failed to get trends: {}", e);
@@ -353,15 +393,15 @@ async fn get_trends(
 
 async fn list_alerts(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<AlertsQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
     match state
         .sentiment_repo
         .list_alerts(
-            org_id,
+            tenant.tenant_id,
             query.acknowledged,
             query.limit.unwrap_or(50),
             query.offset.unwrap_or(0),
@@ -384,14 +424,14 @@ async fn list_alerts(
 
 async fn acknowledge_alert(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(alert_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
     match state
         .sentiment_repo
-        .acknowledge_alert(alert_id, user_id)
+        .acknowledge_alert(alert_id, tenant.user_id)
         .await
     {
         Ok(alert) => Ok(Json(serde_json::json!(alert))),
@@ -410,11 +450,11 @@ async fn acknowledge_alert(
 
 async fn get_thresholds(
     State(state): State<AppState>,
+    headers: HeaderMap,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
-    match state.sentiment_repo.get_thresholds(org_id).await {
+    match state.sentiment_repo.get_thresholds(tenant.tenant_id).await {
         Ok(thresholds) => Ok(Json(serde_json::json!(thresholds))),
         Err(e) => {
             tracing::error!("Failed to get thresholds: {}", e);
@@ -431,12 +471,16 @@ async fn get_thresholds(
 
 async fn update_thresholds(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(req): Json<UpdateSentimentThresholds>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
-    match state.sentiment_repo.update_thresholds(org_id, req).await {
+    match state
+        .sentiment_repo
+        .update_thresholds(tenant.tenant_id, req)
+        .await
+    {
         Ok(thresholds) => Ok(Json(serde_json::json!(thresholds))),
         Err(e) => {
             tracing::error!("Failed to update thresholds: {}", e);
@@ -450,9 +494,10 @@ async fn update_thresholds(
 
 async fn get_dashboard(
     State(state): State<AppState>,
+    headers: HeaderMap,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
+    let org_id = tenant.tenant_id;
     let today = chrono::Utc::now().date_naive();
     let thirty_days_ago = today - chrono::Duration::days(30);
 
@@ -460,19 +505,46 @@ async fn get_dashboard(
         .sentiment_repo
         .get_org_average_sentiment(org_id, thirty_days_ago, today)
         .await
-        .unwrap_or(0.0);
+        .map_err(|e| {
+            tracing::error!("Failed to get org average sentiment: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get dashboard",
+                )),
+            )
+        })?;
 
     let trends = state
         .sentiment_repo
         .list_trends(org_id, SentimentTrendQuery::default())
         .await
-        .unwrap_or_default();
+        .map_err(|e| {
+            tracing::error!("Failed to get trends: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get dashboard",
+                )),
+            )
+        })?;
 
     let alerts = state
         .sentiment_repo
         .list_alerts(org_id, Some(false), 5, 0)
         .await
-        .unwrap_or_default();
+        .map_err(|e| {
+            tracing::error!("Failed to get alerts: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get dashboard",
+                )),
+            )
+        })?;
 
     Ok(Json(serde_json::json!({
         "organization_avg": org_avg,
@@ -521,12 +593,12 @@ async fn create_equipment(
 
 async fn list_equipment(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<EquipmentQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
-    match state.equipment_repo.list(org_id, query).await {
+    match state.equipment_repo.list(tenant.tenant_id, query).await {
         Ok(equipment) => Ok(Json(serde_json::json!({ "equipment": equipment }))),
         Err(e) => {
             tracing::error!("Failed to list equipment: {}", e);
@@ -652,14 +724,14 @@ async fn update_maintenance(
 
 async fn list_predictions(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<PaginationQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
     match state
         .equipment_repo
-        .list_high_risk_predictions(org_id, 50.0, query.limit.unwrap_or(20))
+        .list_high_risk_predictions(tenant.tenant_id, 50.0, query.limit.unwrap_or(20))
         .await
     {
         Ok(predictions) => Ok(Json(serde_json::json!({ "predictions": predictions }))),
@@ -680,15 +752,15 @@ pub struct AcknowledgePredictionRequest {
 
 async fn acknowledge_prediction(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(id): Path<Uuid>,
     Json(req): Json<AcknowledgePredictionRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
     match state
         .equipment_repo
-        .acknowledge_prediction(id, user_id, req.action_taken.as_deref())
+        .acknowledge_prediction(id, tenant.user_id, req.action_taken.as_deref())
         .await
     {
         Ok(prediction) => Ok(Json(serde_json::json!(prediction))),
@@ -713,15 +785,15 @@ pub struct MaintenanceDueQuery {
 
 async fn list_needing_maintenance(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<MaintenanceDueQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
     match state
         .equipment_repo
         .list_needing_maintenance(
-            org_id,
+            tenant.tenant_id,
             query.days_ahead.unwrap_or(30),
             query.limit.unwrap_or(20),
         )
@@ -776,12 +848,12 @@ async fn create_workflow(
 
 async fn list_workflows(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<WorkflowQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
-    match state.workflow_repo.list(org_id, query).await {
+    match state.workflow_repo.list(tenant.tenant_id, query).await {
         Ok(workflows) => Ok(Json(serde_json::json!({ "workflows": workflows }))),
         Err(e) => {
             tracing::error!("Failed to list workflows: {}", e);
@@ -799,11 +871,13 @@ async fn get_workflow(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     match state.workflow_repo.find_by_id(id).await {
         Ok(Some(workflow)) => {
-            let actions = state
-                .workflow_repo
-                .list_actions(id)
-                .await
-                .unwrap_or_default();
+            let actions = state.workflow_repo.list_actions(id).await.map_err(|e| {
+                tracing::error!("Failed to list actions: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to get")),
+                )
+            })?;
             Ok(Json(serde_json::json!({
                 "workflow": workflow,
                 "actions": actions
@@ -937,12 +1011,16 @@ async fn trigger_workflow(
 
 async fn list_executions(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Query(query): Query<ExecutionQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
+    let tenant = extract_tenant_context(&headers)?;
 
-    match state.workflow_repo.list_executions(org_id, query).await {
+    match state
+        .workflow_repo
+        .list_executions(tenant.tenant_id, query)
+        .await
+    {
         Ok(executions) => Ok(Json(serde_json::json!({ "executions": executions }))),
         Err(e) => {
             tracing::error!("Failed to list executions: {}", e);
@@ -964,7 +1042,13 @@ async fn get_execution(
                 .workflow_repo
                 .list_execution_steps(id)
                 .await
-                .unwrap_or_default();
+                .map_err(|e| {
+                    tracing::error!("Failed to list steps: {}", e);
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to get")),
+                    )
+                })?;
             Ok(Json(serde_json::json!({
                 "execution": execution,
                 "steps": steps

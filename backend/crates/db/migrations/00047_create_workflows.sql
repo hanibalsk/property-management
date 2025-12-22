@@ -85,7 +85,8 @@ CREATE TABLE IF NOT EXISTS workflow_schedules (
     last_run_at TIMESTAMPTZ,
     enabled BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT workflow_schedules_workflow_id_key UNIQUE (workflow_id)
 );
 
 -- Indexes

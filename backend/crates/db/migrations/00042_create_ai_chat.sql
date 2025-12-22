@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS ai_training_feedback (
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     helpful BOOLEAN,
     feedback_text TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT ai_training_feedback_unique_message_user UNIQUE (message_id, user_id)
 );
 
 -- Indexes
