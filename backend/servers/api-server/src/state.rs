@@ -10,10 +10,10 @@ use db::{
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         ListingRepository, MeterRepository, NotificationPreferenceRepository, OAuthRepository,
         OnboardingRepository, OrganizationMemberRepository, OrganizationRepository,
-        PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository, RoleRepository,
-        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
-        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
-        UnitResidentRepository, UserRepository, VoteRepository, WorkflowRepository,
+        PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository, RentalRepository,
+        RoleRepository, SensorRepository, SentimentRepository, SessionRepository,
+        SignatureRequestRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
+        UnitRepository, UnitResidentRepository, UserRepository, VoteRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -66,6 +66,8 @@ pub struct AppState {
     pub listing_repo: ListingRepository,
     // Epic 17: Agency & Realtor Management
     pub agency_repo: AgencyRepository,
+    // Epic 18: Short-Term Rental Integration
+    pub rental_repo: RentalRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -120,6 +122,8 @@ impl AppState {
         let listing_repo = ListingRepository::new(db.clone());
         // Epic 17: Agency & Realtor Management
         let agency_repo = AgencyRepository::new(db.clone());
+        // Epic 18: Short-Term Rental Integration
+        let rental_repo = RentalRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -166,6 +170,7 @@ impl AppState {
             sensor_repo,
             listing_repo,
             agency_repo,
+            rental_repo,
             auth_service,
             email_service,
             jwt_service,

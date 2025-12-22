@@ -1,0 +1,1514 @@
+//! Rental repository (Epic 18: Short-Term Rental Integration).
+
+use crate::models::rental::{
+    block_reason, booking_status, guest_status, report_status, BookingListQuery, BookingSummary,
+    BookingWithGuests, CalendarBlock, CalendarEvent, CheckInReminder, ConnectionStatus,
+    CreateBooking, CreateCalendarBlock, CreateGuest, CreateICalFeed, CreatePlatformConnection,
+    GenerateReport, ICalFeed, NationalityStats, PlatformConnectionSummary, PlatformSyncStatus,
+    RentalBooking, RentalGuest, RentalGuestReport, RentalPlatformConnection, RentalStatistics,
+    ReportPreview, ReportSummary, UpdateBooking, UpdateBookingStatus, UpdateGuest, UpdateICalFeed,
+    UpdatePlatformConnection,
+};
+use crate::DbPool;
+use chrono::{Datelike, Duration, NaiveDate, Utc};
+use rust_decimal::Decimal;
+use sqlx::Error as SqlxError;
+use uuid::Uuid;
+
+/// Repository for rental operations.
+#[derive(Clone)]
+pub struct RentalRepository {
+    pool: DbPool,
+}
+
+impl RentalRepository {
+    /// Create a new RentalRepository.
+    pub fn new(pool: DbPool) -> Self {
+        Self { pool }
+    }
+
+    // ========================================================================
+    // Platform Connections (Story 18.1)
+    // ========================================================================
+
+    /// Create platform connection.
+    pub async fn create_connection(
+        &self,
+        org_id: Uuid,
+        data: CreatePlatformConnection,
+    ) -> Result<RentalPlatformConnection, SqlxError> {
+        let conn = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"
+            INSERT INTO rental_platform_connections (
+                organization_id, unit_id, platform, external_property_id,
+                sync_calendar, sync_interval_minutes, block_other_platforms
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.unit_id)
+        .bind(&data.platform)
+        .bind(&data.external_property_id)
+        .bind(data.sync_calendar)
+        .bind(data.sync_interval_minutes)
+        .bind(data.block_other_platforms)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(conn)
+    }
+
+    /// Find connection by ID.
+    pub async fn find_connection_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<RentalPlatformConnection>, SqlxError> {
+        let conn = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"SELECT * FROM rental_platform_connections WHERE id = $1"#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(conn)
+    }
+
+    /// Find connection by unit and platform.
+    pub async fn find_connection_by_unit_platform(
+        &self,
+        unit_id: Uuid,
+        platform: &str,
+    ) -> Result<Option<RentalPlatformConnection>, SqlxError> {
+        let conn = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"SELECT * FROM rental_platform_connections WHERE unit_id = $1 AND platform = $2"#,
+        )
+        .bind(unit_id)
+        .bind(platform)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(conn)
+    }
+
+    /// Update connection.
+    pub async fn update_connection(
+        &self,
+        id: Uuid,
+        data: UpdatePlatformConnection,
+    ) -> Result<RentalPlatformConnection, SqlxError> {
+        let conn = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"
+            UPDATE rental_platform_connections SET
+                external_property_id = COALESCE($2, external_property_id),
+                external_listing_url = COALESCE($3, external_listing_url),
+                is_active = COALESCE($4, is_active),
+                sync_calendar = COALESCE($5, sync_calendar),
+                sync_interval_minutes = COALESCE($6, sync_interval_minutes),
+                block_other_platforms = COALESCE($7, block_other_platforms),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.external_property_id)
+        .bind(&data.external_listing_url)
+        .bind(data.is_active)
+        .bind(data.sync_calendar)
+        .bind(data.sync_interval_minutes)
+        .bind(data.block_other_platforms)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(conn)
+    }
+
+    /// Save OAuth tokens for connection.
+    pub async fn save_oauth_tokens(
+        &self,
+        id: Uuid,
+        access_token: &str,
+        refresh_token: Option<&str>,
+        expires_at: Option<chrono::DateTime<Utc>>,
+    ) -> Result<(), SqlxError> {
+        sqlx::query(
+            r#"
+            UPDATE rental_platform_connections SET
+                access_token = $2,
+                refresh_token = COALESCE($3, refresh_token),
+                token_expires_at = $4,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(access_token)
+        .bind(refresh_token)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Update last sync time.
+    pub async fn update_sync_status(&self, id: Uuid, error: Option<&str>) -> Result<(), SqlxError> {
+        sqlx::query(
+            r#"
+            UPDATE rental_platform_connections SET
+                last_sync_at = NOW(),
+                sync_error = $2,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(error)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Delete connection.
+    pub async fn delete_connection(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM rental_platform_connections WHERE id = $1"#)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Get connections for organization.
+    pub async fn get_connections_for_org(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Vec<PlatformConnectionSummary>, SqlxError> {
+        let connections = sqlx::query_as::<_, PlatformConnectionSummary>(
+            r#"
+            SELECT
+                c.id, c.unit_id, u.name as unit_name,
+                c.platform::text, c.is_active, c.last_sync_at, c.sync_error
+            FROM rental_platform_connections c
+            JOIN units u ON u.id = c.unit_id
+            WHERE c.organization_id = $1
+            ORDER BY u.name, c.platform
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(connections)
+    }
+
+    /// Get connections for unit.
+    pub async fn get_connections_for_unit(
+        &self,
+        unit_id: Uuid,
+    ) -> Result<Vec<ConnectionStatus>, SqlxError> {
+        let connections = sqlx::query_as::<_, (Uuid, String, bool, bool, Option<chrono::DateTime<Utc>>, Option<String>, Option<String>)>(
+            r#"
+            SELECT id, platform::text, access_token IS NOT NULL, is_active, last_sync_at, sync_error, external_listing_url
+            FROM rental_platform_connections
+            WHERE unit_id = $1
+            ORDER BY platform
+            "#,
+        )
+        .bind(unit_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let statuses = connections
+            .into_iter()
+            .map(
+                |(
+                    id,
+                    platform,
+                    is_connected,
+                    is_active,
+                    last_sync_at,
+                    sync_error,
+                    external_listing_url,
+                )| {
+                    ConnectionStatus {
+                        id,
+                        platform,
+                        is_connected,
+                        is_active,
+                        last_sync_at,
+                        sync_error,
+                        external_listing_url,
+                    }
+                },
+            )
+            .collect();
+
+        Ok(statuses)
+    }
+
+    /// Get connections needing sync.
+    pub async fn get_connections_needing_sync(
+        &self,
+    ) -> Result<Vec<RentalPlatformConnection>, SqlxError> {
+        let connections = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"
+            SELECT * FROM rental_platform_connections
+            WHERE is_active = true
+                AND sync_calendar = true
+                AND access_token IS NOT NULL
+                AND (
+                    last_sync_at IS NULL
+                    OR last_sync_at < NOW() - INTERVAL '1 minute' * sync_interval_minutes
+                )
+            ORDER BY last_sync_at NULLS FIRST
+            LIMIT 100
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(connections)
+    }
+
+    // ========================================================================
+    // Bookings (Story 18.2)
+    // ========================================================================
+
+    /// Create booking.
+    pub async fn create_booking(
+        &self,
+        org_id: Uuid,
+        data: CreateBooking,
+    ) -> Result<RentalBooking, SqlxError> {
+        let booking = sqlx::query_as::<_, RentalBooking>(
+            r#"
+            INSERT INTO rental_bookings (
+                organization_id, unit_id, platform, external_booking_id,
+                guest_name, guest_email, guest_phone, guest_count,
+                check_in, check_out, check_in_time, check_out_time,
+                total_amount, currency, platform_fee, cleaning_fee,
+                guest_notes, internal_notes, status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.unit_id)
+        .bind(&data.platform)
+        .bind(&data.external_booking_id)
+        .bind(&data.guest_name)
+        .bind(&data.guest_email)
+        .bind(&data.guest_phone)
+        .bind(data.guest_count)
+        .bind(data.check_in)
+        .bind(data.check_out)
+        .bind(data.check_in_time)
+        .bind(data.check_out_time)
+        .bind(data.total_amount)
+        .bind(&data.currency)
+        .bind(data.platform_fee)
+        .bind(data.cleaning_fee)
+        .bind(&data.guest_notes)
+        .bind(&data.internal_notes)
+        .bind(booking_status::PENDING)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Create calendar block for the booking
+        sqlx::query(
+            r#"
+            INSERT INTO rental_calendar_blocks (organization_id, unit_id, block_start, block_end, reason, booking_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.unit_id)
+        .bind(data.check_in)
+        .bind(data.check_out)
+        .bind(block_reason::BOOKING)
+        .bind(booking.id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(booking)
+    }
+
+    /// Find booking by ID.
+    pub async fn find_booking_by_id(&self, id: Uuid) -> Result<Option<RentalBooking>, SqlxError> {
+        let booking =
+            sqlx::query_as::<_, RentalBooking>(r#"SELECT * FROM rental_bookings WHERE id = $1"#)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        Ok(booking)
+    }
+
+    /// Find booking by external ID.
+    pub async fn find_booking_by_external_id(
+        &self,
+        platform: &str,
+        external_id: &str,
+    ) -> Result<Option<RentalBooking>, SqlxError> {
+        let booking = sqlx::query_as::<_, RentalBooking>(
+            r#"SELECT * FROM rental_bookings WHERE platform = $1 AND external_booking_id = $2"#,
+        )
+        .bind(platform)
+        .bind(external_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(booking)
+    }
+
+    /// Update booking.
+    pub async fn update_booking(
+        &self,
+        id: Uuid,
+        data: UpdateBooking,
+    ) -> Result<RentalBooking, SqlxError> {
+        let booking = sqlx::query_as::<_, RentalBooking>(
+            r#"
+            UPDATE rental_bookings SET
+                guest_name = COALESCE($2, guest_name),
+                guest_email = COALESCE($3, guest_email),
+                guest_phone = COALESCE($4, guest_phone),
+                guest_count = COALESCE($5, guest_count),
+                check_in = COALESCE($6, check_in),
+                check_out = COALESCE($7, check_out),
+                check_in_time = COALESCE($8, check_in_time),
+                check_out_time = COALESCE($9, check_out_time),
+                total_amount = COALESCE($10, total_amount),
+                currency = COALESCE($11, currency),
+                guest_notes = COALESCE($12, guest_notes),
+                internal_notes = COALESCE($13, internal_notes),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.guest_name)
+        .bind(&data.guest_email)
+        .bind(&data.guest_phone)
+        .bind(data.guest_count)
+        .bind(data.check_in)
+        .bind(data.check_out)
+        .bind(data.check_in_time)
+        .bind(data.check_out_time)
+        .bind(data.total_amount)
+        .bind(&data.currency)
+        .bind(&data.guest_notes)
+        .bind(&data.internal_notes)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Update calendar block if dates changed
+        if data.check_in.is_some() || data.check_out.is_some() {
+            sqlx::query(
+                r#"
+                UPDATE rental_calendar_blocks SET
+                    block_start = COALESCE($2, block_start),
+                    block_end = COALESCE($3, block_end)
+                WHERE booking_id = $1
+                "#,
+            )
+            .bind(id)
+            .bind(data.check_in)
+            .bind(data.check_out)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(booking)
+    }
+
+    /// Update booking status.
+    pub async fn update_booking_status(
+        &self,
+        id: Uuid,
+        data: UpdateBookingStatus,
+    ) -> Result<RentalBooking, SqlxError> {
+        let booking = sqlx::query_as::<_, RentalBooking>(
+            r#"
+            UPDATE rental_bookings SET
+                status = $2,
+                cancelled_at = CASE WHEN $2 = 'cancelled' THEN NOW() ELSE cancelled_at END,
+                cancellation_reason = COALESCE($3, cancellation_reason),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.status)
+        .bind(&data.cancellation_reason)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Remove calendar block if cancelled
+        if data.status == booking_status::CANCELLED {
+            sqlx::query(r#"DELETE FROM rental_calendar_blocks WHERE booking_id = $1"#)
+                .bind(id)
+                .execute(&self.pool)
+                .await?;
+        }
+
+        Ok(booking)
+    }
+
+    /// List bookings with filters.
+    pub async fn list_bookings(
+        &self,
+        org_id: Uuid,
+        query: BookingListQuery,
+    ) -> Result<(Vec<BookingSummary>, i64), SqlxError> {
+        let page = query.page.unwrap_or(1).max(1);
+        let limit = query.limit.unwrap_or(20).min(100);
+        let offset = (page - 1) * limit;
+
+        // Build dynamic query
+        let mut conditions = vec!["b.organization_id = $1".to_string()];
+        let mut param_count = 1;
+
+        if query.unit_id.is_some() {
+            param_count += 1;
+            conditions.push(format!("b.unit_id = ${}", param_count));
+        }
+        if query.building_id.is_some() {
+            param_count += 1;
+            conditions.push(format!("u.building_id = ${}", param_count));
+        }
+        if query.platform.is_some() {
+            param_count += 1;
+            conditions.push(format!("b.platform = ${}", param_count));
+        }
+        if query.status.is_some() {
+            param_count += 1;
+            conditions.push(format!("b.status = ${}", param_count));
+        }
+        if query.from_date.is_some() {
+            param_count += 1;
+            conditions.push(format!("b.check_in >= ${}", param_count));
+        }
+        if query.to_date.is_some() {
+            param_count += 1;
+            conditions.push(format!("b.check_out <= ${}", param_count));
+        }
+        if query.guest_name.is_some() {
+            param_count += 1;
+            conditions.push(format!("b.guest_name ILIKE '%' || ${} || '%'", param_count));
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        // Count total
+        let count_query = format!(
+            r#"
+            SELECT COUNT(*)
+            FROM rental_bookings b
+            JOIN units u ON u.id = b.unit_id
+            JOIN buildings bld ON bld.id = u.building_id
+            WHERE {}
+            "#,
+            where_clause
+        );
+
+        let mut count_builder = sqlx::query_as::<_, (i64,)>(&count_query).bind(org_id);
+
+        if let Some(unit_id) = query.unit_id {
+            count_builder = count_builder.bind(unit_id);
+        }
+        if let Some(building_id) = query.building_id {
+            count_builder = count_builder.bind(building_id);
+        }
+        if let Some(ref platform) = query.platform {
+            count_builder = count_builder.bind(platform);
+        }
+        if let Some(ref status) = query.status {
+            count_builder = count_builder.bind(status);
+        }
+        if let Some(from_date) = query.from_date {
+            count_builder = count_builder.bind(from_date);
+        }
+        if let Some(to_date) = query.to_date {
+            count_builder = count_builder.bind(to_date);
+        }
+        if let Some(ref guest_name) = query.guest_name {
+            count_builder = count_builder.bind(guest_name);
+        }
+
+        let (total,) = count_builder.fetch_one(&self.pool).await?;
+
+        // Fetch bookings (simplified - using direct query)
+        let bookings = sqlx::query_as::<_, (Uuid, Uuid, String, String, String, String, i32, NaiveDate, NaiveDate, Option<Decimal>, Option<String>, String, Option<String>)>(
+            r#"
+            SELECT
+                b.id, b.unit_id, u.name, bld.name,
+                b.platform::text, b.guest_name, b.guest_count,
+                b.check_in, b.check_out, b.total_amount, b.currency,
+                b.status,
+                (SELECT status FROM rental_guests WHERE booking_id = b.id AND is_primary = true LIMIT 1)
+            FROM rental_bookings b
+            JOIN units u ON u.id = b.unit_id
+            JOIN buildings bld ON bld.id = u.building_id
+            WHERE b.organization_id = $1
+            ORDER BY b.check_in DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(org_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let summaries = bookings
+            .into_iter()
+            .map(
+                |(
+                    id,
+                    unit_id,
+                    unit_name,
+                    building_name,
+                    platform,
+                    guest_name,
+                    guest_count,
+                    check_in,
+                    check_out,
+                    total_amount,
+                    currency,
+                    status,
+                    guest_status,
+                )| {
+                    BookingSummary {
+                        id,
+                        unit_id,
+                        unit_name,
+                        building_name,
+                        platform,
+                        guest_name,
+                        guest_count,
+                        check_in,
+                        check_out,
+                        nights: (check_out - check_in).num_days(),
+                        total_amount,
+                        currency,
+                        status,
+                        guest_registration_status: guest_status,
+                    }
+                },
+            )
+            .collect();
+
+        Ok((summaries, total))
+    }
+
+    /// Get upcoming check-ins needing guest registration.
+    pub async fn get_upcoming_checkins_needing_registration(
+        &self,
+        org_id: Uuid,
+        days_ahead: i32,
+    ) -> Result<Vec<CheckInReminder>, SqlxError> {
+        let today = Utc::now().date_naive();
+        let target_date = today + Duration::days(days_ahead as i64);
+
+        let reminders = sqlx::query_as::<_, (Uuid, String, String, NaiveDate, i64)>(
+            r#"
+            SELECT
+                b.id, u.name, b.guest_name, b.check_in,
+                (SELECT COUNT(*) FROM rental_guests WHERE booking_id = b.id AND status = 'pending')
+            FROM rental_bookings b
+            JOIN units u ON u.id = b.unit_id
+            WHERE b.organization_id = $1
+                AND b.status IN ('pending', 'confirmed')
+                AND b.check_in BETWEEN $2 AND $3
+                AND EXISTS (SELECT 1 FROM rental_guests WHERE booking_id = b.id AND status = 'pending')
+            ORDER BY b.check_in
+            "#,
+        )
+        .bind(org_id)
+        .bind(today)
+        .bind(target_date)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(reminders
+            .into_iter()
+            .map(
+                |(booking_id, unit_name, guest_name, check_in, pending)| CheckInReminder {
+                    booking_id,
+                    unit_name,
+                    guest_name,
+                    check_in,
+                    pending_registrations: pending as i32,
+                },
+            )
+            .collect())
+    }
+
+    // ========================================================================
+    // Calendar (Story 18.2)
+    // ========================================================================
+
+    /// Create calendar block.
+    pub async fn create_calendar_block(
+        &self,
+        org_id: Uuid,
+        data: CreateCalendarBlock,
+    ) -> Result<CalendarBlock, SqlxError> {
+        let block = sqlx::query_as::<_, CalendarBlock>(
+            r#"
+            INSERT INTO rental_calendar_blocks (organization_id, unit_id, block_start, block_end, reason, notes)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.unit_id)
+        .bind(data.block_start)
+        .bind(data.block_end)
+        .bind(&data.reason)
+        .bind(&data.notes)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(block)
+    }
+
+    /// Delete calendar block.
+    pub async fn delete_calendar_block(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(
+            r#"DELETE FROM rental_calendar_blocks WHERE id = $1 AND booking_id IS NULL"#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Get calendar events for unit in date range.
+    pub async fn get_calendar_events(
+        &self,
+        unit_id: Uuid,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+    ) -> Result<Vec<CalendarEvent>, SqlxError> {
+        // Get blocks
+        let blocks = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                NaiveDate,
+                NaiveDate,
+                String,
+                Option<Uuid>,
+                Option<String>,
+            ),
+        >(
+            r#"
+            SELECT id, block_start, block_end, reason, booking_id, source_platform::text
+            FROM rental_calendar_blocks
+            WHERE unit_id = $1 AND block_start <= $3 AND block_end >= $2
+            ORDER BY block_start
+            "#,
+        )
+        .bind(unit_id)
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Get bookings for those blocks
+        let mut events: Vec<CalendarEvent> = Vec::new();
+
+        for (id, block_start, block_end, reason, booking_id, source_platform) in blocks {
+            let (title, booking_status, color) = if let Some(bid) = booking_id {
+                // Get booking info
+                let booking: Option<(String, String, String)> = sqlx::query_as(
+                    r#"SELECT guest_name, platform::text, status FROM rental_bookings WHERE id = $1"#,
+                )
+                .bind(bid)
+                .fetch_optional(&self.pool)
+                .await?;
+
+                if let Some((guest_name, _platform, status)) = booking {
+                    let color = match status.as_str() {
+                        "confirmed" => "#22c55e",
+                        "checked_in" => "#3b82f6",
+                        "pending" => "#f59e0b",
+                        _ => "#6b7280",
+                    };
+                    (guest_name, Some(status), color.to_string())
+                } else {
+                    ("Booking".to_string(), None, "#6b7280".to_string())
+                }
+            } else {
+                let title = match reason.as_str() {
+                    "maintenance" => "Maintenance",
+                    "owner_use" => "Owner Use",
+                    _ => "Blocked",
+                };
+                let color = match reason.as_str() {
+                    "maintenance" => "#ef4444",
+                    "owner_use" => "#8b5cf6",
+                    _ => "#6b7280",
+                };
+                (title.to_string(), None, color.to_string())
+            };
+
+            events.push(CalendarEvent {
+                id,
+                unit_id,
+                start_date: block_start,
+                end_date: block_end,
+                event_type: if booking_id.is_some() {
+                    "booking".to_string()
+                } else {
+                    "block".to_string()
+                },
+                title,
+                platform: source_platform,
+                booking_status,
+                color,
+            });
+        }
+
+        Ok(events)
+    }
+
+    /// Check availability for unit.
+    pub async fn check_availability(
+        &self,
+        unit_id: Uuid,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+    ) -> Result<bool, SqlxError> {
+        let (has_conflict,): (bool,) = sqlx::query_as(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM rental_calendar_blocks
+                WHERE unit_id = $1
+                    AND block_start < $3
+                    AND block_end > $2
+            )
+            "#,
+        )
+        .bind(unit_id)
+        .bind(start_date)
+        .bind(end_date)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(!has_conflict)
+    }
+
+    // ========================================================================
+    // Guests (Story 18.3)
+    // ========================================================================
+
+    /// Create guest.
+    pub async fn create_guest(
+        &self,
+        org_id: Uuid,
+        data: CreateGuest,
+    ) -> Result<RentalGuest, SqlxError> {
+        let guest = sqlx::query_as::<_, RentalGuest>(
+            r#"
+            INSERT INTO rental_guests (
+                organization_id, booking_id, first_name, last_name,
+                date_of_birth, nationality, id_type, id_number,
+                id_issuing_country, id_expiry_date, email, phone,
+                address_street, address_city, address_postal_code, address_country,
+                is_primary, status
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.booking_id)
+        .bind(&data.first_name)
+        .bind(&data.last_name)
+        .bind(data.date_of_birth)
+        .bind(&data.nationality)
+        .bind(&data.id_type)
+        .bind(&data.id_number)
+        .bind(&data.id_issuing_country)
+        .bind(data.id_expiry_date)
+        .bind(&data.email)
+        .bind(&data.phone)
+        .bind(&data.address_street)
+        .bind(&data.address_city)
+        .bind(&data.address_postal_code)
+        .bind(&data.address_country)
+        .bind(data.is_primary)
+        .bind(guest_status::PENDING)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(guest)
+    }
+
+    /// Find guest by ID.
+    pub async fn find_guest_by_id(&self, id: Uuid) -> Result<Option<RentalGuest>, SqlxError> {
+        let guest =
+            sqlx::query_as::<_, RentalGuest>(r#"SELECT * FROM rental_guests WHERE id = $1"#)
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        Ok(guest)
+    }
+
+    /// Update guest.
+    pub async fn update_guest(
+        &self,
+        id: Uuid,
+        data: UpdateGuest,
+    ) -> Result<RentalGuest, SqlxError> {
+        let guest = sqlx::query_as::<_, RentalGuest>(
+            r#"
+            UPDATE rental_guests SET
+                first_name = COALESCE($2, first_name),
+                last_name = COALESCE($3, last_name),
+                date_of_birth = COALESCE($4, date_of_birth),
+                nationality = COALESCE($5, nationality),
+                id_type = COALESCE($6, id_type),
+                id_number = COALESCE($7, id_number),
+                id_issuing_country = COALESCE($8, id_issuing_country),
+                id_expiry_date = COALESCE($9, id_expiry_date),
+                id_document_url = COALESCE($10, id_document_url),
+                email = COALESCE($11, email),
+                phone = COALESCE($12, phone),
+                address_street = COALESCE($13, address_street),
+                address_city = COALESCE($14, address_city),
+                address_postal_code = COALESCE($15, address_postal_code),
+                address_country = COALESCE($16, address_country),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.first_name)
+        .bind(&data.last_name)
+        .bind(data.date_of_birth)
+        .bind(&data.nationality)
+        .bind(&data.id_type)
+        .bind(&data.id_number)
+        .bind(&data.id_issuing_country)
+        .bind(data.id_expiry_date)
+        .bind(&data.id_document_url)
+        .bind(&data.email)
+        .bind(&data.phone)
+        .bind(&data.address_street)
+        .bind(&data.address_city)
+        .bind(&data.address_postal_code)
+        .bind(&data.address_country)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(guest)
+    }
+
+    /// Register guest (mark as registered).
+    pub async fn register_guest(&self, id: Uuid) -> Result<RentalGuest, SqlxError> {
+        let guest = sqlx::query_as::<_, RentalGuest>(
+            r#"
+            UPDATE rental_guests SET
+                status = $2,
+                registered_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(guest_status::REGISTERED)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(guest)
+    }
+
+    /// Get guests for booking.
+    pub async fn get_guests_for_booking(
+        &self,
+        booking_id: Uuid,
+    ) -> Result<Vec<RentalGuest>, SqlxError> {
+        let guests = sqlx::query_as::<_, RentalGuest>(
+            r#"
+            SELECT * FROM rental_guests
+            WHERE booking_id = $1
+            ORDER BY is_primary DESC, created_at
+            "#,
+        )
+        .bind(booking_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(guests)
+    }
+
+    /// Get booking with guests.
+    pub async fn get_booking_with_guests(
+        &self,
+        booking_id: Uuid,
+    ) -> Result<Option<BookingWithGuests>, SqlxError> {
+        let booking = self.find_booking_by_id(booking_id).await?;
+        if booking.is_none() {
+            return Ok(None);
+        }
+        let booking = booking.unwrap();
+
+        let guests = self.get_guests_for_booking(booking_id).await?;
+
+        // Check if registration is complete (all guests registered)
+        let registration_complete = !guests.is_empty()
+            && guests.iter().all(|g| {
+                g.status == guest_status::REGISTERED || g.status == guest_status::REPORTED
+            });
+
+        Ok(Some(BookingWithGuests {
+            booking,
+            guests,
+            registration_complete,
+        }))
+    }
+
+    /// Delete guest.
+    pub async fn delete_guest(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM rental_guests WHERE id = $1"#)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ========================================================================
+    // Reports (Story 18.4)
+    // ========================================================================
+
+    /// Generate report preview.
+    pub async fn generate_report_preview(
+        &self,
+        org_id: Uuid,
+        building_id: Uuid,
+        period_start: NaiveDate,
+        period_end: NaiveDate,
+    ) -> Result<ReportPreview, SqlxError> {
+        // Get building name
+        let (building_name,): (String,) =
+            sqlx::query_as(r#"SELECT name FROM buildings WHERE id = $1"#)
+                .bind(building_id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        // Count guests and get nationality breakdown
+        let stats = sqlx::query_as::<_, (i64, Option<String>)>(
+            r#"
+            SELECT COUNT(g.id), g.nationality
+            FROM rental_guests g
+            JOIN rental_bookings b ON b.id = g.booking_id
+            JOIN units u ON u.id = b.unit_id
+            WHERE b.organization_id = $1
+                AND u.building_id = $2
+                AND b.check_in >= $3
+                AND b.check_out <= $4
+                AND g.status IN ('registered', 'reported')
+            GROUP BY g.nationality
+            "#,
+        )
+        .bind(org_id)
+        .bind(building_id)
+        .bind(period_start)
+        .bind(period_end)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let total_guests: i32 = stats.iter().map(|(count, _)| *count as i32).sum();
+
+        let by_nationality: Vec<NationalityStats> = stats
+            .into_iter()
+            .map(|(count, nationality)| {
+                let nat = nationality.unwrap_or_else(|| "UNK".to_string());
+                NationalityStats {
+                    nationality: nat.clone(),
+                    country_name: nat, // TODO: Map to country name
+                    count: count as i32,
+                    percentage: if total_guests > 0 {
+                        (count as f64 / total_guests as f64) * 100.0
+                    } else {
+                        0.0
+                    },
+                }
+            })
+            .collect();
+
+        // Count bookings
+        let (bookings_count,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(DISTINCT b.id)
+            FROM rental_bookings b
+            JOIN units u ON u.id = b.unit_id
+            WHERE b.organization_id = $1
+                AND u.building_id = $2
+                AND b.check_in >= $3
+                AND b.check_out <= $4
+            "#,
+        )
+        .bind(org_id)
+        .bind(building_id)
+        .bind(period_start)
+        .bind(period_end)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(ReportPreview {
+            building_id,
+            building_name,
+            period_start,
+            period_end,
+            total_guests,
+            by_nationality,
+            bookings_count: bookings_count as i32,
+        })
+    }
+
+    /// Create report.
+    pub async fn create_report(
+        &self,
+        org_id: Uuid,
+        data: GenerateReport,
+        user_id: Uuid,
+    ) -> Result<RentalGuestReport, SqlxError> {
+        // Get preview data
+        let preview = self
+            .generate_report_preview(org_id, data.building_id, data.period_start, data.period_end)
+            .await?;
+
+        let authority_name = match data.authority_code.as_str() {
+            "SK_UHUL" => "UHUL Slovakia",
+            "CZ_CIZPOL" => "Czech Foreign Police",
+            "AT_ZMR" => "Austria ZMR",
+            "DE_MELDEWESEN" => "Germany Meldewesen",
+            _ => "Unknown",
+        };
+
+        let guests_by_nationality = serde_json::to_value(&preview.by_nationality).ok();
+
+        let report = sqlx::query_as::<_, RentalGuestReport>(
+            r#"
+            INSERT INTO rental_guest_reports (
+                organization_id, building_id, report_type, period_start, period_end,
+                authority_code, authority_name, total_guests, guests_by_nationality,
+                report_format, status, generated_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.building_id)
+        .bind(&data.report_type)
+        .bind(data.period_start)
+        .bind(data.period_end)
+        .bind(&data.authority_code)
+        .bind(authority_name)
+        .bind(preview.total_guests)
+        .bind(guests_by_nationality)
+        .bind(&data.report_format)
+        .bind(report_status::GENERATED)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(report)
+    }
+
+    /// Find report by ID.
+    pub async fn find_report_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<RentalGuestReport>, SqlxError> {
+        let report = sqlx::query_as::<_, RentalGuestReport>(
+            r#"SELECT * FROM rental_guest_reports WHERE id = $1"#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(report)
+    }
+
+    /// Submit report.
+    pub async fn submit_report(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+    ) -> Result<RentalGuestReport, SqlxError> {
+        let report = sqlx::query_as::<_, RentalGuestReport>(
+            r#"
+            UPDATE rental_guest_reports SET
+                status = $2,
+                submitted_at = NOW(),
+                submitted_by = $3,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(report_status::SUBMITTED)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Mark guests as reported
+        sqlx::query(
+            r#"
+            UPDATE rental_guests SET
+                status = 'reported',
+                reported_at = NOW()
+            WHERE booking_id IN (
+                SELECT b.id FROM rental_bookings b
+                JOIN units u ON u.id = b.unit_id
+                JOIN rental_guest_reports r ON r.building_id = u.building_id
+                WHERE r.id = $1
+                    AND b.check_in >= r.period_start
+                    AND b.check_out <= r.period_end
+            )
+            AND status = 'registered'
+            "#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(report)
+    }
+
+    /// List reports for organization.
+    pub async fn list_reports(
+        &self,
+        org_id: Uuid,
+        building_id: Option<Uuid>,
+        limit: i32,
+    ) -> Result<Vec<ReportSummary>, SqlxError> {
+        let reports = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                String,
+                String,
+                NaiveDate,
+                NaiveDate,
+                String,
+                String,
+                i32,
+                String,
+                Option<String>,
+                Option<chrono::DateTime<Utc>>,
+            ),
+        >(
+            r#"
+            SELECT
+                r.id, r.building_id, b.name, r.report_type,
+                r.period_start, r.period_end, r.authority_code, r.authority_name,
+                r.total_guests, r.status, r.report_file_url, r.submitted_at
+            FROM rental_guest_reports r
+            JOIN buildings b ON b.id = r.building_id
+            WHERE r.organization_id = $1
+                AND ($2::uuid IS NULL OR r.building_id = $2)
+            ORDER BY r.period_start DESC
+            LIMIT $3
+            "#,
+        )
+        .bind(org_id)
+        .bind(building_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(reports
+            .into_iter()
+            .map(
+                |(
+                    id,
+                    building_id,
+                    building_name,
+                    report_type,
+                    period_start,
+                    period_end,
+                    authority_code,
+                    authority_name,
+                    total_guests,
+                    status,
+                    report_file_url,
+                    submitted_at,
+                )| {
+                    ReportSummary {
+                        id,
+                        building_id,
+                        building_name,
+                        report_type,
+                        period_start,
+                        period_end,
+                        authority_code,
+                        authority_name,
+                        total_guests,
+                        status,
+                        report_file_url,
+                        submitted_at,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    // ========================================================================
+    // iCal Feeds
+    // ========================================================================
+
+    /// Create iCal feed.
+    pub async fn create_ical_feed(
+        &self,
+        org_id: Uuid,
+        data: CreateICalFeed,
+    ) -> Result<ICalFeed, SqlxError> {
+        let token = Uuid::new_v4().to_string().replace("-", "");
+
+        let feed = sqlx::query_as::<_, ICalFeed>(
+            r#"
+            INSERT INTO rental_ical_feeds (
+                organization_id, unit_id, feed_name, feed_token,
+                import_url, import_platform
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.unit_id)
+        .bind(&data.feed_name)
+        .bind(&token)
+        .bind(&data.import_url)
+        .bind(&data.import_platform)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(feed)
+    }
+
+    /// Find iCal feed by token.
+    pub async fn find_ical_feed_by_token(
+        &self,
+        token: &str,
+    ) -> Result<Option<ICalFeed>, SqlxError> {
+        let feed = sqlx::query_as::<_, ICalFeed>(
+            r#"SELECT * FROM rental_ical_feeds WHERE feed_token = $1 AND is_active = true"#,
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(feed)
+    }
+
+    /// Get iCal feeds for unit.
+    pub async fn get_ical_feeds_for_unit(&self, unit_id: Uuid) -> Result<Vec<ICalFeed>, SqlxError> {
+        let feeds = sqlx::query_as::<_, ICalFeed>(
+            r#"SELECT * FROM rental_ical_feeds WHERE unit_id = $1 ORDER BY feed_name"#,
+        )
+        .bind(unit_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(feeds)
+    }
+
+    /// Update iCal feed.
+    pub async fn update_ical_feed(
+        &self,
+        id: Uuid,
+        data: UpdateICalFeed,
+    ) -> Result<ICalFeed, SqlxError> {
+        let feed = sqlx::query_as::<_, ICalFeed>(
+            r#"
+            UPDATE rental_ical_feeds SET
+                feed_name = COALESCE($2, feed_name),
+                import_url = COALESCE($3, import_url),
+                is_active = COALESCE($4, is_active),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.feed_name)
+        .bind(&data.import_url)
+        .bind(data.is_active)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(feed)
+    }
+
+    /// Delete iCal feed.
+    pub async fn delete_ical_feed(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM rental_ical_feeds WHERE id = $1"#)
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ========================================================================
+    // Statistics
+    // ========================================================================
+
+    /// Get rental statistics for organization.
+    pub async fn get_statistics(&self, org_id: Uuid) -> Result<RentalStatistics, SqlxError> {
+        // Get unit counts
+        let (total_units,): (i64,) =
+            sqlx::query_as(r#"SELECT COUNT(DISTINCT id) FROM units WHERE organization_id = $1"#)
+                .bind(org_id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        let (connected_units,): (i64,) = sqlx::query_as(
+            r#"SELECT COUNT(DISTINCT unit_id) FROM rental_platform_connections WHERE organization_id = $1 AND is_active = true"#,
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Get booking counts
+        let today = Utc::now().date_naive();
+        let (active_bookings,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM rental_bookings
+            WHERE organization_id = $1
+                AND status IN ('confirmed', 'checked_in')
+                AND check_in <= $2 AND check_out >= $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(today)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let (upcoming_bookings,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM rental_bookings
+            WHERE organization_id = $1
+                AND status IN ('pending', 'confirmed')
+                AND check_in > $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(today)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let (pending_registrations,): (i64,) = sqlx::query_as(
+            r#"SELECT COUNT(*) FROM rental_guests WHERE organization_id = $1 AND status = 'pending'"#,
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Calculate occupancy (simplified)
+        let occupancy_rate = if total_units > 0 {
+            (active_bookings as f64 / total_units as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        // Revenue calculations (simplified)
+        let month_start = NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap();
+        let last_month_start = month_start - Duration::days(30);
+
+        let (revenue_this_month,): (Option<Decimal>,) = sqlx::query_as(
+            r#"
+            SELECT COALESCE(SUM(total_amount), 0)
+            FROM rental_bookings
+            WHERE organization_id = $1
+                AND status NOT IN ('cancelled', 'no_show')
+                AND check_in >= $2
+            "#,
+        )
+        .bind(org_id)
+        .bind(month_start)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let (revenue_last_month,): (Option<Decimal>,) = sqlx::query_as(
+            r#"
+            SELECT COALESCE(SUM(total_amount), 0)
+            FROM rental_bookings
+            WHERE organization_id = $1
+                AND status NOT IN ('cancelled', 'no_show')
+                AND check_in >= $2 AND check_in < $3
+            "#,
+        )
+        .bind(org_id)
+        .bind(last_month_start)
+        .bind(month_start)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(RentalStatistics {
+            total_units,
+            connected_units,
+            active_bookings,
+            upcoming_bookings,
+            pending_registrations,
+            occupancy_rate,
+            revenue_this_month: revenue_this_month.unwrap_or_default(),
+            revenue_last_month: revenue_last_month.unwrap_or_default(),
+        })
+    }
+
+    /// Get platform sync status.
+    pub async fn get_platform_sync_status(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Vec<PlatformSyncStatus>, SqlxError> {
+        let statuses = sqlx::query_as::<_, (String, i64, Option<chrono::DateTime<Utc>>, i64)>(
+            r#"
+            SELECT
+                platform::text,
+                COUNT(*) as connections_count,
+                MAX(last_sync_at) as last_sync,
+                COUNT(*) FILTER (WHERE sync_error IS NOT NULL) as errors
+            FROM rental_platform_connections
+            WHERE organization_id = $1 AND is_active = true
+            GROUP BY platform
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(statuses
+            .into_iter()
+            .map(|(platform, count, last_sync, errors)| PlatformSyncStatus {
+                platform,
+                connections_count: count,
+                last_sync_at: last_sync,
+                sync_errors_count: errors,
+            })
+            .collect())
+    }
+}
