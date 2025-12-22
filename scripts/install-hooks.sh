@@ -1,9 +1,15 @@
 #!/bin/bash
 #
-# Install git hooks for version management
+# Install git hooks for version management and code quality
 #
-# This script installs the pre-commit hook that auto-bumps
-# patch version on every commit.
+# This script installs the pre-commit hook that:
+#   1. Checks Rust formatting (cargo fmt)
+#   2. Checks Kotlin formatting (spotless)
+#   3. Checks TypeScript/JavaScript linting (eslint)
+#   4. Auto-bumps patch version on every commit
+#
+# Usage:
+#   ./scripts/install-hooks.sh
 #
 
 set -e
@@ -16,9 +22,10 @@ HOOKS_DIR="$ROOT_DIR/.git/hooks"
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${YELLOW}Installing git hooks...${NC}"
+echo -e "${CYAN}Installing git hooks...${NC}"
 
 # Check if .git directory exists
 if [[ ! -d "$ROOT_DIR/.git" ]]; then
@@ -40,10 +47,22 @@ chmod +x "$HOOKS_DIR/pre-commit"
 
 echo -e "${GREEN}✓ Pre-commit hook installed${NC}"
 echo ""
-echo "The following hooks are now active:"
-echo "  - pre-commit: Auto-bumps patch version on every commit"
+echo -e "${CYAN}The following checks are now active:${NC}"
 echo ""
-echo "Manual version bumping:"
-echo "  ./scripts/bump-version.sh minor   # Bump minor version (resets patch)"
-echo "  ./scripts/bump-version.sh major   # Bump major version (resets minor, patch)"
+echo "  Pre-commit hook runs:"
+echo "    1. Rust formatting check     (cargo fmt --check)"
+echo "    2. Kotlin formatting check   (spotless)"
+echo "    3. TypeScript/JS lint        (eslint)"
+echo "    4. Auto version bump         (patch version)"
 echo ""
+echo -e "${CYAN}If a check fails, the hook will show:${NC}"
+echo "    - What failed"
+echo "    - Exact command to fix it"
+echo "    - How to commit again"
+echo ""
+echo -e "${CYAN}Manual version bumping:${NC}"
+echo "    ./scripts/bump-version.sh patch   # 0.1.0 -> 0.1.1 (auto)"
+echo "    ./scripts/bump-version.sh minor   # 0.1.1 -> 0.2.0"
+echo "    ./scripts/bump-version.sh major   # 0.2.0 -> 1.0.0"
+echo ""
+echo -e "${GREEN}Done!${NC}"
