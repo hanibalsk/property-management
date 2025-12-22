@@ -1,6 +1,6 @@
 {
   "name": "@ppt/reality-api-client",
-  "version": "0.2.30",
+  "version": "0.2.31",
   "private": true,
   "description": "API client for Reality Portal (reality-server)",
   "type": "module",

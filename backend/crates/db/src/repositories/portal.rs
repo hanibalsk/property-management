@@ -143,7 +143,8 @@ impl PortalRepository {
             Some("price_asc") => "l.price ASC",
             Some("price_desc") => "l.price DESC",
             Some("area_asc") => "l.size_sqm ASC",
-            Some("date_desc") | _ => "l.published_at DESC",
+            Some("date_desc") => "l.published_at DESC",
+            _ => "l.published_at DESC",
         };
 
         let rows = sqlx::query_as::<_, PublicListingRow>(&format!(
