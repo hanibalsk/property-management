@@ -51,6 +51,9 @@ pub mod listing;
 // Epic 16: Portal Search & Discovery
 pub mod portal;
 
+// Epic 17: Agency & Realtor Management
+pub mod agency;
+
 pub use ai_chat::AiChatRepository;
 pub use equipment::EquipmentRepository;
 pub use sentiment::SentimentRepository;
@@ -109,3 +112,6 @@ pub use listing::ListingRepository;
 
 // Epic 16: Portal Search & Discovery
 pub use portal::PortalRepository;
+
+// Epic 17: Agency & Realtor Management
+pub use agency::AgencyRepository;

@@ -3,10 +3,10 @@
 use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpService};
 use db::{
     repositories::{
-        AiChatRepository, AnnouncementRepository, AuditLogRepository, BuildingRepository,
-        CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DocumentRepository, DocumentTemplateRepository, EquipmentRepository, FacilityRepository,
-        FaultRepository, FeatureFlagRepository, FinancialRepository,
+        AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
+        BuildingRepository, CriticalNotificationRepository, DataExportRepository,
+        DelegationRepository, DocumentRepository, DocumentTemplateRepository, EquipmentRepository,
+        FacilityRepository, FaultRepository, FeatureFlagRepository, FinancialRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         ListingRepository, MeterRepository, NotificationPreferenceRepository, OAuthRepository,
         OnboardingRepository, OrganizationMemberRepository, OrganizationRepository,
@@ -64,6 +64,8 @@ pub struct AppState {
     pub sensor_repo: SensorRepository,
     // Epic 15: Property Listings & Multi-Portal Sync
     pub listing_repo: ListingRepository,
+    // Epic 17: Agency & Realtor Management
+    pub agency_repo: AgencyRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -116,6 +118,8 @@ impl AppState {
         let sensor_repo = SensorRepository::new(db.clone());
         // Epic 15: Property Listings & Multi-Portal Sync
         let listing_repo = ListingRepository::new(db.clone());
+        // Epic 17: Agency & Realtor Management
+        let agency_repo = AgencyRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -161,6 +165,7 @@ impl AppState {
             workflow_repo,
             sensor_repo,
             listing_repo,
+            agency_repo,
             auth_service,
             email_service,
             jwt_service,

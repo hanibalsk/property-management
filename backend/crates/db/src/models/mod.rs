@@ -46,6 +46,9 @@ pub mod listing;
 // Epic 16: Portal Search & Discovery
 pub mod portal;
 
+// Epic 17: Agency & Realtor Management
+pub mod agency;
+
 pub use ai_chat::{
     message_role, AiChatMessage, AiChatSession, AiResponse, AiSource, AiTrainingFeedback,
     ChatSessionSummary, CreateChatSession, ProvideFeedback, SendChatMessage,
@@ -243,4 +246,15 @@ pub use portal::{
     PortalUser, PublicListingDetail, PublicListingQuery, PublicListingSearchResponse,
     PublicListingSummary, SavedSearch, SavedSearchesResponse, SearchAlert, SearchCriteria,
     SearchSuggestions, UpdatePortalUser, UpdateSavedSearch,
+};
+
+// Epic 17: Agency & Realtor Management
+pub use agency::{
+    agency_status, import_source, import_status, inquiry_assignment, listing_visibility,
+    member_role, AcceptInvitation, Agency, AgencyBranding, AgencyInvitation, AgencyListing,
+    AgencyListingSummary, AgencyListingsResponse, AgencyMember, AgencyMemberWithUser,
+    AgencyMemberWithUserRow, AgencyMembersResponse, AgencyProfile, AgencySummary, CreateAgency,
+    CreateAgencyListing, CreateImportJob, FieldMapping, ImportConfig, ImportError, ImportPreview,
+    ImportResult, InviteMember, ListingCollaborator, ListingEditHistory, ListingImportJob,
+    UpdateAgency, UpdateListingVisibility, UpdateMemberRole,
 };
