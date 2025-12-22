@@ -19,6 +19,7 @@ pub mod granular_notifications;
 pub mod health;
 pub mod help;
 pub mod integrations;
+pub mod iot;
 pub mod listings;
 pub mod messaging;
 pub mod meters;
