@@ -8,8 +8,8 @@ ALTER TABLE announcements ADD COLUMN IF NOT EXISTS sentiment_analyzed_at TIMESTA
 ALTER TABLE announcement_comments ADD COLUMN IF NOT EXISTS sentiment_score FLOAT;
 ALTER TABLE announcement_comments ADD COLUMN IF NOT EXISTS sentiment_analyzed_at TIMESTAMPTZ;
 
-ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS sentiment_score FLOAT;
-ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS sentiment_analyzed_at TIMESTAMPTZ;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sentiment_score FLOAT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sentiment_analyzed_at TIMESTAMPTZ;
 
 ALTER TABLE faults ADD COLUMN IF NOT EXISTS description_sentiment FLOAT;
 ALTER TABLE faults ADD COLUMN IF NOT EXISTS sentiment_analyzed_at TIMESTAMPTZ;
