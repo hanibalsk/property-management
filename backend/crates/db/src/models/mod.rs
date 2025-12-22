@@ -10,8 +10,11 @@ pub mod document;
 pub mod document_template;
 pub mod facility;
 pub mod fault;
+pub mod financial;
+
 pub mod granular_notification;
 pub mod messaging;
+pub mod meter;
 pub mod notification_preference;
 pub mod oauth;
 pub mod organization;
@@ -82,6 +85,15 @@ pub use fault::{
     FaultSummary, FaultTimelineEntry, FaultTimelineEntryWithUser, FaultWithDetails, PriorityCount,
     ReopenFault, ResolveFault, StatusCount, TriageFault, UpdateFault, UpdateFaultStatus,
 };
+pub use financial::{
+    ARReportEntry, ARReportTotals, AccountTransaction, AccountsReceivableReport, CreateFeeSchedule,
+    CreateFinancialAccount, CreateInvoice, CreateInvoiceItem, CreateTransaction, FeeFrequency,
+    FeeSchedule, FinancialAccount, FinancialAccountResponse, FinancialAccountType,
+    InitiatePaymentResponse, Invoice, InvoiceItem, InvoiceResponse, InvoiceStatus, LateFeeConfig,
+    ListInvoicesResponse, OnlinePaymentSession, Payment, PaymentAllocation, PaymentMethod,
+    PaymentResponse, PaymentStatus, RecordPayment, ReminderSchedule, TransactionCategory,
+    TransactionType, UnitCreditBalance, UnitFee,
+};
 pub use granular_notification::{
     CategorySummary, CreateHeldNotification, EventNotificationPreference,
     EventPreferenceWithDetails, EventPreferencesResponse, HeldNotification,
@@ -93,6 +105,15 @@ pub use messaging::{
     BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,
     MessagePreview, MessageThread, MessageWithSender, MessageWithSenderRow, ParticipantInfo,
     ThreadWithPreview, ThreadWithPreviewRow, UserBlock,
+};
+pub use meter::{
+    ConsumptionAggregate, ConsumptionComparison, ConsumptionDataPoint, ConsumptionHistoryResponse,
+    CreateSubmissionWindow, CreateUtilityBill, DistributeUtilityBill, DistributionMethod,
+    IngestSmartMeterReading, ListMetersResponse, ListReadingsResponse, Meter, MeterReading,
+    MeterResponse, MeterType, MissingReadingAlert, ReadingApprovalEntry, ReadingSource,
+    ReadingStatus, ReadingSubmissionWindow, ReadingValidationRule, RegisterMeter, ReplaceMeter,
+    SmartMeterProvider, SmartMeterReadingLog, SubmitReading, UnitDistributionOverride, UtilityBill,
+    UtilityBillDistribution, UtilityBillResponse, ValidateReading,
 };
 pub use notification_preference::{
     DisableAllWarningResponse, NotificationChannel, NotificationPreference,

@@ -6,8 +6,9 @@ use db::{
         AnnouncementRepository, AuditLogRepository, BuildingRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
         DocumentRepository, DocumentTemplateRepository, FacilityRepository, FaultRepository,
-        FeatureFlagRepository, GranularNotificationRepository, HealthMonitoringRepository,
-        HelpRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        FeatureFlagRepository, FinancialRepository, GranularNotificationRepository,
+        HealthMonitoringRepository, HelpRepository, MeterRepository,
+        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
         PersonMonthRepository, PlatformAdminRepository, RoleRepository, SessionRepository,
         SignatureRequestRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
@@ -51,6 +52,8 @@ pub struct AppState {
     pub onboarding_repo: OnboardingRepository,
     pub help_repo: HelpRepository,
     pub signature_request_repo: SignatureRequestRepository,
+    pub financial_repo: FinancialRepository,
+    pub meter_repo: MeterRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -92,6 +95,8 @@ impl AppState {
         let onboarding_repo = OnboardingRepository::new(db.clone());
         let help_repo = HelpRepository::new(db.clone());
         let signature_request_repo = SignatureRequestRepository::new(db.clone());
+        let financial_repo = FinancialRepository::new(db.clone());
+        let meter_repo = MeterRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -129,6 +134,8 @@ impl AppState {
             onboarding_repo,
             help_repo,
             signature_request_repo,
+            financial_repo,
+            meter_repo,
             auth_service,
             email_service,
             jwt_service,

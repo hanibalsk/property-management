@@ -159,7 +159,9 @@ use state::AppState;
         (name = "Compliance", description = "Compliance reports: audit logs, security, and GDPR reports"),
         (name = "Rentals", description = "Short-term rental integrations (Airbnb, Booking)"),
         (name = "Listings", description = "Real estate listing management"),
-        (name = "Integrations", description = "External portal integrations")
+        (name = "Integrations", description = "External portal integrations"),
+        (name = "financial", description = "Financial management: accounts, invoices, payments"),
+        (name = "meters", description = "Meter readings and utility management")
     )
 )]
 struct ApiDoc;
@@ -307,6 +309,10 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/listings", routes::listings::router())
         // Integration routes
         .nest("/api/v1/integrations", routes::integrations::router())
+        // Financial routes (Epic 11)
+        .nest("/api/v1/financial", routes::financial::router())
+        // Meters routes (Epic 12)
+        .nest("/api/v1/meters", routes::meters::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
