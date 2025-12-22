@@ -12,10 +12,12 @@ pub mod document_template;
 pub mod facility;
 pub mod fault;
 pub mod feature_flag;
+pub mod financial;
 pub mod granular_notification;
 pub mod health_monitoring;
 pub mod help;
 pub mod messaging;
+pub mod meter;
 pub mod notification_preference;
 pub mod oauth;
 pub mod onboarding;
@@ -47,6 +49,7 @@ pub use fault::FaultRepository;
 pub use feature_flag::{
     FeatureFlagRepository, FeatureFlagWithCount, FeatureFlagWithOverrides, ResolvedFeatureFlag,
 };
+pub use financial::FinancialRepository;
 pub use granular_notification::GranularNotificationRepository;
 pub use health_monitoring::{
     CurrentMetric, HealthDashboard, HealthMonitoringRepository, MetricDataPoint, MetricHistory,
@@ -54,6 +57,7 @@ pub use health_monitoring::{
 };
 pub use help::{FaqEntry, HelpArticle, HelpCategory, HelpRepository, Tooltip};
 pub use messaging::MessagingRepository;
+pub use meter::MeterRepository;
 pub use notification_preference::NotificationPreferenceRepository;
 pub use oauth::OAuthRepository;
 pub use onboarding::{
