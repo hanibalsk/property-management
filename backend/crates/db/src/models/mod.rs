@@ -354,3 +354,20 @@ pub use budget::{
     UpdateBudgetItem, UpdateCapitalPlan, UpdateFinancialForecast, UpdateReserveFund,
     YearlyCapitalSummary,
 };
+
+// Epic 25: Legal Document & Compliance
+pub mod legal;
+
+pub use legal::{
+    compliance_category, compliance_frequency, compliance_status, delivery_method, delivery_status,
+    document_type, notice_priority, notice_type, recipient_type, AcknowledgeNotice, ApplyTemplate,
+    ComplianceAuditTrail, ComplianceCategoryCount, ComplianceQuery, ComplianceRequirement,
+    ComplianceRequirementWithDetails, ComplianceStatistics, ComplianceTemplate,
+    ComplianceVerification, CreateAuditTrailEntry, CreateComplianceRequirement,
+    CreateComplianceTemplate, CreateComplianceVerification, CreateLegalDocument,
+    CreateLegalDocumentVersion, CreateLegalNotice, LegalDocument, LegalDocumentQuery,
+    LegalDocumentSummary, LegalDocumentVersion, LegalNotice, LegalNoticeQuery,
+    LegalNoticeRecipient, NoticeAcknowledgmentStats, NoticeRecipientInput, NoticeStatistics,
+    NoticeTypeCount, NoticeWithRecipients, UpcomingVerification, UpdateComplianceRequirement,
+    UpdateComplianceTemplate, UpdateLegalDocument, UpdateLegalNotice,
+};

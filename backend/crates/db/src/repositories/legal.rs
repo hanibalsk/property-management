@@ -1,0 +1,1116 @@
+//! Legal document and compliance repository (Epic 25).
+
+use crate::models::{
+    AcknowledgeNotice, ApplyTemplate, ComplianceAuditTrail, ComplianceCategoryCount,
+    ComplianceQuery, ComplianceRequirement, ComplianceRequirementWithDetails, ComplianceStatistics,
+    ComplianceTemplate, ComplianceVerification, CreateAuditTrailEntry, CreateComplianceRequirement,
+    CreateComplianceTemplate, CreateComplianceVerification, CreateLegalDocument,
+    CreateLegalDocumentVersion, CreateLegalNotice, LegalDocument, LegalDocumentQuery,
+    LegalDocumentSummary, LegalDocumentVersion, LegalNotice, LegalNoticeQuery,
+    LegalNoticeRecipient, NoticeAcknowledgmentStats, NoticeStatistics, NoticeTypeCount,
+    NoticeWithRecipients, UpcomingVerification, UpdateComplianceRequirement,
+    UpdateComplianceTemplate, UpdateLegalDocument, UpdateLegalNotice,
+};
+use chrono::{Months, NaiveDate};
+use sqlx::PgPool;
+use uuid::Uuid;
+
+/// Repository for legal document and compliance operations.
+#[derive(Clone)]
+pub struct LegalRepository {
+    pool: PgPool,
+}
+
+impl LegalRepository {
+    /// Create a new LegalRepository.
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
+    // ==================== Legal Documents CRUD ====================
+
+    /// Create a new legal document.
+    pub async fn create_document(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        data: CreateLegalDocument,
+    ) -> Result<LegalDocument, sqlx::Error> {
+        // Calculate retention expiry date if retention period is provided
+        // Using proper month arithmetic for accuracy
+        let retention_expires_at = data.retention_period_months.map(|months| {
+            chrono::Utc::now()
+                .date_naive()
+                .checked_add_months(Months::new(months as u32))
+                .unwrap_or_else(|| chrono::Utc::now().date_naive())
+        });
+
+        sqlx::query_as(
+            r#"
+            INSERT INTO legal_documents
+                (organization_id, building_id, document_type, title, description, parties,
+                 effective_date, expiry_date, file_path, file_name, file_size, mime_type,
+                 is_confidential, retention_period_months, retention_expires_at, tags, metadata,
+                 created_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.building_id)
+        .bind(&data.document_type)
+        .bind(&data.title)
+        .bind(&data.description)
+        .bind(data.parties.map(sqlx::types::Json))
+        .bind(data.effective_date)
+        .bind(data.expiry_date)
+        .bind(&data.file_path)
+        .bind(&data.file_name)
+        .bind(data.file_size)
+        .bind(&data.mime_type)
+        .bind(data.is_confidential.unwrap_or(false))
+        .bind(data.retention_period_months)
+        .bind(retention_expires_at)
+        .bind(&data.tags)
+        .bind(data.metadata.map(sqlx::types::Json))
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Find a legal document by ID.
+    pub async fn find_document_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<LegalDocument>, sqlx::Error> {
+        sqlx::query_as("SELECT * FROM legal_documents WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+    }
+
+    /// List legal documents for an organization.
+    pub async fn list_documents(
+        &self,
+        org_id: Uuid,
+        query: LegalDocumentQuery,
+    ) -> Result<Vec<LegalDocument>, sqlx::Error> {
+        let search_pattern = query.search.as_ref().map(|s| format!("%{}%", s));
+
+        sqlx::query_as(
+            r#"
+            SELECT * FROM legal_documents
+            WHERE organization_id = $1
+            AND ($2::uuid IS NULL OR building_id = $2)
+            AND ($3::text IS NULL OR document_type = $3)
+            AND ($4::boolean IS NULL OR is_confidential = $4)
+            AND ($5::integer IS NULL OR expiry_date <= CURRENT_DATE + $5::integer)
+            AND ($6::text IS NULL OR $6 = ANY(tags))
+            AND ($7::text IS NULL OR title ILIKE $7 OR description ILIKE $7)
+            ORDER BY created_at DESC
+            LIMIT $8 OFFSET $9
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.building_id)
+        .bind(&query.document_type)
+        .bind(query.is_confidential)
+        .bind(query.expiring_days)
+        .bind(&query.tag)
+        .bind(&search_pattern)
+        .bind(query.limit.unwrap_or(50))
+        .bind(query.offset.unwrap_or(0))
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// List legal documents with version counts.
+    pub async fn list_documents_with_summary(
+        &self,
+        org_id: Uuid,
+        query: LegalDocumentQuery,
+    ) -> Result<Vec<LegalDocumentSummary>, sqlx::Error> {
+        let search_pattern = query.search.as_ref().map(|s| format!("%{}%", s));
+
+        sqlx::query_as(
+            r#"
+            SELECT
+                d.id, d.organization_id, d.building_id, d.document_type, d.title,
+                d.effective_date, d.expiry_date, d.is_confidential, d.created_at,
+                COUNT(v.id) as version_count
+            FROM legal_documents d
+            LEFT JOIN legal_document_versions v ON v.document_id = d.id
+            WHERE d.organization_id = $1
+            AND ($2::uuid IS NULL OR d.building_id = $2)
+            AND ($3::text IS NULL OR d.document_type = $3)
+            AND ($4::boolean IS NULL OR d.is_confidential = $4)
+            AND ($5::integer IS NULL OR d.expiry_date <= CURRENT_DATE + $5::integer)
+            AND ($6::text IS NULL OR $6 = ANY(d.tags))
+            AND ($7::text IS NULL OR d.title ILIKE $7 OR d.description ILIKE $7)
+            GROUP BY d.id
+            ORDER BY d.created_at DESC
+            LIMIT $8 OFFSET $9
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.building_id)
+        .bind(&query.document_type)
+        .bind(query.is_confidential)
+        .bind(query.expiring_days)
+        .bind(&query.tag)
+        .bind(&search_pattern)
+        .bind(query.limit.unwrap_or(50))
+        .bind(query.offset.unwrap_or(0))
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a legal document.
+    pub async fn update_document(
+        &self,
+        id: Uuid,
+        data: UpdateLegalDocument,
+    ) -> Result<LegalDocument, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE legal_documents SET
+                building_id = COALESCE($2, building_id),
+                document_type = COALESCE($3, document_type),
+                title = COALESCE($4, title),
+                description = COALESCE($5, description),
+                parties = COALESCE($6, parties),
+                effective_date = COALESCE($7, effective_date),
+                expiry_date = COALESCE($8, expiry_date),
+                file_path = COALESCE($9, file_path),
+                file_name = COALESCE($10, file_name),
+                file_size = COALESCE($11, file_size),
+                mime_type = COALESCE($12, mime_type),
+                is_confidential = COALESCE($13, is_confidential),
+                retention_period_months = COALESCE($14, retention_period_months),
+                retention_expires_at = COALESCE($15, retention_expires_at),
+                tags = COALESCE($16, tags),
+                metadata = COALESCE($17, metadata),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(data.building_id)
+        .bind(&data.document_type)
+        .bind(&data.title)
+        .bind(&data.description)
+        .bind(data.parties.map(sqlx::types::Json))
+        .bind(data.effective_date)
+        .bind(data.expiry_date)
+        .bind(&data.file_path)
+        .bind(&data.file_name)
+        .bind(data.file_size)
+        .bind(&data.mime_type)
+        .bind(data.is_confidential)
+        .bind(data.retention_period_months)
+        .bind(data.retention_expires_at)
+        .bind(&data.tags)
+        .bind(data.metadata.map(sqlx::types::Json))
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Delete a legal document.
+    pub async fn delete_document(&self, id: Uuid) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM legal_documents WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ==================== Document Versions ====================
+
+    /// Add a new version to a document.
+    pub async fn add_document_version(
+        &self,
+        document_id: Uuid,
+        user_id: Uuid,
+        data: CreateLegalDocumentVersion,
+    ) -> Result<LegalDocumentVersion, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO legal_document_versions
+                (document_id, version_number, file_path, file_name, file_size, mime_type,
+                 change_notes, created_by)
+            VALUES (
+                $1,
+                (SELECT COALESCE(MAX(version_number), 0) + 1 FROM legal_document_versions WHERE document_id = $1),
+                $2, $3, $4, $5, $6, $7
+            )
+            RETURNING *
+            "#,
+        )
+        .bind(document_id)
+        .bind(&data.file_path)
+        .bind(&data.file_name)
+        .bind(data.file_size)
+        .bind(&data.mime_type)
+        .bind(&data.change_notes)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// List versions for a document.
+    pub async fn list_document_versions(
+        &self,
+        document_id: Uuid,
+    ) -> Result<Vec<LegalDocumentVersion>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM legal_document_versions
+            WHERE document_id = $1
+            ORDER BY version_number DESC
+            "#,
+        )
+        .bind(document_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Get a specific version.
+    pub async fn get_document_version(
+        &self,
+        document_id: Uuid,
+        version_number: i32,
+    ) -> Result<Option<LegalDocumentVersion>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM legal_document_versions
+            WHERE document_id = $1 AND version_number = $2
+            "#,
+        )
+        .bind(document_id)
+        .bind(version_number)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    // ==================== Compliance Requirements CRUD ====================
+
+    /// Create a compliance requirement.
+    pub async fn create_requirement(
+        &self,
+        org_id: Uuid,
+        data: CreateComplianceRequirement,
+    ) -> Result<ComplianceRequirement, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO compliance_requirements
+                (organization_id, building_id, name, description, category, regulation_reference,
+                 frequency, next_due_date, is_mandatory, responsible_party, notes)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.building_id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(&data.category)
+        .bind(&data.regulation_reference)
+        .bind(data.frequency.unwrap_or_else(|| "annually".to_string()))
+        .bind(data.next_due_date)
+        .bind(data.is_mandatory.unwrap_or(true))
+        .bind(&data.responsible_party)
+        .bind(&data.notes)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Find a compliance requirement by ID.
+    pub async fn find_requirement_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<ComplianceRequirement>, sqlx::Error> {
+        sqlx::query_as("SELECT * FROM compliance_requirements WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+    }
+
+    /// List compliance requirements.
+    pub async fn list_requirements(
+        &self,
+        org_id: Uuid,
+        query: ComplianceQuery,
+    ) -> Result<Vec<ComplianceRequirement>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM compliance_requirements
+            WHERE organization_id = $1
+            AND ($2::uuid IS NULL OR building_id = $2)
+            AND ($3::text IS NULL OR category = $3)
+            AND ($4::text IS NULL OR status = $4)
+            AND ($5::boolean IS NULL OR is_mandatory = $5)
+            AND ($6::date IS NULL OR next_due_date <= $6)
+            AND ($7::boolean IS NOT TRUE OR (next_due_date < CURRENT_DATE AND status = 'pending'))
+            ORDER BY next_due_date ASC NULLS LAST, name ASC
+            LIMIT $8 OFFSET $9
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.building_id)
+        .bind(&query.category)
+        .bind(&query.status)
+        .bind(query.is_mandatory)
+        .bind(query.due_before)
+        .bind(query.overdue_only)
+        .bind(query.limit.unwrap_or(50))
+        .bind(query.offset.unwrap_or(0))
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// List requirements with verification details.
+    pub async fn list_requirements_with_details(
+        &self,
+        org_id: Uuid,
+        query: ComplianceQuery,
+    ) -> Result<Vec<ComplianceRequirementWithDetails>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT
+                r.id, r.organization_id, r.building_id, r.name, r.description, r.category,
+                r.frequency, r.status, r.is_mandatory, r.next_due_date, r.last_verified_at,
+                COUNT(v.id) as verification_count
+            FROM compliance_requirements r
+            LEFT JOIN compliance_verifications v ON v.requirement_id = r.id
+            WHERE r.organization_id = $1
+            AND ($2::uuid IS NULL OR r.building_id = $2)
+            AND ($3::text IS NULL OR r.category = $3)
+            AND ($4::text IS NULL OR r.status = $4)
+            AND ($5::boolean IS NULL OR r.is_mandatory = $5)
+            AND ($6::date IS NULL OR r.next_due_date <= $6)
+            AND ($7::boolean IS NOT TRUE OR (r.next_due_date < CURRENT_DATE AND r.status = 'pending'))
+            GROUP BY r.id
+            ORDER BY r.next_due_date ASC NULLS LAST, r.name ASC
+            LIMIT $8 OFFSET $9
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.building_id)
+        .bind(&query.category)
+        .bind(&query.status)
+        .bind(query.is_mandatory)
+        .bind(query.due_before)
+        .bind(query.overdue_only)
+        .bind(query.limit.unwrap_or(50))
+        .bind(query.offset.unwrap_or(0))
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a compliance requirement.
+    pub async fn update_requirement(
+        &self,
+        id: Uuid,
+        data: UpdateComplianceRequirement,
+    ) -> Result<ComplianceRequirement, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE compliance_requirements SET
+                building_id = COALESCE($2, building_id),
+                name = COALESCE($3, name),
+                description = COALESCE($4, description),
+                category = COALESCE($5, category),
+                regulation_reference = COALESCE($6, regulation_reference),
+                frequency = COALESCE($7, frequency),
+                next_due_date = COALESCE($8, next_due_date),
+                status = COALESCE($9, status),
+                is_mandatory = COALESCE($10, is_mandatory),
+                responsible_party = COALESCE($11, responsible_party),
+                notes = COALESCE($12, notes),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(data.building_id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(&data.category)
+        .bind(&data.regulation_reference)
+        .bind(&data.frequency)
+        .bind(data.next_due_date)
+        .bind(&data.status)
+        .bind(data.is_mandatory)
+        .bind(&data.responsible_party)
+        .bind(&data.notes)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Delete a compliance requirement.
+    pub async fn delete_requirement(&self, id: Uuid) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM compliance_requirements WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ==================== Compliance Verifications ====================
+
+    /// Record a compliance verification.
+    pub async fn create_verification(
+        &self,
+        requirement_id: Uuid,
+        user_id: Uuid,
+        data: CreateComplianceVerification,
+    ) -> Result<ComplianceVerification, sqlx::Error> {
+        // Record the verification
+        let verification: ComplianceVerification = sqlx::query_as(
+            r#"
+            INSERT INTO compliance_verifications
+                (requirement_id, verified_by, status, notes, evidence_document_id,
+                 inspector_name, certificate_number, valid_until, issues_found, corrective_actions)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *
+            "#,
+        )
+        .bind(requirement_id)
+        .bind(user_id)
+        .bind(&data.status)
+        .bind(&data.notes)
+        .bind(data.evidence_document_id)
+        .bind(&data.inspector_name)
+        .bind(&data.certificate_number)
+        .bind(data.valid_until)
+        .bind(&data.issues_found)
+        .bind(&data.corrective_actions)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Update the requirement status and verification dates
+        sqlx::query(
+            r#"
+            UPDATE compliance_requirements SET
+                status = $2,
+                last_verified_at = NOW(),
+                last_verified_by = $3,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(requirement_id)
+        .bind(&data.status)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(verification)
+    }
+
+    /// List verifications for a requirement.
+    pub async fn list_verifications(
+        &self,
+        requirement_id: Uuid,
+    ) -> Result<Vec<ComplianceVerification>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM compliance_verifications
+            WHERE requirement_id = $1
+            ORDER BY verified_at DESC
+            "#,
+        )
+        .bind(requirement_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Get compliance statistics.
+    pub async fn get_compliance_statistics(
+        &self,
+        org_id: Uuid,
+    ) -> Result<ComplianceStatistics, sqlx::Error> {
+        let counts: (i64, i64, i64, i64, i64) = sqlx::query_as(
+            r#"
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE status = 'compliant') as compliant,
+                COUNT(*) FILTER (WHERE status = 'non_compliant') as non_compliant,
+                COUNT(*) FILTER (WHERE status = 'pending') as pending,
+                COUNT(*) FILTER (WHERE next_due_date < CURRENT_DATE AND status = 'pending') as overdue
+            FROM compliance_requirements
+            WHERE organization_id = $1
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let by_category: Vec<ComplianceCategoryCount> = sqlx::query_as(
+            r#"
+            SELECT category, COUNT(*) as count
+            FROM compliance_requirements
+            WHERE organization_id = $1
+            GROUP BY category
+            ORDER BY count DESC
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let upcoming_verifications: Vec<UpcomingVerification> = sqlx::query_as(
+            r#"
+            SELECT
+                id, name, category, next_due_date, building_id,
+                (next_due_date - CURRENT_DATE)::integer as days_until_due
+            FROM compliance_requirements
+            WHERE organization_id = $1
+            AND next_due_date IS NOT NULL
+            AND next_due_date >= CURRENT_DATE
+            ORDER BY next_due_date ASC
+            LIMIT 10
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(ComplianceStatistics {
+            total_requirements: counts.0,
+            compliant_count: counts.1,
+            non_compliant_count: counts.2,
+            pending_count: counts.3,
+            overdue_count: counts.4,
+            by_category,
+            upcoming_verifications,
+        })
+    }
+
+    // ==================== Legal Notices ====================
+
+    /// Create a legal notice.
+    pub async fn create_notice(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        data: CreateLegalNotice,
+    ) -> Result<LegalNotice, sqlx::Error> {
+        let notice: LegalNotice = sqlx::query_as(
+            r#"
+            INSERT INTO legal_notices
+                (organization_id, building_id, notice_type, subject, content, priority,
+                 delivery_method, requires_acknowledgment, acknowledgment_deadline, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.building_id)
+        .bind(&data.notice_type)
+        .bind(&data.subject)
+        .bind(&data.content)
+        .bind(data.priority.unwrap_or_else(|| "normal".to_string()))
+        .bind(data.delivery_method.unwrap_or_else(|| "email".to_string()))
+        .bind(data.requires_acknowledgment.unwrap_or(false))
+        .bind(data.acknowledgment_deadline)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Add recipients
+        for recipient in data.recipient_ids {
+            sqlx::query(
+                r#"
+                INSERT INTO legal_notice_recipients
+                    (notice_id, recipient_type, recipient_id, recipient_name, recipient_email)
+                VALUES ($1, $2, $3, $4, $5)
+                "#,
+            )
+            .bind(notice.id)
+            .bind(&recipient.recipient_type)
+            .bind(recipient.recipient_id)
+            .bind(&recipient.recipient_name)
+            .bind(&recipient.recipient_email)
+            .execute(&self.pool)
+            .await?;
+        }
+
+        Ok(notice)
+    }
+
+    /// Find a legal notice by ID.
+    pub async fn find_notice_by_id(&self, id: Uuid) -> Result<Option<LegalNotice>, sqlx::Error> {
+        sqlx::query_as("SELECT * FROM legal_notices WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+    }
+
+    /// List legal notices.
+    pub async fn list_notices(
+        &self,
+        org_id: Uuid,
+        query: LegalNoticeQuery,
+    ) -> Result<Vec<LegalNotice>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM legal_notices
+            WHERE organization_id = $1
+            AND ($2::uuid IS NULL OR building_id = $2)
+            AND ($3::text IS NULL OR notice_type = $3)
+            AND ($4::text IS NULL OR priority = $4)
+            AND ($5::boolean IS NULL OR (sent_at IS NOT NULL) = $5)
+            AND ($6::boolean IS NULL OR requires_acknowledgment = $6)
+            ORDER BY created_at DESC
+            LIMIT $7 OFFSET $8
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.building_id)
+        .bind(&query.notice_type)
+        .bind(&query.priority)
+        .bind(query.sent)
+        .bind(query.requires_acknowledgment)
+        .bind(query.limit.unwrap_or(50))
+        .bind(query.offset.unwrap_or(0))
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// List notices with recipient summary.
+    pub async fn list_notices_with_recipients(
+        &self,
+        org_id: Uuid,
+        query: LegalNoticeQuery,
+    ) -> Result<Vec<NoticeWithRecipients>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT
+                n.id, n.organization_id, n.building_id, n.notice_type, n.subject, n.priority,
+                n.sent_at, n.requires_acknowledgment,
+                COUNT(r.id) as total_recipients,
+                COUNT(r.id) FILTER (WHERE r.delivery_status = 'delivered') as delivered_count,
+                COUNT(r.id) FILTER (WHERE r.acknowledged_at IS NOT NULL) as acknowledged_count
+            FROM legal_notices n
+            LEFT JOIN legal_notice_recipients r ON r.notice_id = n.id
+            WHERE n.organization_id = $1
+            AND ($2::uuid IS NULL OR n.building_id = $2)
+            AND ($3::text IS NULL OR n.notice_type = $3)
+            AND ($4::text IS NULL OR n.priority = $4)
+            AND ($5::boolean IS NULL OR (n.sent_at IS NOT NULL) = $5)
+            AND ($6::boolean IS NULL OR n.requires_acknowledgment = $6)
+            GROUP BY n.id
+            ORDER BY n.created_at DESC
+            LIMIT $7 OFFSET $8
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.building_id)
+        .bind(&query.notice_type)
+        .bind(&query.priority)
+        .bind(query.sent)
+        .bind(query.requires_acknowledgment)
+        .bind(query.limit.unwrap_or(50))
+        .bind(query.offset.unwrap_or(0))
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a legal notice.
+    pub async fn update_notice(
+        &self,
+        id: Uuid,
+        data: UpdateLegalNotice,
+    ) -> Result<LegalNotice, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE legal_notices SET
+                subject = COALESCE($2, subject),
+                content = COALESCE($3, content),
+                priority = COALESCE($4, priority),
+                delivery_method = COALESCE($5, delivery_method),
+                requires_acknowledgment = COALESCE($6, requires_acknowledgment),
+                acknowledgment_deadline = COALESCE($7, acknowledgment_deadline),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.subject)
+        .bind(&data.content)
+        .bind(&data.priority)
+        .bind(&data.delivery_method)
+        .bind(data.requires_acknowledgment)
+        .bind(data.acknowledgment_deadline)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Delete a legal notice.
+    pub async fn delete_notice(&self, id: Uuid) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM legal_notices WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Send a notice (mark as sent and update delivery status).
+    ///
+    /// Note: This is a synchronous database operation that marks all recipients as 'sent'.
+    /// In production, actual email/mail delivery should be handled by a background job
+    /// that can retry failures and update individual recipient statuses accordingly.
+    pub async fn send_notice(&self, id: Uuid) -> Result<LegalNotice, sqlx::Error> {
+        // Update notice sent_at
+        let notice: LegalNotice = sqlx::query_as(
+            r#"
+            UPDATE legal_notices SET sent_at = NOW(), updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Update recipients status to sent.
+        // In a real system, this should be updated asynchronously after actual delivery.
+        sqlx::query(
+            r#"
+            UPDATE legal_notice_recipients SET
+                delivery_status = 'sent',
+                delivered_at = NOW()
+            WHERE notice_id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(notice)
+    }
+
+    // ==================== Notice Recipients ====================
+
+    /// List recipients for a notice.
+    pub async fn list_notice_recipients(
+        &self,
+        notice_id: Uuid,
+    ) -> Result<Vec<LegalNoticeRecipient>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM legal_notice_recipients
+            WHERE notice_id = $1
+            ORDER BY recipient_name ASC
+            "#,
+        )
+        .bind(notice_id)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Acknowledge a notice by recipient record ID.
+    /// Uses the unique (notice_id, recipient_id) constraint to identify the recipient.
+    pub async fn acknowledge_notice(
+        &self,
+        notice_id: Uuid,
+        recipient_id: Uuid,
+        data: AcknowledgeNotice,
+    ) -> Result<LegalNoticeRecipient, sqlx::Error> {
+        // The unique constraint on (notice_id, recipient_id) ensures this update
+        // will only affect exactly one row.
+        sqlx::query_as(
+            r#"
+            UPDATE legal_notice_recipients SET
+                acknowledged_at = NOW(),
+                acknowledgment_method = $3
+            WHERE notice_id = $1 AND recipient_id = $2
+            RETURNING *
+            "#,
+        )
+        .bind(notice_id)
+        .bind(recipient_id)
+        .bind(
+            data.acknowledgment_method
+                .unwrap_or_else(|| "manual".to_string()),
+        )
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Get notice statistics.
+    pub async fn get_notice_statistics(
+        &self,
+        org_id: Uuid,
+    ) -> Result<NoticeStatistics, sqlx::Error> {
+        let counts: (i64, i64, i64) = sqlx::query_as(
+            r#"
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE sent_at IS NOT NULL) as sent,
+                COUNT(*) FILTER (WHERE sent_at IS NULL) as pending
+            FROM legal_notices
+            WHERE organization_id = $1
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let by_type: Vec<NoticeTypeCount> = sqlx::query_as(
+            r#"
+            SELECT notice_type, COUNT(*) as count
+            FROM legal_notices
+            WHERE organization_id = $1
+            GROUP BY notice_type
+            ORDER BY count DESC
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Count at recipient level for consistency (all counts are recipient-based)
+        let ack_counts: (i64, i64, i64, i64) = sqlx::query_as(
+            r#"
+            SELECT
+                COUNT(r.id) FILTER (WHERE n.requires_acknowledgment = TRUE) as total_requiring,
+                COUNT(r.id) FILTER (WHERE n.requires_acknowledgment = TRUE AND r.acknowledged_at IS NOT NULL) as acknowledged,
+                COUNT(r.id) FILTER (WHERE n.requires_acknowledgment = TRUE AND r.acknowledged_at IS NULL) as pending,
+                COUNT(r.id) FILTER (WHERE n.requires_acknowledgment = TRUE AND r.acknowledged_at IS NULL AND n.acknowledgment_deadline < NOW()) as overdue
+            FROM legal_notices n
+            INNER JOIN legal_notice_recipients r ON r.notice_id = n.id
+            WHERE n.organization_id = $1
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(NoticeStatistics {
+            total_notices: counts.0,
+            sent_count: counts.1,
+            pending_count: counts.2,
+            by_type,
+            acknowledgment_stats: NoticeAcknowledgmentStats {
+                total_requiring: ack_counts.0,
+                acknowledged: ack_counts.1,
+                pending: ack_counts.2,
+                overdue: ack_counts.3,
+            },
+        })
+    }
+
+    // ==================== Compliance Templates ====================
+
+    /// Create a compliance template.
+    pub async fn create_template(
+        &self,
+        org_id: Option<Uuid>,
+        data: CreateComplianceTemplate,
+    ) -> Result<ComplianceTemplate, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO compliance_templates
+                (organization_id, name, category, description, checklist_items, frequency)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(&data.name)
+        .bind(&data.category)
+        .bind(&data.description)
+        .bind(data.checklist_items.map(sqlx::types::Json))
+        .bind(data.frequency.unwrap_or_else(|| "annually".to_string()))
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Find a template by ID.
+    pub async fn find_template_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<ComplianceTemplate>, sqlx::Error> {
+        sqlx::query_as("SELECT * FROM compliance_templates WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+    }
+
+    /// List templates (organization-specific + system templates).
+    pub async fn list_templates(
+        &self,
+        org_id: Uuid,
+        category: Option<String>,
+    ) -> Result<Vec<ComplianceTemplate>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM compliance_templates
+            WHERE (organization_id = $1 OR organization_id IS NULL)
+            AND ($2::text IS NULL OR category = $2)
+            ORDER BY is_system DESC, name ASC
+            "#,
+        )
+        .bind(org_id)
+        .bind(&category)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Update a template.
+    pub async fn update_template(
+        &self,
+        id: Uuid,
+        data: UpdateComplianceTemplate,
+    ) -> Result<ComplianceTemplate, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            UPDATE compliance_templates SET
+                name = COALESCE($2, name),
+                category = COALESCE($3, category),
+                description = COALESCE($4, description),
+                checklist_items = COALESCE($5, checklist_items),
+                frequency = COALESCE($6, frequency),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.name)
+        .bind(&data.category)
+        .bind(&data.description)
+        .bind(data.checklist_items.map(sqlx::types::Json))
+        .bind(&data.frequency)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Delete a template.
+    pub async fn delete_template(&self, id: Uuid) -> Result<bool, sqlx::Error> {
+        let result =
+            sqlx::query("DELETE FROM compliance_templates WHERE id = $1 AND is_system = FALSE")
+                .bind(id)
+                .execute(&self.pool)
+                .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Apply a template to create requirements.
+    pub async fn apply_template(
+        &self,
+        org_id: Uuid,
+        data: ApplyTemplate,
+    ) -> Result<Vec<ComplianceRequirement>, sqlx::Error> {
+        let template = self
+            .find_template_by_id(data.template_id)
+            .await?
+            .ok_or_else(|| sqlx::Error::RowNotFound)?;
+
+        // Calculate next due date based on frequency
+        let next_due_date = calculate_next_due_date(&template.frequency);
+
+        let requirement: ComplianceRequirement = sqlx::query_as(
+            r#"
+            INSERT INTO compliance_requirements
+                (organization_id, building_id, name, description, category, frequency,
+                 next_due_date, is_mandatory)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.building_id)
+        .bind(&template.name)
+        .bind(&template.description)
+        .bind(&template.category)
+        .bind(&template.frequency)
+        .bind(next_due_date)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(vec![requirement])
+    }
+
+    // ==================== Compliance Audit Trail ====================
+
+    /// Create an audit trail entry.
+    pub async fn create_audit_entry(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        data: CreateAuditTrailEntry,
+    ) -> Result<ComplianceAuditTrail, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            INSERT INTO compliance_audit_trail
+                (organization_id, requirement_id, document_id, notice_id, action, action_by,
+                 old_values, new_values, notes)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(data.requirement_id)
+        .bind(data.document_id)
+        .bind(data.notice_id)
+        .bind(&data.action)
+        .bind(user_id)
+        .bind(data.old_values.map(sqlx::types::Json))
+        .bind(data.new_values.map(sqlx::types::Json))
+        .bind(&data.notes)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// List audit trail entries.
+    pub async fn list_audit_trail(
+        &self,
+        org_id: Uuid,
+        requirement_id: Option<Uuid>,
+        document_id: Option<Uuid>,
+        notice_id: Option<Uuid>,
+        limit: i32,
+        offset: i32,
+    ) -> Result<Vec<ComplianceAuditTrail>, sqlx::Error> {
+        sqlx::query_as(
+            r#"
+            SELECT * FROM compliance_audit_trail
+            WHERE organization_id = $1
+            AND ($2::uuid IS NULL OR requirement_id = $2)
+            AND ($3::uuid IS NULL OR document_id = $3)
+            AND ($4::uuid IS NULL OR notice_id = $4)
+            ORDER BY action_at DESC
+            LIMIT $5 OFFSET $6
+            "#,
+        )
+        .bind(org_id)
+        .bind(requirement_id)
+        .bind(document_id)
+        .bind(notice_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+    }
+}
+
+/// Calculate next due date based on frequency using proper month arithmetic.
+fn calculate_next_due_date(frequency: &str) -> Option<NaiveDate> {
+    let today = chrono::Utc::now().date_naive();
+    match frequency {
+        "once" | "as_needed" => None,
+        "monthly" => today.checked_add_months(Months::new(1)),
+        "quarterly" => today.checked_add_months(Months::new(3)),
+        "semi_annually" => today.checked_add_months(Months::new(6)),
+        "annually" => today.checked_add_months(Months::new(12)),
+        "biennially" => today.checked_add_months(Months::new(24)),
+        // Default to one year if frequency is unrecognized.
+        _ => today.checked_add_months(Months::new(12)),
+    }
+}

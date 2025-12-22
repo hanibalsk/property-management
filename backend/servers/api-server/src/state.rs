@@ -8,8 +8,8 @@ use db::{
         DelegationRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
         EquipmentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
         FinancialRepository, GranularNotificationRepository, HealthMonitoringRepository,
-        HelpRepository, InsuranceRepository, LeaseRepository, ListingRepository, MeterRepository,
-        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        HelpRepository, InsuranceRepository, LeaseRepository, LegalRepository, ListingRepository,
+        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
         PersonMonthRepository, PlatformAdminRepository, RentalRepository, RoleRepository,
         SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
@@ -82,6 +82,8 @@ pub struct AppState {
     pub emergency_repo: EmergencyRepository,
     // Epic 24: Budget & Financial Planning
     pub budget_repo: BudgetRepository,
+    // Epic 25: Legal Document & Compliance
+    pub legal_repo: LegalRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -150,6 +152,8 @@ impl AppState {
         let emergency_repo = EmergencyRepository::new(db.clone());
         // Epic 24: Budget & Financial Planning
         let budget_repo = BudgetRepository::new(db.clone());
+        // Epic 25: Legal Document & Compliance
+        let legal_repo = LegalRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -203,6 +207,7 @@ impl AppState {
             insurance_repo,
             emergency_repo,
             budget_repo,
+            legal_repo,
             auth_service,
             email_service,
             jwt_service,

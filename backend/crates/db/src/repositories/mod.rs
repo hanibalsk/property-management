@@ -151,3 +151,8 @@ pub use emergency::EmergencyRepository;
 pub mod budget;
 
 pub use budget::BudgetRepository;
+
+// Epic 25: Legal Document & Compliance
+pub mod legal;
+
+pub use legal::LegalRepository;

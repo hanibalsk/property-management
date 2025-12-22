@@ -47,3 +47,6 @@ pub mod emergency;
 
 // Epic 24: Budget & Financial Planning
 pub mod budgets;
+
+// Epic 25: Legal Document & Compliance
+pub mod legal;
