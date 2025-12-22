@@ -80,7 +80,7 @@ CREATE POLICY signature_requests_select_policy ON signature_requests
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = signature_requests.organization_id
             AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
-            AND om.role IN ('admin', 'manager')
+            AND om.role_type IN ('org_admin', 'manager')
         )
         OR is_super_admin()
     );
@@ -93,7 +93,7 @@ CREATE POLICY signature_requests_insert_policy ON signature_requests
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = signature_requests.organization_id
             AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
-            AND om.role IN ('admin', 'manager')
+            AND om.role_type IN ('org_admin', 'manager')
         )
         OR is_super_admin()
     );
@@ -107,7 +107,7 @@ CREATE POLICY signature_requests_update_policy ON signature_requests
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = signature_requests.organization_id
             AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
-            AND om.role = 'admin'
+            AND om.role_type = 'org_admin'
         )
         OR is_super_admin()
     );
@@ -121,7 +121,7 @@ CREATE POLICY signature_requests_delete_policy ON signature_requests
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = signature_requests.organization_id
             AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
-            AND om.role = 'admin'
+            AND om.role_type = 'org_admin'
         )
         OR is_super_admin()
     );
