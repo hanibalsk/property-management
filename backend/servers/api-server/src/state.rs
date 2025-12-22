@@ -5,13 +5,13 @@ use db::{
     repositories::{
         AnnouncementRepository, AuditLogRepository, BuildingRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DocumentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
-        HealthMonitoringRepository, HelpRepository, NotificationPreferenceRepository,
-        OAuthRepository, OnboardingRepository, OrganizationMemberRepository,
-        OrganizationRepository, PasswordResetRepository, PersonMonthRepository,
-        PlatformAdminRepository, RoleRepository, SessionRepository, SystemAnnouncementRepository,
-        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
-        VoteRepository,
+        DocumentRepository, DocumentTemplateRepository, FacilityRepository, FaultRepository,
+        FeatureFlagRepository, GranularNotificationRepository, HealthMonitoringRepository,
+        HelpRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
+        PersonMonthRepository, PlatformAdminRepository, RoleRepository, SessionRepository,
+        SignatureRequestRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
+        UnitRepository, UnitResidentRepository, UserRepository, VoteRepository,
     },
     DbPool,
 };
@@ -36,6 +36,7 @@ pub struct AppState {
     pub vote_repo: VoteRepository,
     pub announcement_repo: AnnouncementRepository,
     pub document_repo: DocumentRepository,
+    pub document_template_repo: DocumentTemplateRepository,
     pub notification_pref_repo: NotificationPreferenceRepository,
     pub critical_notification_repo: CriticalNotificationRepository,
     pub two_factor_repo: TwoFactorAuthRepository,
@@ -44,10 +45,12 @@ pub struct AppState {
     pub oauth_repo: OAuthRepository,
     pub platform_admin_repo: PlatformAdminRepository,
     pub feature_flag_repo: FeatureFlagRepository,
+    pub granular_notification_repo: GranularNotificationRepository,
     pub health_monitoring_repo: HealthMonitoringRepository,
     pub system_announcement_repo: SystemAnnouncementRepository,
     pub onboarding_repo: OnboardingRepository,
     pub help_repo: HelpRepository,
+    pub signature_request_repo: SignatureRequestRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -74,6 +77,7 @@ impl AppState {
         let vote_repo = VoteRepository::new(db.clone());
         let announcement_repo = AnnouncementRepository::new(db.clone());
         let document_repo = DocumentRepository::new(db.clone());
+        let document_template_repo = DocumentTemplateRepository::new(db.clone());
         let notification_pref_repo = NotificationPreferenceRepository::new(db.clone());
         let critical_notification_repo = CriticalNotificationRepository::new(db.clone());
         let two_factor_repo = TwoFactorAuthRepository::new(db.clone());
@@ -82,10 +86,12 @@ impl AppState {
         let oauth_repo = OAuthRepository::new(db.clone());
         let platform_admin_repo = PlatformAdminRepository::new(db.clone());
         let feature_flag_repo = FeatureFlagRepository::new(db.clone());
+        let granular_notification_repo = GranularNotificationRepository::new(db.clone());
         let health_monitoring_repo = HealthMonitoringRepository::new(db.clone());
         let system_announcement_repo = SystemAnnouncementRepository::new(db.clone());
         let onboarding_repo = OnboardingRepository::new(db.clone());
         let help_repo = HelpRepository::new(db.clone());
+        let signature_request_repo = SignatureRequestRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -108,6 +114,7 @@ impl AppState {
             vote_repo,
             announcement_repo,
             document_repo,
+            document_template_repo,
             notification_pref_repo,
             critical_notification_repo,
             two_factor_repo,
@@ -116,10 +123,12 @@ impl AppState {
             oauth_repo,
             platform_admin_repo,
             feature_flag_repo,
+            granular_notification_repo,
             health_monitoring_repo,
             system_announcement_repo,
             onboarding_repo,
             help_repo,
+            signature_request_repo,
             auth_service,
             email_service,
             jwt_service,

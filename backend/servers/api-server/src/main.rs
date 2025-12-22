@@ -151,6 +151,7 @@ use state::AppState;
         (name = "Voting", description = "Voting and polls"),
         (name = "Announcements", description = "Announcements and communication"),
         (name = "Documents", description = "Document management and sharing"),
+        (name = "E-Signatures", description = "Electronic signature workflows for documents"),
         (name = "Notification Preferences", description = "User notification channel preferences"),
         (name = "Critical Notifications", description = "Critical notifications that bypass user preferences"),
         (name = "Multi-Factor Authentication", description = "Two-factor authentication setup and management"),
@@ -247,6 +248,10 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/documents", routes::documents::router())
         // Public shared document routes (no auth required)
         .merge(routes::documents::public_router())
+        // Templates routes (Epic 7B)
+        .nest("/api/v1/templates", routes::templates::router())
+        // E-Signature routes (Epic 7B, Story 7B.3)
+        .nest("/api/v1/signature-requests", routes::signatures::router())
         // Messaging routes (Epic 6, Story 6.5)
         .nest("/api/v1/messages", routes::messaging::router())
         // Neighbor routes (Epic 6, Story 6.6)
@@ -255,6 +260,11 @@ async fn main() -> anyhow::Result<()> {
         .nest(
             "/api/v1/users/me/notification-preferences",
             routes::notification_preferences::router(),
+        )
+        // Granular notification preferences routes (Epic 8B)
+        .nest(
+            "/api/v1/users/me/notification-preferences/granular",
+            routes::granular_notifications::router(),
         )
         // Critical notifications routes (Epic 8A, Story 8A.2)
         .nest(

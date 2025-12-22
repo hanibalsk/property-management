@@ -7,8 +7,10 @@ pub mod critical_notification;
 pub mod data_export;
 pub mod delegation;
 pub mod document;
+pub mod document_template;
 pub mod facility;
 pub mod fault;
+pub mod granular_notification;
 pub mod messaging;
 pub mod notification_preference;
 pub mod oauth;
@@ -19,6 +21,7 @@ pub mod person_month;
 pub mod platform_admin;
 pub mod refresh_token;
 pub mod role;
+pub mod signature_request;
 pub mod two_factor_auth;
 pub mod unit;
 pub mod unit_resident;
@@ -55,11 +58,17 @@ pub use delegation::{
     UpdateDelegation,
 };
 pub use document::{
-    access_scope, document_category, share_type, CreateDocument, CreateFolder, CreateShare,
-    Document, DocumentFolder, DocumentListQuery, DocumentShare, DocumentSummary,
-    DocumentWithDetails, FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument,
-    RevokeShare, ShareAccessLog, ShareWithDocument, UpdateDocument, UpdateFolder,
-    ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
+    access_scope, document_category, share_type, CreateDocument, CreateDocumentVersion,
+    CreateFolder, CreateShare, CreateVersionResponse, Document, DocumentFolder, DocumentListQuery,
+    DocumentShare, DocumentSummary, DocumentVersion, DocumentVersionHistory, DocumentWithDetails,
+    FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument, RestoreVersionRequest,
+    RestoreVersionResponse, RevokeShare, ShareAccessLog, ShareWithDocument, UpdateDocument,
+    UpdateFolder, ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
+};
+pub use document_template::{
+    placeholder_type, template_type, CreateTemplate, DocumentTemplate, GenerateDocumentRequest,
+    GenerateDocumentResponse, TemplateListQuery, TemplatePlaceholder, TemplateSummary,
+    TemplateWithDetails, UpdateTemplate,
 };
 pub use facility::{
     booking_status, facility_type, ApproveBooking, AvailableSlot, BookingWithDetails,
@@ -72,6 +81,13 @@ pub use fault::{
     CreateFaultTimelineEntry, Fault, FaultAttachment, FaultListQuery, FaultStatistics,
     FaultSummary, FaultTimelineEntry, FaultTimelineEntryWithUser, FaultWithDetails, PriorityCount,
     ReopenFault, ResolveFault, StatusCount, TriageFault, UpdateFault, UpdateFaultStatus,
+};
+pub use granular_notification::{
+    CategorySummary, CreateHeldNotification, EventNotificationPreference,
+    EventPreferenceWithDetails, EventPreferencesResponse, HeldNotification,
+    NotificationEventCategory, NotificationEventType, NotificationSchedule,
+    NotificationScheduleResponse, RoleDefaultsListResponse, RoleNotificationDefaults,
+    UpdateEventPreferenceRequest, UpdateNotificationScheduleRequest, UpdateRoleDefaultsRequest,
 };
 pub use messaging::{
     BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,
@@ -116,6 +132,13 @@ pub use platform_admin::{
 };
 pub use refresh_token::{CreateRefreshToken, LoginAttempt, RateLimitStatus, RefreshToken};
 pub use role::{permissions, system_roles, CreateRole, PermissionDefinition, Role, UpdateRole};
+pub use signature_request::{
+    CancelSignatureRequestRequest, CancelSignatureRequestResponse, CreateSignatureRequest,
+    CreateSignatureRequestResponse, CreateSigner, ListSignatureRequestsResponse,
+    SendReminderRequest, SendReminderResponse, SignatureRequest, SignatureRequestResponse,
+    SignatureRequestStatus, SignatureRequestWithDocument, SignatureWebhookEvent, Signer,
+    SignerCounts, SignerStatus, WebhookResponse,
+};
 pub use two_factor_auth::{
     CreateTwoFactorAuth, TwoFactorAuth, TwoFactorStatus, UpdateTwoFactorStatus,
 };

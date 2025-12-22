@@ -9,15 +9,17 @@ lastStep: 4
 status: 'complete'
 project_name: 'Property Management System (PPT) & Reality Portal'
 user_name: 'Martin Janci'
-date: '2025-12-20'
+date: '2025-12-22'
 elicitation_methods_applied:
   - Pre-mortem Analysis
   - Architecture Decision Records
   - Cross-Functional War Room
 mvp_stories_generated: 74
 mvp_acceptance_criteria: 222
+phase2_stories_generated: 23
+phase2_epics: 5
 validation_passed: true
-fr_coverage: '63/63 MVP FRs'
+fr_coverage: '63/63 MVP FRs + 13 Phase 2 FRs'
 ---
 
 # Property Management System (PPT) & Reality Portal - Epic Breakdown
@@ -2964,3 +2966,783 @@ So that **I can learn features without leaving the app**.
 | 10A - OAuth | 3 | 9 |
 | 10B - Admin | 7 | 21 |
 | **MVP Total** | **74** | **222** |
+
+---
+
+# Phase 2: Enhanced Features & Infrastructure
+
+Phase 2 builds on MVP by completing deferred items and adding financial/utility management capabilities.
+
+**FRs Covered:** FR27 (complete), FR51, FR52-FR63
+**Deferred Items Addressed:** WebSocket real-time sync, mobile OS-specific push integration
+
+---
+
+## Epic 7B: Advanced Document Features
+
+**Goal:** Complete document management with versioning, templates, and e-signature integration (FR51).
+
+**Prerequisites:** Epic 7A (Basic Documents)
+
+---
+
+### Story 7B.1: Document Versioning & History
+
+As a **property manager**,
+I want to **track document versions and view history**,
+So that **I can see changes over time and restore previous versions**.
+
+**Acceptance Criteria:**
+
+**Given** a user uploads a new version of an existing document
+**When** the upload completes
+**Then** the new version is saved with version number incremented
+**And** previous versions remain accessible in version history
+**And** the document list shows the latest version by default
+
+**Given** a user views document version history
+**When** they select a previous version
+**Then** they can view or download that specific version
+**And** see who uploaded it and when
+
+**Given** a user restores a previous version
+**When** they confirm the restoration
+**Then** the old version becomes the new current version
+**And** a new version entry is created (not destructive)
+
+**Technical Notes:**
+- Extend `documents`: add version_number (default 1), parent_document_id (nullable for version chains)
+- Create `document_versions` view for history queries
+- S3: each version is a separate object (no overwrite)
+
+---
+
+### Story 7B.2: Document Templates & Generation
+
+As a **property manager**,
+I want to **create documents from templates**,
+So that **I can quickly generate standardized documents with pre-filled data**.
+
+**Acceptance Criteria:**
+
+**Given** a manager selects a document template
+**When** they choose a building/unit context
+**Then** the template is populated with relevant data (addresses, names, dates)
+**And** a preview is shown before saving
+
+**Given** an organization admin creates a custom template
+**When** they define placeholders (e.g., {{unit.address}}, {{owner.name}})
+**Then** the template is saved and available for document generation
+**And** placeholders are validated against available data fields
+
+**Given** a generated document is created
+**When** saved
+**Then** it's stored as a regular document with template_id reference
+**And** can be edited independently of the template
+
+**Technical Notes:**
+- Create `document_templates` table: id, organization_id, name, content (HTML/markdown), placeholders (JSONB)
+- Template engine: Handlebars or similar for placeholder substitution
+- Default templates: lease agreement, meeting minutes, rules
+
+---
+
+### Story 7B.3: E-Signature Integration
+
+As a **property manager**,
+I want to **send documents for electronic signature**,
+So that **I can get legally binding signatures without paper**.
+
+**Acceptance Criteria:**
+
+**Given** a manager initiates e-signature on a document
+**When** they specify signers (email addresses)
+**Then** an e-signature request is created
+**And** signers receive email invitations to sign
+
+**Given** a signer completes their signature
+**When** all signers have signed
+**Then** the document is marked as fully signed
+**And** a signed copy is stored in documents
+**And** all parties receive confirmation
+
+**Given** a signature request is pending
+**When** the manager checks status
+**Then** they see which signers have/haven't signed
+**And** can send reminders to pending signers
+
+**Technical Notes:**
+- Integration: DocuSign or similar (API abstracted)
+- Create `signature_requests` table: id, document_id, status, signers (JSONB), completed_at
+- Webhook handling for signature events
+- Signed documents stored with audit trail
+
+---
+
+## Epic 8B: Granular Notification Preferences
+
+**Goal:** Complete notification preferences with per-event and per-channel controls (FR27 complete).
+
+**Prerequisites:** Epic 8A (Basic Notification Preferences), Epic 2B (Notification Infrastructure)
+
+---
+
+### Story 8B.1: Per-Event Type Preferences
+
+As a **user**,
+I want to **control notifications for each event type individually**,
+So that **I only receive notifications I care about**.
+
+**Acceptance Criteria:**
+
+**Given** a user opens notification preferences
+**When** they view the event type list
+**Then** they see all event categories (faults, votes, announcements, documents, etc.)
+**And** can toggle each independently
+
+**Given** a user disables "New Fault" notifications
+**When** a new fault is created in their building
+**Then** they don't receive push/email/in-app for that event
+**And** other users with notifications enabled still receive them
+
+**Given** a new event type is added to the system
+**When** the user views preferences
+**Then** the new type appears with sensible defaults (enabled)
+**And** user can adjust as needed
+
+**Technical Notes:**
+- Extend `notification_preferences`: event_types (JSONB with per-type settings)
+- Default schema: { "fault.created": true, "vote.started": true, ... }
+- Migrate existing preferences (all true by default)
+
+---
+
+### Story 8B.2: Per-Channel Delivery Preferences
+
+As a **user**,
+I want to **control which channels each notification uses**,
+So that **I can get urgent items via push but routine items only in-app**.
+
+**Acceptance Criteria:**
+
+**Given** a user configures channel preferences for an event type
+**When** they select channels (push, email, in-app)
+**Then** notifications for that event use only selected channels
+**And** unselected channels are skipped
+
+**Given** a user sets "Vote Deadline" to push + email
+**When** a vote deadline approaches
+**Then** they receive both push notification and email
+**And** the in-app notification is still created (always on)
+
+**Given** a user sets "New Announcement" to in-app only
+**When** an announcement is posted
+**Then** they only see it in the notification center
+**And** no push or email is sent
+
+**Technical Notes:**
+- Extend event_types JSONB: { "fault.created": { enabled: true, channels: ["push", "email", "in_app"] } }
+- In-app always on (can be hidden but not disabled)
+- UI: checkbox matrix (event types vs channels)
+
+---
+
+### Story 8B.3: Notification Schedule (Do Not Disturb)
+
+As a **user**,
+I want to **set quiet hours when notifications are silenced**,
+So that **I'm not disturbed during sleep or meetings**.
+
+**Acceptance Criteria:**
+
+**Given** a user enables quiet hours
+**When** they set start/end times (e.g., 22:00-07:00)
+**Then** push notifications are held during those hours
+**And** delivered when quiet hours end
+
+**Given** a notification is high priority (e.g., emergency)
+**When** it occurs during quiet hours
+**Then** it is delivered immediately regardless of schedule
+**And** is marked as priority override
+
+**Given** a user is in a different timezone than their building
+**When** quiet hours are evaluated
+**Then** the user's configured timezone is used
+**And** not the building or server timezone
+
+**Technical Notes:**
+- Add to `notification_preferences`: quiet_hours (JSONB: { enabled, start, end, timezone })
+- Hold queue in Redis with scheduled delivery
+- Priority flag on notification types (configurable by admin)
+
+---
+
+### Story 8B.4: Role-Based Default Preferences
+
+As an **organization admin**,
+I want to **set default notification preferences by role**,
+So that **new users get appropriate settings automatically**.
+
+**Acceptance Criteria:**
+
+**Given** an admin configures default preferences for "Manager" role
+**When** a new manager joins the organization
+**Then** their notification preferences are initialized with manager defaults
+**And** they can customize from there
+
+**Given** an admin updates role defaults
+**When** they save changes
+**Then** new users get updated defaults
+**And** existing users retain their customized preferences
+
+**Given** a user changes roles (promoted to manager)
+**When** the role change is applied
+**Then** they keep their existing preferences
+**And** are notified of recommended settings for their new role
+
+**Technical Notes:**
+- Create `role_notification_defaults` table: id, organization_id, role, preferences (JSONB)
+- On user creation: copy from role defaults
+- On role change: optional "apply defaults" action
+
+---
+
+## Epic 2B-Complete: WebSocket & Mobile Notification Infrastructure
+
+**Goal:** Complete notification infrastructure with WebSocket real-time sync and mobile OS-specific push integration.
+
+**Prerequisites:** Epic 2B (Notification Infrastructure - foundation)
+
+---
+
+### Story 2B-C.1: WebSocket Real-Time Sync
+
+As a **user with the app open**,
+I want to **see real-time updates without refreshing**,
+So that **I always have the latest information**.
+
+**Acceptance Criteria:**
+
+**Given** a user has the app open with WebSocket connected
+**When** a new notification/fault/vote is created in their context
+**Then** the update appears immediately (within 1 second)
+**And** no manual refresh is needed
+
+**Given** the WebSocket connection drops
+**When** it reconnects
+**Then** missed updates are fetched via REST delta sync
+**And** the UI is updated accordingly
+
+**Given** multiple browser tabs are open
+**When** an update arrives
+**Then** all tabs receive and display the update
+**And** read states sync across tabs
+
+**Technical Notes:**
+- Axum WebSocket with per-user channels
+- Redis pub/sub for cross-instance message routing
+- Client: reconnect with exponential backoff
+- Delta sync: last_sync_at timestamp comparison
+
+---
+
+### Story 2B-C.2: Mobile OS-Specific Push Integration
+
+As a **mobile user**,
+I want to **receive native push notifications**,
+So that **I'm alerted even when the app is closed**.
+
+**Acceptance Criteria:**
+
+**Given** an Android user installs the app
+**When** they grant notification permissions
+**Then** their FCM token is registered with the server
+**And** push notifications work reliably
+
+**Given** an iOS user installs the app
+**When** they grant notification permissions
+**Then** their APNs token is registered
+**And** push notifications display correctly (even with app killed)
+
+**Given** a user updates/reinstalls the app
+**When** a new token is generated
+**Then** the old token is invalidated
+**And** the new token is registered seamlessly
+
+**Technical Notes:**
+- React Native: @react-native-firebase/messaging for both platforms
+- Token refresh handling in app lifecycle
+- Badge count sync with unread notification count
+- Notification grouping (collapse similar notifications)
+
+---
+
+### Story 2B-C.3: Notification Analytics & Delivery Tracking
+
+As a **platform operator**,
+I want to **track notification delivery and engagement**,
+So that **I can optimize notification effectiveness**.
+
+**Acceptance Criteria:**
+
+**Given** notifications are sent
+**When** the operator views analytics dashboard
+**Then** they see delivery rates by channel (push/email/in-app)
+**And** open/click rates where trackable
+
+**Given** push notifications fail to deliver
+**When** the failure rate exceeds threshold (>5%)
+**Then** an alert is triggered
+**And** the operator can investigate (invalid tokens, service issues)
+
+**Given** a specific notification type has low engagement
+**When** compared to baseline
+**Then** the operator can identify and adjust content/timing
+**And** track improvement over time
+
+**Technical Notes:**
+- Create `notification_events` table: id, notification_id, event (sent, delivered, opened, clicked), timestamp
+- Push: FCM/APNs delivery receipts
+- Email: tracking pixels, link tracking
+- Dashboard: aggregations by type, channel, time period
+
+---
+
+## Epic 11: Financial Management & Payments
+
+**Goal:** Enable financial record keeping, fee management, and payment processing (FR52-FR57).
+
+**Prerequisites:** Epic 3 (Buildings/Units), Epic 2A (Organizations)
+
+---
+
+### Story 11.1: Financial Account Structure
+
+As a **property manager**,
+I want to **set up financial accounts for buildings and units**,
+So that **I can track income, expenses, and balances**.
+
+**Acceptance Criteria:**
+
+**Given** a manager views a building's financial section
+**When** no accounts exist
+**Then** they can create accounts (operating, reserve, utilities)
+**And** each account has opening balance and currency
+
+**Given** a unit is created
+**When** it's associated with a building
+**Then** a unit ledger account is automatically created
+**And** linked to the building's main accounts
+
+**Given** an account has transactions
+**When** the manager views the account
+**Then** they see running balance, recent transactions
+**And** can filter by date range and category
+
+**Technical Notes:**
+- Create `financial_accounts` table: id, organization_id, building_id, unit_id (nullable), account_type, currency, balance
+- Create `account_transactions` table: id, account_id, amount, type (debit/credit), category, description, date, reference
+- Double-entry bookkeeping pattern (each transaction affects 2 accounts)
+
+---
+
+### Story 11.2: Fee Schedule Management
+
+As a **property manager**,
+I want to **define recurring fees for units**,
+So that **monthly charges are automatically calculated**.
+
+**Acceptance Criteria:**
+
+**Given** a manager opens fee schedule for a building
+**When** they add a fee type (maintenance, utilities, parking)
+**Then** they can specify amount, frequency, and which units it applies to
+**And** the fee is added to the schedule
+
+**Given** a fee schedule exists
+**When** the billing period starts
+**Then** fees are automatically calculated for each unit
+**And** owner/tenant can see their upcoming charges
+
+**Given** a manager adjusts a fee mid-period
+**When** the change is saved
+**Then** it applies from the next billing period
+**And** current period charges remain unchanged
+
+**Technical Notes:**
+- Create `fee_schedules` table: id, building_id, name, amount, frequency (monthly/quarterly/annual), unit_filter (JSONB)
+- Create `unit_fees` table: id, unit_id, fee_schedule_id, effective_from, effective_to
+- Cron job: generate charges on billing period start
+
+---
+
+### Story 11.3: Invoice Generation
+
+As a **property manager**,
+I want to **generate invoices for unit owners/tenants**,
+So that **they have official payment requests**.
+
+**Acceptance Criteria:**
+
+**Given** a billing period closes
+**When** invoices are generated
+**Then** each unit with charges receives an invoice
+**And** the invoice contains all line items with due date
+
+**Given** an invoice is generated
+**When** the owner/tenant views it
+**Then** they see itemized charges, total, due date
+**And** can download as PDF
+
+**Given** a manager generates ad-hoc invoice
+**When** they add custom line items
+**Then** the invoice is created immediately
+**And** the owner/tenant is notified
+
+**Technical Notes:**
+- Create `invoices` table: id, unit_id, billing_period, status (draft, sent, paid, overdue), due_date, total
+- Create `invoice_items` table: id, invoice_id, description, amount, fee_schedule_id (nullable)
+- PDF generation: template-based (organization branding)
+
+---
+
+### Story 11.4: Payment Recording
+
+As a **property manager**,
+I want to **record payments received**,
+So that **account balances are accurate**.
+
+**Acceptance Criteria:**
+
+**Given** a payment is received (bank transfer, cash)
+**When** the manager records it
+**Then** it's linked to the relevant invoice(s)
+**And** the invoice status updates (paid/partial)
+**And** account balances update accordingly
+
+**Given** a partial payment is made
+**When** recorded
+**Then** the invoice shows remaining balance
+**And** the payment history shows all payments
+
+**Given** an overpayment occurs
+**When** recorded
+**Then** the excess is credited to the unit's account
+**And** can be applied to future invoices
+
+**Technical Notes:**
+- Create `payments` table: id, unit_id, invoice_id (nullable), amount, method, reference, recorded_at, recorded_by
+- Auto-allocation: oldest invoice first
+- Credit balance tracking per unit
+
+---
+
+### Story 11.5: Online Payment Integration
+
+As a **unit owner/tenant**,
+I want to **pay invoices online**,
+So that **I can pay conveniently without bank transfers**.
+
+**Acceptance Criteria:**
+
+**Given** a user views an unpaid invoice
+**When** they click "Pay Now"
+**Then** they're directed to payment gateway
+**And** can pay with card or bank transfer
+
+**Given** a payment is successful
+**When** the gateway confirms
+**Then** the invoice is marked paid
+**And** the user receives confirmation
+**And** a receipt is generated
+
+**Given** a payment fails
+**When** the gateway reports failure
+**Then** the user sees error message
+**And** can retry or choose different method
+**And** the invoice remains unpaid
+
+**Technical Notes:**
+- Integration: Stripe or local payment provider
+- Webhook handling for async confirmations
+- PCI compliance: no card data stored locally
+- Fee handling: who pays transaction fees (configurable)
+
+---
+
+### Story 11.6: Payment Reminders & Overdue Handling
+
+As a **property manager**,
+I want to **automate payment reminders and track overdue payments**,
+So that **collection is efficient and consistent**.
+
+**Acceptance Criteria:**
+
+**Given** an invoice due date approaches (configurable days before)
+**When** the reminder schedule triggers
+**Then** the owner/tenant receives reminder notification
+**And** the reminder is logged
+
+**Given** an invoice is past due
+**When** the grace period expires
+**Then** the invoice status changes to "overdue"
+**And** escalation notifications are sent (configurable)
+
+**Given** a unit has overdue balance
+**When** the manager views unit details
+**Then** overdue amount is highlighted
+**And** payment history shows aging breakdown
+
+**Technical Notes:**
+- Create `reminder_schedules` table: id, organization_id, days_before_due, days_after_due, template_id
+- Cron job: process reminders daily
+- Late fee calculation (optional, configurable)
+
+---
+
+### Story 11.7: Financial Reports
+
+As a **property manager**,
+I want to **generate financial reports**,
+So that **I can review financial health and share with stakeholders**.
+
+**Acceptance Criteria:**
+
+**Given** a manager requests income statement
+**When** they select date range
+**Then** report shows all income and expenses
+**And** categorized by type with totals
+
+**Given** a manager requests accounts receivable report
+**When** generated
+**Then** report shows all outstanding balances by unit
+**And** aging buckets (current, 30, 60, 90+ days)
+
+**Given** a manager exports a report
+**When** they choose format (PDF, Excel)
+**Then** the report is generated and downloadable
+**And** includes organization branding
+
+**Technical Notes:**
+- Report types: income statement, balance sheet, AR aging, cash flow
+- Filtering: building, date range, account type
+- Export: PDF (template), Excel (raw data)
+- Scheduled reports: email to stakeholders (configurable)
+
+---
+
+## Epic 12: Meter Readings & Utilities
+
+**Goal:** Enable meter reading submission, validation, and utility cost distribution (FR58-FR63).
+
+**Prerequisites:** Epic 3 (Buildings/Units), Epic 11 (Financial Management)
+
+---
+
+### Story 12.1: Meter Registration
+
+As a **property manager**,
+I want to **register meters for units and common areas**,
+So that **readings can be tracked and validated**.
+
+**Acceptance Criteria:**
+
+**Given** a manager adds a meter to a unit
+**When** they enter meter details (type, ID, location, initial reading)
+**Then** the meter is registered
+**And** appears in the unit's meter list
+
+**Given** a building has common area meters
+**When** registered
+**Then** they're marked as shared
+**And** costs can be distributed to units
+
+**Given** a meter is replaced
+**When** the manager records replacement
+**Then** old meter is archived with final reading
+**And** new meter starts fresh with initial reading
+
+**Technical Notes:**
+- Create `meters` table: id, unit_id (nullable for common), building_id, type (electricity, gas, water, heat), meter_id, location, active
+- Create `meter_readings` table: id, meter_id, reading, date, source (manual, photo, automatic), submitted_by
+- Meter types: electricity, gas, water, heat (extensible)
+
+---
+
+### Story 12.2: Self-Reading Submission
+
+As a **unit owner/tenant**,
+I want to **submit meter readings myself**,
+So that **my utility charges are accurate**.
+
+**Acceptance Criteria:**
+
+**Given** a user is prompted to submit readings
+**When** they enter the reading value
+**Then** the reading is recorded with timestamp
+**And** basic validation is performed (not less than previous)
+
+**Given** a user takes a photo of the meter
+**When** they upload it
+**Then** the photo is stored as evidence
+**And** OCR extracts the reading (with manual correction option)
+
+**Given** the submission window is open
+**When** a user submits readings
+**Then** they see confirmation
+**And** can edit until the window closes
+
+**Technical Notes:**
+- Submission windows: configurable dates per building
+- Photo storage: S3 with reference in reading
+- OCR: optional integration (Azure/Google Vision)
+- Validation: reading >= previous, within reasonable range
+
+---
+
+### Story 12.3: Reading Validation & Approval
+
+As a **property manager**,
+I want to **review and approve submitted readings**,
+So that **erroneous readings are caught before billing**.
+
+**Acceptance Criteria:**
+
+**Given** readings are submitted
+**When** the manager views the approval queue
+**Then** they see all pending readings with validation status
+**And** flagged readings are highlighted (anomalies)
+
+**Given** a reading is flagged as anomaly
+**When** the manager reviews it
+**Then** they can approve with note, request re-submission, or enter corrected value
+**And** the action is logged
+
+**Given** all readings for a period are approved
+**When** the manager finalizes
+**Then** readings are locked for billing
+**And** consumption is calculated (current - previous)
+
+**Technical Notes:**
+- Validation rules: configurable thresholds per meter type
+- Anomaly detection: >2x or <0.5x of historical average
+- Approval states: pending, approved, rejected, estimated
+- Estimation: use average if reading missing
+
+---
+
+### Story 12.4: Utility Cost Distribution
+
+As a **property manager**,
+I want to **distribute utility costs to units based on consumption**,
+So that **each unit pays their fair share**.
+
+**Acceptance Criteria:**
+
+**Given** meter readings are finalized
+**When** the utility bill arrives
+**Then** the manager enters total cost
+**And** system calculates per-unit charges based on consumption
+
+**Given** a common area meter exists
+**When** costs are distributed
+**Then** the manager can choose distribution method (equal, by area, by occupants)
+**And** charges are allocated accordingly
+
+**Given** distribution is complete
+**When** approved
+**Then** charges are added to unit accounts
+**And** appear on next invoice
+
+**Technical Notes:**
+- Create `utility_bills` table: id, building_id, meter_type, period_start, period_end, total_amount, distribution_method
+- Distribution methods: consumption-based, area-based, equal split, hybrid
+- Auto-generation of unit charges after distribution
+
+---
+
+### Story 12.5: Consumption History & Analytics
+
+As a **unit owner/tenant**,
+I want to **view my consumption history**,
+So that **I can track usage trends and identify waste**.
+
+**Acceptance Criteria:**
+
+**Given** a user views their consumption
+**When** they select a meter type
+**Then** they see historical readings as chart
+**And** month-over-month comparison
+
+**Given** consumption data spans multiple years
+**When** viewed
+**Then** year-over-year comparison is available
+**And** seasonal patterns are visible
+
+**Given** a user's consumption exceeds building average
+**When** they view their report
+**Then** a comparison indicator is shown
+**And** tips for reduction are suggested
+
+**Technical Notes:**
+- Charts: line graph (time series), bar chart (comparison)
+- Aggregations: daily, monthly, yearly
+- Building averages: calculated from all unit readings
+- Privacy: only show own data + anonymized building average
+
+---
+
+### Story 12.6: Automatic Meter Reading Integration
+
+As a **property manager**,
+I want to **receive readings from smart meters automatically**,
+So that **manual submission isn't needed**.
+
+**Acceptance Criteria:**
+
+**Given** a smart meter is configured
+**When** it transmits a reading
+**Then** the reading is automatically recorded
+**And** marked as source: automatic
+
+**Given** automatic readings are received
+**When** they differ from expected pattern
+**Then** anomaly detection still applies
+**And** manager is notified of potential issues
+
+**Given** automatic meter fails to report
+**When** the expected reading is missing
+**Then** an alert is generated
+**And** manual reading can be entered as fallback
+
+**Technical Notes:**
+- API endpoint for meter data ingestion
+- Authentication: API key per meter provider
+- Supported protocols: REST (others via adapters)
+- Reliability: retry logic, missing data alerts
+
+---
+
+## Phase 2 Stories Summary
+
+| Epic | Stories | FRs Covered |
+|------|---------|-------------|
+| 7B - Advanced Documents | 3 | FR51 |
+| 8B - Granular Notifications | 4 | FR27 (complete) |
+| 2B-Complete - WebSocket & Mobile | 3 | Deferred items |
+| 11 - Financial Management | 7 | FR52-FR57 |
+| 12 - Meter Readings | 6 | FR58-FR63 |
+| **Phase 2 Total** | **23** | **13 FRs** |
+
+---
+
+## Phase 2 Sprint Plan
+
+| Sprint | Epics | Stories | Rationale |
+|--------|-------|---------|-----------|
+| 2A | Epic 7B + Epic 8B | 7 | Complete deferred MVP items (low dependencies) |
+| 2B | Epic 2B-Complete | 3 | Real-time infrastructure (enables future features) |
+| 2C | Epic 11 | 7 | Financial management (high business value) |
+| 2D | Epic 12 | 6 | Utilities (depends on Epic 11 for billing integration) |
+
+**Dependency Chain:** MVP → 7B/8B (parallel) → 2B-Complete → 11 → 12

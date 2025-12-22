@@ -1,6 +1,6 @@
 {
   "name": "@ppt/ui-kit",
-  "version": "0.2.0",
+  "version": "0.2.14",
   "private": true,
   "description": "Shared UI component library",
   "type": "module",

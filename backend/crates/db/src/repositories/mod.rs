@@ -8,9 +8,11 @@ pub mod critical_notification;
 pub mod data_export;
 pub mod delegation;
 pub mod document;
+pub mod document_template;
 pub mod facility;
 pub mod fault;
 pub mod feature_flag;
+pub mod granular_notification;
 pub mod health_monitoring;
 pub mod help;
 pub mod messaging;
@@ -24,6 +26,7 @@ pub mod person_month;
 pub mod platform_admin;
 pub mod role;
 pub mod session;
+pub mod signature_request;
 pub mod system_announcement;
 pub mod two_factor_auth;
 pub mod unit;
@@ -38,11 +41,13 @@ pub use critical_notification::CriticalNotificationRepository;
 pub use data_export::DataExportRepository;
 pub use delegation::DelegationRepository;
 pub use document::DocumentRepository;
+pub use document_template::DocumentTemplateRepository;
 pub use facility::FacilityRepository;
 pub use fault::FaultRepository;
 pub use feature_flag::{
     FeatureFlagRepository, FeatureFlagWithCount, FeatureFlagWithOverrides, ResolvedFeatureFlag,
 };
+pub use granular_notification::GranularNotificationRepository;
 pub use health_monitoring::{
     CurrentMetric, HealthDashboard, HealthMonitoringRepository, MetricDataPoint, MetricHistory,
     MetricStats, MetricStatus,
@@ -64,6 +69,7 @@ pub use platform_admin::{
 };
 pub use role::RoleRepository;
 pub use session::SessionRepository;
+pub use signature_request::SignatureRequestRepository;
 pub use system_announcement::{ActiveAnnouncement, SystemAnnouncementRepository};
 pub use two_factor_auth::TwoFactorAuthRepository;
 pub use unit::UnitRepository;
