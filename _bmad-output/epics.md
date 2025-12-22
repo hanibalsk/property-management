@@ -5016,3 +5016,20 @@ So that **I don't miss important dates**.
 | **Total** | **25** | **134** | **102** | **~33** |
 
 All 101 Functional Requirements from the PRD are now covered with detailed user stories.
+
+---
+
+## Continuation
+
+This document covers **Epics 1-17** (Phases 1-4 partial).
+
+**Continues in:** [`epics-002.md`](./epics-002.md)
+
+The continuation document includes:
+- **Phase 4 Completion:** Epic 18 (Short-Term Rental), Epic 19 (Lease Management)
+- **Phase 5:** Epics 20-23 (Operations & Asset Management)
+- **Phase 6:** Epics 24-26 (Financial Planning & Compliance)
+- **Phase 7:** Epic 27 (Reality Portal Enhancements)
+
+**Additional FRs:** FR102-FR125 (24 new functional requirements)
+**Additional Stories:** 41 stories across 10 epics
