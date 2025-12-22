@@ -54,6 +54,9 @@ pub mod portal;
 // Epic 17: Agency & Realtor Management
 pub mod agency;
 
+// Epic 18: Short-Term Rental Integration
+pub mod rental;
+
 pub use ai_chat::AiChatRepository;
 pub use equipment::EquipmentRepository;
 pub use sentiment::SentimentRepository;
@@ -115,3 +118,6 @@ pub use portal::PortalRepository;
 
 // Epic 17: Agency & Realtor Management
 pub use agency::AgencyRepository;
+
+// Epic 18: Short-Term Rental Integration
+pub use rental::RentalRepository;

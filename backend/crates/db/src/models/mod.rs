@@ -49,6 +49,9 @@ pub mod portal;
 // Epic 17: Agency & Realtor Management
 pub mod agency;
 
+// Epic 18: Short-Term Rental Integration
+pub mod rental;
+
 pub use ai_chat::{
     message_role, AiChatMessage, AiChatSession, AiResponse, AiSource, AiTrainingFeedback,
     ChatSessionSummary, CreateChatSession, ProvideFeedback, SendChatMessage,
@@ -257,4 +260,17 @@ pub use agency::{
     CreateAgencyListing, CreateImportJob, FieldMapping, ImportConfig, ImportError, ImportPreview,
     ImportResult, InviteMember, ListingCollaborator, ListingEditHistory, ListingImportJob,
     UpdateAgency, UpdateListingVisibility, UpdateMemberRole,
+};
+
+// Epic 18: Short-Term Rental Integration
+pub use rental::{
+    authority_code, block_reason, booking_status as rental_booking_status, guest_status,
+    rental_platform, report_status, report_type, BookingListQuery, BookingSummary,
+    BookingWithGuests, BookingsResponse, CalendarBlock, CalendarEvent, CheckInReminder,
+    ConnectionStatus, CreateBooking, CreateCalendarBlock, CreateGuest, CreateICalFeed,
+    CreatePlatformConnection, GenerateReport, GuestSummary, ICalFeed, ICalFeedSummary,
+    NationalityStats, OAuthCallback, PlatformConnectionSummary, PlatformSyncStatus, RegisterGuest,
+    RentalBooking, RentalGuest, RentalGuestReport, RentalPlatformConnection, RentalStatistics,
+    ReportPreview, ReportSummary, SubmitReport, UnitAvailability, UpdateBooking,
+    UpdateBookingStatus, UpdateGuest, UpdateICalFeed, UpdatePlatformConnection,
 };
