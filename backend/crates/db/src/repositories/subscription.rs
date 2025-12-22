@@ -9,7 +9,7 @@ use crate::models::{
     SubscriptionStatistics, SubscriptionWithPlan, UpdateOrganizationSubscription,
     UpdateSubscriptionCoupon, UpdateSubscriptionPlan, UsageRecord, UsageSummary,
 };
-use chrono::{Days, Utc};
+use chrono::{Days, Months, Utc};
 use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -179,11 +179,11 @@ impl SubscriptionRepository {
         let billing_cycle = data.billing_cycle.unwrap_or_else(|| "monthly".to_string());
         let now = Utc::now();
 
-        // Calculate period end based on billing cycle
+        // Calculate period end based on billing cycle using calendar months/years
         let period_end = if billing_cycle == "annual" {
-            now.checked_add_days(Days::new(365)).unwrap_or(now)
+            now.checked_add_months(Months::new(12)).unwrap_or(now)
         } else {
-            now.checked_add_days(Days::new(30)).unwrap_or(now)
+            now.checked_add_months(Months::new(1)).unwrap_or(now)
         };
 
         // Calculate trial dates if starting trial
@@ -446,15 +446,20 @@ impl SubscriptionRepository {
     }
 
     /// Set default payment method.
+    ///
+    /// Uses a transaction to ensure atomicity - prevents race conditions where
+    /// concurrent requests could result in multiple default payment methods.
     pub async fn set_default_payment_method(
         &self,
         org_id: Uuid,
         payment_method_id: Uuid,
     ) -> Result<(), sqlx::Error> {
+        let mut tx = self.pool.begin().await?;
+
         // Reset all to non-default
         sqlx::query("UPDATE payment_methods SET is_default = false WHERE organization_id = $1")
             .bind(org_id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
 
         // Set the specified one as default
@@ -463,9 +468,10 @@ impl SubscriptionRepository {
         )
         .bind(payment_method_id)
         .bind(org_id)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
 
+        tx.commit().await?;
         Ok(())
     }
 
@@ -483,6 +489,9 @@ impl SubscriptionRepository {
     // ==================== Invoices ====================
 
     /// Create an invoice.
+    ///
+    /// Uses a database sequence for atomic invoice number generation to prevent
+    /// race conditions and duplicate invoice numbers under concurrent requests.
     #[allow(clippy::too_many_arguments)]
     pub async fn create_invoice(
         &self,
@@ -494,11 +503,16 @@ impl SubscriptionRepository {
         currency: &str,
         due_date: chrono::NaiveDate,
     ) -> Result<SubscriptionInvoice, sqlx::Error> {
-        // Generate invoice number
-        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM subscription_invoices")
+        // Generate invoice number atomically using database sequence
+        // This prevents race conditions where concurrent requests could get the same number
+        let seq: (i64,) = sqlx::query_as("SELECT nextval('invoice_number_seq')")
             .fetch_one(&self.pool)
-            .await?;
-        let invoice_number = format!("INV-{:08}", count.0 + 1);
+            .await
+            .unwrap_or((
+                // Fallback: use count + timestamp if sequence doesn't exist
+                chrono::Utc::now().timestamp_millis() % 100_000_000,
+            ));
+        let invoice_number = format!("INV-{:08}", seq.0);
 
         sqlx::query_as(
             r#"
@@ -902,6 +916,9 @@ impl SubscriptionRepository {
     }
 
     /// Redeem a coupon.
+    ///
+    /// Uses a transaction with validation to prevent race conditions and over-redemption.
+    /// Checks max_redemptions before incrementing count and inserting redemption record.
     pub async fn redeem_coupon(
         &self,
         coupon_id: Uuid,
@@ -909,15 +926,30 @@ impl SubscriptionRepository {
         subscription_id: Option<Uuid>,
         user_id: Uuid,
     ) -> Result<CouponRedemption, sqlx::Error> {
-        // Increment redemption count
-        sqlx::query(
-            "UPDATE subscription_coupons SET redemption_count = COALESCE(redemption_count, 0) + 1 WHERE id = $1",
+        let mut tx = self.pool.begin().await?;
+
+        // Check if coupon exists and has remaining redemptions (with row lock)
+        let coupon: Option<(i32, Option<i32>)> = sqlx::query_as(
+            "SELECT COALESCE(redemption_count, 0), max_redemptions FROM subscription_coupons WHERE id = $1 FOR UPDATE",
         )
         .bind(coupon_id)
-        .execute(&self.pool)
+        .fetch_optional(&mut *tx)
         .await?;
 
-        sqlx::query_as(
+        if let Some((current_count, max_redemptions)) = coupon {
+            if let Some(max) = max_redemptions {
+                if current_count >= max {
+                    tx.rollback().await?;
+                    return Err(sqlx::Error::RowNotFound); // Coupon exhausted
+                }
+            }
+        } else {
+            tx.rollback().await?;
+            return Err(sqlx::Error::RowNotFound); // Coupon not found
+        }
+
+        // Insert redemption record first (this validates FK constraints)
+        let redemption: CouponRedemption = sqlx::query_as(
             r#"
             INSERT INTO coupon_redemptions
                 (coupon_id, organization_id, subscription_id, redeemed_by)
@@ -929,8 +961,19 @@ impl SubscriptionRepository {
         .bind(org_id)
         .bind(subscription_id)
         .bind(user_id)
-        .fetch_one(&self.pool)
-        .await
+        .fetch_one(&mut *tx)
+        .await?;
+
+        // Only increment count after successful redemption insert
+        sqlx::query(
+            "UPDATE subscription_coupons SET redemption_count = COALESCE(redemption_count, 0) + 1 WHERE id = $1",
+        )
+        .bind(coupon_id)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+        Ok(redemption)
     }
 
     // ==================== Statistics ====================

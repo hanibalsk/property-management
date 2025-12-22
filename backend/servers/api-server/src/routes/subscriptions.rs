@@ -432,6 +432,11 @@ async fn list_plans(
 }
 
 /// List public subscription plans.
+///
+/// This endpoint is intentionally public to allow potential customers to view
+/// available pricing plans without authentication. Rate limiting should be
+/// applied at the infrastructure level (e.g., API gateway, load balancer)
+/// to prevent abuse.
 #[utoipa::path(
     get,
     path = "/api/v1/subscriptions/plans/public",
@@ -465,6 +470,7 @@ async fn list_public_plans(
     params(("id" = Uuid, Path, description = "Plan ID")),
     responses(
         (status = 200, description = "Plan retrieved", body = SubscriptionPlan),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Plan not found"),
         (status = 500, description = "Internal server error", body = ErrorResponse)
     ),
@@ -472,6 +478,7 @@ async fn list_public_plans(
 )]
 async fn get_plan(
     State(state): State<AppState>,
+    _auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SubscriptionPlan>, (StatusCode, Json<ErrorResponse>)> {
     let plan = state
