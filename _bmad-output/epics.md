@@ -18,8 +18,14 @@ mvp_stories_generated: 74
 mvp_acceptance_criteria: 222
 phase2_stories_generated: 23
 phase2_epics: 5
+phase3_stories_generated: 13
+phase3_epics: 2
+phase4_stories_generated: 24
+phase4_epics: 6
+total_stories_generated: 134
+total_epics: 25
 validation_passed: true
-fr_coverage: '63/63 MVP FRs + 13 Phase 2 FRs'
+fr_coverage: '101/101 FRs (all phases complete)'
 ---
 
 # Property Management System (PPT) & Reality Portal - Epic Breakdown
@@ -3746,3 +3752,1267 @@ So that **manual submission isn't needed**.
 | 2D | Epic 12 | 6 | Utilities (depends on Epic 11 for billing integration) |
 
 **Dependency Chain:** MVP → 7B/8B (parallel) → 2B-Complete → 11 → 12
+
+---
+
+# Phase 3 Stories: Modern Technology
+
+## Epic 13: AI Assistant & Automation
+
+**Goal:** Users interact with AI chatbot. Managers configure workflow automations. System provides intelligent insights.
+
+**FRs covered:** FR64, FR65, FR66, FR67, FR68, FR69, FR70
+**Estimate:** 4 weeks
+
+### Story 13.1: AI Chatbot Interface
+
+As a **resident or manager**,
+I want to **interact with an AI chatbot for common questions**,
+So that **I can get quick answers without searching through documentation**.
+
+**Acceptance Criteria:**
+
+**Given** a user opens the AI assistant
+**When** they type a question in natural language
+**Then** the chatbot processes the query
+**And** returns a relevant response within 3 seconds
+
+**Given** a question about building operations
+**When** the chatbot responds
+**Then** it references relevant documents, announcements, or FAQs
+**And** provides links to source materials
+
+**Given** the chatbot cannot answer a question
+**When** confidence is below 70%
+**Then** it acknowledges uncertainty
+**And** offers to connect with a human manager
+**And** logs the query for training improvement
+
+**Technical Notes:**
+- RAG (Retrieval Augmented Generation) on indexed documents from Epic 7B
+- Confidence threshold: >90% auto-respond, 70-90% respond with disclaimer, <70% escalate
+- Chat history stored per user for context
+- LLM integration: external API (OpenAI/Claude) with local fallback
+
+---
+
+### Story 13.2: Sentiment Analysis for Messages
+
+As a **property manager**,
+I want to **see sentiment trends in resident communications**,
+So that **I can identify emerging issues before they escalate**.
+
+**Acceptance Criteria:**
+
+**Given** messages and comments are submitted
+**When** they have AI training consent enabled
+**Then** sentiment is analyzed and scored (-1 to +1)
+**And** score is stored with the message
+
+**Given** a manager views the sentiment dashboard
+**When** they select a date range
+**Then** they see sentiment trends over time
+**And** can identify spikes in negative sentiment
+
+**Given** sentiment suddenly drops for a building
+**When** the threshold is breached
+**Then** an alert is generated for the manager
+**And** recent negative messages are highlighted
+
+**Technical Notes:**
+- Add `sentiment_score` column to messages, comments, fault reports
+- Only analyze content with `ai_training_consent = true`
+- Dashboard: line chart over time, building comparison
+- Alert threshold: configurable per organization
+
+---
+
+### Story 13.3: Predictive Maintenance
+
+As a **technical manager**,
+I want to **receive predictions about equipment maintenance needs**,
+So that **I can schedule preventive maintenance before failures occur**.
+
+**Acceptance Criteria:**
+
+**Given** equipment is tracked in the system with maintenance history
+**When** the prediction engine analyzes patterns
+**Then** it estimates time until next maintenance needed
+**And** generates recommendations
+
+**Given** a prediction indicates high failure risk
+**When** the threshold is exceeded
+**Then** a proactive maintenance task is suggested
+**And** the technical manager is notified
+
+**Given** equipment age and fault history are available
+**When** combined with manufacturer guidelines
+**Then** maintenance schedules are optimized
+**And** budget implications are estimated
+
+**Technical Notes:**
+- Input: equipment type, age, fault history, manufacturer data
+- ML model: trained on historical fault patterns
+- Output: risk score (0-100), days until recommended service
+- Integration with fault reporting system
+
+---
+
+### Story 13.4: Automatic Document Summarization
+
+As a **busy manager**,
+I want to **get automatic summaries of long documents**,
+So that **I can quickly understand key points without reading everything**.
+
+**Acceptance Criteria:**
+
+**Given** a document longer than 1000 words is uploaded
+**When** it finishes processing
+**Then** an AI summary is generated
+**And** displayed alongside the full document
+
+**Given** a user views a document
+**When** a summary exists
+**Then** they see "Summary" toggle option
+**And** can switch between summary and full view
+
+**Given** meeting minutes or reports are uploaded
+**When** summarized
+**Then** key decisions and action items are extracted
+**And** highlighted in the summary
+
+**Technical Notes:**
+- LLM summarization with extractive + abstractive approach
+- Max summary length: 500 words or 20% of original
+- Store in `documents` table: ai_summary, summary_generated_at
+- Re-generate option if document updated
+
+---
+
+### Story 13.5: Smart Search with NLP
+
+As a **user searching for information**,
+I want to **use natural language queries**,
+So that **I can find relevant content without knowing exact keywords**.
+
+**Acceptance Criteria:**
+
+**Given** a user enters a natural language query
+**When** they search across the system
+**Then** results are ranked by semantic relevance
+**And** include documents, announcements, faults, and messages
+
+**Given** a query like "problems with heating last winter"
+**When** processed
+**Then** faults about heating from winter months are returned
+**And** related announcements about heating are included
+
+**Given** search results are displayed
+**When** the user views them
+**Then** relevant snippets are highlighted
+**And** source type is indicated
+
+**Technical Notes:**
+- Vector embeddings for semantic search
+- Index: documents, announcements, faults, comments
+- Combine keyword + semantic scoring
+- Re-index on content changes
+
+---
+
+### Story 13.6: Workflow Automation Configuration
+
+As a **property manager**,
+I want to **configure automated workflows**,
+So that **routine tasks are handled automatically**.
+
+**Acceptance Criteria:**
+
+**Given** a manager opens workflow configuration
+**When** they create a new automation
+**Then** they select trigger, conditions, and actions
+**And** can preview the workflow
+
+**Given** trigger types available
+**When** configuring
+**Then** options include: fault created, payment due, document uploaded, time-based
+
+**Given** action types available
+**When** configuring
+**Then** options include: send notification, create task, update status, send email
+
+**Technical Notes:**
+- Create `workflows` table: id, organization_id, name, trigger_type, trigger_config, enabled
+- Create `workflow_actions` table: id, workflow_id, action_type, action_config, order
+- Workflow engine: event-driven execution
+- Audit all workflow executions
+
+---
+
+### Story 13.7: Event-Triggered Automated Actions
+
+As a **system**,
+I want to **execute automated actions based on events**,
+So that **workflows run reliably without manual intervention**.
+
+**Acceptance Criteria:**
+
+**Given** an event matches a workflow trigger
+**When** conditions are met
+**Then** the configured actions execute in sequence
+**And** execution is logged
+
+**Given** an action fails
+**When** retry policy is configured
+**Then** the action is retried up to 3 times
+**And** failure is logged with error details
+
+**Given** a workflow execution completes
+**When** reviewing history
+**Then** full execution trace is visible
+**And** performance metrics are tracked
+
+**Technical Notes:**
+- Create `workflow_executions` table: id, workflow_id, triggered_at, status, error
+- Create `workflow_execution_steps` table: id, execution_id, action_id, status, output
+- Event bus integration (Redis pub/sub)
+- Dead letter queue for failed executions
+
+---
+
+## Epic 14: IoT & Smart Building
+
+**Goal:** Users view sensor data dashboards and receive threshold alerts. System correlates sensor data with building operations.
+
+**FRs covered:** FR71, FR72, FR73, FR74, FR75
+**Estimate:** 3 weeks
+
+### Story 14.1: IoT Sensor Registration
+
+As a **technical manager**,
+I want to **register IoT sensors in the system**,
+So that **sensor data can be collected and monitored**.
+
+**Acceptance Criteria:**
+
+**Given** a manager adds a new sensor
+**When** they provide type, location, and connection details
+**Then** the sensor is registered in the system
+**And** appears in the sensor list
+
+**Given** a sensor is being configured
+**When** they specify the data type (temperature, humidity, motion, etc.)
+**Then** appropriate data handling is configured
+**And** units of measurement are set
+
+**Given** a sensor has authentication requirements
+**When** credentials are provided
+**Then** they are stored securely
+**And** connection is verified
+
+**Technical Notes:**
+- Create `sensors` table: id, building_id, name, type, location, connection_config, status
+- Sensor types: temperature, humidity, motion, co2, water_leak, energy, smoke
+- Encrypted storage for credentials
+- Health check endpoint for each sensor
+
+---
+
+### Story 14.2: Sensor Data Ingestion
+
+As a **system**,
+I want to **ingest data from IoT sensors**,
+So that **real-time monitoring is possible**.
+
+**Acceptance Criteria:**
+
+**Given** a sensor sends data
+**When** the ingestion endpoint receives it
+**Then** data is validated and stored
+**And** timestamp is recorded
+
+**Given** data arrives in various formats
+**When** processed
+**Then** it's normalized to a standard schema
+**And** stored in time-series optimized format
+
+**Given** a sensor goes offline
+**When** no data is received for the expected interval
+**Then** an offline alert is generated
+**And** sensor status is updated
+
+**Technical Notes:**
+- Create `sensor_readings` table: id, sensor_id, value, unit, timestamp (partitioned by time)
+- Ingestion: REST API with API key auth, optional MQTT adapter
+- Time-series storage: TimescaleDB extension or partitioned PostgreSQL
+- Retention: raw data 1 year, aggregated data 5 years
+
+---
+
+### Story 14.3: Real-time Sensor Dashboards
+
+As a **building manager**,
+I want to **view real-time sensor data on dashboards**,
+So that **I can monitor building conditions at a glance**.
+
+**Acceptance Criteria:**
+
+**Given** a manager opens the sensor dashboard
+**When** sensors are active
+**Then** current values are displayed with last update time
+**And** historical graphs show trends
+
+**Given** the dashboard is open
+**When** new data arrives
+**Then** values update in real-time (WebSocket)
+**And** graphs animate new data points
+
+**Given** a manager selects a date range
+**When** viewing historical data
+**Then** aggregated data is displayed
+**And** can be zoomed/panned
+
+**Technical Notes:**
+- WebSocket for real-time updates
+- Charts: line (time series), gauge (current value)
+- Aggregation levels: minute, hour, day
+- Dashboard layout saved per user
+
+---
+
+### Story 14.4: Threshold Violation Alerts
+
+As a **building manager**,
+I want to **receive alerts when sensor values exceed thresholds**,
+So that **I can respond to abnormal conditions quickly**.
+
+**Acceptance Criteria:**
+
+**Given** a threshold is configured for a sensor
+**When** the value exceeds the threshold
+**Then** an alert is generated
+**And** notification is sent per user preferences
+
+**Given** multiple thresholds exist
+**When** configuring
+**Then** warning and critical levels can be set
+**And** different actions triggered for each
+
+**Given** an alert condition resolves
+**When** value returns to normal range
+**Then** a resolution notification is sent
+**And** alert status is updated
+
+**Technical Notes:**
+- Create `sensor_thresholds` table: id, sensor_id, metric, warning_value, critical_value, comparison
+- Create `sensor_alerts` table: id, sensor_id, threshold_id, value, triggered_at, resolved_at
+- Alert debouncing: minimum 5 minutes between same alerts
+- Integration with notification service
+
+---
+
+### Story 14.5: Sensor-Fault Correlation
+
+As a **technical manager**,
+I want to **see correlations between sensor data and fault reports**,
+So that **I can identify root causes of issues**.
+
+**Acceptance Criteria:**
+
+**Given** a fault is reported
+**When** sensor data exists for that location
+**Then** relevant sensor readings are linked to the fault
+**And** displayed in fault details
+
+**Given** sensor anomalies are detected
+**When** a related fault exists
+**Then** the correlation is highlighted
+**And** suggested as potential cause
+
+**Given** historical analysis is performed
+**When** patterns emerge
+**Then** predictive alerts are generated
+**And** recommendations made
+
+**Technical Notes:**
+- Link faults to nearby sensors via location
+- Correlation engine: analyze sensor data ±24 hours of fault creation
+- Display: sensor chart embedded in fault timeline
+- ML: pattern detection for recurring correlations
+
+---
+
+### Story 14.6: Sensor Threshold Configuration
+
+As a **building manager**,
+I want to **configure sensor thresholds**,
+So that **alerts are meaningful for my buildings**.
+
+**Acceptance Criteria:**
+
+**Given** a manager configures thresholds
+**When** they set values for a sensor type
+**Then** warning and critical levels are saved
+**And** applied to selected sensors
+
+**Given** default thresholds exist
+**When** a sensor is registered
+**Then** defaults are applied based on type
+**And** can be customized
+
+**Given** thresholds are updated
+**When** saved
+**Then** change is logged
+**And** existing alerts are re-evaluated
+
+**Technical Notes:**
+- Default thresholds per sensor type (e.g., temperature: warning 25°C, critical 30°C)
+- Bulk configuration for multiple sensors
+- Threshold presets: comfort, energy-saving, safety
+- Audit trail for threshold changes
+
+---
+
+# Phase 4 Stories: Reality Portal & Rental
+
+## Epic 10A-SSO: Cross-Platform SSO Consumer
+
+**Goal:** Complete SSO between Property Management and Reality Portal. Users authenticate once and access both platforms.
+
+**FRs covered:** FR7 (complete)
+**Estimate:** 1.5 weeks
+
+### Story 10A-SSO.1: OIDC Consumer on Reality Server
+
+As a **Reality Portal user**,
+I want to **log in using my Property Management account**,
+So that **I don't need separate credentials for both platforms**.
+
+**Acceptance Criteria:**
+
+**Given** a user clicks "Login with Property Management" on Reality Portal
+**When** they are redirected to api-server OAuth
+**Then** they authenticate with their PM credentials
+**And** are redirected back with authorization code
+
+**Given** the authorization code is received
+**When** reality-server exchanges it for tokens
+**Then** access and refresh tokens are issued
+**And** user session is created on Reality Portal
+
+**Given** user is already logged into Property Management
+**When** they access Reality Portal
+**Then** SSO occurs automatically
+**And** no re-authentication required
+
+**Technical Notes:**
+- OIDC authorization code flow
+- reality-server: OIDC consumer (using existing OAuth provider from Epic 10A)
+- Shared user identity via user_id
+- Token claims: user_id, email, name
+
+---
+
+### Story 10A-SSO.2: Mobile Deep-Link Token Sharing
+
+As a **mobile user**,
+I want to **switch between PM and Reality Portal apps seamlessly**,
+So that **I stay logged in across both apps**.
+
+**Acceptance Criteria:**
+
+**Given** a user is logged into PM mobile app
+**When** they tap a link to Reality Portal
+**Then** the app opens with SSO token passed via deep link
+**And** user is automatically authenticated
+
+**Given** a deep link token is received
+**When** Reality Portal app validates it
+**Then** a new session is created
+**And** user sees their authenticated state
+
+**Given** the SSO token is expired
+**When** deep link is followed
+**Then** user is prompted to log in
+**And** can do so via PM credentials
+
+**Technical Notes:**
+- Deep link scheme: `reality://sso?token=xxx`
+- Token: short-lived (5 minutes), one-time use
+- Validate against api-server before creating session
+- Fallback: redirect to login if token invalid
+
+---
+
+### Story 10A-SSO.3: Unified Account Management
+
+As a **user with accounts on both platforms**,
+I want to **manage my account in one place**,
+So that **changes apply everywhere**.
+
+**Acceptance Criteria:**
+
+**Given** a user updates their profile on PM
+**When** they access Reality Portal
+**Then** their updated name, email, and preferences are reflected
+**And** no manual sync required
+
+**Given** a user changes their password on PM
+**When** their Reality Portal session is active
+**Then** the session remains valid until expiry
+**And** next login uses new password
+
+**Given** a user deletes their PM account
+**When** they try to access Reality Portal
+**Then** access is denied
+**And** local data is cleared
+
+**Technical Notes:**
+- Single source of truth: users table on api-server
+- Reality Portal: fetch user details from api-server on each session
+- Event: user_updated, user_deleted propagated via event bus
+- Cache user details with 5-minute TTL
+
+---
+
+## Epic 15: Property Listings & Multi-Portal Sync
+
+**Goal:** Owners and Realtors create listings from unit data and publish to multiple portals.
+
+**FRs covered:** FR76, FR77, FR78
+**Estimate:** 3 weeks
+
+### Story 15.1: Listing Creation from Unit Data
+
+As a **property owner**,
+I want to **create a listing from my existing unit data**,
+So that **I don't have to re-enter property information**.
+
+**Acceptance Criteria:**
+
+**Given** an owner accesses their unit
+**When** they click "Create Listing"
+**Then** unit data (address, size, type) is pre-populated
+**And** they can add listing-specific details
+
+**Given** unit data is imported
+**When** the owner reviews
+**Then** they can edit any pre-filled fields
+**And** add photos, description, and price
+
+**Given** the listing is ready
+**When** saved as draft
+**Then** it's visible only to the owner
+**And** can be published later
+
+**Technical Notes:**
+- Create `listings` table: id, unit_id, organization_id, status, price, description, created_at
+- Status: draft, active, paused, sold, rented, archived
+- Copy unit data but allow override
+- Photos stored in S3 with listing_id prefix
+
+---
+
+### Story 15.2: Listing Management (Photos, Description, Pricing)
+
+As a **realtor**,
+I want to **manage listing details including photos and pricing**,
+So that **the listing is attractive to potential buyers/renters**.
+
+**Acceptance Criteria:**
+
+**Given** a realtor edits a listing
+**When** they upload photos
+**Then** photos are processed (resized, optimized)
+**And** can be reordered via drag-and-drop
+
+**Given** a description is entered
+**When** it includes formatting (bold, lists)
+**Then** markdown is supported
+**And** preview shows rendered output
+
+**Given** pricing is set
+**When** type is selected (sale, rent)
+**Then** appropriate fields are shown
+**And** currency options available (EUR, CZK)
+
+**Technical Notes:**
+- Create `listing_photos` table: id, listing_id, url, order, alt_text
+- Image processing: thumbnail (300x200), medium (800x600), large (1600x1200)
+- Rich text: markdown with sanitization
+- Price fields: price, price_type (sale/rent), currency, negotiable flag
+
+---
+
+### Story 15.3: Multi-Portal Syndication
+
+As a **realtor**,
+I want to **publish listings to multiple portals simultaneously**,
+So that **I can maximize exposure**.
+
+**Acceptance Criteria:**
+
+**Given** a listing is ready for publishing
+**When** the realtor selects target portals
+**Then** options include: Reality Portal, Sreality, Bezrealitky, Nehnutelnosti
+**And** portal-specific requirements are shown
+
+**Given** a listing is published
+**When** syndication runs
+**Then** listing data is sent to each selected portal
+**And** status per portal is tracked
+
+**Given** a portal sync fails
+**When** the error is logged
+**Then** the realtor is notified
+**And** can retry or troubleshoot
+
+**Technical Notes:**
+- Create `listing_syndications` table: id, listing_id, portal, external_id, status, synced_at
+- Portal adapters: abstract interface, concrete implementations
+- Initial: Reality Portal (native), others via API
+- Cron job: sync changes every 15 minutes
+
+---
+
+### Story 15.4: Listing Status Management
+
+As a **realtor**,
+I want to **update listing status (paused, sold, rented)**,
+So that **portals reflect current availability**.
+
+**Acceptance Criteria:**
+
+**Given** a property is sold
+**When** the realtor marks it as "Sold"
+**Then** listing is removed from active portals
+**And** marked with sold date
+
+**Given** a listing should be temporarily hidden
+**When** status is set to "Paused"
+**Then** it's hidden from public view
+**And** can be reactivated
+
+**Given** status changes
+**When** syndicated portals exist
+**Then** update is propagated to all portals
+**And** sync status is confirmed
+
+**Technical Notes:**
+- Status transitions: draft → active → paused/sold/rented → archived
+- Syndication propagates status changes
+- Sold/rented listings visible in history for 90 days
+- Archive after 90 days
+
+---
+
+## Epic 16: Portal Search & Discovery
+
+**Goal:** Portal users search, filter, and save favorite listings.
+
+**FRs covered:** FR79, FR80, FR81
+**Estimate:** 2.5 weeks
+
+### Story 16.1: Property Search & Filtering
+
+As a **portal user**,
+I want to **search properties with filters**,
+So that **I can find listings matching my criteria**.
+
+**Acceptance Criteria:**
+
+**Given** a user opens the search page
+**When** they enter search criteria
+**Then** filters include: location, price range, property type, size, rooms
+**And** results update as filters change
+
+**Given** search is performed
+**When** results are returned
+**Then** listings are sorted by relevance
+**And** displayed with photo, price, and key details
+
+**Given** no results match
+**When** displayed
+**Then** suggestions are shown (expand range, nearby areas)
+**And** save search option offered
+
+**Technical Notes:**
+- Elasticsearch for search indexing
+- Filters: location (geo), price_min/max, type, size_min/max, rooms_min/max
+- SSR/SSG for SEO (Next.js)
+- URL reflects search state for sharing/bookmarking
+
+---
+
+### Story 16.2: Favorite Listings
+
+As a **portal user**,
+I want to **save favorite listings**,
+So that **I can review them later**.
+
+**Acceptance Criteria:**
+
+**Given** a user views a listing
+**When** they click the heart icon
+**Then** the listing is saved to favorites
+**And** the icon fills in
+
+**Given** a user views their favorites
+**When** they open the favorites page
+**Then** all saved listings are displayed
+**And** can be removed
+
+**Given** a favorited listing is updated
+**When** price or status changes
+**Then** user is notified (if opted in)
+**And** change is highlighted in favorites
+
+**Technical Notes:**
+- Create `favorites` table: id, user_id, listing_id, created_at
+- Anonymous users: store in local storage, prompt to create account
+- Notifications: price drop, back on market
+- Max favorites: 100 per user
+
+---
+
+### Story 16.3: Saved Searches & Alerts
+
+As a **portal user**,
+I want to **save my search criteria and get alerts**,
+So that **I'm notified when matching properties are listed**.
+
+**Acceptance Criteria:**
+
+**Given** a user performs a search
+**When** they click "Save Search"
+**Then** the search criteria are stored
+**And** they can name the search
+
+**Given** a new listing matches saved criteria
+**When** it's published
+**Then** user receives notification
+**And** can click through to listing
+
+**Given** a user manages saved searches
+**When** viewing their list
+**Then** they can edit, delete, or toggle notifications
+**And** see last match date
+
+**Technical Notes:**
+- Create `saved_searches` table: id, user_id, name, criteria (JSONB), alerts_enabled, last_matched_at
+- Matching: run on new listing publication
+- Email digest option: daily or instant
+- Max saved searches: 10 per user
+
+---
+
+### Story 16.4: Agent Contact Inquiry
+
+As a **portal user**,
+I want to **contact the listing agent**,
+So that **I can ask questions or schedule a viewing**.
+
+**Acceptance Criteria:**
+
+**Given** a user views a listing
+**When** they click "Contact Agent"
+**Then** a contact form is shown
+**And** pre-filled with their info if logged in
+
+**Given** the inquiry is submitted
+**When** the agent receives it
+**Then** it includes: message, contact details, listing reference
+**And** agent is notified via preferred channel
+
+**Given** the agent replies
+**When** using the system
+**Then** user receives the response
+**And** conversation thread is maintained
+
+**Technical Notes:**
+- Create `inquiries` table: id, listing_id, user_id, agent_id, message, status, created_at
+- Create `inquiry_messages` table: id, inquiry_id, sender_id, content, created_at
+- Lead tracking: inquiry → viewing → offer → closed
+- GDPR: contact info only visible to listing agent
+
+---
+
+## Epic 17: Agency & Realtor Management
+
+**Goal:** Agencies manage realtors and shared listings.
+
+**FRs covered:** FR82, FR83
+**Estimate:** 2 weeks
+
+### Story 17.1: Agency Registration & Setup
+
+As an **agency owner**,
+I want to **register my agency on the platform**,
+So that **my team can manage listings together**.
+
+**Acceptance Criteria:**
+
+**Given** an agency owner registers
+**When** they provide agency name, address, and contact
+**Then** the agency is created
+**And** owner becomes agency admin
+
+**Given** agency is set up
+**When** admin configures branding
+**Then** logo and colors can be uploaded
+**And** appear on agency profile and listings
+
+**Given** agency profile exists
+**When** portal users view it
+**Then** they see agency info, team, and active listings
+
+**Technical Notes:**
+- Create `agencies` table: id, name, slug, address, logo_url, primary_color, status
+- Agency admin role: manage team, all listings, billing
+- Public profile page: /agencies/{slug}
+- Verification process: manual review for premium features
+
+---
+
+### Story 17.2: Realtor Team Management
+
+As an **agency admin**,
+I want to **manage my team of realtors**,
+So that **they can create and manage listings**.
+
+**Acceptance Criteria:**
+
+**Given** an admin invites a realtor
+**When** they enter email
+**Then** invitation is sent
+**And** realtor can join the agency
+
+**Given** a realtor is part of an agency
+**When** they create a listing
+**Then** it's associated with both realtor and agency
+**And** agency branding is applied
+
+**Given** a realtor leaves the agency
+**When** removed by admin
+**Then** their listings can be reassigned or archived
+**And** they lose agency access
+
+**Technical Notes:**
+- Create `agency_members` table: id, agency_id, user_id, role, joined_at
+- Realtor roles: agent (own listings), senior (all listings), admin (full control)
+- Listing ownership: realtor_id + agency_id
+- Reassignment on departure
+
+---
+
+### Story 17.3: Shared Listing Management
+
+As a **realtor**,
+I want to **share listings with agency colleagues**,
+So that **anyone can handle inquiries**.
+
+**Acceptance Criteria:**
+
+**Given** a realtor creates a listing
+**When** they set visibility to "Agency"
+**Then** all agency members can view and edit
+**And** inquiries can be handled by any team member
+
+**Given** an inquiry comes in
+**When** any realtor responds
+**Then** response is visible to all team members
+**And** inquiry status is updated
+
+**Given** multiple realtors collaborate
+**When** changes are made
+**Then** edit history shows who made changes
+**And** conflicts are prevented via optimistic locking
+
+**Technical Notes:**
+- Listing visibility: personal, agency, public
+- Inquiry assignment: pool, round-robin, or claimed
+- Edit history in audit log
+- Real-time collaboration indicators
+
+---
+
+### Story 17.4: External Listing Import
+
+As a **realtor**,
+I want to **import listings from external sources**,
+So that **I don't have to manually re-enter data**.
+
+**Acceptance Criteria:**
+
+**Given** a realtor initiates import
+**When** they select source (CSV, XML, or portal API)
+**Then** the import wizard guides them through mapping
+**And** preview shows parsed data
+
+**Given** import mapping is configured
+**When** import runs
+**Then** listings are created in draft status
+**And** import log shows success/failures
+
+**Given** photos are included
+**When** imported
+**Then** images are downloaded and processed
+**And** stored in system
+
+**Technical Notes:**
+- Import sources: CSV template, Sreality XML, custom API
+- Field mapping: source field → system field
+- Duplicate detection: address matching
+- Batch processing for large imports
+
+---
+
+## Epic 18: Short-Term Rental Integration
+
+**Goal:** Property managers sync with Airbnb/Booking.com and register guests.
+
+**FRs covered:** FR84, FR85, FR86
+**Estimate:** 2.5 weeks
+
+### Story 18.1: Airbnb/Booking.com Calendar Sync
+
+As a **property manager**,
+I want to **sync calendars with Airbnb and Booking.com**,
+So that **availability is always accurate**.
+
+**Acceptance Criteria:**
+
+**Given** a manager connects Airbnb account
+**When** OAuth authorization completes
+**Then** property mapping is initiated
+**And** calendars start syncing
+
+**Given** calendars are synced
+**When** a booking is made on Airbnb
+**Then** it appears in the system within 15 minutes
+**And** availability is blocked
+
+**Given** availability is changed in system
+**When** sync runs
+**Then** changes propagate to connected platforms
+**And** double-booking is prevented
+
+**Technical Notes:**
+- Create `rental_connections` table: id, unit_id, platform, external_id, access_token, status
+- Create `rental_bookings` table: id, connection_id, guest_name, check_in, check_out, external_booking_id
+- iCal fallback if API not available
+- Sync frequency: every 15 minutes
+
+---
+
+### Story 18.2: Guest Registration
+
+As a **property manager**,
+I want to **register guests for legal compliance**,
+So that **I meet local regulations**.
+
+**Acceptance Criteria:**
+
+**Given** a booking arrives
+**When** guest details are available
+**Then** registration form is pre-filled
+**And** manager can complete required fields
+
+**Given** ID document is required
+**When** guest provides it
+**Then** OCR extracts details
+**And** manager verifies
+
+**Given** registration is complete
+**When** saved
+**Then** guest is registered in system
+**And** ready for authority reporting
+
+**Technical Notes:**
+- Create `guest_registrations` table: id, booking_id, name, nationality, id_type, id_number, birth_date, registered_at
+- ID document types: passport, ID card, driver's license
+- OCR integration from Epic 7B/12
+- Compliance with local hotel registration laws
+
+---
+
+### Story 18.3: Guest Report Generation
+
+As a **property manager**,
+I want to **generate guest reports for authorities**,
+So that **I comply with reporting requirements**.
+
+**Acceptance Criteria:**
+
+**Given** reporting period ends
+**When** manager generates report
+**Then** all registered guests are included
+**And** format matches authority requirements
+
+**Given** report format varies by region
+**When** generating
+**Then** appropriate template is used
+**And** data is validated against requirements
+
+**Given** report is generated
+**When** submitted
+**Then** submission is logged
+**And** confirmation stored
+
+**Technical Notes:**
+- Report formats: Slovak police XML, Czech UbyPort, generic CSV
+- Automatic generation on configurable schedule
+- Submission: manual download or direct API where available
+- Retention: 5 years per regulations
+
+---
+
+### Story 18.4: Booking Calendar View
+
+As a **property manager**,
+I want to **view all bookings in a calendar**,
+So that **I can manage occupancy across properties**.
+
+**Acceptance Criteria:**
+
+**Given** a manager opens the calendar view
+**When** properties are selected
+**Then** bookings are displayed on timeline
+**And** color-coded by source (Airbnb, Booking, direct)
+
+**Given** multiple units are managed
+**When** viewing calendar
+**Then** all units can be seen together
+**And** filtered as needed
+
+**Given** a gap exists in bookings
+**When** identified
+**Then** quick-block option is available
+**And** can sync to platforms
+
+**Technical Notes:**
+- Calendar component: week/month view
+- Multi-property timeline (Gantt-style)
+- Drag-and-drop for manual bookings
+- Quick actions: block, unblock, add maintenance
+
+---
+
+## Epic 19: Lease Management & Tenant Screening
+
+**Goal:** Landlords screen tenants and manage full lease lifecycle.
+
+**FRs covered:** FR87, FR88, FR89
+**Estimate:** 2.5 weeks
+
+### Story 19.1: Tenant Application Processing
+
+As a **landlord**,
+I want to **receive and review tenant applications**,
+So that **I can select qualified tenants**.
+
+**Acceptance Criteria:**
+
+**Given** a listing allows applications
+**When** a prospective tenant applies
+**Then** they fill out application form
+**And** application is submitted to landlord
+
+**Given** an application is received
+**When** landlord reviews
+**Then** they see applicant details, references, income info
+**And** can request additional documents
+
+**Given** multiple applications exist
+**When** comparing
+**Then** side-by-side view is available
+**And** scoring/ranking can be applied
+
+**Technical Notes:**
+- Create `tenant_applications` table: id, listing_id, applicant_id, status, submitted_at
+- Create `application_documents` table: id, application_id, type, file_url
+- Application status: submitted, reviewing, approved, rejected
+- Privacy: applicant data visible only to listing owner
+
+---
+
+### Story 19.2: Tenant Screening
+
+As a **landlord**,
+I want to **screen potential tenants**,
+So that **I can make informed decisions**.
+
+**Acceptance Criteria:**
+
+**Given** a landlord initiates screening
+**When** applicant consents
+**Then** background check is requested
+**And** results returned within 24-48 hours
+
+**Given** screening results are available
+**When** reviewed
+**Then** they include: credit check, reference verification, income verification
+**And** risk assessment summary
+
+**Given** screening indicates concerns
+**When** displayed
+**Then** specific items are highlighted
+**And** landlord can request clarification
+
+**Technical Notes:**
+- Third-party screening service integration
+- Consent required: GDPR compliant
+- Results stored encrypted
+- Retention: 30 days after decision (deleted if rejected)
+
+---
+
+### Story 19.3: Lease Creation & Signing
+
+As a **landlord**,
+I want to **create and sign leases digitally**,
+So that **the process is efficient and documented**.
+
+**Acceptance Criteria:**
+
+**Given** a landlord creates a lease
+**When** they select template and fill details
+**Then** lease document is generated
+**And** preview is available
+
+**Given** lease is ready for signing
+**When** sent to tenant
+**Then** they receive notification
+**And** can sign digitally
+
+**Given** both parties sign
+**When** signatures complete
+**Then** lease is finalized
+**And** PDF stored in documents
+
+**Technical Notes:**
+- Create `leases` table: id, unit_id, tenant_id, landlord_id, start_date, end_date, rent, status, document_id
+- Lease templates: configurable per organization
+- E-signature integration: DocuSign or built-in
+- Legal validity per jurisdiction
+
+---
+
+### Story 19.4: Lease Lifecycle Management
+
+As a **landlord**,
+I want to **manage lease renewals and terminations**,
+So that **I can maintain proper records**.
+
+**Acceptance Criteria:**
+
+**Given** a lease is approaching expiry
+**When** 90 days before end date
+**Then** landlord and tenant are notified
+**And** renewal options are presented
+
+**Given** landlord initiates renewal
+**When** new terms are set
+**Then** renewal document is generated
+**And** sent for signing
+
+**Given** lease is terminated
+**When** termination is processed
+**Then** reason is recorded
+**And** unit status updated to available
+
+**Technical Notes:**
+- Lease status: draft, active, renewing, expired, terminated
+- Renewal: creates new lease linked to original
+- Termination types: end of term, early (mutual), early (breach)
+- Move-out checklist integration
+
+---
+
+### Story 19.5: Lease Expiration Tracking & Reminders
+
+As a **landlord**,
+I want to **receive reminders about expiring leases**,
+So that **I don't miss important dates**.
+
+**Acceptance Criteria:**
+
+**Given** leases exist in the system
+**When** viewing dashboard
+**Then** expiring leases (next 90 days) are highlighted
+**And** count badge shows
+
+**Given** expiration approaches
+**When** configurable thresholds hit (90, 60, 30, 14 days)
+**Then** reminders are sent
+**And** action options included
+
+**Given** multiple properties are managed
+**When** generating report
+**Then** all expiring leases are listed
+**And** can be exported
+
+**Technical Notes:**
+- Reminder schedule: configurable per organization
+- Notification channels: email, push, in-app
+- Dashboard widget: expiring leases list
+- Batch actions: bulk renewal, bulk notification
+
+---
+
+## Phase 3 & 4 Stories Summary
+
+| Epic | Stories | FRs Covered |
+|------|---------|-------------|
+| 13 - AI Assistant & Automation | 7 | FR64-FR70 |
+| 14 - IoT & Smart Building | 6 | FR71-FR75 |
+| 10A-SSO - Cross-Platform SSO | 3 | FR7 (complete) |
+| 15 - Property Listings | 4 | FR76-FR78 |
+| 16 - Portal Search & Discovery | 4 | FR79-FR81 |
+| 17 - Agency & Realtor Management | 4 | FR82-FR83 |
+| 18 - Short-Term Rental | 4 | FR84-FR86 |
+| 19 - Lease Management | 5 | FR87-FR89 |
+| **Phase 3 Total** | **13** | **12 FRs** |
+| **Phase 4 Total** | **24** | **14 FRs** |
+
+---
+
+## Phase 3 Sprint Plan
+
+| Sprint | Epics | Stories | Rationale |
+|--------|-------|---------|-----------|
+| 3A | Epic 13 (Stories 1-4) | 4 | AI foundation (chatbot, sentiment, prediction, summarization) |
+| 3B | Epic 13 (Stories 5-7) | 3 | AI completion (search, workflows) |
+| 3C | Epic 14 (Stories 1-3) | 3 | IoT foundation (sensors, data, dashboards) |
+| 3D | Epic 14 (Stories 4-6) | 3 | IoT completion (alerts, correlation, config) |
+
+**Dependency Chain:** Phase 2 → Epic 7B (for RAG) → Epic 13 → Epic 14
+
+---
+
+## Phase 4 Sprint Plan
+
+| Sprint | Epics | Stories | Rationale |
+|--------|-------|---------|-----------|
+| 4A | Epic 10A-SSO + Epic 15 (1-2) | 5 | SSO completion + listing foundation |
+| 4B | Epic 15 (3-4) + Epic 16 (1-2) | 4 | Syndication + search foundation |
+| 4C | Epic 16 (3-4) + Epic 17 (1-2) | 4 | Search completion + agency foundation |
+| 4D | Epic 17 (3-4) + Epic 18 (1-2) | 4 | Agency completion + rental integration start |
+| 4E | Epic 18 (3-4) + Epic 19 (1-2) | 4 | Rental completion + lease start |
+| 4F | Epic 19 (3-5) | 3 | Lease completion |
+
+**Dependency Chain:** Epic 10A-SSO → Epic 15 → Epic 16 → Epic 17 (parallel: Epic 18, 19)
+
+---
+
+## Complete Summary
+
+| Phase | Epics | Stories | FRs | Weeks |
+|-------|-------|---------|-----|-------|
+| MVP (Phase 1) | 12 | 74 | 63 | ~16 |
+| Phase 2 | 5 | 23 | 13 | ~5 |
+| Phase 3 | 2 | 13 | 12 | ~4 |
+| Phase 4 | 6 | 24 | 14 | ~8 |
+| **Total** | **25** | **134** | **102** | **~33** |
+
+All 101 Functional Requirements from the PRD are now covered with detailed user stories.

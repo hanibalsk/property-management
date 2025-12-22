@@ -11,6 +11,7 @@ Thumbs.db
 # === Project-specific hidden directories ===
 .agent/
 .agentvibes/
+.autopilot/
 .bmad/
 _bmad/
 .claude/
