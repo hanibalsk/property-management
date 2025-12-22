@@ -314,7 +314,7 @@ async fn list_templates(
 async fn get_template(
     State(state): State<AppState>,
     _auth: AuthUser,
-    _tenant: TenantExtractor,
+    tenant: TenantExtractor,
     Path(id): Path<Uuid>,
 ) -> Result<Json<TemplateDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
     match state
@@ -322,7 +322,16 @@ async fn get_template(
         .find_by_id_with_details(id)
         .await
     {
-        Ok(Some(template)) => Ok(Json(TemplateDetailResponse { template })),
+        Ok(Some(template)) => {
+            // Verify the template belongs to the requesting user's organization
+            if template.template.organization_id != tenant.tenant_id {
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse::new("NOT_FOUND", "Template not found")),
+                ));
+            }
+            Ok(Json(TemplateDetailResponse { template }))
+        }
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Template not found")),

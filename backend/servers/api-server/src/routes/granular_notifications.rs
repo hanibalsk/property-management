@@ -6,6 +6,7 @@
 //! - 8B.3: Notification Schedule (Do Not Disturb)
 //! - 8B.4: Role-Based Default Preferences
 
+use api_core::{AuthUser, TenantExtractor};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -48,9 +49,9 @@ pub fn router() -> Router<AppState> {
 /// List all event preferences for the current user.
 pub async fn list_event_preferences(
     State(state): State<AppState>,
+    auth: AuthUser,
 ) -> Result<Json<EventPreferencesResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get actual user ID from auth context
-    let user_id = Uuid::nil();
+    let user_id = auth.user_id;
 
     let preferences = state
         .granular_notification_repo
@@ -96,11 +97,11 @@ pub async fn list_event_preferences(
 /// Update preference for a specific event type.
 pub async fn update_event_preference(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(event_type): Path<String>,
     Json(request): Json<UpdateEventPreferenceRequest>,
 ) -> Result<Json<EventPreferenceWithDetails>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get actual user ID from auth context
-    let user_id = Uuid::nil();
+    let user_id = auth.user_id;
 
     let _pref = state
         .granular_notification_repo
@@ -163,9 +164,9 @@ pub async fn update_event_preference(
 /// Reset all event preferences to defaults.
 pub async fn reset_event_preferences(
     State(state): State<AppState>,
+    auth: AuthUser,
 ) -> Result<Json<EventPreferencesResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get actual user ID from auth context
-    let user_id = Uuid::nil();
+    let user_id = auth.user_id;
 
     let deleted = state
         .granular_notification_repo
@@ -185,17 +186,17 @@ pub async fn reset_event_preferences(
     );
 
     // Return fresh preferences (all defaults)
-    list_event_preferences(State(state)).await
+    list_event_preferences(State(state), auth).await
 }
 
 /// Update all preferences for a category.
 pub async fn update_category_preferences(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(category): Path<String>,
     Json(request): Json<UpdateEventPreferenceRequest>,
 ) -> Result<Json<EventPreferencesResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get actual user ID from auth context
-    let user_id = Uuid::nil();
+    let user_id = auth.user_id;
 
     // Parse category
     let category = match category.to_lowercase().as_str() {
@@ -239,7 +240,7 @@ pub async fn update_category_preferences(
         "Updated category notification preferences"
     );
 
-    list_event_preferences(State(state)).await
+    list_event_preferences(State(state), auth).await
 }
 
 // ============================================================================
@@ -249,9 +250,9 @@ pub async fn update_category_preferences(
 /// Get user's notification schedule.
 pub async fn get_schedule(
     State(state): State<AppState>,
+    auth: AuthUser,
 ) -> Result<Json<NotificationScheduleResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get actual user ID from auth context
-    let user_id = Uuid::nil();
+    let user_id = auth.user_id;
 
     let schedule = state
         .granular_notification_repo
@@ -303,10 +304,10 @@ pub async fn get_schedule(
 /// Update user's notification schedule.
 pub async fn update_schedule(
     State(state): State<AppState>,
+    auth: AuthUser,
     Json(request): Json<UpdateNotificationScheduleRequest>,
 ) -> Result<Json<NotificationScheduleResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get actual user ID from auth context
-    let user_id = Uuid::nil();
+    let user_id = auth.user_id;
 
     // Parse time strings
     let quiet_start = request
@@ -442,9 +443,10 @@ fn check_quiet_hours(schedule: &NotificationSchedule) -> bool {
 /// List role notification defaults for an organization.
 pub async fn list_role_defaults(
     State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
 ) -> Result<Json<RoleDefaultsListResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get organization ID from auth context
-    let organization_id = Uuid::nil();
+    let organization_id = tenant.tenant_id;
 
     let role_defaults = state
         .granular_notification_repo
@@ -463,10 +465,11 @@ pub async fn list_role_defaults(
 /// Get role defaults for a specific role.
 pub async fn get_role_defaults(
     State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
     Path(role): Path<String>,
 ) -> Result<Json<RoleNotificationDefaults>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get organization ID from auth context
-    let organization_id = Uuid::nil();
+    let organization_id = tenant.tenant_id;
 
     let defaults = state
         .granular_notification_repo
@@ -494,12 +497,13 @@ pub async fn get_role_defaults(
 /// Update role notification defaults.
 pub async fn update_role_defaults(
     State(state): State<AppState>,
+    auth: AuthUser,
+    tenant: TenantExtractor,
     Path(role): Path<String>,
     Json(request): Json<UpdateRoleDefaultsRequest>,
 ) -> Result<Json<RoleNotificationDefaults>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get org ID and user ID from auth context
-    let organization_id = Uuid::nil();
-    let created_by = Uuid::nil();
+    let organization_id = tenant.tenant_id;
+    let created_by = auth.user_id;
 
     let quiet_start = request
         .default_quiet_hours_start
@@ -556,10 +560,11 @@ pub async fn update_role_defaults(
 /// Delete role notification defaults.
 pub async fn delete_role_defaults(
     State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
     Path(role): Path<String>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get organization ID from auth context
-    let organization_id = Uuid::nil();
+    let organization_id = tenant.tenant_id;
 
     state
         .granular_notification_repo
@@ -584,11 +589,12 @@ pub async fn delete_role_defaults(
 /// Apply role defaults to the current user.
 pub async fn apply_role_defaults(
     State(state): State<AppState>,
+    auth: AuthUser,
+    tenant: TenantExtractor,
     Path(role): Path<String>,
 ) -> Result<Json<EventPreferencesResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get IDs from auth context
-    let user_id = Uuid::nil();
-    let organization_id = Uuid::nil();
+    let user_id = auth.user_id;
+    let organization_id = tenant.tenant_id;
 
     state
         .granular_notification_repo
@@ -607,5 +613,5 @@ pub async fn apply_role_defaults(
         "Applied role defaults to user"
     );
 
-    list_event_preferences(State(state)).await
+    list_event_preferences(State(state), auth).await
 }

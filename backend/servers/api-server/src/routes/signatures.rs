@@ -2,6 +2,7 @@
 //!
 //! Provides endpoints for managing electronic signature workflows on documents.
 
+use api_core::AuthUser;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -32,6 +33,7 @@ pub fn router() -> Router<AppState> {
 /// Create a new signature request for a document.
 pub async fn create_signature_request(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(document_id): Path<Uuid>,
     Json(request): Json<CreateSignatureRequest>,
 ) -> Result<(StatusCode, Json<CreateSignatureRequestResponse>), (StatusCode, Json<ErrorResponse>)> {
@@ -92,8 +94,7 @@ pub async fn create_signature_request(
         ));
     }
 
-    // TODO: Get actual user ID from auth context
-    let created_by = Uuid::nil();
+    let created_by = auth.user_id;
 
     let signature_request = state
         .signature_request_repo
@@ -402,10 +403,11 @@ pub fn document_signature_router() -> Router<AppState> {
 /// Create a signature request for a specific document (nested route version).
 pub async fn create_signature_request_for_doc(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(document_id): Path<Uuid>,
     Json(request): Json<CreateSignatureRequest>,
 ) -> Result<(StatusCode, Json<CreateSignatureRequestResponse>), (StatusCode, Json<ErrorResponse>)> {
-    create_signature_request(State(state), Path(document_id), Json(request)).await
+    create_signature_request(State(state), auth, Path(document_id), Json(request)).await
 }
 
 /// List signature requests for a specific document (nested route version).
