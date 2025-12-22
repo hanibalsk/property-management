@@ -71,17 +71,18 @@ ALTER TABLE signature_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY signature_requests_select_policy ON signature_requests
     FOR SELECT
     USING (
-        created_by = current_user_id()
+        created_by = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
         OR EXISTS (
             SELECT 1 FROM jsonb_array_elements(signers) AS signer
-            WHERE signer->>'email' = (SELECT email FROM users WHERE id = current_user_id())
+            WHERE signer->>'email' = (SELECT email FROM users WHERE id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID)
         )
         OR EXISTS (
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = signature_requests.organization_id
-            AND om.user_id = current_user_id()
+            AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
             AND om.role IN ('admin', 'manager')
         )
+        OR is_super_admin()
     );
 
 -- Only org admins/managers or the creator can insert
@@ -91,35 +92,38 @@ CREATE POLICY signature_requests_insert_policy ON signature_requests
         EXISTS (
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = signature_requests.organization_id
-            AND om.user_id = current_user_id()
+            AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
             AND om.role IN ('admin', 'manager')
         )
+        OR is_super_admin()
     );
 
 -- Only creator or org admins can update
 CREATE POLICY signature_requests_update_policy ON signature_requests
     FOR UPDATE
     USING (
-        created_by = current_user_id()
+        created_by = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
         OR EXISTS (
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = signature_requests.organization_id
-            AND om.user_id = current_user_id()
+            AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
             AND om.role = 'admin'
         )
+        OR is_super_admin()
     );
 
 -- Only creator or org admins can delete
 CREATE POLICY signature_requests_delete_policy ON signature_requests
     FOR DELETE
     USING (
-        created_by = current_user_id()
+        created_by = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
         OR EXISTS (
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = signature_requests.organization_id
-            AND om.user_id = current_user_id()
+            AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
             AND om.role = 'admin'
         )
+        OR is_super_admin()
     );
 
 -- Add signature_status column to documents to track if signed

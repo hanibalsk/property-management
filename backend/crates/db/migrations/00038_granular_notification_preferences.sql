@@ -58,8 +58,8 @@ ALTER TABLE event_notification_preferences ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY event_notification_preferences_user_access ON event_notification_preferences
     FOR ALL
-    USING (user_id = current_user_id())
-    WITH CHECK (user_id = current_user_id());
+    USING (user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID OR is_super_admin())
+    WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID OR is_super_admin());
 
 -- ============================================================================
 -- QUIET HOURS / DO NOT DISTURB (Story 8B.3)
@@ -103,8 +103,8 @@ ALTER TABLE notification_schedule ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY notification_schedule_user_access ON notification_schedule
     FOR ALL
-    USING (user_id = current_user_id())
-    WITH CHECK (user_id = current_user_id());
+    USING (user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID OR is_super_admin())
+    WITH CHECK (user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID OR is_super_admin());
 
 -- ============================================================================
 -- ROLE-BASED DEFAULT PREFERENCES (Story 8B.4)
@@ -149,9 +149,10 @@ CREATE POLICY role_notification_defaults_admin_access ON role_notification_defau
         EXISTS (
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = role_notification_defaults.organization_id
-            AND om.user_id = current_user_id()
+            AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
             AND om.role = 'admin'
         )
+        OR is_super_admin()
     );
 
 -- All members can read role defaults
@@ -161,8 +162,9 @@ CREATE POLICY role_notification_defaults_read_access ON role_notification_defaul
         EXISTS (
             SELECT 1 FROM organization_members om
             WHERE om.organization_id = role_notification_defaults.organization_id
-            AND om.user_id = current_user_id()
+            AND om.user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID
         )
+        OR is_super_admin()
     );
 
 -- ============================================================================
@@ -198,7 +200,7 @@ ALTER TABLE held_notifications ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY held_notifications_user_access ON held_notifications
     FOR ALL
-    USING (user_id = current_user_id());
+    USING (user_id = NULLIF(current_setting('app.current_user_id', TRUE), '')::UUID OR is_super_admin());
 
 -- ============================================================================
 -- DEFAULT EVENT TYPES
