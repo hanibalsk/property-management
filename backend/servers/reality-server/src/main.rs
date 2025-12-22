@@ -23,7 +23,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 mod handlers;
 mod routes;
-mod state;
+pub mod state;
 
 use state::AppState;
 
@@ -57,6 +57,13 @@ use state::AppState;
         routes::saved_searches::update_saved_search,
         routes::saved_searches::delete_saved_search,
         routes::saved_searches::run_saved_search,
+        routes::sso::sso_login,
+        routes::sso::sso_callback,
+        routes::sso::sso_logout,
+        routes::sso::create_mobile_sso_token,
+        routes::sso::validate_mobile_sso_token,
+        routes::sso::get_session,
+        routes::sso::refresh_session,
     ),
     components(schemas(
         routes::health::HealthResponse,
@@ -75,10 +82,18 @@ use state::AppState;
         UpdateSavedSearch,
         SavedSearch,
         SavedSearchesResponse,
+        routes::sso::SsoError,
+        routes::sso::SsoUserInfo,
+        routes::sso::SessionInfo,
+        routes::sso::CreateMobileSsoTokenRequest,
+        routes::sso::MobileSsoTokenResponse,
+        routes::sso::ValidateMobileSsoTokenRequest,
+        routes::sso::SessionResponse,
     )),
     tags(
         (name = "Health", description = "Health check endpoints"),
         (name = "Listings", description = "Public listing search and detail"),
+        (name = "SSO", description = "Single Sign-On with Property Management"),
         (name = "Users", description = "Portal user accounts (separate from PM)"),
         (name = "Favorites", description = "Save and manage favorite listings"),
         (name = "SavedSearches", description = "Saved search criteria and alerts"),
@@ -126,6 +141,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/saved-searches", routes::saved_searches::router())
         // Inquiries routes
         .nest("/api/v1/inquiries", routes::inquiries::router())
+        // SSO routes (Epic 10A-SSO)
+        .nest("/api/v1/sso", routes::sso::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Add state
