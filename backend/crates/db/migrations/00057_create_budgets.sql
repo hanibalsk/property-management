@@ -287,16 +287,30 @@ CREATE POLICY budget_alerts_tenant_isolation ON budget_variance_alerts
 -- ===========================================
 CREATE OR REPLACE FUNCTION update_budget_total()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_budget_id UUID;
 BEGIN
+    -- Determine the relevant budget_id based on the operation
+    IF TG_OP = 'DELETE' THEN
+        v_budget_id := OLD.budget_id;
+    ELSE
+        v_budget_id := NEW.budget_id;
+    END IF;
+
     UPDATE budgets
     SET total_amount = (
         SELECT COALESCE(SUM(budgeted_amount), 0)
         FROM budget_items
-        WHERE budget_id = NEW.budget_id
+        WHERE budget_id = v_budget_id
     ),
     updated_at = NOW()
-    WHERE id = NEW.budget_id;
-    RETURN NEW;
+    WHERE id = v_budget_id;
+
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -306,16 +320,30 @@ FOR EACH ROW EXECUTE FUNCTION update_budget_total();
 
 CREATE OR REPLACE FUNCTION update_budget_item_actuals()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_budget_item_id UUID;
 BEGIN
+    -- Determine the relevant budget_item_id based on the operation
+    IF TG_OP = 'DELETE' THEN
+        v_budget_item_id := OLD.budget_item_id;
+    ELSE
+        v_budget_item_id := NEW.budget_item_id;
+    END IF;
+
     UPDATE budget_items
     SET actual_amount = (
         SELECT COALESCE(SUM(amount), 0)
         FROM budget_actuals
-        WHERE budget_item_id = NEW.budget_item_id
+        WHERE budget_item_id = v_budget_item_id
     ),
     updated_at = NOW()
-    WHERE id = NEW.budget_item_id;
-    RETURN NEW;
+    WHERE id = v_budget_item_id;
+
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 

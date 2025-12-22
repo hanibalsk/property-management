@@ -1,6 +1,5 @@
 {
   "name": "@ppt/shared",
-  "version": "0.2.44",
   "private": true,
   "description": "Shared utilities and components",
   "type": "module",
@@ -15,5 +14,6 @@
   },
   "devDependencies": {
     "typescript": "^5.3.0"
-  }
+  },
+  "version": "0.2.45"
 }

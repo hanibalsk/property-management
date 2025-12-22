@@ -2,6 +2,8 @@
 //!
 //! Provides CRUD operations for budgets, budget items, capital plans, reserve funds, and forecasts.
 
+use chrono::Datelike;
+
 use crate::models::{
     budget_status, AcknowledgeVarianceAlert, Budget, BudgetActual, BudgetCategory, BudgetDashboard,
     BudgetItem, BudgetQuery, BudgetSummary, BudgetVarianceAlert, CapitalPlan, CapitalPlanQuery,
@@ -748,7 +750,15 @@ impl BudgetRepository {
         let balance_after = match data.transaction_type.as_str() {
             "contribution" | "interest" => fund.current_balance + data.amount,
             "withdrawal" => fund.current_balance - data.amount,
-            _ => fund.current_balance + data.amount, // adjustment
+            "adjustment" => {
+                // Adjustments can be positive (increase) or negative (decrease); callers must
+                // pass a negative amount for decreasing adjustments.
+                fund.current_balance + data.amount
+            }
+            _ => {
+                // Fallback: treat unknown transaction types as credits (amount added).
+                fund.current_balance + data.amount
+            }
         };
 
         sqlx::query_as(
@@ -953,8 +963,11 @@ impl BudgetRepository {
         &self,
         id: Uuid,
         user_id: Uuid,
-        _data: AcknowledgeVarianceAlert,
+        data: AcknowledgeVarianceAlert,
     ) -> Result<Option<BudgetVarianceAlert>, sqlx::Error> {
+        // The acknowledge payload is currently unused by this repository method,
+        // but is accepted to keep the API consistent and allow future extensions.
+        let _ = data;
         sqlx::query_as(
             r#"
             UPDATE budget_variance_alerts
@@ -1187,5 +1200,3 @@ impl BudgetRepository {
         })
     }
 }
-
-use chrono::Datelike;
