@@ -106,7 +106,7 @@ export function CreateFaultScreen({
 
         <Text style={styles.label}>Title *</Text>
         <TextInput
-          style={[styles.input, errors.title && styles.inputError]}
+          style={[styles.input, errors.title ? styles.inputError : undefined]}
           value={title}
           onChangeText={setTitle}
           placeholder="Brief description of the issue"
@@ -116,7 +116,7 @@ export function CreateFaultScreen({
 
         <Text style={styles.label}>Description *</Text>
         <TextInput
-          style={[styles.textArea, errors.description && styles.inputError]}
+          style={[styles.textArea, errors.description ? styles.inputError : undefined]}
           value={description}
           onChangeText={setDescription}
           placeholder="Provide detailed information..."
