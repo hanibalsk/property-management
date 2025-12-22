@@ -38,3 +38,4 @@ pub mod signatures;
 pub mod templates;
 pub mod unit_residents;
 pub mod voting;
+pub mod work_orders;

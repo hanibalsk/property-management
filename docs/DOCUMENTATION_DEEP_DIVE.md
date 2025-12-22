@@ -211,3 +211,4 @@ When edge-cases need to reference business rules:
 ```markdown
 **Rule:** See BR-14.2.1 in `docs/functional-requirements.md`
 ```
+
