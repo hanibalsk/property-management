@@ -19,6 +19,7 @@ pub mod gdpr;
 pub mod granular_notifications;
 pub mod health;
 pub mod help;
+pub mod insurance;
 pub mod integrations;
 pub mod iot;
 pub mod leases;

@@ -311,3 +311,15 @@ pub use vendor::{
     UpdateVendorContract, UpdateVendorInvoice, Vendor, VendorContact, VendorContract,
     VendorInvoice, VendorQuery, VendorRating, VendorStatistics, VendorWithDetails,
 };
+
+// Epic 22: Insurance Management
+pub mod insurance;
+
+pub use insurance::{
+    claim_status, policy_status, policy_type, premium_frequency, reminder_type, AddClaimDocument,
+    AddPolicyDocument, ClaimStatusSummary, CreateInsuranceClaim, CreateInsurancePolicy,
+    CreateRenewalReminder, ExpiringPolicy, InsuranceClaim, InsuranceClaimDocument,
+    InsuranceClaimHistory, InsuranceClaimQuery, InsuranceClaimWithPolicy, InsurancePolicy,
+    InsurancePolicyDocument, InsurancePolicyQuery, InsuranceRenewalReminder, InsuranceStatistics,
+    PolicyTypeSummary, UpdateInsuranceClaim, UpdateInsurancePolicy, UpdateRenewalReminder,
+};
