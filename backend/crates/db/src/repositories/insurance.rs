@@ -498,6 +498,7 @@ impl InsuranceRepository {
     }
 
     /// Review a claim (approve, deny, etc.).
+    /// Only claims with status: submitted, under_review, or information_requested can be reviewed.
     #[allow(clippy::too_many_arguments)]
     pub async fn review_claim(
         &self,
@@ -520,6 +521,7 @@ impl InsuranceRepository {
                 resolution_notes = COALESCE($7, resolution_notes),
                 updated_at = NOW()
             WHERE id = $1 AND organization_id = $2
+              AND status IN ('submitted', 'under_review', 'information_requested')
             RETURNING *
             "#,
         )
@@ -535,6 +537,7 @@ impl InsuranceRepository {
     }
 
     /// Record payment for a claim.
+    /// Only claims with status: approved or partially_approved can receive payments.
     pub async fn record_claim_payment(
         &self,
         organization_id: Uuid,
@@ -551,6 +554,7 @@ impl InsuranceRepository {
                 END,
                 updated_at = NOW()
             WHERE id = $1 AND organization_id = $2
+              AND status IN ('approved', 'partially_approved')
             RETURNING *
             "#,
         )

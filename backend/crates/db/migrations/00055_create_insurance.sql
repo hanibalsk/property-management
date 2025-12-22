@@ -307,12 +307,29 @@ CREATE TRIGGER update_insurance_renewal_reminders_updated_at
 -- Trigger for claim status history
 -- ============================================
 
+-- Note: changed_by is set to the user from app.current_user_id if available,
+-- falls back to reviewed_by if status becomes under_review/approved/denied,
+-- otherwise remains NULL (application layer should set it via claim update).
 CREATE OR REPLACE FUNCTION log_claim_status_change()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_changed_by UUID;
 BEGIN
     IF OLD.status IS DISTINCT FROM NEW.status THEN
+        -- Try to get user from session context
+        BEGIN
+            v_changed_by := current_setting('app.current_user_id', true)::UUID;
+        EXCEPTION WHEN OTHERS THEN
+            v_changed_by := NULL;
+        END;
+
+        -- Fallback: if status changes to review-related and reviewed_by is set, use it
+        IF v_changed_by IS NULL AND NEW.status IN ('under_review', 'approved', 'partially_approved', 'denied') THEN
+            v_changed_by := NEW.reviewed_by;
+        END IF;
+
         INSERT INTO insurance_claim_history (claim_id, old_status, new_status, changed_by)
-        VALUES (NEW.id, OLD.status, NEW.status, NULL);
+        VALUES (NEW.id, OLD.status, NEW.status, v_changed_by);
     END IF;
     RETURN NEW;
 END;
