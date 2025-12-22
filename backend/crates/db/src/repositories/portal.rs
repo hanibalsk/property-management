@@ -321,6 +321,7 @@ impl PortalRepository {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<FavoriteWithListing>, SqlxError> {
+        // TODO: Add original_price column to favorites table for price change tracking
         let rows = sqlx::query_as::<_, FavoriteWithListingRow>(
             r#"
             SELECT
@@ -328,7 +329,7 @@ impl PortalRepository {
                 l.property_type, l.transaction_type,
                 (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY display_order LIMIT 1) as photo_url,
                 l.status,
-                f.notes as original_price,
+                NULL::bigint as original_price,
                 f.created_at
             FROM favorites f
             JOIN listings l ON l.id = f.listing_id
