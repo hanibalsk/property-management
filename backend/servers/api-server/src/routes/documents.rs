@@ -1,4 +1,4 @@
-//! Document routes (Epic 7A: Basic Document Management).
+//! Document routes (Epic 7A: Basic Document Management, Epic 7B: Document Versioning).
 
 use crate::state::AppState;
 use api_core::{AuthUser, TenantExtractor};
@@ -11,10 +11,11 @@ use axum::{
 use chrono::{DateTime, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    access_scope, document_category, share_type, CreateDocument, CreateFolder, CreateShare,
-    Document, DocumentFolder, DocumentListQuery, DocumentSummary, DocumentWithDetails,
-    FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument, ShareWithDocument,
-    UpdateDocument, UpdateFolder, ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
+    access_scope, document_category, share_type, CreateDocument, CreateDocumentVersion,
+    CreateFolder, CreateShare, Document, DocumentFolder, DocumentListQuery, DocumentSummary,
+    DocumentVersion, DocumentVersionHistory, DocumentWithDetails, FolderTreeNode, FolderWithCount,
+    LogShareAccess, MoveDocument, ShareWithDocument, UpdateDocument, UpdateFolder,
+    ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -127,6 +128,26 @@ pub struct SharedDocumentResponse {
     pub preview_url: Option<String>,
 }
 
+/// Response for version list (Story 7B.1).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VersionHistoryResponse {
+    pub history: DocumentVersionHistory,
+}
+
+/// Response for single version (Story 7B.1).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VersionResponse {
+    pub version: DocumentVersion,
+}
+
+/// Response for creating/restoring a version (Story 7B.1).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct CreateVersionResponse {
+    pub id: Uuid,
+    pub version_number: i32,
+    pub message: String,
+}
+
 // ============================================================================
 // Request Types
 // ============================================================================
@@ -212,6 +233,15 @@ pub struct AccessShareRequest {
     pub password: String,
 }
 
+/// Request for uploading a new document version (Story 7B.1).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct UploadVersionRequest {
+    pub file_key: String,
+    pub file_name: String,
+    pub mime_type: String,
+    pub size_bytes: i64,
+}
+
 /// Query for listing documents.
 #[derive(Debug, Serialize, Deserialize, ToSchema, Default, utoipa::IntoParams)]
 pub struct ListDocumentsQuery {
@@ -248,6 +278,11 @@ pub fn router() -> Router<AppState> {
         // Download/Preview (Story 7A.4)
         .route("/{id}/download", get(get_download_url))
         .route("/{id}/preview", get(get_preview_url))
+        // Versioning (Story 7B.1)
+        .route("/{id}/versions", get(get_version_history))
+        .route("/{id}/versions", post(create_version))
+        .route("/{id}/versions/{version_id}", get(get_version))
+        .route("/{id}/versions/{version_id}/restore", post(restore_version))
         // Shares (Story 7A.5)
         .route("/{id}/shares", get(list_shares))
         .route("/{id}/shares", post(create_share))
@@ -994,6 +1029,311 @@ async fn get_preview_url(
     let url = format!("/api/v1/storage/preview/{}", document.file_key);
 
     Ok(Json(UrlResponse { url, expires_at }))
+}
+
+// ============================================================================
+// Version Handlers (Story 7B.1)
+// ============================================================================
+
+/// Get version history for a document.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{id}/versions",
+    params(
+        ("id" = Uuid, Path, description = "Document ID")
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Version history", body = VersionHistoryResponse),
+        (status = 404, description = "Document not found", body = ErrorResponse),
+    ),
+    tag = "Documents"
+)]
+async fn get_version_history(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    _tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+) -> Result<Json<VersionHistoryResponse>, (StatusCode, Json<ErrorResponse>)> {
+    match state.document_repo.get_version_history(id).await {
+        Ok(history) => Ok(Json(VersionHistoryResponse { history })),
+        Err(sqlx::Error::RowNotFound) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to get version history: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get version history",
+                )),
+            ))
+        }
+    }
+}
+
+/// Upload a new version of a document.
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{id}/versions",
+    params(
+        ("id" = Uuid, Path, description = "Document ID")
+    ),
+    request_body = UploadVersionRequest,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 201, description = "Version created", body = CreateVersionResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Document not found", body = ErrorResponse),
+    ),
+    tag = "Documents"
+)]
+async fn create_version(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UploadVersionRequest>,
+) -> Result<(StatusCode, Json<CreateVersionResponse>), (StatusCode, Json<ErrorResponse>)> {
+    let user_id = auth.user_id;
+
+    // Check document exists
+    let existing = match state.document_repo.find_by_id(id).await {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find document: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find document",
+                )),
+            ));
+        }
+    };
+
+    // Only creator or manager can upload new versions
+    if existing.created_by != user_id && !tenant.role.is_manager() {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "Only the document creator or managers can upload new versions",
+            )),
+        ));
+    }
+
+    // Validate file size
+    if req.size_bytes > MAX_FILE_SIZE {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "FILE_TOO_LARGE",
+                format!(
+                    "File exceeds maximum size of {} bytes (50MB)",
+                    MAX_FILE_SIZE
+                ),
+            )),
+        ));
+    }
+
+    // Validate MIME type
+    if !ALLOWED_MIME_TYPES.contains(&req.mime_type.as_str()) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "UNSUPPORTED_FILE_TYPE",
+                format!(
+                    "File type '{}' is not supported",
+                    req.mime_type
+                ),
+            )),
+        ));
+    }
+
+    let data = CreateDocumentVersion {
+        file_key: req.file_key,
+        file_name: req.file_name,
+        mime_type: req.mime_type,
+        size_bytes: req.size_bytes,
+        created_by: user_id,
+    };
+
+    match state.document_repo.create_version(id, data).await {
+        Ok(new_version) => Ok((
+            StatusCode::CREATED,
+            Json(CreateVersionResponse {
+                id: new_version.id,
+                version_number: new_version.version_number,
+                message: format!("Version {} created successfully", new_version.version_number),
+            }),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to create version: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to create version",
+                )),
+            ))
+        }
+    }
+}
+
+/// Get a specific version of a document.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{id}/versions/{version_id}",
+    params(
+        ("id" = Uuid, Path, description = "Document ID"),
+        ("version_id" = Uuid, Path, description = "Version ID")
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Version details", body = VersionResponse),
+        (status = 404, description = "Version not found", body = ErrorResponse),
+    ),
+    tag = "Documents"
+)]
+async fn get_version(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    _tenant: TenantExtractor,
+    Path((id, version_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<VersionResponse>, (StatusCode, Json<ErrorResponse>)> {
+    match state.document_repo.get_version(id, version_id).await {
+        Ok(Some(version)) => Ok(Json(VersionResponse { version })),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Version not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to get version: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get version",
+                )),
+            ))
+        }
+    }
+}
+
+/// Restore a previous version to become the current version.
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{id}/versions/{version_id}/restore",
+    params(
+        ("id" = Uuid, Path, description = "Document ID"),
+        ("version_id" = Uuid, Path, description = "Version ID to restore")
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 201, description = "Version restored", body = CreateVersionResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Version not found", body = ErrorResponse),
+    ),
+    tag = "Documents"
+)]
+async fn restore_version(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    tenant: TenantExtractor,
+    Path((id, version_id)): Path<(Uuid, Uuid)>,
+) -> Result<(StatusCode, Json<CreateVersionResponse>), (StatusCode, Json<ErrorResponse>)> {
+    let user_id = auth.user_id;
+
+    // Check document exists
+    let existing = match state.document_repo.find_by_id(id).await {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find document: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find document",
+                )),
+            ));
+        }
+    };
+
+    // Only creator or manager can restore versions
+    if existing.created_by != user_id && !tenant.role.is_manager() {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "Only the document creator or managers can restore versions",
+            )),
+        ));
+    }
+
+    // Check version exists in the same chain
+    match state.document_repo.get_version(id, version_id).await {
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Version not found in this document")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find version: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find version",
+                )),
+            ));
+        }
+        Ok(Some(_)) => {}
+    }
+
+    match state.document_repo.restore_version(id, version_id, user_id).await {
+        Ok(new_version) => Ok((
+            StatusCode::CREATED,
+            Json(CreateVersionResponse {
+                id: new_version.id,
+                version_number: new_version.version_number,
+                message: format!(
+                    "Version restored successfully as version {}",
+                    new_version.version_number
+                ),
+            }),
+        )),
+        Err(sqlx::Error::RowNotFound) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Version not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to restore version: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to restore version",
+                )),
+            ))
+        }
+    }
 }
 
 // ============================================================================

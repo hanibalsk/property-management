@@ -1,4 +1,4 @@
-//! Document model (Epic 7A: Basic Document Management).
+//! Document model (Epic 7A: Basic Document Management, Epic 7B: Document Versioning).
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -154,6 +154,10 @@ pub struct Document {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
+    // Version fields (Story 7B.1)
+    pub version_number: i32,
+    pub parent_document_id: Option<Uuid>,
+    pub is_current_version: bool,
 }
 
 impl Document {
@@ -183,6 +187,16 @@ impl Document {
     /// Get file extension from file name.
     pub fn extension(&self) -> Option<&str> {
         self.file_name.rsplit('.').next()
+    }
+
+    /// Check if this is the original version (first version).
+    pub fn is_original_version(&self) -> bool {
+        self.parent_document_id.is_none()
+    }
+
+    /// Get the root document ID for this version chain.
+    pub fn root_document_id(&self) -> Uuid {
+        self.parent_document_id.unwrap_or(self.id)
     }
 }
 
@@ -350,4 +364,65 @@ pub struct LogShareAccess {
     pub share_id: Uuid,
     pub accessed_by: Option<Uuid>,
     pub ip_address: Option<String>,
+}
+
+// ============================================================================
+// Document Versioning (Story 7B.1)
+// ============================================================================
+
+/// Document version information for version history display.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct DocumentVersion {
+    pub id: Uuid,
+    pub version_number: i32,
+    pub is_current_version: bool,
+    pub file_key: String,
+    pub file_name: String,
+    pub mime_type: String,
+    pub size_bytes: i64,
+    pub created_by: Uuid,
+    pub created_by_name: String,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Full version history for a document.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DocumentVersionHistory {
+    pub document_id: Uuid,
+    pub title: String,
+    pub total_versions: i32,
+    pub versions: Vec<DocumentVersion>,
+}
+
+/// Request to upload a new version of a document.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreateDocumentVersion {
+    pub file_key: String,
+    pub file_name: String,
+    pub mime_type: String,
+    pub size_bytes: i64,
+    pub created_by: Uuid,
+}
+
+/// Request to restore a previous version.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct RestoreVersionRequest {
+    /// User performing the restore.
+    pub restored_by: Uuid,
+}
+
+/// Response after creating a new version.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreateVersionResponse {
+    pub id: Uuid,
+    pub version_number: i32,
+    pub message: String,
+}
+
+/// Response after restoring a version.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct RestoreVersionResponse {
+    pub id: Uuid,
+    pub version_number: i32,
+    pub message: String,
 }

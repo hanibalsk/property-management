@@ -1,10 +1,10 @@
-//! Document repository (Epic 7A: Basic Document Management).
+//! Document repository (Epic 7A: Basic Document Management, Epic 7B: Document Versioning).
 
 use crate::models::{
-    access_scope, CreateDocument, CreateFolder, CreateShare, Document, DocumentFolder,
-    DocumentListQuery, DocumentShare, DocumentSummary, DocumentWithDetails, FolderTreeNode,
-    FolderWithCount, LogShareAccess, MoveDocument, ShareAccessLog, ShareWithDocument,
-    UpdateDocument, UpdateFolder,
+    access_scope, CreateDocument, CreateDocumentVersion, CreateFolder, CreateShare, Document,
+    DocumentFolder, DocumentListQuery, DocumentShare, DocumentSummary, DocumentVersion,
+    DocumentVersionHistory, DocumentWithDetails, FolderTreeNode, FolderWithCount, LogShareAccess,
+    MoveDocument, ShareAccessLog, ShareWithDocument, UpdateDocument, UpdateFolder,
 };
 use sqlx::{Error as SqlxError, PgPool, Row};
 use uuid::Uuid;
@@ -383,6 +383,9 @@ impl DocumentRepository {
                 created_at: r.get("created_at"),
                 updated_at: r.get("updated_at"),
                 deleted_at: r.get("deleted_at"),
+                version_number: r.get("version_number"),
+                parent_document_id: r.get("parent_document_id"),
+                is_current_version: r.get("is_current_version"),
             },
             created_by_name: r.get("created_by_name"),
             folder_name: r.get("folder_name"),
@@ -881,6 +884,219 @@ impl DocumentRepository {
         .bind(share_id)
         .bind(limit)
         .fetch_all(&self.pool)
+        .await
+    }
+
+    // ========================================================================
+    // Version Operations (Story 7B.1)
+    // ========================================================================
+
+    /// Create a new version of an existing document.
+    ///
+    /// This creates a new document record with:
+    /// - An incremented version number
+    /// - Reference to the original document (parent_document_id)
+    /// - is_current_version set to true (previous versions are auto-updated to false via trigger)
+    pub async fn create_version(
+        &self,
+        document_id: Uuid,
+        data: CreateDocumentVersion,
+    ) -> Result<Document, SqlxError> {
+        // First, get the original document to copy metadata
+        let original = self
+            .find_by_id(document_id)
+            .await?
+            .ok_or_else(|| SqlxError::RowNotFound)?;
+
+        // Determine the root document ID (the first version in the chain)
+        let root_id = original.root_document_id();
+
+        // Get the next version number using the database function
+        let next_version: i32 = sqlx::query_scalar("SELECT get_next_document_version($1)")
+            .bind(document_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        // Create the new version with copied metadata
+        sqlx::query_as::<_, Document>(
+            r#"
+            INSERT INTO documents (
+                organization_id, folder_id, title, description, category,
+                file_key, file_name, mime_type, size_bytes,
+                access_scope, access_target_ids, access_roles, created_by,
+                version_number, parent_document_id, is_current_version
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true)
+            RETURNING *
+            "#,
+        )
+        .bind(original.organization_id)
+        .bind(original.folder_id)
+        .bind(&original.title)
+        .bind(&original.description)
+        .bind(&original.category)
+        .bind(&data.file_key)
+        .bind(&data.file_name)
+        .bind(&data.mime_type)
+        .bind(data.size_bytes)
+        .bind(&original.access_scope)
+        .bind(&original.access_target_ids)
+        .bind(&original.access_roles)
+        .bind(data.created_by)
+        .bind(next_version)
+        .bind(root_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Get version history for a document.
+    ///
+    /// Returns all versions in the chain, ordered by version number (descending).
+    pub async fn get_version_history(
+        &self,
+        document_id: Uuid,
+    ) -> Result<DocumentVersionHistory, SqlxError> {
+        // First get the document to find the root
+        let doc = self
+            .find_by_id(document_id)
+            .await?
+            .ok_or_else(|| SqlxError::RowNotFound)?;
+
+        let root_id = doc.root_document_id();
+
+        // Get all versions in the chain
+        let versions = sqlx::query_as::<_, DocumentVersion>(
+            r#"
+            SELECT
+                d.id,
+                d.version_number,
+                d.is_current_version,
+                d.file_key,
+                d.file_name,
+                d.mime_type,
+                d.size_bytes,
+                d.created_by,
+                CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+                d.created_at
+            FROM documents d
+            JOIN users u ON u.id = d.created_by
+            WHERE d.deleted_at IS NULL
+              AND (d.id = $1 OR d.parent_document_id = $1)
+            ORDER BY d.version_number DESC
+            "#,
+        )
+        .bind(root_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let total_versions = versions.len() as i32;
+
+        Ok(DocumentVersionHistory {
+            document_id: root_id,
+            title: doc.title,
+            total_versions,
+            versions,
+        })
+    }
+
+    /// Get a specific version of a document.
+    pub async fn get_version(
+        &self,
+        document_id: Uuid,
+        version_id: Uuid,
+    ) -> Result<Option<DocumentVersion>, SqlxError> {
+        // First verify the version belongs to the document chain
+        let doc = match self.find_by_id(document_id).await? {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+
+        let root_id = doc.root_document_id();
+
+        sqlx::query_as::<_, DocumentVersion>(
+            r#"
+            SELECT
+                d.id,
+                d.version_number,
+                d.is_current_version,
+                d.file_key,
+                d.file_name,
+                d.mime_type,
+                d.size_bytes,
+                d.created_by,
+                CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+                d.created_at
+            FROM documents d
+            JOIN users u ON u.id = d.created_by
+            WHERE d.id = $1
+              AND d.deleted_at IS NULL
+              AND (d.id = $2 OR d.parent_document_id = $2)
+            "#,
+        )
+        .bind(version_id)
+        .bind(root_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Restore a previous version to become the current version.
+    ///
+    /// This creates a new version entry with the content from the old version,
+    /// making it non-destructive (preserving full history).
+    pub async fn restore_version(
+        &self,
+        document_id: Uuid,
+        version_id: Uuid,
+        restored_by: Uuid,
+    ) -> Result<Document, SqlxError> {
+        // Get the version to restore
+        let version_to_restore = self
+            .find_by_id(version_id)
+            .await?
+            .ok_or_else(|| SqlxError::RowNotFound)?;
+
+        // Verify it belongs to the same document chain
+        let original_doc = self
+            .find_by_id(document_id)
+            .await?
+            .ok_or_else(|| SqlxError::RowNotFound)?;
+
+        if version_to_restore.root_document_id() != original_doc.root_document_id() {
+            return Err(SqlxError::RowNotFound);
+        }
+
+        // Create a new version based on the old version's content
+        let create_version_data = CreateDocumentVersion {
+            file_key: version_to_restore.file_key,
+            file_name: version_to_restore.file_name,
+            mime_type: version_to_restore.mime_type,
+            size_bytes: version_to_restore.size_bytes,
+            created_by: restored_by,
+        };
+
+        self.create_version(document_id, create_version_data).await
+    }
+
+    /// Get the current (latest) version of a document.
+    pub async fn get_current_version(&self, document_id: Uuid) -> Result<Option<Document>, SqlxError> {
+        // Get the document to find the root
+        let doc = match self.find_by_id(document_id).await? {
+            Some(d) => d,
+            None => return Ok(None),
+        };
+
+        let root_id = doc.root_document_id();
+
+        sqlx::query_as::<_, Document>(
+            r#"
+            SELECT * FROM documents
+            WHERE deleted_at IS NULL
+              AND is_current_version = true
+              AND (id = $1 OR parent_document_id = $1)
+            "#,
+        )
+        .bind(root_id)
+        .fetch_optional(&self.pool)
         .await
     }
 }

@@ -55,11 +55,12 @@ pub use delegation::{
     UpdateDelegation,
 };
 pub use document::{
-    access_scope, document_category, share_type, CreateDocument, CreateFolder, CreateShare,
-    Document, DocumentFolder, DocumentListQuery, DocumentShare, DocumentSummary,
-    DocumentWithDetails, FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument,
-    RevokeShare, ShareAccessLog, ShareWithDocument, UpdateDocument, UpdateFolder,
-    ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
+    access_scope, document_category, share_type, CreateDocument, CreateDocumentVersion,
+    CreateFolder, CreateShare, CreateVersionResponse, Document, DocumentFolder, DocumentListQuery,
+    DocumentShare, DocumentSummary, DocumentVersion, DocumentVersionHistory, DocumentWithDetails,
+    FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument, RestoreVersionRequest,
+    RestoreVersionResponse, RevokeShare, ShareAccessLog, ShareWithDocument, UpdateDocument,
+    UpdateFolder, ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
 };
 pub use facility::{
     booking_status, facility_type, ApproveBooking, AvailableSlot, BookingWithDetails,
