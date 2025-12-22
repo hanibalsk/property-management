@@ -7,6 +7,7 @@ pub mod critical_notification;
 pub mod data_export;
 pub mod delegation;
 pub mod document;
+pub mod document_template;
 pub mod facility;
 pub mod fault;
 pub mod messaging;
@@ -61,6 +62,11 @@ pub use document::{
     FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument, RestoreVersionRequest,
     RestoreVersionResponse, RevokeShare, ShareAccessLog, ShareWithDocument, UpdateDocument,
     UpdateFolder, ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
+};
+pub use document_template::{
+    placeholder_type, template_type, CreateTemplate, DocumentTemplate, GenerateDocumentRequest,
+    GenerateDocumentResponse, TemplateListQuery, TemplatePlaceholder, TemplateSummary,
+    TemplateWithDetails, UpdateTemplate,
 };
 pub use facility::{
     booking_status, facility_type, ApproveBooking, AvailableSlot, BookingWithDetails,

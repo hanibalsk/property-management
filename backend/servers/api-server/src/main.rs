@@ -247,6 +247,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/documents", routes::documents::router())
         // Public shared document routes (no auth required)
         .merge(routes::documents::public_router())
+        // Templates routes (Epic 7B)
+        .nest("/api/v1/templates", routes::templates::router())
         // Messaging routes (Epic 6, Story 6.5)
         .nest("/api/v1/messages", routes::messaging::router())
         // Neighbor routes (Epic 6, Story 6.6)

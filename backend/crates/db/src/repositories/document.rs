@@ -386,6 +386,8 @@ impl DocumentRepository {
                 version_number: r.get("version_number"),
                 parent_document_id: r.get("parent_document_id"),
                 is_current_version: r.get("is_current_version"),
+                template_id: r.get("template_id"),
+                generation_metadata: r.get("generation_metadata"),
             },
             created_by_name: r.get("created_by_name"),
             folder_name: r.get("folder_name"),

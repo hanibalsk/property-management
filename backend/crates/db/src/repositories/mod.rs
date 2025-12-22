@@ -8,6 +8,7 @@ pub mod critical_notification;
 pub mod data_export;
 pub mod delegation;
 pub mod document;
+pub mod document_template;
 pub mod facility;
 pub mod fault;
 pub mod feature_flag;
@@ -38,6 +39,7 @@ pub use critical_notification::CriticalNotificationRepository;
 pub use data_export::DataExportRepository;
 pub use delegation::DelegationRepository;
 pub use document::DocumentRepository;
+pub use document_template::DocumentTemplateRepository;
 pub use facility::FacilityRepository;
 pub use fault::FaultRepository;
 pub use feature_flag::{

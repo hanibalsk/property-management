@@ -5,13 +5,13 @@ use db::{
     repositories::{
         AnnouncementRepository, AuditLogRepository, BuildingRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DocumentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
-        HealthMonitoringRepository, HelpRepository, NotificationPreferenceRepository,
-        OAuthRepository, OnboardingRepository, OrganizationMemberRepository,
-        OrganizationRepository, PasswordResetRepository, PersonMonthRepository,
-        PlatformAdminRepository, RoleRepository, SessionRepository, SystemAnnouncementRepository,
-        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
-        VoteRepository,
+        DocumentRepository, DocumentTemplateRepository, FacilityRepository, FaultRepository,
+        FeatureFlagRepository, HealthMonitoringRepository, HelpRepository,
+        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
+        PersonMonthRepository, PlatformAdminRepository, RoleRepository, SessionRepository,
+        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
+        UnitResidentRepository, UserRepository, VoteRepository,
     },
     DbPool,
 };
@@ -36,6 +36,7 @@ pub struct AppState {
     pub vote_repo: VoteRepository,
     pub announcement_repo: AnnouncementRepository,
     pub document_repo: DocumentRepository,
+    pub document_template_repo: DocumentTemplateRepository,
     pub notification_pref_repo: NotificationPreferenceRepository,
     pub critical_notification_repo: CriticalNotificationRepository,
     pub two_factor_repo: TwoFactorAuthRepository,
@@ -74,6 +75,7 @@ impl AppState {
         let vote_repo = VoteRepository::new(db.clone());
         let announcement_repo = AnnouncementRepository::new(db.clone());
         let document_repo = DocumentRepository::new(db.clone());
+        let document_template_repo = DocumentTemplateRepository::new(db.clone());
         let notification_pref_repo = NotificationPreferenceRepository::new(db.clone());
         let critical_notification_repo = CriticalNotificationRepository::new(db.clone());
         let two_factor_repo = TwoFactorAuthRepository::new(db.clone());
@@ -108,6 +110,7 @@ impl AppState {
             vote_repo,
             announcement_repo,
             document_repo,
+            document_template_repo,
             notification_pref_repo,
             critical_notification_repo,
             two_factor_repo,

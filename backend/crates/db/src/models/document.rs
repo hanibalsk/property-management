@@ -158,6 +158,9 @@ pub struct Document {
     pub version_number: i32,
     pub parent_document_id: Option<Uuid>,
     pub is_current_version: bool,
+    // Template fields (Story 7B.2)
+    pub template_id: Option<Uuid>,
+    pub generation_metadata: Option<serde_json::Value>,
 }
 
 impl Document {

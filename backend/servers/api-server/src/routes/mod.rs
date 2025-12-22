@@ -26,4 +26,5 @@ pub mod onboarding;
 pub mod organizations;
 pub mod platform_admin;
 pub mod rentals;
+pub mod templates;
 pub mod voting;
