@@ -141,3 +141,8 @@ pub use vendor::VendorRepository;
 pub mod insurance;
 
 pub use insurance::InsuranceRepository;
+
+// Epic 23: Emergency Management
+pub mod emergency;
+
+pub use emergency::EmergencyRepository;

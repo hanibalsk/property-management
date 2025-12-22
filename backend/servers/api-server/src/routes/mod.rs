@@ -41,3 +41,6 @@ pub mod unit_residents;
 pub mod vendors;
 pub mod voting;
 pub mod work_orders;
+
+// Epic 23: Emergency Management
+pub mod emergency;

@@ -323,3 +323,19 @@ pub use insurance::{
     InsurancePolicyDocument, InsurancePolicyQuery, InsuranceRenewalReminder, InsuranceStatistics,
     PolicyTypeSummary, UpdateInsuranceClaim, UpdateInsurancePolicy, UpdateRenewalReminder,
 };
+
+// Epic 23: Emergency Management
+pub mod emergency;
+
+pub use emergency::{
+    acknowledgment_status, contact_type, drill_status, drill_type, incident_status, incident_type,
+    protocol_type, severity, AcknowledgeBroadcast, AddIncidentAttachment, BroadcastDeliveryStats,
+    CompleteDrill, CreateEmergencyBroadcast, CreateEmergencyContact, CreateEmergencyDrill,
+    CreateEmergencyIncident, CreateEmergencyProtocol, CreateIncidentUpdate, EmergencyBroadcast,
+    EmergencyBroadcastAcknowledgment, EmergencyBroadcastQuery, EmergencyContact,
+    EmergencyContactQuery, EmergencyDrill, EmergencyDrillQuery, EmergencyIncident,
+    EmergencyIncidentAttachment, EmergencyIncidentQuery, EmergencyIncidentUpdate,
+    EmergencyProtocol, EmergencyProtocolQuery, EmergencyStatistics, IncidentSeveritySummary,
+    IncidentTypeSummary, UpdateEmergencyContact, UpdateEmergencyDrill, UpdateEmergencyIncident,
+    UpdateEmergencyProtocol,
+};

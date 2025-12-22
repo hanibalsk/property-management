@@ -5,10 +5,10 @@ use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
         BuildingRepository, CriticalNotificationRepository, DataExportRepository,
-        DelegationRepository, DocumentRepository, DocumentTemplateRepository, EquipmentRepository,
-        FacilityRepository, FaultRepository, FeatureFlagRepository, FinancialRepository,
-        GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        InsuranceRepository, LeaseRepository, ListingRepository, MeterRepository,
+        DelegationRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
+        EquipmentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
+        FinancialRepository, GranularNotificationRepository, HealthMonitoringRepository,
+        HelpRepository, InsuranceRepository, LeaseRepository, ListingRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
         PersonMonthRepository, PlatformAdminRepository, RentalRepository, RoleRepository,
@@ -78,6 +78,8 @@ pub struct AppState {
     pub vendor_repo: VendorRepository,
     // Epic 22: Insurance Management
     pub insurance_repo: InsuranceRepository,
+    // Epic 23: Emergency Management
+    pub emergency_repo: EmergencyRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -142,6 +144,8 @@ impl AppState {
         let vendor_repo = VendorRepository::new(db.clone());
         // Epic 22: Insurance Management
         let insurance_repo = InsuranceRepository::new(db.clone());
+        // Epic 23: Emergency Management
+        let emergency_repo = EmergencyRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -193,6 +197,7 @@ impl AppState {
             work_order_repo,
             vendor_repo,
             insurance_repo,
+            emergency_repo,
             auth_service,
             email_service,
             jwt_service,
