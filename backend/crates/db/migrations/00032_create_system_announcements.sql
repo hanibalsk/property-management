@@ -52,8 +52,7 @@ CREATE INDEX IF NOT EXISTS idx_announcement_acknowledgments_user
     ON system_announcement_acknowledgments(user_id, announcement_id);
 
 CREATE INDEX IF NOT EXISTS idx_scheduled_maintenance_upcoming
-    ON scheduled_maintenance(start_at)
-    WHERE start_at > NOW();
+    ON scheduled_maintenance(start_at, end_at);
 
 -- Add comments for documentation
 COMMENT ON TABLE system_announcements IS 'Platform-wide system announcements (Epic 10B, Story 10B.4)';
