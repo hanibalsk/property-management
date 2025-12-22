@@ -485,10 +485,11 @@ impl SensorRepository {
     }
 
     /// Resolve an alert.
+    /// resolved_value is optional - if None, only resolved_at is set.
     pub async fn resolve_alert(
         &self,
         id: Uuid,
-        resolved_value: f64,
+        resolved_value: Option<f64>,
     ) -> Result<SensorAlert, sqlx::Error> {
         sqlx::query_as(
             r#"
@@ -622,39 +623,58 @@ impl SensorRepository {
         .await
     }
 
-    /// Create batch readings.
+    /// Create batch readings using efficient bulk insert.
     pub async fn create_batch_readings(
         &self,
         sensor_id: Uuid,
         readings: Vec<crate::models::SingleReading>,
     ) -> Result<i64, sqlx::Error> {
-        let mut count = 0i64;
-        for reading in readings {
-            sqlx::query(
-                r#"
-                INSERT INTO sensor_readings (sensor_id, value, unit, quality, timestamp)
-                VALUES ($1, $2, $3, $4, $5)
-                "#,
-            )
-            .bind(sensor_id)
-            .bind(reading.value)
-            .bind(&reading.unit)
-            .bind(reading.quality.as_deref().unwrap_or("good"))
-            .bind(reading.timestamp)
-            .execute(&self.pool)
-            .await?;
-            count += 1;
+        if readings.is_empty() {
+            return Ok(0);
         }
 
-        // Update sensor status
-        if count > 0 {
-            sqlx::query(
-                "UPDATE sensors SET last_reading_at = NOW(), last_seen_at = NOW(), status = 'active' WHERE id = $1",
-            )
-            .bind(sensor_id)
-            .execute(&self.pool)
-            .await?;
+        let count = readings.len() as i64;
+
+        // Build bulk INSERT with multiple VALUES for efficiency (single round-trip)
+        let mut values_parts = Vec::with_capacity(readings.len());
+        let mut param_idx = 1;
+
+        for _ in &readings {
+            values_parts.push(format!(
+                "(${}, ${}, ${}, ${}, ${})",
+                param_idx,
+                param_idx + 1,
+                param_idx + 2,
+                param_idx + 3,
+                param_idx + 4
+            ));
+            param_idx += 5;
         }
+
+        let query = format!(
+            "INSERT INTO sensor_readings (sensor_id, value, unit, quality, timestamp) VALUES {}",
+            values_parts.join(", ")
+        );
+
+        let mut query_builder = sqlx::query(&query);
+        for reading in &readings {
+            query_builder = query_builder
+                .bind(sensor_id)
+                .bind(reading.value)
+                .bind(&reading.unit)
+                .bind(reading.quality.as_deref().unwrap_or("good"))
+                .bind(reading.timestamp);
+        }
+
+        query_builder.execute(&self.pool).await?;
+
+        // Update sensor status
+        sqlx::query(
+            "UPDATE sensors SET last_reading_at = NOW(), last_seen_at = NOW(), status = 'active' WHERE id = $1",
+        )
+        .bind(sensor_id)
+        .execute(&self.pool)
+        .await?;
 
         Ok(count)
     }

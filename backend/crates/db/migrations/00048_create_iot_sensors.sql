@@ -199,10 +199,10 @@ CREATE TRIGGER update_sensor_thresholds_updated_at
 -- Insert default threshold templates
 INSERT INTO sensor_threshold_templates (sensor_type, name, description, comparison, warning_value, critical_value, is_default)
 VALUES
-    ('temperature', 'Comfort (Celsius)', 'Standard comfort range', 'range_outside', 18.0, 15.0, true),
-    ('temperature', 'Comfort (Celsius)', 'Standard comfort range', 'range_outside', 25.0, 30.0, true),
-    ('humidity', 'Standard', 'Standard humidity range', 'range_outside', 30.0, 20.0, true),
-    ('humidity', 'Standard', 'Standard humidity range', 'range_outside', 60.0, 70.0, true),
+    ('temperature', 'Comfort Low (Celsius)', 'Standard comfort range - low threshold', 'lt', 18.0, 15.0, true),
+    ('temperature', 'Comfort High (Celsius)', 'Standard comfort range - high threshold', 'gt', 25.0, 30.0, true),
+    ('humidity', 'Standard Low', 'Standard humidity range - low threshold', 'lt', 30.0, 20.0, true),
+    ('humidity', 'Standard High', 'Standard humidity range - high threshold', 'gt', 60.0, 70.0, true),
     ('co2', 'Indoor Air Quality', 'CO2 levels in ppm', 'gt', 1000.0, 2000.0, true),
     ('water_leak', 'Water Detection', 'Any water detected', 'gt', 0.0, 0.0, true),
     ('smoke', 'Smoke Detection', 'Any smoke detected', 'gt', 0.0, 0.0, true),

@@ -9,7 +9,6 @@ use axum::{
     routing::{delete, get, post, put},
     Json, Router,
 };
-use chrono;
 use common::{errors::ErrorResponse, TenantContext};
 use db::models::{
     AlertQuery, BatchSensorReadings, CreateSensor, CreateSensorFaultCorrelation,
@@ -487,11 +486,10 @@ async fn resolve_alert(
     Path(alert_id): Path<Uuid>,
     Json(req): Json<ResolveAlertRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-    let resolved_value = req.resolved_value.unwrap_or(0.0);
-
+    // Pass resolved_value as Option - NULL is valid when value wasn't captured
     match state
         .sensor_repo
-        .resolve_alert(alert_id, resolved_value)
+        .resolve_alert(alert_id, req.resolved_value)
         .await
     {
         Ok(alert) => Ok(Json(serde_json::json!(alert))),
