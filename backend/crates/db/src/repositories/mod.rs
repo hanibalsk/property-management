@@ -131,3 +131,8 @@ pub use lease::LeaseRepository;
 pub mod work_order;
 
 pub use work_order::WorkOrderRepository;
+
+// Epic 21: Supplier & Vendor Management
+pub mod vendor;
+
+pub use vendor::VendorRepository;

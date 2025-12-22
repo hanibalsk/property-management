@@ -37,5 +37,6 @@ pub mod rentals;
 pub mod signatures;
 pub mod templates;
 pub mod unit_residents;
+pub mod vendors;
 pub mod voting;
 pub mod work_orders;
