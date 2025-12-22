@@ -300,3 +300,14 @@ pub use work_order::{
     UpdateMaintenanceSchedule, UpdateWorkOrder, WorkOrder, WorkOrderQuery, WorkOrderStatistics,
     WorkOrderUpdate, WorkOrderWithDetails,
 };
+
+// Epic 21: Supplier & Vendor Management
+pub mod vendor;
+
+pub use vendor::{
+    contract_status, contract_type, invoice_status, service_type, vendor_status, ContractQuery,
+    CreateVendor, CreateVendorContact, CreateVendorContract, CreateVendorInvoice,
+    CreateVendorRating, ExpiringContract, InvoiceQuery, InvoiceSummary, ServiceCount, UpdateVendor,
+    UpdateVendorContract, UpdateVendorInvoice, Vendor, VendorContact, VendorContract,
+    VendorInvoice, VendorQuery, VendorRating, VendorStatistics, VendorWithDetails,
+};
