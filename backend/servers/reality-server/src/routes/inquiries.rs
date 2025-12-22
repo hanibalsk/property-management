@@ -3,7 +3,10 @@
 use axum::Router;
 
 /// Create inquiries router.
-pub fn router() -> Router {
+pub fn router<S>() -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
     Router::new()
     // TODO: Add inquiry routes
     // POST /contact/:listing_id    - Send contact message

@@ -10,7 +10,10 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 /// Create listings router.
-pub fn router() -> Router {
+pub fn router<S>() -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
     Router::new()
         .route("/", get(search))
         .route("/:id", get(get_listing))

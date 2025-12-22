@@ -3,7 +3,10 @@
 use axum::Router;
 
 /// Create favorites router.
-pub fn router() -> Router {
+pub fn router<S>() -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
     Router::new()
     // TODO: Add favorites routes
     // GET /                - List favorites
