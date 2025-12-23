@@ -1,8 +1,7 @@
 name: Auto-Approve after Copilot Review
 
 on:
-  pull_request_review:
-    types: [submitted]
+  # Manual trigger - use this after Copilot finishes reviewing
   workflow_dispatch:
     inputs:
       pr_number:
@@ -14,73 +13,60 @@ jobs:
   auto-approve:
     name: Auto-Approve PR
     runs-on: ubuntu-latest
-    # Run when Copilot submits a review OR when manually triggered
-    # Note: REST API includes [bot] suffix, GraphQL does not
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      contains(github.event.review.user.login, 'copilot-pull-request-reviewer')
 
     permissions:
       pull-requests: write
       contents: read
 
     steps:
-      - name: Check Copilot review status
+      - name: Check review status
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use input PR number for manual trigger, review event, or PR event
-          PR_NUMBER=${{ github.event.inputs.pr_number || github.event.review.pull_request.number || github.event.pull_request.number }}
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
           REPO=${{ github.repository }}
 
-          echo "Checking Copilot review for PR #$PR_NUMBER..."
+          echo "Checking review status for PR #$PR_NUMBER..."
 
-          # Get unresolved review threads from Copilot
-          # Note: first:100 is sufficient as PRs rarely exceed this limit
-          # Note: 2>/dev/null || echo "0" handles API errors gracefully, defaulting to 0
+          # Count Copilot reviews
+          REVIEW_COUNT=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
+            --jq '[.[] | select(.user.login | contains("copilot"))] | length')
+
+          echo "Copilot reviews: $REVIEW_COUNT"
+
+          # Count unresolved threads (any author)
           UNRESOLVED=$(gh api graphql -f query='
             query($owner: String!, $repo: String!, $pr: Int!) {
               repository(owner: $owner, name: $repo) {
                 pullRequest(number: $pr) {
                   reviewThreads(first: 100) {
-                    nodes {
-                      isResolved
-                      comments(first: 1) {
-                        nodes {
-                          author { login }
-                        }
-                      }
-                    }
+                    nodes { isResolved }
                   }
                 }
               }
             }' -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F pr="$PR_NUMBER" \
-            --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false and .comments.nodes[0].author.login == "copilot-pull-request-reviewer")] | length' 2>/dev/null || echo "0")
+            --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length' 2>/dev/null || echo "0")
 
-          echo "Unresolved Copilot threads: $UNRESOLVED"
+          echo "Unresolved threads: $UNRESOLVED"
 
-          if [ "$UNRESOLVED" -eq 0 ]; then
+          if [ "$REVIEW_COUNT" -ge 2 ] && [ "$UNRESOLVED" -eq 0 ]; then
             echo "should_approve=true" >> $GITHUB_OUTPUT
-            echo "✅ No unresolved Copilot threads - will auto-approve"
+            echo "✅ $REVIEW_COUNT reviews, 0 unresolved - ready to approve"
           else
             echo "should_approve=false" >> $GITHUB_OUTPUT
-            echo "⏳ $UNRESOLVED unresolved Copilot threads - skipping approval"
+            echo "⏳ Need: ≥2 reviews (have $REVIEW_COUNT), 0 unresolved (have $UNRESOLVED)"
           fi
 
       - name: Auto-approve PR
         if: steps.check.outputs.should_approve == 'true'
         env:
-          # Use PAT or GitHub App token for approval (GITHUB_TOKEN won't work with branch protection)
-          # Option 1: Personal Access Token from another account
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=${{ github.event.inputs.pr_number || github.event.review.pull_request.number || github.event.pull_request.number }}
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
 
-          echo "🤖 Auto-approving PR #$PR_NUMBER after successful Copilot review..."
+          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: ≥2 Copilot reviews completed with no unresolved comments.
 
-          gh pr review $PR_NUMBER --approve --body "✅ Auto-approved after Copilot code review completed with no unresolved issues.
-
-          _This approval was automatically granted by the CI workflow after GitHub Copilot completed its code review._"
+          _This approval was automatically granted by the CI workflow._"
 
           echo "✅ PR #$PR_NUMBER approved!"
