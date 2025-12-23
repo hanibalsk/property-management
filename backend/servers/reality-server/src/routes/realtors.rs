@@ -1,0 +1,295 @@
+//! Realtor routes (Epic 33: Realtor Tools).
+
+use crate::state::AppState;
+use axum::{
+    extract::{Path, Query, State},
+    routing::{get, post, put},
+    Json, Router,
+};
+use db::models::{
+    CreateRealtorProfile, InquiryMessage, ListingInquiry, RealtorProfile, SendInquiryMessage,
+    UpdateRealtorProfile,
+};
+use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
+use uuid::Uuid;
+
+/// Create realtors router.
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/profile", get(get_my_profile))
+        .route("/profile", post(create_profile))
+        .route("/profile", put(update_profile))
+        .route("/:user_id/profile", get(get_profile))
+        .route("/inquiries", get(list_inquiries))
+        .route("/inquiries/:id/read", post(mark_inquiry_read))
+        .route("/inquiries/:id/respond", post(respond_to_inquiry))
+}
+
+/// Realtor profile response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ProfileResponse {
+    pub profile: RealtorProfile,
+}
+
+/// Inquiries list response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct InquiriesResponse {
+    pub inquiries: Vec<ListingInquiry>,
+    pub total: i64,
+}
+
+/// Inquiries query parameters.
+#[derive(Debug, Deserialize, IntoParams, ToSchema)]
+pub struct InquiriesQuery {
+    pub status: Option<String>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+/// Get current user's realtor profile.
+#[utoipa::path(
+    get,
+    path = "/api/v1/realtors/profile",
+    tag = "Realtors",
+    responses(
+        (status = 200, description = "Realtor profile", body = ProfileResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found")
+    )
+)]
+pub async fn get_my_profile(
+    State(state): State<AppState>,
+) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
+    // TODO: Get user from auth context
+    let user_id = Uuid::nil(); // Placeholder
+
+    let profile = state
+        .reality_portal_repo
+        .get_realtor_profile(user_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get profile: {}", e),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                "Profile not found".to_string(),
+            )
+        })?;
+
+    Ok(Json(ProfileResponse { profile }))
+}
+
+/// Get realtor profile by user ID.
+#[utoipa::path(
+    get,
+    path = "/api/v1/realtors/{user_id}/profile",
+    tag = "Realtors",
+    params(("user_id" = Uuid, Path, description = "User ID")),
+    responses(
+        (status = 200, description = "Realtor profile", body = ProfileResponse),
+        (status = 404, description = "Profile not found")
+    )
+)]
+pub async fn get_profile(
+    State(state): State<AppState>,
+    Path(user_id): Path<Uuid>,
+) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
+    let profile = state
+        .reality_portal_repo
+        .get_realtor_profile(user_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get profile: {}", e),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                "Profile not found".to_string(),
+            )
+        })?;
+
+    Ok(Json(ProfileResponse { profile }))
+}
+
+/// Create realtor profile.
+#[utoipa::path(
+    post,
+    path = "/api/v1/realtors/profile",
+    tag = "Realtors",
+    request_body = CreateRealtorProfile,
+    responses(
+        (status = 201, description = "Profile created", body = ProfileResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 400, description = "Invalid request")
+    )
+)]
+pub async fn create_profile(
+    State(state): State<AppState>,
+    Json(data): Json<CreateRealtorProfile>,
+) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
+    // TODO: Get user from auth context
+    let user_id = Uuid::nil(); // Placeholder
+
+    let profile = state
+        .reality_portal_repo
+        .upsert_realtor_profile(user_id, data)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to create profile: {}", e),
+            )
+        })?;
+
+    Ok(Json(ProfileResponse { profile }))
+}
+
+/// Update realtor profile.
+#[utoipa::path(
+    put,
+    path = "/api/v1/realtors/profile",
+    tag = "Realtors",
+    request_body = UpdateRealtorProfile,
+    responses(
+        (status = 200, description = "Profile updated", body = ProfileResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found")
+    )
+)]
+pub async fn update_profile(
+    State(state): State<AppState>,
+    Json(data): Json<UpdateRealtorProfile>,
+) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
+    // TODO: Get user from auth context
+    let user_id = Uuid::nil(); // Placeholder
+
+    let profile = state
+        .reality_portal_repo
+        .update_realtor_profile(user_id, data)
+        .await
+        .map_err(|e| {
+            if e.to_string().contains("no rows") {
+                (
+                    axum::http::StatusCode::NOT_FOUND,
+                    "Profile not found".to_string(),
+                )
+            } else {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to update profile: {}", e),
+                )
+            }
+        })?;
+
+    Ok(Json(ProfileResponse { profile }))
+}
+
+/// List realtor's inquiries.
+#[utoipa::path(
+    get,
+    path = "/api/v1/realtors/inquiries",
+    tag = "Realtors",
+    params(InquiriesQuery),
+    responses(
+        (status = 200, description = "List of inquiries", body = InquiriesResponse),
+        (status = 401, description = "Unauthorized")
+    )
+)]
+pub async fn list_inquiries(
+    State(state): State<AppState>,
+    Query(query): Query<InquiriesQuery>,
+) -> Result<Json<InquiriesResponse>, (axum::http::StatusCode, String)> {
+    // TODO: Get user from auth context
+    let user_id = Uuid::nil(); // Placeholder
+
+    let limit = query.limit.unwrap_or(20).min(100);
+    let offset = query.offset.unwrap_or(0);
+
+    let inquiries = state
+        .reality_portal_repo
+        .get_realtor_inquiries(user_id, query.status, limit, offset)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get inquiries: {}", e),
+            )
+        })?;
+
+    let total = inquiries.len() as i64;
+
+    Ok(Json(InquiriesResponse { inquiries, total }))
+}
+
+/// Mark inquiry as read.
+#[utoipa::path(
+    post,
+    path = "/api/v1/realtors/inquiries/{id}/read",
+    tag = "Realtors",
+    params(("id" = Uuid, Path, description = "Inquiry ID")),
+    responses(
+        (status = 204, description = "Marked as read"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Inquiry not found")
+    )
+)]
+pub async fn mark_inquiry_read(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<axum::http::StatusCode, (axum::http::StatusCode, String)> {
+    state
+        .reality_portal_repo
+        .mark_inquiry_read(id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to mark inquiry read: {}", e),
+            )
+        })?;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// Respond to inquiry.
+#[utoipa::path(
+    post,
+    path = "/api/v1/realtors/inquiries/{id}/respond",
+    tag = "Realtors",
+    params(("id" = Uuid, Path, description = "Inquiry ID")),
+    request_body = SendInquiryMessage,
+    responses(
+        (status = 201, description = "Response sent", body = InquiryMessage),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Inquiry not found")
+    )
+)]
+pub async fn respond_to_inquiry(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(data): Json<SendInquiryMessage>,
+) -> Result<Json<InquiryMessage>, (axum::http::StatusCode, String)> {
+    // TODO: Get user from auth context
+    let user_id = Uuid::nil(); // Placeholder
+
+    let message = state
+        .reality_portal_repo
+        .respond_to_inquiry(id, user_id, &data.message)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to respond: {}", e),
+            )
+        })?;
+
+    Ok(Json(message))
+}

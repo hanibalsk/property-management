@@ -166,3 +166,8 @@ pub use subscription::SubscriptionRepository;
 pub mod government_portal;
 
 pub use government_portal::GovernmentPortalRepository;
+
+// Epics 31-34: Reality Portal Professional
+pub mod reality_portal;
+
+pub use reality_portal::RealityPortalRepository;

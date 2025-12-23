@@ -404,3 +404,21 @@ pub use government_portal::{
     UpdatePortalConnection, UpdateRegulatorySubmission, UpdateSubmissionSchedule, ValidationError,
     ValidationResult, ValidationWarning,
 };
+
+// Epics 31-34: Reality Portal Professional
+pub mod reality_portal;
+
+pub use reality_portal::{
+    AgencyMemberWithUser as RealityAgencyMemberWithUser, AgencySummary as RealityAgencySummary,
+    AssignRealtorListing, CreateAgencyInvitation, CreateCrmConnection, CreateFeedSubscription,
+    CreateImportJob as CreatePortalImportJob, CreateListingInquiry, CreatePortalSavedSearch,
+    CreateRealityAgency, CreateRealtorProfile, CrmConnection, FeedSubscription, ImportJobProgress,
+    InquiryMessage, InquiryWithListing, ListingAnalytics, ListingAnalyticsSummary, ListingInquiry,
+    ListingPriceHistory, PortalFavorite, PortalFavoriteWithListing, PortalImportJob,
+    PortalImportJobWithStats, PortalSavedSearch, PriceChangeAlert, PublicRealtorProfile,
+    RealityAgency, RealityAgencyInvitation, RealityAgencyMember, RealityFeedSubscription,
+    RealtorListing, RealtorProfile, ScheduleViewing, SearchAlertQueueEntry, SendInquiryMessage,
+    UpdateAgencyBranding, UpdateCrmConnection, UpdateFeedSubscription,
+    UpdateImportJob as UpdatePortalImportJob, UpdatePortalFavorite, UpdatePortalSavedSearch,
+    UpdateRealityAgency, UpdateRealtorProfile, UpdateViewing, ViewingSchedule,
+};
