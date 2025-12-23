@@ -147,11 +147,13 @@ pub use financial::{
     TransactionType, UnitCreditBalance, UnitFee,
 };
 pub use granular_notification::{
-    CategorySummary, CreateHeldNotification, EventNotificationPreference,
-    EventPreferenceWithDetails, EventPreferencesResponse, HeldNotification,
-    NotificationEventCategory, NotificationEventType, NotificationSchedule,
-    NotificationScheduleResponse, RoleDefaultsListResponse, RoleNotificationDefaults,
-    UpdateEventPreferenceRequest, UpdateNotificationScheduleRequest, UpdateRoleDefaultsRequest,
+    AddToGroupRequest, CategorySummary, CreateHeldNotification, DigestNotification,
+    EventNotificationPreference, EventPreferenceWithDetails, EventPreferencesResponse,
+    GenerateDigestRequest, GroupedNotification, GroupedNotificationsResponse, HeldNotification,
+    NotificationDigest, NotificationEventCategory, NotificationEventType, NotificationGroup,
+    NotificationGroupWithNotifications, NotificationSchedule, NotificationScheduleResponse,
+    RoleDefaultsListResponse, RoleNotificationDefaults, UpdateEventPreferenceRequest,
+    UpdateNotificationScheduleRequest, UpdateRoleDefaultsRequest,
 };
 pub use messaging::{
     BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,

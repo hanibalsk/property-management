@@ -17,10 +17,12 @@ use chrono::NaiveTime;
 use common::errors::ErrorResponse;
 use db::models::{
     CategorySummary, EventPreferenceWithDetails, EventPreferencesResponse,
-    NotificationEventCategory, NotificationSchedule, NotificationScheduleResponse,
+    GroupedNotificationsResponse, NotificationDigest, NotificationEventCategory,
+    NotificationGroupWithNotifications, NotificationSchedule, NotificationScheduleResponse,
     RoleDefaultsListResponse, RoleNotificationDefaults, UpdateEventPreferenceRequest,
     UpdateNotificationScheduleRequest, UpdateRoleDefaultsRequest,
 };
+use serde::Deserialize;
 use tracing::info;
 use uuid::Uuid;
 
@@ -48,6 +50,16 @@ pub fn router() -> Router<AppState> {
                 .delete(delete_role_defaults),
         )
         .route("/roles/:role/apply", post(apply_role_defaults))
+        // Notification Grouping (Epic 29, Story 29.4)
+        .route("/groups", get(list_notification_groups))
+        .route(
+            "/groups/:group_id",
+            get(get_notification_group).delete(delete_notification_group),
+        )
+        .route("/groups/:group_id/read", post(mark_group_read))
+        .route("/groups/read-all", post(mark_all_groups_read))
+        // Notification Digests (Epic 29, Story 29.3)
+        .route("/digests", get(list_digests))
 }
 
 // ============================================================================
@@ -627,4 +639,233 @@ pub async fn apply_role_defaults(
     );
 
     list_event_preferences(State(state), auth).await
+}
+
+// ============================================================================
+// Notification Grouping (Epic 29, Story 29.4)
+// ============================================================================
+
+/// Query parameters for listing notification groups.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListGroupsQuery {
+    #[serde(default = "default_limit")]
+    pub limit: i32,
+    #[serde(default)]
+    pub offset: i32,
+    #[serde(default)]
+    pub include_read: bool,
+}
+
+fn default_limit() -> i32 {
+    50
+}
+
+/// List notification groups for the current user.
+pub async fn list_notification_groups(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    axum::extract::Query(query): axum::extract::Query<ListGroupsQuery>,
+) -> Result<Json<GroupedNotificationsResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = auth.user_id;
+
+    let groups = state
+        .granular_notification_repo
+        .get_grouped_notifications(user_id, query.limit, query.offset, query.include_read)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
+            )
+        })?;
+
+    let total_unread = state
+        .granular_notification_repo
+        .get_unread_group_count(user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
+            )
+        })?;
+
+    Ok(Json(GroupedNotificationsResponse {
+        groups,
+        total_unread,
+    }))
+}
+
+/// Get a specific notification group with its notifications.
+pub async fn get_notification_group(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(group_id): Path<Uuid>,
+) -> Result<Json<NotificationGroupWithNotifications>, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = auth.user_id;
+
+    let groups = state
+        .granular_notification_repo
+        .get_grouped_notifications(user_id, 100, 0, true)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
+            )
+        })?;
+
+    let group = groups
+        .into_iter()
+        .find(|g| g.group.id == group_id)
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "GROUP_NOT_FOUND",
+                    "Notification group not found",
+                )),
+            )
+        })?;
+
+    Ok(Json(group))
+}
+
+/// Delete a notification group.
+pub async fn delete_notification_group(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(group_id): Path<Uuid>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = auth.user_id;
+
+    let deleted = state
+        .granular_notification_repo
+        .delete_group(user_id, group_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
+            )
+        })?;
+
+    if !deleted {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new(
+                "GROUP_NOT_FOUND",
+                "Notification group not found",
+            )),
+        ));
+    }
+
+    info!(
+        user_id = %user_id,
+        group_id = %group_id,
+        "Deleted notification group"
+    );
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Mark a notification group as read.
+pub async fn mark_group_read(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(group_id): Path<Uuid>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = auth.user_id;
+
+    state
+        .granular_notification_repo
+        .mark_group_read(user_id, group_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
+            )
+        })?;
+
+    info!(
+        user_id = %user_id,
+        group_id = %group_id,
+        "Marked notification group as read"
+    );
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Response for mark all groups read.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkAllReadResponse {
+    pub marked_count: i32,
+}
+
+/// Mark all notification groups as read.
+pub async fn mark_all_groups_read(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<MarkAllReadResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = auth.user_id;
+
+    let marked_count = state
+        .granular_notification_repo
+        .mark_all_groups_read(user_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
+            )
+        })?;
+
+    info!(
+        user_id = %user_id,
+        marked_count = marked_count,
+        "Marked all notification groups as read"
+    );
+
+    Ok(Json(MarkAllReadResponse { marked_count }))
+}
+
+// ============================================================================
+// Notification Digests (Epic 29, Story 29.3)
+// ============================================================================
+
+/// Query parameters for listing digests.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListDigestsQuery {
+    #[serde(default = "default_digest_limit")]
+    pub limit: i32,
+}
+
+fn default_digest_limit() -> i32 {
+    10
+}
+
+/// List recent notification digests for the current user.
+pub async fn list_digests(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    axum::extract::Query(query): axum::extract::Query<ListDigestsQuery>,
+) -> Result<Json<Vec<NotificationDigest>>, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = auth.user_id;
+
+    let digests = state
+        .granular_notification_repo
+        .get_user_digests(user_id, query.limit)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", e.to_string())),
+            )
+        })?;
+
+    Ok(Json(digests))
 }
