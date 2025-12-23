@@ -77,7 +77,7 @@ This document continues from `epics-003.md` and provides epic and story breakdow
 
 ## Phase 12: PPT Frontend Implementation
 
-### Epic 39: Document Intelligence UI (ppt-web, mobile)
+#### Epic 39: Document Intelligence UI (ppt-web, mobile)
 
 **Goal:** Build frontend interfaces for document OCR, full-text search, classification, and summarization.
 
@@ -165,7 +165,7 @@ So that **I can quickly understand document contents**.
 
 ---
 
-### Epic 40: Advanced Notifications UI (ppt-web, mobile)
+#### Epic 40: Advanced Notifications UI (ppt-web, mobile)
 
 **Goal:** Build frontend for granular notification preferences, quiet hours, and digests.
 
@@ -253,7 +253,7 @@ So that **my notification list isn't cluttered**.
 
 ---
 
-### Epic 41: Government Portal UI (ppt-web)
+#### Epic 41: Government Portal UI (ppt-web)
 
 **Goal:** Build frontend for government portal submissions and compliance tracking.
 
@@ -321,7 +321,7 @@ So that **I can ensure complete compliance**.
 
 ---
 
-### Epic 42: Community Features UI (ppt-web, mobile)
+#### Epic 42: Community Features UI (ppt-web, mobile)
 
 **Goal:** Build frontend for community groups, posts, events, and marketplace.
 
@@ -409,7 +409,7 @@ So that **I can trade locally**.
 
 ---
 
-### Epic 43: Workflow Automation UI (ppt-web)
+#### Epic 43: Workflow Automation UI (ppt-web)
 
 **Goal:** Build frontend for automation rules, templates, and monitoring.
 
@@ -481,7 +481,7 @@ So that **I can ensure rules work correctly**.
 
 ## Phase 13: Reality Portal Development
 
-### Epic 44: Reality Portal Foundation (reality-web)
+#### Epic 44: Reality Portal Foundation (reality-web)
 
 **Goal:** Build the Reality Portal public website with Next.js SSR/SSG.
 
@@ -612,7 +612,7 @@ So that **I can schedule viewings or ask questions**.
 
 ---
 
-### Epic 45: Reality Portal Agency Features (reality-web)
+#### Epic 45: Reality Portal Agency Features (reality-web)
 
 **Goal:** Build agency management and realtor tools for Reality Portal.
 
@@ -699,7 +699,7 @@ So that **our listings are recognizable**.
 
 ---
 
-### Epic 46: Reality Portal Import (reality-web)
+#### Epic 46: Reality Portal Import (reality-web)
 
 **Goal:** Build property import functionality from CSV, CRM, and feeds.
 
@@ -791,7 +791,7 @@ So that **I can aggregate multiple sources**.
 
 ## Phase 14: Mobile Applications
 
-### Epic 47: PPT Mobile App (mobile - React Native)
+#### Epic 47: PPT Mobile App (mobile - React Native)
 
 **Goal:** Complete the Property Management mobile app with all features.
 
@@ -966,7 +966,7 @@ So that **I can use the app without internet**.
 
 ---
 
-### Epic 48: Reality Portal Mobile (mobile-native - KMP)
+#### Epic 48: Reality Portal Mobile (mobile-native - KMP)
 
 **Goal:** Build the Reality Portal mobile app with Kotlin Multiplatform.
 
@@ -1096,7 +1096,7 @@ So that **I can contact agents easily**.
 
 ---
 
-### Epic 49: Mobile Native Features (mobile, mobile-native)
+#### Epic 49: Mobile Native Features (mobile, mobile-native)
 
 **Goal:** Implement platform-specific mobile features (widgets, voice, NFC).
 
@@ -1187,7 +1187,7 @@ So that **I don't need a separate key fob**.
 
 ## Phase 15: Advanced Platform Features
 
-### Epic 50: Onboarding & Help (All Apps)
+#### Epic 50: Onboarding & Help (All Apps)
 
 **Goal:** Implement interactive onboarding and help system across all apps.
 
@@ -1277,7 +1277,7 @@ So that **I can help improve the app**.
 
 ---
 
-### Epic 51: Property Comparison (reality-web, mobile-native)
+#### Epic 51: Property Comparison (reality-web, mobile-native)
 
 **Goal:** Implement property comparison feature for Reality Portal.
 
@@ -1345,7 +1345,7 @@ So that **others can see my shortlist**.
 
 ---
 
-### Epic 52: Advanced Financial UI (ppt-web)
+#### Epic 52: Advanced Financial UI (ppt-web)
 
 **Goal:** Build advanced financial management interfaces.
 
@@ -1436,7 +1436,7 @@ So that **I can manage building finances**.
 
 ---
 
-### Epic 53: Advanced Reports UI (ppt-web)
+#### Epic 53: Advanced Reports UI (ppt-web)
 
 **Goal:** Build comprehensive reporting and analytics interfaces.
 
