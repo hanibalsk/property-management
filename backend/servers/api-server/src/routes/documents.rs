@@ -1,4 +1,4 @@
-//! Document routes (Epic 7A: Basic Document Management, Epic 7B: Document Versioning).
+//! Document routes (Epic 7A: Basic Document Management, Epic 7B: Document Versioning, Epic 28: Document Intelligence).
 
 use crate::state::AppState;
 use api_core::{AuthUser, TenantExtractor};
@@ -8,14 +8,16 @@ use axum::{
     routing::{delete, get, post, put},
     Json, Router,
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    access_scope, document_category, share_type, CreateDocument, CreateDocumentVersion,
-    CreateFolder, CreateShare, Document, DocumentFolder, DocumentListQuery, DocumentSummary,
-    DocumentVersion, DocumentVersionHistory, DocumentWithDetails, FolderTreeNode, FolderWithCount,
-    LogShareAccess, MoveDocument, ShareWithDocument, UpdateDocument, UpdateFolder,
-    ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
+    access_scope, document_category, share_type, ClassificationFeedback, CreateDocument,
+    CreateDocumentVersion, CreateFolder, CreateShare, Document, DocumentClassificationHistory,
+    DocumentFolder, DocumentIntelligenceStats, DocumentListQuery, DocumentSearchRequest,
+    DocumentSearchResponse, DocumentSummary, DocumentVersion, DocumentVersionHistory,
+    DocumentWithDetails, FolderTreeNode, FolderWithCount, GenerateSummaryRequest, LogShareAccess,
+    MoveDocument, ShareWithDocument, UpdateDocument, UpdateFolder, ALLOWED_MIME_TYPES,
+    MAX_FILE_SIZE,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -149,6 +151,46 @@ pub struct CreateVersionResponse {
 }
 
 // ============================================================================
+// Document Intelligence Response Types (Epic 28)
+// ============================================================================
+
+/// Response for OCR reprocess request.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct OcrReprocessResponse {
+    pub message: String,
+    pub queue_id: Option<Uuid>,
+}
+
+/// Response for document classification.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ClassificationResponse {
+    pub document_id: Uuid,
+    pub predicted_category: Option<String>,
+    pub confidence: Option<f64>,
+    pub classified_at: Option<DateTime<Utc>>,
+    pub accepted: Option<bool>,
+}
+
+/// Response for classification history.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ClassificationHistoryResponse {
+    pub history: Vec<DocumentClassificationHistory>,
+}
+
+/// Response for summarization request.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SummarizationResponse {
+    pub message: String,
+    pub queue_id: Uuid,
+}
+
+/// Response for intelligence stats.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct IntelligenceStatsResponse {
+    pub stats: Vec<DocumentIntelligenceStats>,
+}
+
+// ============================================================================
 // Request Types
 // ============================================================================
 
@@ -260,6 +302,34 @@ pub struct ListFoldersQuery {
 }
 
 // ============================================================================
+// Document Intelligence Request Types (Epic 28)
+// ============================================================================
+
+/// Request for full-text document search.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SearchDocumentsRequest {
+    pub query: String,
+    pub folder_id: Option<Uuid>,
+    pub category: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+/// Request for classification feedback.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct ClassificationFeedbackRequest {
+    pub accepted: bool,
+    pub correct_category: Option<String>,
+}
+
+/// Query for intelligence stats.
+#[derive(Debug, Serialize, Deserialize, ToSchema, Default, utoipa::IntoParams)]
+pub struct IntelligenceStatsQuery {
+    pub start_date: Option<String>,
+    pub end_date: Option<String>,
+}
+
+// ============================================================================
 // Router
 // ============================================================================
 
@@ -294,6 +364,25 @@ pub fn router() -> Router<AppState> {
         .route("/folders/{id}", get(get_folder))
         .route("/folders/{id}", put(update_folder))
         .route("/folders/{id}", delete(delete_folder))
+        // Document Intelligence (Epic 28)
+        // Story 28.1: OCR
+        .route("/{id}/ocr/reprocess", post(reprocess_ocr))
+        // Story 28.2: Full-text search
+        .route("/search", post(search_documents))
+        // Story 28.3: Auto-classification
+        .route("/{id}/classification", get(get_classification))
+        .route(
+            "/{id}/classification/feedback",
+            post(submit_classification_feedback),
+        )
+        .route(
+            "/{id}/classification/history",
+            get(get_classification_history),
+        )
+        // Story 28.4: Summarization
+        .route("/{id}/summarize", post(request_summarization))
+        // Intelligence stats
+        .route("/intelligence/stats", get(get_intelligence_stats))
     // Public shared document access (no auth required - separate route in main.rs)
     // .route("/shared/{token}", get(access_shared_document))
     // .route("/shared/{token}/access", post(access_protected_share))
@@ -2266,4 +2355,486 @@ async fn access_protected_share(
         download_url,
         preview_url,
     }))
+}
+
+// ============================================================================
+// Document Intelligence Handlers (Epic 28)
+// ============================================================================
+
+/// Reprocess OCR for a document (Story 28.1).
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{id}/ocr/reprocess",
+    params(
+        ("id" = Uuid, Path, description = "Document ID")
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "OCR reprocess queued", body = OcrReprocessResponse),
+        (status = 404, description = "Document not found", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "Document Intelligence"
+)]
+async fn reprocess_ocr(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+) -> Result<Json<OcrReprocessResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify document exists and user has access
+    let document = match state.document_repo.find_by_id(id).await {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find document: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find document",
+                )),
+            ));
+        }
+    };
+
+    // Verify organization
+    if document.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+        ));
+    }
+
+    // Queue for OCR
+    match state.document_repo.queue_for_ocr(id, Some(1)).await {
+        Ok(queue_id) => Ok(Json(OcrReprocessResponse {
+            message: "Document queued for OCR processing".to_string(),
+            queue_id,
+        })),
+        Err(e) => {
+            tracing::error!("Failed to queue document for OCR: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to queue document for OCR",
+                )),
+            ))
+        }
+    }
+}
+
+/// Full-text search across documents (Story 28.2).
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/search",
+    request_body = SearchDocumentsRequest,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Search results", body = DocumentSearchResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "Document Intelligence"
+)]
+async fn search_documents(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
+    Json(req): Json<SearchDocumentsRequest>,
+) -> Result<Json<DocumentSearchResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Validate query
+    if req.query.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Search query cannot be empty",
+            )),
+        ));
+    }
+
+    if req.query.len() > 500 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Search query too long (max 500 characters)",
+            )),
+        ));
+    }
+
+    let search_request = DocumentSearchRequest {
+        query: req.query,
+        organization_id: tenant.tenant_id,
+        include_content: true,
+        folder_id: req.folder_id,
+        category: req.category,
+        limit: req.limit,
+        offset: req.offset,
+    };
+
+    match state.document_repo.full_text_search(search_request).await {
+        Ok(response) => Ok(Json(response)),
+        Err(e) => {
+            tracing::error!("Failed to search documents: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to search documents",
+                )),
+            ))
+        }
+    }
+}
+
+/// Get document classification (Story 28.3).
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{id}/classification",
+    params(
+        ("id" = Uuid, Path, description = "Document ID")
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Classification info", body = ClassificationResponse),
+        (status = 404, description = "Document not found", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "Document Intelligence"
+)]
+async fn get_classification(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ClassificationResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Find document with details
+    let document = match state.document_repo.find_by_id(id).await {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find document: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find document",
+                )),
+            ));
+        }
+    };
+
+    // Verify organization
+    if document.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+        ));
+    }
+
+    // Return response based on the document's category
+    Ok(Json(ClassificationResponse {
+        document_id: id,
+        predicted_category: Some(document.category.clone()),
+        confidence: None,
+        classified_at: None,
+        accepted: None,
+    }))
+}
+
+/// Submit classification feedback (Story 28.3).
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{id}/classification/feedback",
+    params(
+        ("id" = Uuid, Path, description = "Document ID")
+    ),
+    request_body = ClassificationFeedbackRequest,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Feedback submitted", body = MessageResponse),
+        (status = 404, description = "Document not found", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "Document Intelligence"
+)]
+async fn submit_classification_feedback(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+    Json(req): Json<ClassificationFeedbackRequest>,
+) -> Result<Json<MessageResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify document exists
+    let document = match state.document_repo.find_by_id(id).await {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find document: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find document",
+                )),
+            ));
+        }
+    };
+
+    // Verify organization
+    if document.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+        ));
+    }
+
+    // Validate category if provided
+    if let Some(ref cat) = req.correct_category {
+        if !document_category::ALL.contains(&cat.as_str()) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new("BAD_REQUEST", "Invalid category")),
+            ));
+        }
+    }
+
+    let feedback = ClassificationFeedback {
+        document_id: id,
+        accepted: req.accepted,
+        correct_category: req.correct_category,
+        feedback_by: auth.user_id,
+    };
+
+    match state
+        .document_repo
+        .submit_classification_feedback(feedback)
+        .await
+    {
+        Ok(()) => Ok(Json(MessageResponse {
+            message: "Classification feedback submitted".to_string(),
+        })),
+        Err(e) => {
+            tracing::error!("Failed to submit classification feedback: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to submit feedback",
+                )),
+            ))
+        }
+    }
+}
+
+/// Get classification history for a document (Story 28.3).
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/{id}/classification/history",
+    params(
+        ("id" = Uuid, Path, description = "Document ID")
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Classification history", body = ClassificationHistoryResponse),
+        (status = 404, description = "Document not found", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "Document Intelligence"
+)]
+async fn get_classification_history(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ClassificationHistoryResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify document exists and belongs to tenant
+    let document = match state.document_repo.find_by_id(id).await {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find document: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find document",
+                )),
+            ));
+        }
+    };
+
+    if document.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+        ));
+    }
+
+    match state.document_repo.get_classification_history(id).await {
+        Ok(history) => Ok(Json(ClassificationHistoryResponse { history })),
+        Err(e) => {
+            tracing::error!("Failed to get classification history: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get classification history",
+                )),
+            ))
+        }
+    }
+}
+
+/// Request document summarization (Story 28.4).
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{id}/summarize",
+    params(
+        ("id" = Uuid, Path, description = "Document ID")
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Summarization queued", body = SummarizationResponse),
+        (status = 404, description = "Document not found", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "Document Intelligence"
+)]
+async fn request_summarization(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+) -> Result<Json<SummarizationResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify document exists
+    let document = match state.document_repo.find_by_id(id).await {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find document: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find document",
+                )),
+            ));
+        }
+    };
+
+    // Verify organization
+    if document.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+        ));
+    }
+
+    let request = GenerateSummaryRequest {
+        document_id: id,
+        requested_by: auth.user_id,
+        priority: Some(1),
+    };
+
+    match state.document_repo.queue_for_summarization(request).await {
+        Ok(queue_id) => Ok(Json(SummarizationResponse {
+            message: "Document queued for summarization".to_string(),
+            queue_id,
+        })),
+        Err(e) => {
+            tracing::error!("Failed to queue document for summarization: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to queue document for summarization",
+                )),
+            ))
+        }
+    }
+}
+
+/// Get document intelligence statistics.
+#[utoipa::path(
+    get,
+    path = "/api/v1/documents/intelligence/stats",
+    params(IntelligenceStatsQuery),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Intelligence statistics", body = IntelligenceStatsResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "Document Intelligence"
+)]
+async fn get_intelligence_stats(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
+    Query(query): Query<IntelligenceStatsQuery>,
+) -> Result<Json<IntelligenceStatsResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Parse dates, default to last 30 days
+    let end_date = query
+        .end_date
+        .as_ref()
+        .and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+        .unwrap_or_else(|| Utc::now().date_naive());
+
+    let start_date = query
+        .start_date
+        .as_ref()
+        .and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
+        .unwrap_or_else(|| end_date - chrono::Duration::days(30));
+
+    match state
+        .document_repo
+        .get_intelligence_stats(tenant.tenant_id, start_date, end_date)
+        .await
+    {
+        Ok(stats) => Ok(Json(IntelligenceStatsResponse { stats })),
+        Err(e) => {
+            tracing::error!("Failed to get intelligence stats: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get statistics",
+                )),
+            ))
+        }
+    }
+}
+
+/// Simple message response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct MessageResponse {
+    pub message: String,
 }

@@ -492,4 +492,294 @@ impl GranularNotificationRepository {
 
         Ok(1)
     }
+
+    // ========================================================================
+    // Notification Grouping (Epic 29, Story 29.4)
+    // ========================================================================
+
+    /// Add a notification to a group (creates group if needed).
+    #[allow(clippy::too_many_arguments)]
+    pub async fn add_notification_to_group(
+        &self,
+        user_id: Uuid,
+        entity_type: &str,
+        entity_id: Uuid,
+        group_title: &str,
+        event_type: &str,
+        title: &str,
+        body: Option<&str>,
+        data: Option<serde_json::Value>,
+        actor_id: Option<Uuid>,
+        actor_name: Option<&str>,
+    ) -> Result<Uuid, SqlxError> {
+        let row = sqlx::query(
+            r#"
+            SELECT add_notification_to_group($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            "#,
+        )
+        .bind(user_id)
+        .bind(entity_type)
+        .bind(entity_id)
+        .bind(group_title)
+        .bind(event_type)
+        .bind(title)
+        .bind(body)
+        .bind(&data)
+        .bind(actor_id)
+        .bind(actor_name)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.get(0))
+    }
+
+    /// Get grouped notifications for a user.
+    pub async fn get_grouped_notifications(
+        &self,
+        user_id: Uuid,
+        limit: i32,
+        offset: i32,
+        include_read: bool,
+    ) -> Result<Vec<crate::models::NotificationGroupWithNotifications>, SqlxError> {
+        use crate::models::{
+            GroupedNotification, NotificationGroup, NotificationGroupWithNotifications,
+        };
+
+        // Get groups
+        let groups = sqlx::query_as::<_, NotificationGroup>(
+            r#"
+            SELECT * FROM notification_groups
+            WHERE user_id = $1 AND ($4 OR NOT is_read)
+            ORDER BY latest_notification_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(user_id)
+        .bind(limit)
+        .bind(offset)
+        .bind(include_read)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // For each group, get the first 5 notifications
+        let mut results = Vec::with_capacity(groups.len());
+        for group in groups {
+            let notifications = sqlx::query_as::<_, GroupedNotification>(
+                r#"
+                SELECT * FROM grouped_notifications
+                WHERE group_id = $1
+                ORDER BY created_at DESC
+                LIMIT 5
+                "#,
+            )
+            .bind(group.id)
+            .fetch_all(&self.pool)
+            .await?;
+
+            results.push(NotificationGroupWithNotifications {
+                group,
+                notifications,
+            });
+        }
+
+        Ok(results)
+    }
+
+    /// Get total unread notification groups for a user.
+    pub async fn get_unread_group_count(&self, user_id: Uuid) -> Result<i64, SqlxError> {
+        let row = sqlx::query(
+            r#"
+            SELECT COUNT(*) as count FROM notification_groups
+            WHERE user_id = $1 AND is_read = false
+            "#,
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.get("count"))
+    }
+
+    /// Mark a notification group as read.
+    pub async fn mark_group_read(&self, user_id: Uuid, group_id: Uuid) -> Result<bool, SqlxError> {
+        let row = sqlx::query("SELECT mark_notification_group_read($1, $2)")
+            .bind(user_id)
+            .bind(group_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(row.get(0))
+    }
+
+    /// Mark all notification groups as read.
+    pub async fn mark_all_groups_read(&self, user_id: Uuid) -> Result<i32, SqlxError> {
+        let row = sqlx::query("SELECT mark_all_notification_groups_read($1)")
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(row.get(0))
+    }
+
+    /// Get notifications in a group.
+    pub async fn get_group_notifications(
+        &self,
+        group_id: Uuid,
+        limit: i32,
+        offset: i32,
+    ) -> Result<Vec<crate::models::GroupedNotification>, SqlxError> {
+        sqlx::query_as::<_, crate::models::GroupedNotification>(
+            r#"
+            SELECT * FROM grouped_notifications
+            WHERE group_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(group_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Delete a notification group.
+    pub async fn delete_group(&self, user_id: Uuid, group_id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query("DELETE FROM notification_groups WHERE id = $1 AND user_id = $2")
+            .bind(group_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ========================================================================
+    // Notification Digests (Epic 29, Story 29.3)
+    // ========================================================================
+
+    /// Create a notification digest.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_digest(
+        &self,
+        user_id: Uuid,
+        digest_type: &str,
+        period_start: chrono::DateTime<Utc>,
+        period_end: chrono::DateTime<Utc>,
+        notification_count: i32,
+        category_counts: serde_json::Value,
+        summary_html: Option<&str>,
+        summary_text: Option<&str>,
+    ) -> Result<crate::models::NotificationDigest, SqlxError> {
+        sqlx::query_as::<_, crate::models::NotificationDigest>(
+            r#"
+            INSERT INTO notification_digests (
+                user_id, digest_type, period_start, period_end,
+                notification_count, category_counts, summary_html, summary_text
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+            "#,
+        )
+        .bind(user_id)
+        .bind(digest_type)
+        .bind(period_start)
+        .bind(period_end)
+        .bind(notification_count)
+        .bind(&category_counts)
+        .bind(summary_html)
+        .bind(summary_text)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Get recent digests for a user.
+    pub async fn get_user_digests(
+        &self,
+        user_id: Uuid,
+        limit: i32,
+    ) -> Result<Vec<crate::models::NotificationDigest>, SqlxError> {
+        sqlx::query_as::<_, crate::models::NotificationDigest>(
+            r#"
+            SELECT * FROM notification_digests
+            WHERE user_id = $1
+            ORDER BY period_end DESC
+            LIMIT $2
+            "#,
+        )
+        .bind(user_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Mark digest as sent via email.
+    pub async fn mark_digest_email_sent(&self, digest_id: Uuid) -> Result<(), SqlxError> {
+        sqlx::query("UPDATE notification_digests SET email_sent_at = now() WHERE id = $1")
+            .bind(digest_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Mark digest as sent via push.
+    pub async fn mark_digest_push_sent(&self, digest_id: Uuid) -> Result<(), SqlxError> {
+        sqlx::query("UPDATE notification_digests SET push_sent_at = now() WHERE id = $1")
+            .bind(digest_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Add notification to digest.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn add_notification_to_digest(
+        &self,
+        digest_id: Uuid,
+        event_type: &str,
+        event_category: &str,
+        title: &str,
+        body: Option<&str>,
+        entity_type: Option<&str>,
+        entity_id: Option<Uuid>,
+        created_at: chrono::DateTime<Utc>,
+    ) -> Result<crate::models::DigestNotification, SqlxError> {
+        sqlx::query_as::<_, crate::models::DigestNotification>(
+            r#"
+            INSERT INTO digest_notifications (
+                digest_id, event_type, event_category, title, body,
+                entity_type, entity_id, created_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+            "#,
+        )
+        .bind(digest_id)
+        .bind(event_type)
+        .bind(event_category)
+        .bind(title)
+        .bind(body)
+        .bind(entity_type)
+        .bind(entity_id)
+        .bind(created_at)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    /// Get notifications in a digest.
+    pub async fn get_digest_notifications(
+        &self,
+        digest_id: Uuid,
+    ) -> Result<Vec<crate::models::DigestNotification>, SqlxError> {
+        sqlx::query_as::<_, crate::models::DigestNotification>(
+            r#"
+            SELECT * FROM digest_notifications
+            WHERE digest_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(digest_id)
+        .fetch_all(&self.pool)
+        .await
+    }
 }

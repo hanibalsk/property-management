@@ -110,12 +110,15 @@ pub use delegation::{
     UpdateDelegation,
 };
 pub use document::{
-    access_scope, document_category, share_type, CreateDocument, CreateDocumentVersion,
-    CreateFolder, CreateShare, CreateVersionResponse, Document, DocumentFolder, DocumentListQuery,
-    DocumentShare, DocumentSummary, DocumentVersion, DocumentVersionHistory, DocumentWithDetails,
-    FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument, RestoreVersionRequest,
-    RestoreVersionResponse, RevokeShare, ShareAccessLog, ShareWithDocument, UpdateDocument,
-    UpdateFolder, ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
+    access_scope, document_category, ocr_status, share_type, ClassificationFeedback,
+    CreateDocument, CreateDocumentVersion, CreateFolder, CreateShare, CreateVersionResponse,
+    Document, DocumentClassificationHistory, DocumentFolder, DocumentIntelligenceStats,
+    DocumentListQuery, DocumentOcrQueue, DocumentSearchRequest, DocumentSearchResponse,
+    DocumentSearchResult, DocumentShare, DocumentSummarizationQueue, DocumentSummary,
+    DocumentVersion, DocumentVersionHistory, DocumentWithDetails, DocumentWithIntelligence,
+    FolderTreeNode, FolderWithCount, GenerateSummaryRequest, LogShareAccess, MoveDocument,
+    RestoreVersionRequest, RestoreVersionResponse, RevokeShare, ShareAccessLog, ShareWithDocument,
+    UpdateDocument, UpdateFolder, ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
 };
 pub use document_template::{
     placeholder_type, template_type, CreateTemplate, DocumentTemplate, GenerateDocumentRequest,
@@ -144,11 +147,13 @@ pub use financial::{
     TransactionType, UnitCreditBalance, UnitFee,
 };
 pub use granular_notification::{
-    CategorySummary, CreateHeldNotification, EventNotificationPreference,
-    EventPreferenceWithDetails, EventPreferencesResponse, HeldNotification,
-    NotificationEventCategory, NotificationEventType, NotificationSchedule,
-    NotificationScheduleResponse, RoleDefaultsListResponse, RoleNotificationDefaults,
-    UpdateEventPreferenceRequest, UpdateNotificationScheduleRequest, UpdateRoleDefaultsRequest,
+    AddToGroupRequest, CategorySummary, CreateHeldNotification, DigestNotification,
+    EventNotificationPreference, EventPreferenceWithDetails, EventPreferencesResponse,
+    GenerateDigestRequest, GroupedNotification, GroupedNotificationsResponse, HeldNotification,
+    NotificationDigest, NotificationEventCategory, NotificationEventType, NotificationGroup,
+    NotificationGroupWithNotifications, NotificationSchedule, NotificationScheduleResponse,
+    RoleDefaultsListResponse, RoleNotificationDefaults, UpdateEventPreferenceRequest,
+    UpdateNotificationScheduleRequest, UpdateRoleDefaultsRequest,
 };
 pub use messaging::{
     BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,
@@ -385,4 +390,17 @@ pub use subscription::{
     SubscriptionCoupon, SubscriptionEvent, SubscriptionInvoice, SubscriptionPaymentMethod,
     SubscriptionPlan, SubscriptionStatistics, SubscriptionWithPlan, UpdateOrganizationSubscription,
     UpdateSubscriptionCoupon, UpdateSubscriptionPlan, UsageRecord, UsageSummary,
+};
+
+// Epic 30: Government Portal Integration
+pub mod government_portal;
+
+pub use government_portal::{
+    AddSubmissionAttachment, CreatePortalConnection, CreateRegulatorySubmission,
+    CreateSubmissionAudit, CreateSubmissionSchedule, GovernmentPortalConnection,
+    GovernmentPortalStats, GovernmentPortalType, RegulatoryReportTemplate, RegulatorySubmission,
+    RegulatorySubmissionAttachment, RegulatorySubmissionAudit, RegulatorySubmissionSchedule,
+    SubmissionQuery, SubmissionStatus, SubmissionSummary, TemplateSummaryGov, UpcomingDueDate,
+    UpdatePortalConnection, UpdateRegulatorySubmission, UpdateSubmissionSchedule, ValidationError,
+    ValidationResult, ValidationWarning,
 };

@@ -429,3 +429,172 @@ pub struct RestoreVersionResponse {
     pub version_number: i32,
     pub message: String,
 }
+
+// ============================================================================
+// Document Intelligence (Epic 28)
+// ============================================================================
+
+/// OCR processing status values.
+pub mod ocr_status {
+    pub const PENDING: &str = "pending";
+    pub const PROCESSING: &str = "processing";
+    pub const COMPLETED: &str = "completed";
+    pub const FAILED: &str = "failed";
+    pub const NOT_APPLICABLE: &str = "not_applicable";
+    pub const SKIPPED: &str = "skipped";
+
+    pub const ALL: &[&str] = &[
+        PENDING,
+        PROCESSING,
+        COMPLETED,
+        FAILED,
+        NOT_APPLICABLE,
+        SKIPPED,
+    ];
+}
+
+/// OCR queue entry for async processing.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct DocumentOcrQueue {
+    pub id: Uuid,
+    pub document_id: Uuid,
+    pub priority: i32,
+    pub attempts: i32,
+    pub max_attempts: i32,
+    pub next_attempt_at: DateTime<Utc>,
+    pub last_error: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl DocumentOcrQueue {
+    /// Check if queue item has exhausted retry attempts.
+    pub fn is_exhausted(&self) -> bool {
+        self.attempts >= self.max_attempts
+    }
+
+    /// Check if queue item is ready for processing.
+    pub fn is_ready(&self) -> bool {
+        !self.is_exhausted() && self.next_attempt_at <= Utc::now()
+    }
+}
+
+/// Classification history entry.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct DocumentClassificationHistory {
+    pub id: Uuid,
+    pub document_id: Uuid,
+    pub predicted_category: String,
+    pub confidence: f64,
+    pub actual_category: Option<String>,
+    pub was_accepted: Option<bool>,
+    pub feedback_by: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Summarization queue entry.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct DocumentSummarizationQueue {
+    pub id: Uuid,
+    pub document_id: Uuid,
+    pub priority: i32,
+    pub requested_by: Option<Uuid>,
+    pub attempts: i32,
+    pub max_attempts: i32,
+    pub next_attempt_at: DateTime<Utc>,
+    pub last_error: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Document intelligence processing statistics.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct DocumentIntelligenceStats {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub date: chrono::NaiveDate,
+    pub documents_processed: i32,
+    pub ocr_completed: i32,
+    pub ocr_failed: i32,
+    pub classifications_completed: i32,
+    pub classifications_accepted: i32,
+    pub summaries_generated: i32,
+    pub total_pages_processed: i32,
+    pub avg_ocr_confidence: Option<f64>,
+    pub avg_classification_confidence: Option<f64>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Document with OCR and intelligence fields.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DocumentWithIntelligence {
+    #[serde(flatten)]
+    pub document: Document,
+    // OCR fields
+    pub extracted_text: Option<String>,
+    pub ocr_status: String,
+    pub ocr_processed_at: Option<DateTime<Utc>>,
+    pub ocr_error: Option<String>,
+    pub ocr_page_count: Option<i32>,
+    pub ocr_confidence: Option<f64>,
+    // Classification fields
+    pub ai_predicted_category: Option<String>,
+    pub ai_classification_confidence: Option<f64>,
+    pub ai_classification_at: Option<DateTime<Utc>>,
+    pub ai_classification_accepted: Option<bool>,
+    // Summarization fields (from Epic 13)
+    pub ai_summary: Option<String>,
+    pub ai_summary_generated_at: Option<DateTime<Utc>>,
+    pub ai_key_points: Option<serde_json::Value>,
+    pub ai_action_items: Option<serde_json::Value>,
+    pub ai_topics: Option<serde_json::Value>,
+    pub word_count: Option<i32>,
+    pub language_detected: Option<String>,
+}
+
+/// Request to submit classification feedback.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ClassificationFeedback {
+    pub document_id: Uuid,
+    pub accepted: bool,
+    pub correct_category: Option<String>,
+    pub feedback_by: Uuid,
+}
+
+/// Request to generate document summary.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct GenerateSummaryRequest {
+    pub document_id: Uuid,
+    pub requested_by: Uuid,
+    pub priority: Option<i32>,
+}
+
+/// Full-text search request.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DocumentSearchRequest {
+    pub query: String,
+    pub organization_id: Uuid,
+    #[serde(default)]
+    pub include_content: bool,
+    pub folder_id: Option<Uuid>,
+    pub category: Option<String>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+/// Search result with relevance ranking.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DocumentSearchResult {
+    pub document: DocumentSummary,
+    pub rank: f32,
+    pub headline: Option<String>,
+    pub matched_fields: Vec<String>,
+}
+
+/// Search response with pagination.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct DocumentSearchResponse {
+    pub results: Vec<DocumentSearchResult>,
+    pub total: i64,
+    pub query: String,
+}

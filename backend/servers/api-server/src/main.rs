@@ -347,6 +347,11 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/admin/subscriptions",
             routes::subscriptions::admin_router(),
         )
+        // Government Portal routes (Epic 30)
+        .nest(
+            "/api/v1/government-portal",
+            routes::government_portal::router(),
+        )
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware

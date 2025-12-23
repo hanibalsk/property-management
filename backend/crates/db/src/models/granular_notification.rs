@@ -304,6 +304,139 @@ pub struct CreateHeldNotification {
     pub is_priority: bool,
 }
 
+// ============================================================================
+// Notification Grouping (Epic 29, Story 29.4)
+// ============================================================================
+
+/// Notification group for similar notifications.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationGroup {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub group_key: String,
+    pub entity_type: String,
+    pub entity_id: Uuid,
+    pub title: String,
+    pub notification_count: i32,
+    pub latest_notification_at: DateTime<Utc>,
+    pub is_read: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub read_at: Option<DateTime<Utc>>,
+    pub is_expanded: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Individual notification within a group.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupedNotification {
+    pub id: Uuid,
+    pub group_id: Uuid,
+    pub user_id: Uuid,
+    pub event_type: String,
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actor_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub actor_name: Option<String>,
+    pub is_read: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub read_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Notification group with first notifications.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationGroupWithNotifications {
+    pub group: NotificationGroup,
+    pub notifications: Vec<GroupedNotification>,
+}
+
+/// Request to add notification to group.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddToGroupRequest {
+    pub user_id: Uuid,
+    pub entity_type: String,
+    pub entity_id: Uuid,
+    pub group_title: String,
+    pub event_type: String,
+    pub title: String,
+    pub body: Option<String>,
+    pub data: Option<serde_json::Value>,
+    pub actor_id: Option<Uuid>,
+    pub actor_name: Option<String>,
+}
+
+/// Response for grouped notifications list.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupedNotificationsResponse {
+    pub groups: Vec<NotificationGroupWithNotifications>,
+    pub total_unread: i64,
+}
+
+// ============================================================================
+// Notification Digest (Epic 29, Story 29.3)
+// ============================================================================
+
+/// Notification digest.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationDigest {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub period_start: DateTime<Utc>,
+    pub period_end: DateTime<Utc>,
+    pub digest_type: String,
+    pub notification_count: i32,
+    pub category_counts: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary_html: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub email_sent_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub push_sent_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Request to generate digest.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateDigestRequest {
+    pub user_id: Uuid,
+    pub digest_type: String,
+    pub period_start: DateTime<Utc>,
+    pub period_end: DateTime<Utc>,
+}
+
+/// Digest notification entry.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DigestNotification {
+    pub id: Uuid,
+    pub digest_id: Uuid,
+    pub event_type: String,
+    pub event_category: String,
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entity_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entity_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
