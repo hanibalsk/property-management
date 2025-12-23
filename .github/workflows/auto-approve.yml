@@ -17,8 +17,69 @@ jobs:
     permissions:
       pull-requests: write
       contents: read
+      checks: read
+      actions: read
 
     steps:
+      - name: Wait for CI to complete
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          REPO=${{ github.repository }}
+
+          echo "Waiting for CI checks to complete on PR #$PR_NUMBER..."
+
+          # Get the HEAD SHA of the PR
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          echo "HEAD SHA: $HEAD_SHA"
+
+          # Wait up to 30 minutes for checks to complete
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+
+            # Get check runs status
+            CHECK_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
+              --jq '{
+                total: .total_count,
+                completed: [.check_runs[] | select(.status == "completed")] | length,
+                success: [.check_runs[] | select(.conclusion == "success")] | length,
+                failure: [.check_runs[] | select(.conclusion == "failure")] | length,
+                pending: [.check_runs[] | select(.status != "completed")] | length
+              }')
+
+            TOTAL=$(echo "$CHECK_STATUS" | jq -r '.total')
+            COMPLETED=$(echo "$CHECK_STATUS" | jq -r '.completed')
+            SUCCESS=$(echo "$CHECK_STATUS" | jq -r '.success')
+            FAILURE=$(echo "$CHECK_STATUS" | jq -r '.failure')
+            PENDING=$(echo "$CHECK_STATUS" | jq -r '.pending')
+
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: $COMPLETED/$TOTAL checks completed ($SUCCESS success, $FAILURE failure, $PENDING pending)"
+
+            # If any check failed, exit early
+            if [ "$FAILURE" -gt 0 ]; then
+              echo "❌ CI failed! $FAILURE check(s) failed."
+              exit 1
+            fi
+
+            # If all checks completed successfully
+            if [ "$COMPLETED" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
+              echo "✅ All $TOTAL CI checks passed!"
+              break
+            fi
+
+            # Wait 30 seconds before next check
+            sleep 30
+          done
+
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "⏰ Timeout waiting for CI checks"
+            exit 1
+          fi
+
       - name: Check review status
         id: check
         env:
@@ -51,12 +112,12 @@ jobs:
 
           echo "Unresolved threads: $UNRESOLVED"
 
-          if [ "$REVIEW_COUNT" -ge 1 ] && [ "$REVIEW_COUNT" -le 2 ] && [ "$UNRESOLVED" -eq 0 ]; then
+          if [ "$REVIEW_COUNT" -ge 1 ] && [ "$UNRESOLVED" -eq 0 ]; then
             echo "should_approve=true" >> $GITHUB_OUTPUT
-            echo "✅ $REVIEW_COUNT reviews, 0 unresolved - ready to approve"
+            echo "✅ $REVIEW_COUNT Copilot review(s), 0 unresolved - ready to approve"
           else
             echo "should_approve=false" >> $GITHUB_OUTPUT
-            echo "⏳ Need: 1-2 reviews (have $REVIEW_COUNT), 0 unresolved (have $UNRESOLVED)"
+            echo "⏳ Need: ≥1 Copilot review (have $REVIEW_COUNT), 0 unresolved (have $UNRESOLVED)"
           fi
 
       - name: Auto-approve PR
@@ -66,7 +127,7 @@ jobs:
         run: |
           PR_NUMBER=${{ github.event.inputs.pr_number }}
 
-          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: Copilot review completed with no unresolved comments.
+          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: CI passed and Copilot review completed with no unresolved comments.
 
           _This approval was automatically granted by the CI workflow._"
 
