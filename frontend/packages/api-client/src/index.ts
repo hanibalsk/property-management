@@ -17,6 +17,7 @@ export * from './documents';
 export * from './messaging';
 export * from './neighbors';
 export * from './notification-preferences';
+export * from './community';
 
 // API client configuration
 export interface ApiConfig {
