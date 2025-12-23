@@ -5,6 +5,9 @@
 /** Notification channel types */
 export type NotificationChannel = 'push' | 'email' | 'in_app';
 
+/** All notification channels in display order */
+export const ALL_CHANNELS: NotificationChannel[] = ['push', 'email', 'in_app'];
+
 /** Single notification preference */
 export interface NotificationPreference {
   channel: NotificationChannel;

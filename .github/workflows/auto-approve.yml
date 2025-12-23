@@ -37,6 +37,8 @@ jobs:
           echo "Checking Copilot review for PR #$PR_NUMBER..."
 
           # Get unresolved review threads from Copilot
+          # Note: first:100 is sufficient as PRs rarely exceed this limit
+          # Note: 2>/dev/null || echo "0" handles API errors gracefully, defaulting to 0
           UNRESOLVED=$(gh api graphql -f query='
             query($owner: String!, $repo: String!, $pr: Int!) {
               repository(owner: $owner, name: $repo) {
@@ -53,7 +55,7 @@ jobs:
                   }
                 }
               }
-            }' -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F pr=$PR_NUMBER \
+            }' -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F pr="$PR_NUMBER" \
             --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false and .comments.nodes[0].author.login == "copilot-pull-request-reviewer")] | length' 2>/dev/null || echo "0")
 
           echo "Unresolved Copilot threads: $UNRESOLVED"

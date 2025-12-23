@@ -47,6 +47,19 @@ export interface UpdateCategoryPreferenceRequest {
   channels: Partial<Record<NotificationChannel, boolean>>;
 }
 
+/** All notification categories in display order */
+export const ALL_CATEGORIES: NotificationCategory[] = [
+  'faults',
+  'voting',
+  'announcements',
+  'documents',
+  'messages',
+  'community',
+  'financial',
+  'maintenance',
+  'system',
+];
+
 /** Human-readable labels for categories */
 export const CATEGORY_LABELS: Record<NotificationCategory, string> = {
   faults: 'Fault Reports',
@@ -178,6 +191,9 @@ export interface UpdateDigestRequest {
   timezone?: string;
   includeCategories?: NotificationCategory[];
 }
+
+/** All digest frequencies in display order */
+export const ALL_FREQUENCIES: DigestFrequency[] = ['disabled', 'hourly', 'daily', 'weekly'];
 
 /** Human-readable frequency labels */
 export const FREQUENCY_LABELS: Record<DigestFrequency, string> = {

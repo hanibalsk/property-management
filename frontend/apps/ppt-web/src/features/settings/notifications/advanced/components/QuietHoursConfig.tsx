@@ -111,6 +111,7 @@ export function QuietHoursConfig({ config, loading, onUpdate }: QuietHoursConfig
                     key={day}
                     type="button"
                     aria-pressed={isSelected}
+                    aria-label={`${DAY_LABELS[day]} - ${isSelected ? 'active' : 'inactive'}`}
                     onClick={() => handleDayToggle(day)}
                     disabled={loading}
                     className={`

@@ -5,15 +5,13 @@
  */
 
 import type { CategoryPreference, NotificationChannel } from '@ppt/api-client';
-import { CATEGORY_DESCRIPTIONS, CATEGORY_LABELS } from '@ppt/api-client';
+import { ALL_CHANNELS, CATEGORY_DESCRIPTIONS, CATEGORY_LABELS } from '@ppt/api-client';
 
 interface CategoryPreferenceCardProps {
   preference: CategoryPreference;
   loading?: boolean;
   onToggleChannel: (channel: NotificationChannel, enabled: boolean) => void;
 }
-
-const CHANNELS: NotificationChannel[] = ['push', 'email', 'in_app'];
 
 const CHANNEL_ICONS: Record<NotificationChannel, JSX.Element> = {
   push: (
@@ -77,8 +75,8 @@ export function CategoryPreferenceCard({
   loading,
   onToggleChannel,
 }: CategoryPreferenceCardProps) {
-  const allEnabled = CHANNELS.every((ch) => preference.channels[ch]);
-  const allDisabled = CHANNELS.every((ch) => !preference.channels[ch]);
+  const allEnabled = ALL_CHANNELS.every((ch) => preference.channels[ch]);
+  const allDisabled = ALL_CHANNELS.every((ch) => !preference.channels[ch]);
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
@@ -104,12 +102,14 @@ export function CategoryPreferenceCard({
       </div>
 
       <div className="flex items-center gap-2">
-        {CHANNELS.map((channel) => {
+        {ALL_CHANNELS.map((channel) => {
           const enabled = preference.channels[channel];
           return (
             <button
               key={channel}
               type="button"
+              aria-pressed={enabled}
+              aria-label={`${CHANNEL_LABELS[channel]} notifications for ${CATEGORY_LABELS[preference.category]}`}
               onClick={() => onToggleChannel(channel, !enabled)}
               disabled={loading}
               className={`
