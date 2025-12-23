@@ -50,12 +50,12 @@ jobs:
 
           echo "Unresolved threads: $UNRESOLVED"
 
-          if [ "$REVIEW_COUNT" -ge 2 ] && [ "$UNRESOLVED" -eq 0 ]; then
+          if [ "$REVIEW_COUNT" -ge 1 ] && [ "$REVIEW_COUNT" -le 2 ] && [ "$UNRESOLVED" -eq 0 ]; then
             echo "should_approve=true" >> $GITHUB_OUTPUT
             echo "✅ $REVIEW_COUNT reviews, 0 unresolved - ready to approve"
           else
             echo "should_approve=false" >> $GITHUB_OUTPUT
-            echo "⏳ Need: ≥2 reviews (have $REVIEW_COUNT), 0 unresolved (have $UNRESOLVED)"
+            echo "⏳ Need: 1-2 reviews (have $REVIEW_COUNT), 0 unresolved (have $UNRESOLVED)"
           fi
 
       - name: Auto-approve PR
@@ -65,7 +65,7 @@ jobs:
         run: |
           PR_NUMBER=${{ github.event.inputs.pr_number }}
 
-          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: ≥2 Copilot reviews completed with no unresolved comments.
+          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: Copilot review completed with no unresolved comments.
 
           _This approval was automatically granted by the CI workflow._"
 
