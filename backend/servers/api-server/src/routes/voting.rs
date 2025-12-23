@@ -10,10 +10,9 @@ use axum::{
 use chrono::{DateTime, NaiveDate, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    CancelVote, CastVote, CreateVote, CreateVoteComment, CreateVoteQuestion, HideVoteComment,
-    PublishVote, QuestionOption, UpdateVote, UpdateVoteQuestion, Vote, VoteAuditLog,
-    VoteCommentWithUser, VoteEligibility, VoteListQuery, VoteQuestion, VoteReceipt, VoteReportData,
-    VoteResults, VoteSummary, VoteWithDetails,
+    CreateVoteQuestion, QuestionOption, UpdateVote, UpdateVoteQuestion, Vote, VoteAuditLog,
+    VoteCommentWithUser, VoteEligibility, VoteQuestion, VoteReceipt, VoteReportData, VoteResults,
+    VoteSummary, VoteWithDetails,
 };
 use serde::Deserialize;
 use sqlx::Error as SqlxError;
@@ -180,38 +179,18 @@ pub struct MyResponseQuery {
     tag = "Voting"
 )]
 async fn create_vote(
-    State(state): State<AppState>,
-    Json(req): Json<CreateVoteRequest>,
+    State(_state): State<AppState>,
+    Json(_req): Json<CreateVoteRequest>,
 ) -> Result<(StatusCode, Json<Vote>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
-    let org_id = Uuid::nil();
-
-    let data = CreateVote {
-        organization_id: org_id,
-        building_id: req.building_id,
-        title: req.title,
-        description: req.description,
-        start_at: req.start_at,
-        end_at: req.end_at,
-        quorum_type: req.quorum_type,
-        quorum_percentage: req.quorum_percentage,
-        allow_delegation: req.allow_delegation,
-        anonymous_voting: req.anonymous_voting,
-        created_by: user_id,
-    };
-
-    let vote = state.vote_repo.create(data).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                "DATABASE_ERROR",
-                format!("Failed to create vote: {}", e),
-            )),
-        )
-    })?;
-
-    Ok((StatusCode::CREATED, Json(vote)))
+    // TODO: Extract user_id and org_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized vote creation.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// List votes.
@@ -226,39 +205,18 @@ async fn create_vote(
     tag = "Voting"
 )]
 async fn list_votes(
-    State(state): State<AppState>,
-    Query(query): Query<ListVotesQuery>,
+    State(_state): State<AppState>,
+    Query(_query): Query<ListVotesQuery>,
 ) -> Result<Json<Vec<VoteSummary>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let org_id = Uuid::nil();
-
-    let status_vec = query.status.map(|s| vec![s]);
-
-    let list_query = VoteListQuery {
-        building_id: query.building_id,
-        status: status_vec,
-        created_by: None,
-        from_date: query.from_date,
-        to_date: query.to_date,
-        limit: query.limit,
-        offset: query.offset,
-    };
-
-    let votes = state
-        .vote_repo
-        .list(org_id, list_query)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to list votes: {}", e),
-                )),
-            )
-        })?;
-
-    Ok(Json(votes))
+    // TODO: Extract org_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Get vote by ID.
@@ -462,63 +420,19 @@ async fn delete_vote(
     tag = "Voting"
 )]
 async fn publish_vote(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(req): Json<PublishVoteRequest>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
+    Json(_req): Json<PublishVoteRequest>,
 ) -> Result<Json<Vote>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
-
-    // Check vote exists and is in draft status
-    let existing = state
-        .vote_repo
-        .find_by_id(id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to get vote: {}", e),
-                )),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-            )
-        })?;
-
-    if !existing.is_draft() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "BAD_REQUEST",
-                "Only draft votes can be published",
-            )),
-        ));
-    }
-
-    let data = PublishVote {
-        start_at: req.start_at,
-    };
-
-    let vote = state
-        .vote_repo
-        .publish(id, user_id, data)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to publish vote: {}", e),
-                )),
-            )
-        })?;
-
-    Ok(Json(vote))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized publishing.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Cancel a vote.
@@ -538,60 +452,19 @@ async fn publish_vote(
     tag = "Voting"
 )]
 async fn cancel_vote(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(req): Json<CancelVoteRequest>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
+    Json(_req): Json<CancelVoteRequest>,
 ) -> Result<Json<Vote>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
-
-    let existing = state
-        .vote_repo
-        .find_by_id(id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to get vote: {}", e),
-                )),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-            )
-        })?;
-
-    if existing.is_closed() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "BAD_REQUEST",
-                "Closed votes cannot be cancelled",
-            )),
-        ));
-    }
-
-    let data = CancelVote { reason: req.reason };
-
-    let vote = state
-        .vote_repo
-        .cancel(id, user_id, data)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to cancel vote: {}", e),
-                )),
-            )
-        })?;
-
-    Ok(Json(vote))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized cancellation.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Close a vote and calculate results.
@@ -931,31 +804,18 @@ async fn delete_question(
     tag = "Voting"
 )]
 async fn check_eligibility(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<VoteEligibility>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
-
-    let eligibility = state
-        .vote_repo
-        .check_eligibility(id, user_id)
-        .await
-        .map_err(|e| match e {
-            SqlxError::RowNotFound => (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-            ),
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to check eligibility: {}", e),
-                )),
-            ),
-        })?;
-
-    Ok(Json(eligibility))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Cast a vote.
@@ -975,105 +835,19 @@ async fn check_eligibility(
     tag = "Voting"
 )]
 async fn cast_vote(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(req): Json<CastVoteRequest>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
+    Json(_req): Json<CastVoteRequest>,
 ) -> Result<Json<VoteReceipt>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
-
-    // Check vote exists and is active
-    let existing = state
-        .vote_repo
-        .find_by_id(id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to get vote: {}", e),
-                )),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-            )
-        })?;
-
-    if !existing.can_vote() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "BAD_REQUEST",
-                "Vote is not currently accepting ballots",
-            )),
-        ));
-    }
-
-    // Check eligibility
-    let eligibility = state
-        .vote_repo
-        .check_eligibility(id, user_id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to check eligibility: {}", e),
-                )),
-            )
-        })?;
-
-    // Verify the unit is in the eligible list
-    let unit_eligible = eligibility
-        .eligible_units
-        .iter()
-        .find(|u| u.unit_id == req.unit_id);
-
-    if unit_eligible.is_none() {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new(
-                "FORBIDDEN",
-                "User is not eligible to vote for this unit",
-            )),
-        ));
-    }
-
-    // If delegation_id is provided, verify it matches
-    if let Some(delegation_id) = req.delegation_id {
-        let unit = unit_eligible.unwrap();
-        if unit.delegation_id != Some(delegation_id) {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("BAD_REQUEST", "Invalid delegation ID")),
-            ));
-        }
-    }
-
-    let data = CastVote {
-        vote_id: id,
-        user_id,
-        unit_id: req.unit_id,
-        delegation_id: req.delegation_id,
-        answers: req.answers,
-    };
-
-    let receipt = state.vote_repo.cast_vote(data).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                "DATABASE_ERROR",
-                format!("Failed to cast vote: {}", e),
-            )),
-        )
-    })?;
-
-    Ok(Json(receipt))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized voting.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Get current user's response for a vote.
@@ -1133,53 +907,19 @@ async fn get_my_response(
     tag = "Voting"
 )]
 async fn add_comment(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(req): Json<AddCommentRequest>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
+    Json(_req): Json<AddCommentRequest>,
 ) -> Result<(StatusCode, Json<db::models::VoteComment>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
-
-    // Check vote exists
-    let _ = state
-        .vote_repo
-        .find_by_id(id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to get vote: {}", e),
-                )),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Vote not found")),
-            )
-        })?;
-
-    let data = CreateVoteComment {
-        vote_id: id,
-        user_id,
-        parent_id: req.parent_id,
-        content: req.content,
-        ai_consent: req.ai_consent,
-    };
-
-    let comment = state.vote_repo.add_comment(data).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                "DATABASE_ERROR",
-                format!("Failed to add comment: {}", e),
-            )),
-        )
-    })?;
-
-    Ok((StatusCode::CREATED, Json(comment)))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized comments.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// List comments for a vote.
@@ -1270,30 +1010,19 @@ async fn list_replies(
     tag = "Voting"
 )]
 async fn hide_comment(
-    State(state): State<AppState>,
-    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
-    Json(req): Json<HideCommentRequest>,
+    State(_state): State<AppState>,
+    Path((_id, _comment_id)): Path<(Uuid, Uuid)>,
+    Json(_req): Json<HideCommentRequest>,
 ) -> Result<Json<db::models::VoteComment>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get from auth context
-    let user_id = Uuid::nil();
-
-    let data = HideVoteComment { reason: req.reason };
-
-    let comment = state
-        .vote_repo
-        .hide_comment(comment_id, user_id, data)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    format!("Failed to hide comment: {}", e),
-                )),
-            )
-        })?;
-
-    Ok(Json(comment))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized hiding.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 // ============================================================================
