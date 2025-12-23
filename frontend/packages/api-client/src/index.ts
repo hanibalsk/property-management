@@ -10,6 +10,7 @@
 export * from './generated';
 
 // Export domain-specific modules
+export * from './advanced-notifications';
 export * from './announcements';
 export * from './critical-notifications';
 export * from './documents';
