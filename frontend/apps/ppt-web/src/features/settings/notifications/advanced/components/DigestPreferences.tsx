@@ -8,9 +8,9 @@ import type { DayOfWeek, DigestConfig, NotificationCategory } from '@ppt/api-cli
 import {
   ALL_CATEGORIES,
   ALL_DAYS,
-  ALL_FREQUENCIES,
   CATEGORY_LABELS,
   DAY_FULL_LABELS,
+  DIGEST_OPTIONS,
   FREQUENCY_DESCRIPTIONS,
   FREQUENCY_LABELS,
 } from '@ppt/api-client';
@@ -90,7 +90,7 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
           <fieldset className="border-0 p-0 m-0">
             <legend className="block text-sm font-medium text-gray-700 mb-2">Frequency</legend>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {ALL_FREQUENCIES.map((freq) => (
+              {DIGEST_OPTIONS.map((freq) => (
                 <button
                   key={freq}
                   type="button"
