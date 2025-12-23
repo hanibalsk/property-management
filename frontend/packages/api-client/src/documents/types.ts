@@ -1,47 +1,12 @@
 /**
-<<<<<<< HEAD
  * Document Intelligence types (Epic 39).
  */
 
 // Base types
-=======
- * Document Intelligence Types (Epic 39).
- *
- * Types for document search, OCR, classification, and summarization.
- */
-
-/**
- * OCR processing status values.
- */
-export type OcrStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'not_applicable';
-
-/**
- * Document categories for classification.
- */
-export const DOCUMENT_CATEGORIES = [
-  'Contract',
-  'Invoice',
-  'Meeting Minutes',
-  'Maintenance Report',
-  'Insurance',
-  'Legal',
-  'Financial',
-  'Technical',
-  'Correspondence',
-  'Other',
-] as const;
-
-export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
-
-/**
- * Document entity with intelligence fields.
- */
->>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
 export interface Document {
   id: string;
   title: string;
   description?: string;
-<<<<<<< HEAD
   category: string;
   folder_id?: string;
   file_key: string;
@@ -62,26 +27,10 @@ export interface Document {
   classification_confidence?: number;
   classified_at?: string;
   classification_accepted?: boolean;
-=======
-  file_name: string;
-  category: string;
-  size_bytes: number;
-  created_at: string;
-  updated_at: string;
-  // OCR fields
-  ocr_status?: OcrStatus;
-  ocr_text?: string;
-  ocr_processed_at?: string;
-  // Classification fields
-  predicted_category?: string;
-  classification_confidence?: number;
-  // Summary fields
->>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
   summary?: string;
   summary_generated_at?: string;
 }
 
-<<<<<<< HEAD
 export type AccessScope = 'organization' | 'building' | 'unit' | 'user' | 'public';
 export type OcrStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'not_applicable';
 
@@ -133,83 +82,27 @@ export interface DocumentSearchRequest {
   date_to?: string;
   ocr_status?: OcrStatus[];
   has_summary?: boolean;
-=======
-/**
- * AI classification response.
- */
-export interface ClassificationResponse {
-  document_id: string;
-  predicted_category?: string;
-  confidence?: number;
-  classified_at?: string;
-  accepted?: boolean | null;
-  user_feedback_category?: string;
-}
-
-/**
- * Classification feedback payload.
- */
-export interface ClassificationFeedback {
-  accepted: boolean;
-  correct_category?: string;
-}
-
-/**
- * Document search request.
- */
-export interface DocumentSearchRequest {
-  query: string;
-  organization_id: string;
-  building_id?: string;
-  categories?: string[];
-  ocr_status?: OcrStatus[];
-  has_summary?: boolean;
-  date_from?: string;
-  date_to?: string;
->>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
   limit?: number;
   offset?: number;
 }
 
-<<<<<<< HEAD
 export interface DocumentSearchResult {
   document: DocumentSummary;
   score: number;
   highlights: SearchHighlight[];
 }
 
-=======
-/**
- * Search highlight for matched text.
- */
->>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
 export interface SearchHighlight {
   field: 'title' | 'description' | 'ocr_text' | 'summary';
   snippet: string;
 }
 
-<<<<<<< HEAD
-=======
-/**
- * Individual search result.
- */
-export interface DocumentSearchResult {
-  document: Document;
-  score: number;
-  highlights: SearchHighlight[];
-}
-
-/**
- * Search response with results and metadata.
- */
->>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
 export interface DocumentSearchResponse {
   results: DocumentSearchResult[];
   total: number;
   took_ms: number;
 }
 
-<<<<<<< HEAD
 // Classification types (Story 28.3)
 export interface ClassificationResponse {
   document_id: string;
@@ -328,18 +221,3 @@ export const DOCUMENT_CATEGORIES = [
 ] as const;
 
 export type DocumentCategory = (typeof DOCUMENT_CATEGORIES)[number];
-=======
-/**
- * Summarization options.
- */
-export interface SummarizationOptions {
-  style: 'brief' | 'detailed' | 'bullets';
-}
-
-/**
- * Document response wrapper.
- */
-export interface DocumentResponse {
-  document: Document;
-}
->>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
