@@ -11,8 +11,13 @@
 
 use axum::{routing::get, Router};
 use db::models::{
-    CreateSavedSearch, FavoritesResponse, PublicListingSearchResponse, SavedSearch,
-    SavedSearchesResponse, UpdateSavedSearch,
+    CreateAgencyInvitation, CreateFeedSubscription, CreateListingInquiry, CreatePortalImportJob,
+    CreateRealityAgency, CreateRealtorProfile, CreateSavedSearch, FavoritesResponse,
+    InquiryMessage, ListingInquiry, PortalImportJob, PortalImportJobWithStats,
+    PublicListingSearchResponse, RealityAgency, RealityAgencyInvitation, RealityAgencyMember,
+    RealityFeedSubscription, RealtorProfile, SavedSearch, SavedSearchesResponse,
+    SendInquiryMessage, UpdateAgencyBranding, UpdateFeedSubscription, UpdatePortalImportJob,
+    UpdateRealityAgency, UpdateRealtorProfile, UpdateSavedSearch,
 };
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
@@ -64,6 +69,35 @@ use state::AppState;
         routes::sso::validate_mobile_sso_token,
         routes::sso::get_session,
         routes::sso::refresh_session,
+        // Epic 32: Agencies
+        routes::agencies::create_agency,
+        routes::agencies::get_agency,
+        routes::agencies::get_agency_by_slug,
+        routes::agencies::update_agency,
+        routes::agencies::update_branding,
+        routes::agencies::list_members,
+        routes::agencies::create_invitation,
+        routes::agencies::accept_invitation,
+        // Epic 33: Realtors
+        routes::realtors::get_my_profile,
+        routes::realtors::get_profile,
+        routes::realtors::create_profile,
+        routes::realtors::update_profile,
+        routes::realtors::list_inquiries,
+        routes::realtors::mark_inquiry_read,
+        routes::realtors::respond_to_inquiry,
+        // Epic 34: Imports
+        routes::imports::list_import_jobs,
+        routes::imports::create_import_job,
+        routes::imports::get_import_job,
+        routes::imports::update_import_job,
+        routes::imports::start_import_job,
+        routes::imports::cancel_import_job,
+        routes::imports::list_feeds,
+        routes::imports::create_feed,
+        routes::imports::get_feed,
+        routes::imports::update_feed,
+        routes::imports::sync_feed,
     ),
     components(schemas(
         routes::health::HealthResponse,
@@ -89,6 +123,41 @@ use state::AppState;
         routes::sso::MobileSsoTokenResponse,
         routes::sso::ValidateMobileSsoTokenRequest,
         routes::sso::SessionResponse,
+        // Epic 32: Agencies
+        routes::agencies::AgencyResponse,
+        routes::agencies::MembersResponse,
+        routes::agencies::AcceptInvitationRequest,
+        CreateRealityAgency,
+        UpdateRealityAgency,
+        UpdateAgencyBranding,
+        CreateAgencyInvitation,
+        RealityAgency,
+        RealityAgencyMember,
+        RealityAgencyInvitation,
+        // Epic 33: Realtors
+        routes::realtors::ProfileResponse,
+        routes::realtors::InquiriesResponse,
+        routes::realtors::InquiriesQuery,
+        CreateRealtorProfile,
+        UpdateRealtorProfile,
+        RealtorProfile,
+        CreateListingInquiry,
+        SendInquiryMessage,
+        ListingInquiry,
+        InquiryMessage,
+        // Epic 34: Imports
+        routes::imports::ImportJobsResponse,
+        routes::imports::ImportJobResponse,
+        routes::imports::ImportJobsQuery,
+        routes::imports::FeedsResponse,
+        routes::imports::FeedResponse,
+        CreatePortalImportJob,
+        UpdatePortalImportJob,
+        PortalImportJob,
+        PortalImportJobWithStats,
+        CreateFeedSubscription,
+        UpdateFeedSubscription,
+        RealityFeedSubscription,
     )),
     tags(
         (name = "Health", description = "Health check endpoints"),
@@ -97,7 +166,10 @@ use state::AppState;
         (name = "Users", description = "Portal user accounts (separate from PM)"),
         (name = "Favorites", description = "Save and manage favorite listings"),
         (name = "SavedSearches", description = "Saved search criteria and alerts"),
-        (name = "Inquiries", description = "Contact and viewing requests")
+        (name = "Inquiries", description = "Contact and viewing requests"),
+        (name = "Agencies", description = "Real estate agency management (Epic 32)"),
+        (name = "Realtors", description = "Realtor profiles and tools (Epic 33)"),
+        (name = "Imports", description = "Property import and feed management (Epic 34)")
     )
 )]
 struct ApiDoc;
@@ -143,6 +215,12 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/inquiries", routes::inquiries::router())
         // SSO routes (Epic 10A-SSO)
         .nest("/api/v1/sso", routes::sso::router())
+        // Agency routes (Epic 32)
+        .nest("/api/v1/agencies", routes::agencies::router())
+        // Realtor routes (Epic 33)
+        .nest("/api/v1/realtors", routes::realtors::router())
+        // Import routes (Epic 34)
+        .nest("/api/v1/imports", routes::imports::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Add state

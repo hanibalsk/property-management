@@ -6,7 +6,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use db::{repositories::PortalRepository, DbPool};
+use db::{
+    repositories::{PortalRepository, RealityPortalRepository},
+    DbPool,
+};
 
 use crate::routes::sso::{OAuthTokens, PendingSsoSession, SessionInfo, SsoUserInfo};
 
@@ -338,6 +341,8 @@ pub struct AppState {
     pub db: DbPool,
     /// Portal repository for search, favorites, saved searches
     pub portal_repo: PortalRepository,
+    /// Reality Portal Professional repository (agencies, realtors, inquiries)
+    pub reality_portal_repo: RealityPortalRepository,
     /// Application configuration
     pub config: AppConfig,
     /// Pending SSO sessions (OAuth flow state)
@@ -354,12 +359,14 @@ impl AppState {
     /// Create a new AppState with database pool.
     pub fn new(db: DbPool) -> Self {
         let portal_repo = PortalRepository::new(db.clone());
+        let reality_portal_repo = RealityPortalRepository::new(db.clone());
         let config = AppConfig::from_env();
         let jwt_secret = config.jwt_secret.clone();
 
         Self {
             db,
             portal_repo,
+            reality_portal_repo,
             config,
             sso_sessions: Arc::new(Mutex::new(HashMap::new())),
             user_service: UserService::new(),
