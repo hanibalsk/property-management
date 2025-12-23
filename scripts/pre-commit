@@ -4,9 +4,11 @@
 #
 # This hook runs:
 #   1. Rust formatting check (cargo fmt)
-#   2. Rust linting (cargo clippy)
+#   2. Rust linting (cargo clippy) - optional
 #   3. Kotlin formatting check (spotless)
-#   4. Auto-bump patch version
+#   4. TypeScript/JavaScript lint (Biome)
+#   5. TypeScript type checking
+#   6. Auto-bump patch version
 #
 # To install this hook:
 #   ./scripts/install-hooks.sh
@@ -131,7 +133,7 @@ if echo "$STAGED_FILES" | grep -q '^mobile-native/.*\.kt$'; then
 fi
 
 # =============================================================================
-# Check 4: TypeScript/JavaScript (ESLint + Prettier) - Frontend
+# Check 4: TypeScript/JavaScript (Biome Lint) - Frontend
 # =============================================================================
 if echo "$STAGED_FILES" | grep -q '^frontend/.*\.\(ts\|tsx\|js\|jsx\)$'; then
     echo -e "${CYAN}Checking TypeScript/JavaScript formatting...${NC}"
@@ -145,11 +147,11 @@ if echo "$STAGED_FILES" | grep -q '^frontend/.*\.\(ts\|tsx\|js\|jsx\)$'; then
                 echo -e "${RED}╔══════════════════════════════════════════════════════════════════╗${NC}"
                 echo -e "${RED}║  PRE-COMMIT HOOK FAILED: TypeScript/JavaScript lint failed       ║${NC}"
                 echo -e "${RED}╠══════════════════════════════════════════════════════════════════╣${NC}"
-                echo -e "${RED}║  ESLint found issues in frontend code.                           ║${NC}"
+                echo -e "${RED}║  Biome found issues in frontend code.                            ║${NC}"
                 echo -e "${RED}║                                                                  ║${NC}"
                 echo -e "${RED}║  TO FIX: Run the following command:                              ║${NC}"
                 echo -e "${RED}║                                                                  ║${NC}"
-                echo -e "${YELLOW}║    cd frontend && pnpm lint --fix                                ║${NC}"
+                echo -e "${YELLOW}║    cd frontend && pnpm check:fix                                 ║${NC}"
                 echo -e "${RED}║                                                                  ║${NC}"
                 echo -e "${RED}║  Then stage the changes and commit again:                        ║${NC}"
                 echo -e "${RED}║                                                                  ║${NC}"
@@ -159,6 +161,37 @@ if echo "$STAGED_FILES" | grep -q '^frontend/.*\.\(ts\|tsx\|js\|jsx\)$'; then
                 FAILED=1
             else
                 echo -e "${GREEN}✓ TypeScript/JavaScript lint OK${NC}"
+            fi
+        fi
+    fi
+fi
+
+# =============================================================================
+# Check 5: TypeScript Type Checking - Frontend
+# =============================================================================
+if echo "$STAGED_FILES" | grep -q '^frontend/.*\.\(ts\|tsx\)$'; then
+    echo -e "${CYAN}Checking TypeScript types...${NC}"
+
+    FRONTEND_DIR="$ROOT_DIR/frontend"
+    if [[ -f "$FRONTEND_DIR/package.json" ]]; then
+        if (cd "$FRONTEND_DIR" && grep -q '"typecheck"' package.json 2>/dev/null); then
+            if ! (cd "$FRONTEND_DIR" && pnpm typecheck 2>/dev/null); then
+                echo ""
+                echo -e "${RED}╔══════════════════════════════════════════════════════════════════╗${NC}"
+                echo -e "${RED}║  PRE-COMMIT HOOK FAILED: TypeScript type check failed            ║${NC}"
+                echo -e "${RED}╠══════════════════════════════════════════════════════════════════╣${NC}"
+                echo -e "${RED}║  TypeScript found type errors in frontend code.                  ║${NC}"
+                echo -e "${RED}║                                                                  ║${NC}"
+                echo -e "${RED}║  TO FIX: Run the following command to see errors:                ║${NC}"
+                echo -e "${RED}║                                                                  ║${NC}"
+                echo -e "${YELLOW}║    cd frontend && pnpm typecheck                                 ║${NC}"
+                echo -e "${RED}║                                                                  ║${NC}"
+                echo -e "${RED}║  Fix the type errors and commit again.                           ║${NC}"
+                echo -e "${RED}╚══════════════════════════════════════════════════════════════════╝${NC}"
+                echo ""
+                FAILED=1
+            else
+                echo -e "${GREEN}✓ TypeScript types OK${NC}"
             fi
         fi
     fi
@@ -175,7 +208,7 @@ if [[ $FAILED -eq 1 ]]; then
 fi
 
 # =============================================================================
-# Check 5: Version Bump (only if other checks passed)
+# Check 6: Version Bump (only if other checks passed)
 # =============================================================================
 
 # Check if VERSION file exists

@@ -36,6 +36,8 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
 
     const time = config.deliveryTime || '09:00';
 
+    // Note: 'disabled' is already handled by the guard above, so TypeScript
+    // knows config.frequency can only be 'hourly' | 'daily' | 'weekly' here
     switch (config.frequency) {
       case 'hourly':
         return 'Every hour at :00';
@@ -43,9 +45,6 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
         return `Every day at ${time}`;
       case 'weekly':
         return `Every ${DAY_FULL_LABELS[config.deliveryDay || 'monday']} at ${time}`;
-      case 'disabled':
-        // Already handled above, but included for exhaustiveness
-        return 'Digests are disabled';
     }
   };
 
