@@ -171,3 +171,13 @@ pub use government_portal::GovernmentPortalRepository;
 pub mod reality_portal;
 
 pub use reality_portal::RealityPortalRepository;
+
+// Epic 37: Community & Social Features
+pub mod community;
+
+pub use community::CommunityRepository;
+
+// Epic 38: Workflow Automation
+pub mod automation;
+
+pub use automation::AutomationRepository;
