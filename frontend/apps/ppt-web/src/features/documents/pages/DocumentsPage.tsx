@@ -1,0 +1,233 @@
+/**
+ * Documents Page (Epic 39).
+ *
+ * Main page for document management with intelligence features.
+ */
+
+import { useState } from 'react';
+import { DocumentSearch } from '../components/DocumentSearch';
+import { DocumentDetail } from './DocumentDetail';
+
+interface DocumentsPageProps {
+  organizationId: string;
+  buildingId?: string;
+}
+
+export function DocumentsPage({ organizationId, buildingId }: DocumentsPageProps) {
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'search' | 'browse'>('search');
+
+  return (
+    <div className="documents-page">
+      <div className="page-header">
+        <h1 className="page-title">Documents</h1>
+        <div className="view-toggle">
+          <button
+            type="button"
+            onClick={() => setViewMode('search')}
+            className={`toggle-btn ${viewMode === 'search' ? 'active' : ''}`}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            Search
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('browse')}
+            className={`toggle-btn ${viewMode === 'browse' ? 'active' : ''}`}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+            </svg>
+            Browse
+          </button>
+        </div>
+      </div>
+
+      <div className="page-content">
+        <div className={`documents-panel ${selectedDocumentId ? 'with-detail' : ''}`}>
+          {viewMode === 'search' ? (
+            <DocumentSearch
+              organizationId={organizationId}
+              buildingId={buildingId}
+              onSelectDocument={setSelectedDocumentId}
+            />
+          ) : (
+            <div className="browse-placeholder">
+              <p>Browse mode - Folder tree coming soon</p>
+            </div>
+          )}
+        </div>
+
+        {selectedDocumentId && (
+          <div className="detail-panel">
+            <div className="detail-header">
+              <button
+                type="button"
+                onClick={() => setSelectedDocumentId(null)}
+                className="close-btn"
+                aria-label="Close document detail"
+              >
+                ×
+              </button>
+            </div>
+            <DocumentDetail documentId={selectedDocumentId} />
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        .documents-page {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          padding: 1.5rem;
+        }
+
+        .page-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+          margin: 0;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .view-toggle {
+          display: flex;
+          background: #f1f5f9;
+          border-radius: 0.5rem;
+          padding: 0.25rem;
+        }
+
+        .toggle-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          background: transparent;
+          border: none;
+          border-radius: 0.375rem;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .toggle-btn:hover {
+          color: #1e293b;
+        }
+
+        .toggle-btn.active {
+          background: white;
+          color: #1e293b;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .page-content {
+          display: flex;
+          flex: 1;
+          gap: 1.5rem;
+          overflow: hidden;
+        }
+
+        .documents-panel {
+          flex: 1;
+          overflow-y: auto;
+          padding-right: 0.5rem;
+        }
+
+        .documents-panel.with-detail {
+          max-width: 50%;
+        }
+
+        .detail-panel {
+          flex: 1;
+          max-width: 50%;
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 0.5rem;
+          overflow-y: auto;
+        }
+
+        .detail-header {
+          display: flex;
+          justify-content: flex-end;
+          padding: 0.5rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .close-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 2rem;
+          height: 2rem;
+          font-size: 1.5rem;
+          background: transparent;
+          border: none;
+          border-radius: 0.25rem;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .close-btn:hover {
+          background: #f1f5f9;
+          color: #1e293b;
+        }
+
+        .browse-placeholder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 200px;
+          background: #f8fafc;
+          border-radius: 0.5rem;
+          color: #64748b;
+        }
+
+        @media (max-width: 1024px) {
+          .page-content {
+            flex-direction: column;
+          }
+
+          .documents-panel,
+          .documents-panel.with-detail {
+            max-width: 100%;
+          }
+
+          .detail-panel {
+            max-width: 100%;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export default DocumentsPage;

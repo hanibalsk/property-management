@@ -12,6 +12,7 @@ export * from './generated';
 // Export domain-specific modules
 export * from './announcements';
 export * from './critical-notifications';
+export * from './documents';
 export * from './messaging';
 export * from './neighbors';
 export * from './notification-preferences';
