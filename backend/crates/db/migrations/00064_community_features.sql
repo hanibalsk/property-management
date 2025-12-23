@@ -453,7 +453,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END;
-RETURNS TRIGGER AS $$
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_group_member_count
 AFTER INSERT OR DELETE ON community_group_members
@@ -472,7 +472,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END;
-RETURNS TRIGGER AS $$
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_group_post_count
 AFTER INSERT OR DELETE ON community_posts
@@ -497,7 +497,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END;
-RETURNS TRIGGER AS $$
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_event_attendee_count
 AFTER INSERT OR UPDATE OR DELETE ON community_event_rsvps
@@ -516,7 +516,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END;
-RETURNS TRIGGER AS $$
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_post_comment_count
 AFTER INSERT OR DELETE ON community_comments
