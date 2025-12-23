@@ -146,7 +146,13 @@ export function SubmissionStatusPage({
           onClick={onBack}
           className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -246,7 +252,10 @@ export function SubmissionStatusPage({
                     <h4 className="text-sm font-medium text-red-900 mb-2">Validation Errors:</h4>
                     <ul className="space-y-2">
                       {submission.validationResult.errors.map((error) => (
-                        <li key={`${error.field}-${error.code}`} className="flex items-start gap-2 text-sm text-red-800">
+                        <li
+                          key={`${error.field}-${error.code}`}
+                          className="flex items-start gap-2 text-sm text-red-800"
+                        >
                           <span className="text-red-500 mt-0.5">
                             <svg
                               className="h-4 w-4"
@@ -529,7 +538,12 @@ export function SubmissionStatusPage({
             >
               {isValidating ? (
                 <>
-                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
                     <circle
                       className="opacity-25"
                       cx="12"
@@ -548,7 +562,13 @@ export function SubmissionStatusPage({
                 </>
               ) : (
                 <>
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -571,7 +591,12 @@ export function SubmissionStatusPage({
             >
               {isRetrying ? (
                 <>
-                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg
+                    className="h-4 w-4 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
                     <circle
                       className="opacity-25"
                       cx="12"
@@ -590,7 +615,13 @@ export function SubmissionStatusPage({
                 </>
               ) : (
                 <>
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
