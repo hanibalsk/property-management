@@ -5,6 +5,10 @@ on:
   pull_request_review:
     types: [submitted]
 
+  # Trigger when CI checks complete (catches Copilot reviews that don't trigger pull_request_review)
+  check_suite:
+    types: [completed]
+
   # Manual trigger as fallback
   workflow_dispatch:
     inputs:
@@ -17,10 +21,11 @@ jobs:
   auto-approve:
     name: Auto-Approve PR
     runs-on: ubuntu-latest
-    # Only run for Copilot reviews or manual trigger
+    # Run for: Copilot reviews, CI completion on PRs, or manual trigger
     if: |
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.user.login, 'copilot'))
+      (github.event_name == 'pull_request_review' && contains(github.event.review.user.login, 'copilot')) ||
+      (github.event_name == 'check_suite' && github.event.check_suite.conclusion == 'success' && github.event.check_suite.pull_requests[0] != null)
 
     permissions:
       pull-requests: write
@@ -34,6 +39,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "check_suite" ]; then
+            echo "number=${{ github.event.check_suite.pull_requests[0].number }}" >> $GITHUB_OUTPUT
           else
             echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           fi
