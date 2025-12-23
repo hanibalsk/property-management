@@ -64,6 +64,7 @@ jobs:
           sleep 120
 
       - name: Wait for CI to complete
+        id: ci
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -101,15 +102,18 @@ jobs:
 
             echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: $COMPLETED/$TOTAL checks completed ($SUCCESS success, $FAILURE failure, $PENDING pending)"
 
-            # If any check failed, exit early
+            # If any check failed, mark as failed and continue to dismiss approvals
             if [ "$FAILURE" -gt 0 ]; then
               echo "❌ CI failed! $FAILURE check(s) failed."
-              exit 1
+              echo "ci_passed=false" >> $GITHUB_OUTPUT
+              echo "failure_count=$FAILURE" >> $GITHUB_OUTPUT
+              exit 0
             fi
 
             # If all checks completed successfully
             if [ "$COMPLETED" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
               echo "✅ All $TOTAL CI checks passed!"
+              echo "ci_passed=true" >> $GITHUB_OUTPUT
               break
             fi
 
@@ -119,10 +123,37 @@ jobs:
 
           if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
             echo "⏰ Timeout waiting for CI checks"
-            exit 1
+            echo "ci_passed=false" >> $GITHUB_OUTPUT
+            echo "failure_count=timeout" >> $GITHUB_OUTPUT
           fi
 
+      - name: Dismiss auto-approvals on CI failure
+        if: steps.ci.outputs.ci_passed == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ steps.pr.outputs.number }}
+          REPO=${{ github.repository }}
+          FAILURE_COUNT="${{ steps.ci.outputs.failure_count }}"
+
+          echo "CI failed. Dismissing any previous auto-approvals..."
+
+          # Get all reviews on the PR
+          REVIEWS=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" --jq '.[] | select(.body | contains("Auto-approved:")) | .id')
+
+          for REVIEW_ID in $REVIEWS; do
+            echo "Dismissing review $REVIEW_ID..."
+            gh api "repos/$REPO/pulls/$PR_NUMBER/reviews/$REVIEW_ID/dismissals" \
+              -X PUT \
+              -f message="❌ Auto-approval dismissed: CI failed with $FAILURE_COUNT failing check(s). Please fix the issues and push again." \
+              2>/dev/null || echo "Could not dismiss review $REVIEW_ID (may already be dismissed or lack permissions)"
+          done
+
+          echo "Auto-approvals dismissed due to CI failure."
+          exit 1
+
       - name: Check review status
+        if: steps.ci.outputs.ci_passed == 'true'
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -172,7 +203,7 @@ jobs:
           fi
 
       - name: Auto-approve PR
-        if: steps.check.outputs.should_approve == 'true'
+        if: steps.ci.outputs.ci_passed == 'true' && steps.check.outputs.should_approve == 'true'
         env:
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |

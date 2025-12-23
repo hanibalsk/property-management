@@ -124,28 +124,19 @@ pub async fn list_rules(
     tag = "Automation"
 )]
 pub async fn create_rule(
-    State(state): State<AppState>,
-    Path(path): Path<OrgIdPath>,
-    Json(data): Json<CreateAutomationRule>,
+    State(_state): State<AppState>,
+    Path(_path): Path<OrgIdPath>,
+    Json(_data): Json<CreateAutomationRule>,
 ) -> Result<(StatusCode, Json<WorkflowAutomationRule>), (StatusCode, Json<ErrorResponse>)> {
-    let created_by = Uuid::nil(); // Placeholder - would come from auth
-
-    let rule = state
-        .automation_repo
-        .create_rule(path.org_id, created_by, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create rule");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to create rule",
-                )),
-            )
-        })?;
-
-    Ok((StatusCode::CREATED, Json(rule)))
+    // TODO: Extract created_by from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized rule creation.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Get an automation rule by ID.
@@ -419,33 +410,17 @@ pub async fn get_template(
     tag = "Automation"
 )]
 pub async fn create_from_template(
-    State(state): State<AppState>,
-    Path(path): Path<OrgIdPath>,
-    Json(data): Json<CreateRuleFromTemplate>,
+    State(_state): State<AppState>,
+    Path(_path): Path<OrgIdPath>,
+    Json(_data): Json<CreateRuleFromTemplate>,
 ) -> Result<(StatusCode, Json<WorkflowAutomationRule>), (StatusCode, Json<ErrorResponse>)> {
-    let created_by = Uuid::nil(); // Placeholder - would come from auth
-
-    let rule = state
-        .automation_repo
-        .create_from_template(path.org_id, created_by, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create rule from template");
-            if e.to_string().contains("RowNotFound") {
-                (
-                    StatusCode::NOT_FOUND,
-                    Json(ErrorResponse::new("NOT_FOUND", "Template not found")),
-                )
-            } else {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse::new(
-                        "DATABASE_ERROR",
-                        "Failed to create rule from template",
-                    )),
-                )
-            }
-        })?;
-
-    Ok((StatusCode::CREATED, Json(rule)))
+    // TODO: Extract created_by from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized rule creation.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }

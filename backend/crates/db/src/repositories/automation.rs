@@ -279,17 +279,9 @@ impl AutomationRepository {
             .await?
             .ok_or_else(|| SqlxError::RowNotFound)?;
 
-        // Merge overrides with template
+        // Deep merge overrides with template
         let trigger_config = if let Some(overrides) = data.trigger_config_overrides {
-            let mut base = template.trigger_config_template.clone();
-            if let (Some(base_obj), Some(override_obj)) =
-                (base.as_object_mut(), overrides.as_object())
-            {
-                for (k, v) in override_obj {
-                    base_obj.insert(k.clone(), v.clone());
-                }
-            }
-            base
+            deep_merge_json(template.trigger_config_template.clone(), overrides)
         } else {
             template.trigger_config_template
         };
@@ -346,5 +338,28 @@ impl AutomationRepository {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+}
+
+/// Deep merge two JSON values, with overrides taking precedence.
+/// For objects, recursively merges nested values.
+/// For other types, override replaces base entirely.
+fn deep_merge_json(base: serde_json::Value, overrides: serde_json::Value) -> serde_json::Value {
+    match (base, overrides) {
+        (serde_json::Value::Object(mut base_map), serde_json::Value::Object(override_map)) => {
+            for (key, override_value) in override_map {
+                base_map.insert(
+                    key.clone(),
+                    if let Some(base_value) = base_map.get(&key) {
+                        deep_merge_json(base_value.clone(), override_value)
+                    } else {
+                        override_value
+                    },
+                );
+            }
+            serde_json::Value::Object(base_map)
+        }
+        // For non-objects, override replaces entirely
+        (_, overrides) => overrides,
     }
 }

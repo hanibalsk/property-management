@@ -37,25 +37,14 @@ pub struct CheckFavoriteResponse {
     )
 )]
 pub async fn list_favorites(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<Json<FavoritesResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let favorites = state
-        .portal_repo
-        .get_favorites(user_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to get favorites: {}", e),
-            )
-        })?;
-
-    let total = favorites.len() as i64;
-
-    Ok(Json(FavoritesResponse { favorites, total }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Add listing to favorites.
@@ -73,67 +62,16 @@ pub async fn list_favorites(
     )
 )]
 pub async fn add_favorite(
-    State(state): State<AppState>,
-    Path(listing_id): Path<Uuid>,
-    Json(data): Json<AddFavorite>,
+    State(_state): State<AppState>,
+    Path(_listing_id): Path<Uuid>,
+    Json(_data): Json<AddFavorite>,
 ) -> Result<Json<FavoriteWithListing>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    // Check favorites limit (max 100)
-    let count = state
-        .portal_repo
-        .count_favorites(user_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to count favorites: {}", e),
-            )
-        })?;
-
-    if count >= 100 {
-        return Err((
-            axum::http::StatusCode::BAD_REQUEST,
-            "Maximum favorites limit (100) reached".to_string(),
-        ));
-    }
-
-    // Add to favorites
-    let favorite = state
-        .portal_repo
-        .add_favorite(user_id, listing_id, data.notes)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to add favorite: {}", e),
-            )
-        })?;
-
-    // Return with listing details
-    let favorites = state
-        .portal_repo
-        .get_favorites(user_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to get favorites: {}", e),
-            )
-        })?;
-
-    let fav_with_listing = favorites
-        .into_iter()
-        .find(|f| f.id == favorite.id)
-        .ok_or_else(|| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "Favorite not found".to_string(),
-            )
-        })?;
-
-    Ok(Json(fav_with_listing))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Remove listing from favorites.
@@ -149,31 +87,15 @@ pub async fn add_favorite(
     )
 )]
 pub async fn remove_favorite(
-    State(state): State<AppState>,
-    Path(listing_id): Path<Uuid>,
+    State(_state): State<AppState>,
+    Path(_listing_id): Path<Uuid>,
 ) -> Result<axum::http::StatusCode, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let removed = state
-        .portal_repo
-        .remove_favorite(user_id, listing_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to remove favorite: {}", e),
-            )
-        })?;
-
-    if !removed {
-        return Err((
-            axum::http::StatusCode::NOT_FOUND,
-            "Favorite not found".to_string(),
-        ));
-    }
-
-    Ok(axum::http::StatusCode::NO_CONTENT)
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Check if listing is favorited.
@@ -188,22 +110,13 @@ pub async fn remove_favorite(
     )
 )]
 pub async fn check_favorite(
-    State(state): State<AppState>,
-    Path(listing_id): Path<Uuid>,
+    State(_state): State<AppState>,
+    Path(_listing_id): Path<Uuid>,
 ) -> Result<Json<CheckFavoriteResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let is_favorited = state
-        .portal_repo
-        .is_favorited(user_id, listing_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to check favorite: {}", e),
-            )
-        })?;
-
-    Ok(Json(CheckFavoriteResponse { is_favorited }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }

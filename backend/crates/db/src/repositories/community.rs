@@ -30,30 +30,54 @@ impl CommunityRepository {
         created_by: Uuid,
         data: CreateCommunityGroup,
     ) -> Result<CommunityGroup, SqlxError> {
-        // Generate slug from name
-        let slug = data
+        // Generate base slug from name
+        let base_slug: String = data
             .name
             .to_lowercase()
             .replace(' ', "-")
             .chars()
             .filter(|c| c.is_alphanumeric() || *c == '-')
-            .collect::<String>();
+            .collect();
 
+        // Use a CTE to generate unique slug and atomically insert group + add creator as owner
         let group = sqlx::query_as::<_, CommunityGroup>(
             r#"
-            INSERT INTO community_groups (
-                building_id, name, slug, description, group_type, visibility,
-                icon, color, rules, max_members, auto_join_new_residents,
-                requires_approval, created_by
+            WITH unique_slug AS (
+                SELECT CASE
+                    WHEN NOT EXISTS (SELECT 1 FROM community_groups WHERE building_id = $1 AND slug = $3)
+                    THEN $3
+                    ELSE $3 || '-' || (
+                        SELECT COALESCE(MAX(
+                            CASE WHEN slug ~ ('^' || $3 || '-[0-9]+$')
+                            THEN CAST(SUBSTRING(slug FROM LENGTH($3) + 2) AS INTEGER)
+                            ELSE 0 END
+                        ), 0) + 1
+                        FROM community_groups
+                        WHERE building_id = $1 AND slug LIKE $3 || '%'
+                    )::text
+                END AS slug
+            ),
+            new_group AS (
+                INSERT INTO community_groups (
+                    building_id, name, slug, description, group_type, visibility,
+                    icon, color, rules, max_members, auto_join_new_residents,
+                    requires_approval, created_by
+                )
+                SELECT $1, $2, unique_slug.slug, $4, COALESCE($5, 'interest'), COALESCE($6, 'public'),
+                       $7, $8, $9, $10, COALESCE($11, false), COALESCE($12, false), $13
+                FROM unique_slug
+                RETURNING *
+            ),
+            add_owner AS (
+                INSERT INTO community_group_members (group_id, user_id, role)
+                SELECT id, $13, 'owner' FROM new_group
             )
-            VALUES ($1, $2, $3, $4, COALESCE($5, 'interest'), COALESCE($6, 'public'),
-                    $7, $8, $9, $10, COALESCE($11, false), COALESCE($12, false), $13)
-            RETURNING *
+            SELECT * FROM new_group
             "#,
         )
         .bind(building_id)
         .bind(&data.name)
-        .bind(&slug)
+        .bind(&base_slug)
         .bind(&data.description)
         .bind(&data.group_type)
         .bind(&data.visibility)
@@ -65,18 +89,6 @@ impl CommunityRepository {
         .bind(data.requires_approval)
         .bind(created_by)
         .fetch_one(&self.pool)
-        .await?;
-
-        // Add creator as owner
-        sqlx::query(
-            r#"
-            INSERT INTO community_group_members (group_id, user_id, role)
-            VALUES ($1, $2, 'owner')
-            "#,
-        )
-        .bind(group.id)
-        .bind(created_by)
-        .execute(&self.pool)
         .await?;
 
         Ok(group)
@@ -254,24 +266,23 @@ impl CommunityRepository {
         user_id: Uuid,
         reaction_type: &str,
     ) -> Result<(), SqlxError> {
+        // Use CTE for atomic insert and count update to prevent race conditions
         sqlx::query(
             r#"
-            INSERT INTO community_post_reactions (post_id, user_id, reaction_type)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (post_id, user_id, reaction_type) DO NOTHING
+            WITH inserted AS (
+                INSERT INTO community_post_reactions (post_id, user_id, reaction_type)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (post_id, user_id, reaction_type) DO NOTHING
+                RETURNING post_id
+            )
+            UPDATE community_posts
+            SET like_count = (SELECT COUNT(*) FROM community_post_reactions WHERE post_id = $1)
+            WHERE id = $1 AND EXISTS (SELECT 1 FROM inserted)
             "#,
         )
         .bind(post_id)
         .bind(user_id)
         .bind(reaction_type)
-        .execute(&self.pool)
-        .await?;
-
-        // Update like count
-        sqlx::query(
-            "UPDATE community_posts SET like_count = (SELECT COUNT(*) FROM community_post_reactions WHERE post_id = $1) WHERE id = $1",
-        )
-        .bind(post_id)
         .execute(&self.pool)
         .await?;
 
@@ -475,11 +486,20 @@ impl CommunityRepository {
         buyer_id: Uuid,
         data: CreateMarketplaceInquiry,
     ) -> Result<MarketplaceInquiry, SqlxError> {
-        let inquiry = sqlx::query_as::<_, MarketplaceInquiry>(
+        // Use CTE for atomic insert and count update to prevent race conditions
+        sqlx::query_as::<_, MarketplaceInquiry>(
             r#"
-            INSERT INTO marketplace_inquiries (item_id, buyer_id, message, offer_price)
-            VALUES ($1, $2, $3, $4)
-            RETURNING *
+            WITH new_inquiry AS (
+                INSERT INTO marketplace_inquiries (item_id, buyer_id, message, offer_price)
+                VALUES ($1, $2, $3, $4)
+                RETURNING *
+            ),
+            update_count AS (
+                UPDATE marketplace_items
+                SET inquiry_count = inquiry_count + 1
+                WHERE id = $1
+            )
+            SELECT * FROM new_inquiry
             "#,
         )
         .bind(item_id)
@@ -487,14 +507,6 @@ impl CommunityRepository {
         .bind(&data.message)
         .bind(data.offer_price)
         .fetch_one(&self.pool)
-        .await?;
-
-        // Update inquiry count
-        sqlx::query("UPDATE marketplace_items SET inquiry_count = inquiry_count + 1 WHERE id = $1")
-            .bind(item_id)
-            .execute(&self.pool)
-            .await?;
-
-        Ok(inquiry)
+        .await
     }
 }
