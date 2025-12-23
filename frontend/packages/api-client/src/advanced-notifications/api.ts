@@ -248,10 +248,7 @@ export async function getAdvancedPreferences(
 // Helpers
 // ============================================================================
 
-async function handleErrorResponse(
-  response: Response,
-  defaultMessage: string
-): Promise<never> {
+async function handleErrorResponse(response: Response, defaultMessage: string): Promise<never> {
   let errorMessage = defaultMessage;
   try {
     const errorData = await response.json();
