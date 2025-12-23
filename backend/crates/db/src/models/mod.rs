@@ -391,3 +391,16 @@ pub use subscription::{
     SubscriptionPlan, SubscriptionStatistics, SubscriptionWithPlan, UpdateOrganizationSubscription,
     UpdateSubscriptionCoupon, UpdateSubscriptionPlan, UsageRecord, UsageSummary,
 };
+
+// Epic 30: Government Portal Integration
+pub mod government_portal;
+
+pub use government_portal::{
+    AddSubmissionAttachment, CreatePortalConnection, CreateRegulatorySubmission,
+    CreateSubmissionAudit, CreateSubmissionSchedule, GovernmentPortalConnection,
+    GovernmentPortalStats, GovernmentPortalType, RegulatoryReportTemplate, RegulatorySubmission,
+    RegulatorySubmissionAttachment, RegulatorySubmissionAudit, RegulatorySubmissionSchedule,
+    SubmissionQuery, SubmissionStatus, SubmissionSummary, TemplateSummaryGov, UpcomingDueDate,
+    UpdatePortalConnection, UpdateRegulatorySubmission, UpdateSubmissionSchedule, ValidationError,
+    ValidationResult, ValidationWarning,
+};

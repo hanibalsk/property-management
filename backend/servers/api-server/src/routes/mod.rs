@@ -53,3 +53,6 @@ pub mod legal;
 
 // Epic 26: Platform Subscription & Billing
 pub mod subscriptions;
+
+// Epic 30: Government Portal Integration
+pub mod government_portal;

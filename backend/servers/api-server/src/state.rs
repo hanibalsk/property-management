@@ -7,14 +7,15 @@ use db::{
         BudgetRepository, BuildingRepository, CriticalNotificationRepository, DataExportRepository,
         DelegationRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
         EquipmentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
-        FinancialRepository, GranularNotificationRepository, HealthMonitoringRepository,
-        HelpRepository, InsuranceRepository, LeaseRepository, LegalRepository, ListingRepository,
-        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
-        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
-        PersonMonthRepository, PlatformAdminRepository, RentalRepository, RoleRepository,
-        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
-        SubscriptionRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
-        UnitRepository, UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
+        FinancialRepository, GovernmentPortalRepository, GranularNotificationRepository,
+        HealthMonitoringRepository, HelpRepository, InsuranceRepository, LeaseRepository,
+        LegalRepository, ListingRepository, MeterRepository, NotificationPreferenceRepository,
+        OAuthRepository, OnboardingRepository, OrganizationMemberRepository,
+        OrganizationRepository, PasswordResetRepository, PersonMonthRepository,
+        PlatformAdminRepository, RentalRepository, RoleRepository, SensorRepository,
+        SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
+        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
+        UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
         WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
@@ -86,6 +87,8 @@ pub struct AppState {
     pub legal_repo: LegalRepository,
     // Epic 26: Platform Subscription & Billing
     pub subscription_repo: SubscriptionRepository,
+    // Epic 30: Government Portal Integration
+    pub government_portal_repo: GovernmentPortalRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -158,6 +161,8 @@ impl AppState {
         let legal_repo = LegalRepository::new(db.clone());
         // Epic 26: Platform Subscription & Billing
         let subscription_repo = SubscriptionRepository::new(db.clone());
+        // Epic 30: Government Portal Integration
+        let government_portal_repo = GovernmentPortalRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -213,6 +218,7 @@ impl AppState {
             budget_repo,
             legal_repo,
             subscription_repo,
+            government_portal_repo,
             auth_service,
             email_service,
             jwt_service,

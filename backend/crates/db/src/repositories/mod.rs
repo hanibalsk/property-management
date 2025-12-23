@@ -161,3 +161,8 @@ pub use legal::LegalRepository;
 pub mod subscription;
 
 pub use subscription::SubscriptionRepository;
+
+// Epic 30: Government Portal Integration
+pub mod government_portal;
+
+pub use government_portal::GovernmentPortalRepository;
