@@ -175,6 +175,7 @@ export function GroupingSettings({ config, loading, onUpdate }: GroupingSettings
                       {config.maxGroupSize} new comments
                     </span>
                   </div>
+                  <span className="sr-only">Expand notification group</span>
                   <svg
                     className="h-4 w-4 text-gray-400"
                     fill="none"
@@ -182,6 +183,7 @@ export function GroupingSettings({ config, loading, onUpdate }: GroupingSettings
                     strokeWidth={2}
                     stroke="currentColor"
                     aria-hidden="true"
+                    role="img"
                   >
                     <path
                       strokeLinecap="round"

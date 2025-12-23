@@ -92,6 +92,7 @@ export function useUpdateCategoryPreference({
               ? {
                   ...cat,
                   channels: { ...cat.channels, ...request.channels },
+                  updatedAt: new Date().toISOString(),
                 }
               : cat
           ),

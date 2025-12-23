@@ -73,7 +73,13 @@ export function AdvancedNotificationSettingsPage({
         category,
         request: { channels: { [channel]: enabled } },
       });
-    } catch (_err) {
+    } catch (error) {
+      console.error('Failed to update category notification preference', {
+        category,
+        channel,
+        enabled,
+        error,
+      });
       setUpdateError('Failed to update category preference. Please try again.');
     }
   };
@@ -280,7 +286,8 @@ export function AdvancedNotificationSettingsPage({
                 setUpdateError(null);
                 try {
                   await updateQuietHours.mutateAsync(updates);
-                } catch (_err) {
+                } catch (error) {
+                  console.error('Failed to update quiet hours', { updates, error });
                   setUpdateError('Failed to update quiet hours. Please try again.');
                 }
               }}
@@ -295,7 +302,8 @@ export function AdvancedNotificationSettingsPage({
                 setUpdateError(null);
                 try {
                   await updateDigest.mutateAsync(updates);
-                } catch (_err) {
+                } catch (error) {
+                  console.error('Failed to update digest preferences', { updates, error });
                   setUpdateError('Failed to update digest preferences. Please try again.');
                 }
               }}
@@ -312,7 +320,8 @@ export function AdvancedNotificationSettingsPage({
             setUpdateError(null);
             try {
               await updateGrouping.mutateAsync(updates);
-            } catch (_err) {
+            } catch (error) {
+              console.error('Failed to update grouping settings', { updates, error });
               setUpdateError('Failed to update grouping settings. Please try again.');
             }
           }}

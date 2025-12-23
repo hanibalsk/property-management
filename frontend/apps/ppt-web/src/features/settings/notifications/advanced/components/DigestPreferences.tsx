@@ -167,7 +167,12 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
                   <select
                     id="delivery-day"
                     value={config.deliveryDay || 'monday'}
-                    onChange={(e) => onUpdate({ deliveryDay: e.target.value as DayOfWeek })}
+                    onChange={(e) => {
+                      const value = e.target.value as DayOfWeek;
+                      // Ensure valid weekday, fallback to monday if invalid
+                      const validDay = WEEKDAYS.includes(value) ? value : 'monday';
+                      onUpdate({ deliveryDay: validDay });
+                    }}
                     disabled={loading}
                     className="block w-full rounded-md border-0 py-2 pl-3 pr-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm disabled:opacity-50"
                   >
@@ -219,8 +224,8 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
             </div>
             <p className="text-xs text-gray-500 mt-2">
               {config.includeCategories.length === 0
-                ? 'No categories selected - all will be included'
-                : `${config.includeCategories.length} categories selected`}
+                ? 'All categories included (no filter applied)'
+                : `${config.includeCategories.length} of ${ALL_CATEGORIES.length} categories selected`}
             </p>
           </fieldset>
         </div>
