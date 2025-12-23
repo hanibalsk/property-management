@@ -6,9 +6,12 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-use db::models::{
-    CreateFeedSubscription, CreatePortalImportJob, PortalImportJob, PortalImportJobWithStats,
-    RealityFeedSubscription, UpdateFeedSubscription, UpdatePortalImportJob,
+use db::{
+    models::{
+        CreateFeedSubscription, CreatePortalImportJob, PortalImportJob, PortalImportJobWithStats,
+        RealityFeedSubscription, UpdateFeedSubscription, UpdatePortalImportJob,
+    },
+    SqlxError,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
@@ -78,29 +81,15 @@ pub struct FeedResponse {
     )
 )]
 pub async fn list_import_jobs(
-    State(state): State<AppState>,
-    Query(query): Query<ImportJobsQuery>,
+    State(_state): State<AppState>,
+    Query(_query): Query<ImportJobsQuery>,
 ) -> Result<Json<ImportJobsResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let limit = query.limit.unwrap_or(20).min(100);
-    let offset = query.offset.unwrap_or(0);
-
-    let jobs = state
-        .reality_portal_repo
-        .list_import_jobs(user_id, query.status, limit, offset)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to list import jobs: {}", e),
-            )
-        })?;
-
-    let total = jobs.len() as i64;
-
-    Ok(Json(ImportJobsResponse { jobs, total }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Create a new import job.
@@ -116,24 +105,14 @@ pub async fn list_import_jobs(
     )
 )]
 pub async fn create_import_job(
-    State(state): State<AppState>,
-    Json(data): Json<CreatePortalImportJob>,
+    State(_state): State<AppState>,
+    Json(_data): Json<CreatePortalImportJob>,
 ) -> Result<Json<ImportJobResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let job = state
-        .reality_portal_repo
-        .create_import_job(user_id, data)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to create import job: {}", e),
-            )
-        })?;
-
-    Ok(Json(ImportJobResponse { job }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Get import job by ID.
@@ -193,18 +172,15 @@ pub async fn update_import_job(
         .reality_portal_repo
         .update_import_job(id, data)
         .await
-        .map_err(|e| {
-            if e.to_string().contains("no rows") {
-                (
-                    axum::http::StatusCode::NOT_FOUND,
-                    "Import job not found".to_string(),
-                )
-            } else {
-                (
-                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to update import job: {}", e),
-                )
-            }
+        .map_err(|e| match e {
+            SqlxError::RowNotFound => (
+                axum::http::StatusCode::NOT_FOUND,
+                "Import job not found".to_string(),
+            ),
+            other => (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to update import job: {}", other),
+            ),
         })?;
 
     Ok(Json(ImportJobResponse { job }))
@@ -282,25 +258,13 @@ pub async fn cancel_import_job(
     )
 )]
 pub async fn list_feeds(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<Json<FeedsResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user/agency from auth context
-    let agency_id = Uuid::nil(); // Placeholder
-
-    let feeds = state
-        .reality_portal_repo
-        .list_feed_subscriptions(agency_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to list feeds: {}", e),
-            )
-        })?;
-
-    let total = feeds.len() as i64;
-
-    Ok(Json(FeedsResponse { feeds, total }))
+    // TODO: Extract agency_id from authentication context when auth middleware is implemented.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Create a new feed subscription.
@@ -316,24 +280,14 @@ pub async fn list_feeds(
     )
 )]
 pub async fn create_feed(
-    State(state): State<AppState>,
-    Json(data): Json<CreateFeedSubscription>,
+    State(_state): State<AppState>,
+    Json(_data): Json<CreateFeedSubscription>,
 ) -> Result<Json<FeedResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get agency from auth context
-    let agency_id = Uuid::nil(); // Placeholder
-
-    let feed = state
-        .reality_portal_repo
-        .create_feed_subscription(agency_id, data)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to create feed: {}", e),
-            )
-        })?;
-
-    Ok(Json(FeedResponse { feed }))
+    // TODO: Extract agency_id from authentication context when auth middleware is implemented.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Get feed subscription by ID.
@@ -393,18 +347,15 @@ pub async fn update_feed(
         .reality_portal_repo
         .update_feed_subscription(id, data)
         .await
-        .map_err(|e| {
-            if e.to_string().contains("no rows") {
-                (
-                    axum::http::StatusCode::NOT_FOUND,
-                    "Feed not found".to_string(),
-                )
-            } else {
-                (
-                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to update feed: {}", e),
-                )
-            }
+        .map_err(|e| match e {
+            SqlxError::RowNotFound => (
+                axum::http::StatusCode::NOT_FOUND,
+                "Feed not found".to_string(),
+            ),
+            other => (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to update feed: {}", other),
+            ),
         })?;
 
     Ok(Json(FeedResponse { feed }))

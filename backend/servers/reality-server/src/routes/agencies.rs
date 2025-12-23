@@ -6,9 +6,12 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-use db::models::{
-    CreateAgencyInvitation, CreateRealityAgency, RealityAgency, RealityAgencyInvitation,
-    RealityAgencyMember, UpdateAgencyBranding, UpdateRealityAgency,
+use db::{
+    models::{
+        CreateAgencyInvitation, CreateRealityAgency, RealityAgency, RealityAgencyInvitation,
+        RealityAgencyMember, UpdateAgencyBranding, UpdateRealityAgency,
+    },
+    SqlxError,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -53,24 +56,15 @@ pub struct MembersResponse {
     )
 )]
 pub async fn create_agency(
-    State(state): State<AppState>,
-    Json(data): Json<CreateRealityAgency>,
+    State(_state): State<AppState>,
+    Json(_data): Json<CreateRealityAgency>,
 ) -> Result<Json<AgencyResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let agency = state
-        .reality_portal_repo
-        .create_agency(user_id, data)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to create agency: {}", e),
-            )
-        })?;
-
-    Ok(Json(AgencyResponse { agency }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Get agency by ID.
@@ -165,18 +159,15 @@ pub async fn update_agency(
         .reality_portal_repo
         .update_agency(id, data)
         .await
-        .map_err(|e| {
-            if e.to_string().contains("no rows") {
-                (
-                    axum::http::StatusCode::NOT_FOUND,
-                    "Agency not found".to_string(),
-                )
-            } else {
-                (
-                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to update agency: {}", e),
-                )
-            }
+        .map_err(|e| match e {
+            SqlxError::RowNotFound => (
+                axum::http::StatusCode::NOT_FOUND,
+                "Agency not found".to_string(),
+            ),
+            other => (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to update agency: {}", other),
+            ),
         })?;
 
     Ok(Json(AgencyResponse { agency }))
@@ -259,25 +250,16 @@ pub async fn list_members(
     )
 )]
 pub async fn create_invitation(
-    State(state): State<AppState>,
-    Path(agency_id): Path<Uuid>,
-    Json(data): Json<CreateAgencyInvitation>,
+    State(_state): State<AppState>,
+    Path(_agency_id): Path<Uuid>,
+    Json(_data): Json<CreateAgencyInvitation>,
 ) -> Result<Json<RealityAgencyInvitation>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let invited_by = Uuid::nil(); // Placeholder
-
-    let invitation = state
-        .reality_portal_repo
-        .create_invitation(agency_id, invited_by, data)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to create invitation: {}", e),
-            )
-        })?;
-
-    Ok(Json(invitation))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Accept invitation request.
@@ -299,22 +281,13 @@ pub struct AcceptInvitationRequest {
     )
 )]
 pub async fn accept_invitation(
-    State(state): State<AppState>,
-    Path(token): Path<String>,
+    State(_state): State<AppState>,
+    Path(_token): Path<String>,
 ) -> Result<Json<RealityAgencyMember>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let member = state
-        .reality_portal_repo
-        .accept_invitation(&token, user_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::BAD_REQUEST,
-                format!("Failed to accept invitation: {}", e),
-            )
-        })?;
-
-    Ok(Json(member))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }

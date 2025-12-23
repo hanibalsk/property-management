@@ -165,29 +165,19 @@ pub async fn list_groups(
     tag = "Community"
 )]
 pub async fn create_group(
-    State(state): State<AppState>,
-    Path(path): Path<BuildingIdPath>,
-    Json(data): Json<CreateCommunityGroup>,
+    State(_state): State<AppState>,
+    Path(_path): Path<BuildingIdPath>,
+    Json(_data): Json<CreateCommunityGroup>,
 ) -> Result<(StatusCode, Json<CommunityGroup>), (StatusCode, Json<ErrorResponse>)> {
-    // For now, use a placeholder user_id - in production this would come from auth
-    let created_by = Uuid::nil();
-
-    let group = state
-        .community_repo
-        .create_group(path.building_id, created_by, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create group");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to create group",
-                )),
-            )
-        })?;
-
-    Ok((StatusCode::CREATED, Json(group)))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Get a community group by ID.
@@ -238,24 +228,18 @@ pub async fn get_group(
     tag = "Community"
 )]
 pub async fn join_group(
-    State(state): State<AppState>,
-    Path(path): Path<GroupIdPath>,
+    State(_state): State<AppState>,
+    Path(_path): Path<GroupIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    let user_id = Uuid::nil(); // Placeholder - would come from auth
-
-    state
-        .community_repo
-        .join_group(path.id, user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to join group");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to join group")),
-            )
-        })?;
-
-    Ok(StatusCode::OK)
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Leave a community group.
@@ -271,27 +255,18 @@ pub async fn join_group(
     tag = "Community"
 )]
 pub async fn leave_group(
-    State(state): State<AppState>,
-    Path(path): Path<GroupIdPath>,
+    State(_state): State<AppState>,
+    Path(_path): Path<GroupIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    let user_id = Uuid::nil(); // Placeholder - would come from auth
-
-    state
-        .community_repo
-        .leave_group(path.id, user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to leave group");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to leave group",
-                )),
-            )
-        })?;
-
-    Ok(StatusCode::OK)
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 // ==================== Posts (Story 37.2) ====================
@@ -343,28 +318,19 @@ pub async fn list_posts(
     tag = "Community"
 )]
 pub async fn create_post(
-    State(state): State<AppState>,
-    Path(path): Path<GroupPostsPath>,
-    Json(data): Json<CreateCommunityPost>,
+    State(_state): State<AppState>,
+    Path(_path): Path<GroupPostsPath>,
+    Json(_data): Json<CreateCommunityPost>,
 ) -> Result<(StatusCode, Json<CommunityPost>), (StatusCode, Json<ErrorResponse>)> {
-    let author_id = Uuid::nil(); // Placeholder - would come from auth
-
-    let post = state
-        .community_repo
-        .create_post(path.group_id, author_id, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create post");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to create post",
-                )),
-            )
-        })?;
-
-    Ok((StatusCode::CREATED, Json(post)))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Add reaction to a post.
@@ -381,28 +347,19 @@ pub async fn create_post(
     tag = "Community"
 )]
 pub async fn add_reaction(
-    State(state): State<AppState>,
-    Path(path): Path<PostIdPath>,
-    Json(data): Json<AddReactionRequest>,
+    State(_state): State<AppState>,
+    Path(_path): Path<PostIdPath>,
+    Json(_data): Json<AddReactionRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    let user_id = Uuid::nil(); // Placeholder - would come from auth
-
-    state
-        .community_repo
-        .add_post_reaction(path.id, user_id, &data.reaction_type)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to add reaction");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to add reaction",
-                )),
-            )
-        })?;
-
-    Ok(StatusCode::OK)
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Create a comment on a post.
@@ -419,28 +376,19 @@ pub async fn add_reaction(
     tag = "Community"
 )]
 pub async fn create_comment(
-    State(state): State<AppState>,
-    Path(path): Path<PostIdPath>,
-    Json(data): Json<CreateCommunityComment>,
+    State(_state): State<AppState>,
+    Path(_path): Path<PostIdPath>,
+    Json(_data): Json<CreateCommunityComment>,
 ) -> Result<(StatusCode, Json<CommunityComment>), (StatusCode, Json<ErrorResponse>)> {
-    let author_id = Uuid::nil(); // Placeholder - would come from auth
-
-    let comment = state
-        .community_repo
-        .create_comment(path.id, author_id, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create comment");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to create comment",
-                )),
-            )
-        })?;
-
-    Ok((StatusCode::CREATED, Json(comment)))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 // ==================== Events (Story 37.3) ====================
@@ -495,28 +443,19 @@ pub async fn list_events(
     tag = "Community"
 )]
 pub async fn create_event(
-    State(state): State<AppState>,
-    Path(path): Path<BuildingIdPath>,
-    Json(data): Json<CreateCommunityEvent>,
+    State(_state): State<AppState>,
+    Path(_path): Path<BuildingIdPath>,
+    Json(_data): Json<CreateCommunityEvent>,
 ) -> Result<(StatusCode, Json<CommunityEvent>), (StatusCode, Json<ErrorResponse>)> {
-    let organizer_id = Uuid::nil(); // Placeholder - would come from auth
-
-    let event = state
-        .community_repo
-        .create_event(path.building_id, organizer_id, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create event");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to create event",
-                )),
-            )
-        })?;
-
-    Ok((StatusCode::CREATED, Json(event)))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// RSVP to an event.
@@ -533,25 +472,19 @@ pub async fn create_event(
     tag = "Community"
 )]
 pub async fn rsvp_event(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(data): Json<EventRsvpRequest>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
+    Json(_data): Json<EventRsvpRequest>,
 ) -> Result<Json<CommunityEventRsvp>, (StatusCode, Json<ErrorResponse>)> {
-    let user_id = Uuid::nil(); // Placeholder - would come from auth
-
-    let rsvp = state
-        .community_repo
-        .rsvp_event(id, user_id, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to RSVP");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to RSVP")),
-            )
-        })?;
-
-    Ok(Json(rsvp))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 // ==================== Marketplace (Story 37.4) ====================
@@ -603,28 +536,19 @@ pub async fn list_items(
     tag = "Community"
 )]
 pub async fn create_item(
-    State(state): State<AppState>,
-    Path(path): Path<BuildingIdPath>,
-    Json(data): Json<CreateMarketplaceItem>,
+    State(_state): State<AppState>,
+    Path(_path): Path<BuildingIdPath>,
+    Json(_data): Json<CreateMarketplaceItem>,
 ) -> Result<(StatusCode, Json<MarketplaceItem>), (StatusCode, Json<ErrorResponse>)> {
-    let seller_id = Uuid::nil(); // Placeholder - would come from auth
-
-    let item = state
-        .community_repo
-        .create_item(path.building_id, seller_id, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create item");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to create item",
-                )),
-            )
-        })?;
-
-    Ok((StatusCode::CREATED, Json(item)))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }
 
 /// Get a marketplace item by ID.
@@ -676,26 +600,17 @@ pub async fn get_item(
     tag = "Community"
 )]
 pub async fn create_inquiry(
-    State(state): State<AppState>,
-    Path(path): Path<ItemIdPath>,
-    Json(data): Json<CreateMarketplaceInquiry>,
+    State(_state): State<AppState>,
+    Path(_path): Path<ItemIdPath>,
+    Json(_data): Json<CreateMarketplaceInquiry>,
 ) -> Result<(StatusCode, Json<MarketplaceInquiry>), (StatusCode, Json<ErrorResponse>)> {
-    let buyer_id = Uuid::nil(); // Placeholder - would come from auth
-
-    let inquiry = state
-        .community_repo
-        .create_inquiry(path.id, buyer_id, data)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to create inquiry");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DATABASE_ERROR",
-                    "Failed to create inquiry",
-                )),
-            )
-        })?;
-
-    Ok((StatusCode::CREATED, Json(inquiry)))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        StatusCode::UNAUTHORIZED,
+        Json(ErrorResponse::new(
+            "UNAUTHORIZED",
+            "Authentication required",
+        )),
+    ))
 }

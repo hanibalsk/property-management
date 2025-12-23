@@ -9,6 +9,9 @@ use std::time::Duration;
 
 pub type DbPool = sqlx::PgPool;
 
+/// Re-export sqlx error for use in route handlers.
+pub use sqlx::Error as SqlxError;
+
 // Re-export tenant context utilities
 pub use tenant_context::{
     clear_request_context, set_request_context, set_tenant_context, user_has_permission,

@@ -59,29 +59,14 @@ pub struct InquiriesQuery {
     )
 )]
 pub async fn get_my_profile(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let profile = state
-        .reality_portal_repo
-        .get_realtor_profile(user_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to get profile: {}", e),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                axum::http::StatusCode::NOT_FOUND,
-                "Profile not found".to_string(),
-            )
-        })?;
-
-    Ok(Json(ProfileResponse { profile }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Get realtor profile by user ID.
@@ -132,24 +117,15 @@ pub async fn get_profile(
     )
 )]
 pub async fn create_profile(
-    State(state): State<AppState>,
-    Json(data): Json<CreateRealtorProfile>,
+    State(_state): State<AppState>,
+    Json(_data): Json<CreateRealtorProfile>,
 ) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let profile = state
-        .reality_portal_repo
-        .upsert_realtor_profile(user_id, data)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to create profile: {}", e),
-            )
-        })?;
-
-    Ok(Json(ProfileResponse { profile }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Update realtor profile.
@@ -165,31 +141,15 @@ pub async fn create_profile(
     )
 )]
 pub async fn update_profile(
-    State(state): State<AppState>,
-    Json(data): Json<UpdateRealtorProfile>,
+    State(_state): State<AppState>,
+    Json(_data): Json<UpdateRealtorProfile>,
 ) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let profile = state
-        .reality_portal_repo
-        .update_realtor_profile(user_id, data)
-        .await
-        .map_err(|e| {
-            if e.to_string().contains("no rows") {
-                (
-                    axum::http::StatusCode::NOT_FOUND,
-                    "Profile not found".to_string(),
-                )
-            } else {
-                (
-                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to update profile: {}", e),
-                )
-            }
-        })?;
-
-    Ok(Json(ProfileResponse { profile }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// List realtor's inquiries.
@@ -204,29 +164,15 @@ pub async fn update_profile(
     )
 )]
 pub async fn list_inquiries(
-    State(state): State<AppState>,
-    Query(query): Query<InquiriesQuery>,
+    State(_state): State<AppState>,
+    Query(_query): Query<InquiriesQuery>,
 ) -> Result<Json<InquiriesResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let limit = query.limit.unwrap_or(20).min(100);
-    let offset = query.offset.unwrap_or(0);
-
-    let inquiries = state
-        .reality_portal_repo
-        .get_realtor_inquiries(user_id, query.status, limit, offset)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to get inquiries: {}", e),
-            )
-        })?;
-
-    let total = inquiries.len() as i64;
-
-    Ok(Json(InquiriesResponse { inquiries, total }))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
 
 /// Mark inquiry as read.
@@ -273,23 +219,14 @@ pub async fn mark_inquiry_read(
     )
 )]
 pub async fn respond_to_inquiry(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-    Json(data): Json<SendInquiryMessage>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
+    Json(_data): Json<SendInquiryMessage>,
 ) -> Result<Json<InquiryMessage>, (axum::http::StatusCode, String)> {
-    // TODO: Get user from auth context
-    let user_id = Uuid::nil(); // Placeholder
-
-    let message = state
-        .reality_portal_repo
-        .respond_to_inquiry(id, user_id, &data.message)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to respond: {}", e),
-            )
-        })?;
-
-    Ok(Json(message))
+    // TODO: Extract user_id from authentication context when auth middleware is implemented.
+    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
+    Err((
+        axum::http::StatusCode::UNAUTHORIZED,
+        "Authentication required".to_string(),
+    ))
 }
