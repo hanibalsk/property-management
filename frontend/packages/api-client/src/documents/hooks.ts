@@ -1,4 +1,5 @@
 /**
+<<<<<<< HEAD
  * Document React Query hooks (Epic 39).
  */
 
@@ -40,10 +41,46 @@ export function useDocument(id: string) {
   return useQuery({
     queryKey: documentKeys.detail(id),
     queryFn: () => api.getDocument(id),
+=======
+ * Document Intelligence Hooks (Epic 39).
+ *
+ * TanStack Query hooks for document operations.
+ */
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchDocument,
+  getDocumentClassification,
+  reprocessOcr,
+  requestSummarization,
+  searchDocuments,
+  submitClassificationFeedback,
+} from './api';
+import type { ClassificationFeedback, DocumentSearchRequest, SummarizationOptions } from './types';
+
+/**
+ * Query keys for document operations.
+ */
+export const documentKeys = {
+  all: ['documents'] as const,
+  detail: (id: string) => [...documentKeys.all, 'detail', id] as const,
+  search: (request: DocumentSearchRequest) => [...documentKeys.all, 'search', request] as const,
+  classification: (id: string) => [...documentKeys.all, 'classification', id] as const,
+};
+
+/**
+ * Hook to fetch a single document.
+ */
+export function useDocument(id: string) {
+  return useQuery({
+    queryKey: documentKeys.detail(id),
+    queryFn: () => fetchDocument(id),
+>>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
     enabled: !!id,
   });
 }
 
+<<<<<<< HEAD
 // Search documents (Story 39.1)
 export function useDocumentSearch(request: DocumentSearchRequest) {
   return useQuery({
@@ -102,10 +139,38 @@ export function useReprocessOcr() {
 }
 
 // Submit classification feedback (Story 39.3)
+=======
+/**
+ * Hook to search documents.
+ */
+export function useDocumentSearch(request: DocumentSearchRequest) {
+  return useQuery({
+    queryKey: documentKeys.search(request),
+    queryFn: () => searchDocuments(request),
+    enabled: request.query.length >= 2,
+  });
+}
+
+/**
+ * Hook to get document classification.
+ */
+export function useDocumentClassification(documentId: string) {
+  return useQuery({
+    queryKey: documentKeys.classification(documentId),
+    queryFn: () => getDocumentClassification(documentId),
+    enabled: !!documentId,
+  });
+}
+
+/**
+ * Hook to submit classification feedback.
+ */
+>>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
 export function useSubmitClassificationFeedback() {
   const queryClient = useQueryClient();
 
   return useMutation({
+<<<<<<< HEAD
     mutationFn: ({
       id,
       feedback,
@@ -118,16 +183,29 @@ export function useSubmitClassificationFeedback() {
       queryClient.invalidateQueries({
         queryKey: documentKeys.classificationHistory(id),
       });
+=======
+    mutationFn: ({ id, feedback }: { id: string; feedback: ClassificationFeedback }) =>
+      submitClassificationFeedback(id, feedback),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: documentKeys.classification(id) });
+>>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
       queryClient.invalidateQueries({ queryKey: documentKeys.detail(id) });
     },
   });
 }
 
+<<<<<<< HEAD
 // Request summarization (Story 39.4)
+=======
+/**
+ * Hook to request document summarization.
+ */
+>>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
 export function useRequestSummarization() {
   const queryClient = useQueryClient();
 
   return useMutation({
+<<<<<<< HEAD
     mutationFn: ({
       id,
       options,
@@ -141,10 +219,17 @@ export function useRequestSummarization() {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: documentKeys.detail(id) });
       }, 5000);
+=======
+    mutationFn: ({ id, options }: { id: string; options: SummarizationOptions }) =>
+      requestSummarization(id, options),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: documentKeys.detail(id) });
+>>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
     },
   });
 }
 
+<<<<<<< HEAD
 // Get download URL
 export function useDownloadUrl(id: string) {
   return useQuery({
@@ -162,5 +247,18 @@ export function usePreviewUrl(id: string) {
     queryFn: () => api.getPreviewUrl(id),
     enabled: !!id,
     staleTime: 4 * 60 * 1000,
+=======
+/**
+ * Hook to reprocess OCR for a document.
+ */
+export function useReprocessOcr() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (documentId: string) => reprocessOcr(documentId),
+    onSuccess: (_, documentId) => {
+      queryClient.invalidateQueries({ queryKey: documentKeys.detail(documentId) });
+    },
+>>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
   });
 }

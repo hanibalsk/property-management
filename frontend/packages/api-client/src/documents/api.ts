@@ -1,9 +1,16 @@
 /**
+<<<<<<< HEAD
  * Document API client (Epic 39).
+=======
+ * Document Intelligence API (Epic 39).
+ *
+ * API functions for document search, OCR, classification, and summarization.
+>>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
  */
 
 import type {
   ClassificationFeedback,
+<<<<<<< HEAD
   ClassificationHistoryEntry,
   ClassificationResponse,
   CreateDocumentRequest,
@@ -154,4 +161,109 @@ export async function getIntelligenceStats(): Promise<{
   stats: DocumentIntelligenceStats[];
 }> {
   return fetchApi(`${API_BASE}/intelligence/stats`);
+=======
+  ClassificationResponse,
+  DocumentResponse,
+  DocumentSearchRequest,
+  DocumentSearchResponse,
+  SummarizationOptions,
+} from './types';
+
+const API_BASE = '/api/v1';
+
+/**
+ * Fetch a single document by ID.
+ */
+export async function fetchDocument(id: string): Promise<DocumentResponse> {
+  const response = await fetch(`${API_BASE}/documents/${id}`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch document: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Search documents with full-text search.
+ */
+export async function searchDocuments(
+  request: DocumentSearchRequest
+): Promise<DocumentSearchResponse> {
+  const response = await fetch(`${API_BASE}/documents/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(`Search failed: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Get document classification.
+ */
+export async function getDocumentClassification(
+  documentId: string
+): Promise<ClassificationResponse> {
+  const response = await fetch(`${API_BASE}/documents/${documentId}/classification`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to get classification: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Submit classification feedback.
+ */
+export async function submitClassificationFeedback(
+  documentId: string,
+  feedback: ClassificationFeedback
+): Promise<ClassificationResponse> {
+  const response = await fetch(`${API_BASE}/documents/${documentId}/classification/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(feedback),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to submit feedback: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Request document summarization.
+ */
+export async function requestSummarization(
+  documentId: string,
+  options: SummarizationOptions
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/documents/${documentId}/summarize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(options),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to request summarization: ${response.statusText}`);
+  }
+}
+
+/**
+ * Reprocess OCR for a document.
+ */
+export async function reprocessOcr(documentId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/documents/${documentId}/ocr/reprocess`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to reprocess OCR: ${response.statusText}`);
+  }
+>>>>>>> 09dd25d (feat(api-client): add documents module with types and hooks for Epic 39)
 }
