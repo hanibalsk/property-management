@@ -87,6 +87,7 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
           type="button"
           role="switch"
           aria-checked={config.enabled}
+          aria-label="Enable notification digest"
           onClick={() => onUpdate({ enabled: !config.enabled })}
           disabled={loading}
           className={`

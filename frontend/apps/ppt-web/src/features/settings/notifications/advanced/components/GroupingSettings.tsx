@@ -28,6 +28,7 @@ export function GroupingSettings({ config, loading, onUpdate }: GroupingSettings
           type="button"
           role="switch"
           aria-checked={config.enabled}
+          aria-label="Enable smart notification grouping"
           onClick={() => onUpdate({ enabled: !config.enabled })}
           disabled={loading}
           className={`
@@ -64,6 +65,7 @@ export function GroupingSettings({ config, loading, onUpdate }: GroupingSettings
                 type="button"
                 role="switch"
                 aria-checked={config.groupByCategory}
+                aria-label="Group notifications by category"
                 onClick={() => onUpdate({ groupByCategory: !config.groupByCategory })}
                 disabled={loading}
                 className={`
@@ -96,6 +98,7 @@ export function GroupingSettings({ config, loading, onUpdate }: GroupingSettings
                 type="button"
                 role="switch"
                 aria-checked={config.groupBySource}
+                aria-label="Group notifications by source"
                 onClick={() => onUpdate({ groupBySource: !config.groupBySource })}
                 disabled={loading}
                 className={`

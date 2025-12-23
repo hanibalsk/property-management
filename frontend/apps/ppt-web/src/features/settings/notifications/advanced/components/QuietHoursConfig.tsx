@@ -36,6 +36,7 @@ export function QuietHoursConfig({ config, loading, onUpdate }: QuietHoursConfig
           type="button"
           role="switch"
           aria-checked={config.enabled}
+          aria-label="Enable quiet hours"
           onClick={() => onUpdate({ enabled: !config.enabled })}
           disabled={loading}
           className={`
@@ -161,6 +162,7 @@ export function QuietHoursConfig({ config, loading, onUpdate }: QuietHoursConfig
               type="button"
               role="switch"
               aria-checked={config.allowEmergency}
+              aria-label="Allow emergency notifications during quiet hours"
               onClick={() => onUpdate({ allowEmergency: !config.allowEmergency })}
               disabled={loading}
               className={`

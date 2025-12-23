@@ -29,8 +29,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use input PR number for manual trigger, otherwise use event
-          PR_NUMBER=${{ github.event.inputs.pr_number || github.event.pull_request.number }}
+          # Use input PR number for manual trigger, review event, or PR event
+          PR_NUMBER=${{ github.event.inputs.pr_number || github.event.review.pull_request.number || github.event.pull_request.number }}
           REPO=${{ github.repository }}
 
           echo "Checking Copilot review for PR #$PR_NUMBER..."
@@ -72,7 +72,7 @@ jobs:
           # Option 1: Personal Access Token from another account
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=${{ github.event.inputs.pr_number || github.event.pull_request.number }}
+          PR_NUMBER=${{ github.event.inputs.pr_number || github.event.review.pull_request.number || github.event.pull_request.number }}
 
           echo "🤖 Auto-approving PR #$PR_NUMBER after successful Copilot review..."
 
