@@ -94,6 +94,7 @@ impl GovernmentPortalRepository {
     }
 
     /// Update a portal connection.
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_connection(
         &self,
         id: Uuid,
@@ -227,6 +228,7 @@ impl GovernmentPortalRepository {
     // ========================================================================
 
     /// List submissions for an organization.
+    #[allow(clippy::too_many_arguments)]
     pub async fn list_submissions(
         &self,
         organization_id: Uuid,

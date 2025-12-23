@@ -498,6 +498,7 @@ impl GranularNotificationRepository {
     // ========================================================================
 
     /// Add a notification to a group (creates group if needed).
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_notification_to_group(
         &self,
         user_id: Uuid,
@@ -658,6 +659,7 @@ impl GranularNotificationRepository {
     // ========================================================================
 
     /// Create a notification digest.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_digest(
         &self,
         user_id: Uuid,
@@ -730,6 +732,7 @@ impl GranularNotificationRepository {
     }
 
     /// Add notification to digest.
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_notification_to_digest(
         &self,
         digest_id: Uuid,

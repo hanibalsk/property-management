@@ -1481,6 +1481,7 @@ impl DocumentRepository {
     }
 
     /// Update document summary.
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_summary(
         &self,
         document_id: Uuid,
