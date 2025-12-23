@@ -1,0 +1,5 @@
+# CODEOWNERS - Copilot as mandatory reviewer for all changes
+# This ensures every PR requires Copilot code review before merge
+
+# Copilot reviews all files
+* @copilot
