@@ -51,7 +51,13 @@ export function ComplianceDashboardWidget({ stats }: ComplianceDashboardWidgetPr
         label="Total Connections"
         value={stats.totalConnections}
         icon={
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -67,7 +73,13 @@ export function ComplianceDashboardWidget({ stats }: ComplianceDashboardWidgetPr
         value={stats.activeConnections}
         variant="success"
         icon={
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -82,7 +94,13 @@ export function ComplianceDashboardWidget({ stats }: ComplianceDashboardWidgetPr
         label="Total Submissions"
         value={stats.totalSubmissions}
         icon={
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -97,7 +115,13 @@ export function ComplianceDashboardWidget({ stats }: ComplianceDashboardWidgetPr
         label="This Month"
         value={stats.submissionsThisMonth}
         icon={
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -113,7 +137,13 @@ export function ComplianceDashboardWidget({ stats }: ComplianceDashboardWidgetPr
         value={stats.pendingSubmissions}
         variant={stats.pendingSubmissions > 0 ? 'warning' : 'default'}
         icon={
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -129,7 +159,13 @@ export function ComplianceDashboardWidget({ stats }: ComplianceDashboardWidgetPr
         value={stats.rejectedSubmissions}
         variant={stats.rejectedSubmissions > 0 ? 'danger' : 'default'}
         icon={
-          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <svg
+            className="h-8 w-8"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

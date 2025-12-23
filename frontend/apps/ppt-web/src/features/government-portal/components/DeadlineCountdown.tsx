@@ -71,7 +71,13 @@ export function DeadlineCountdown({ dueDate, templateName, daysUntilDue }: Deadl
         </div>
         <div className={styles.icon}>
           {daysUntilDue <= 1 ? (
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -80,7 +86,13 @@ export function DeadlineCountdown({ dueDate, templateName, daysUntilDue }: Deadl
               />
             </svg>
           ) : (
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

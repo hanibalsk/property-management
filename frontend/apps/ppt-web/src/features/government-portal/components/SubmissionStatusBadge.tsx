@@ -23,7 +23,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Draft',
     className: 'bg-gray-100 text-gray-700',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -37,7 +43,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Pending Validation',
     className: 'bg-blue-100 text-blue-700',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -51,7 +63,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Validated',
     className: 'bg-cyan-100 text-cyan-700',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -65,7 +83,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Submitted',
     className: 'bg-indigo-100 text-indigo-700',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -79,7 +103,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Acknowledged',
     className: 'bg-purple-100 text-purple-700',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
       </svg>
     ),
@@ -108,7 +138,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Accepted',
     className: 'bg-green-100 text-green-700',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -122,7 +158,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Rejected',
     className: 'bg-red-100 text-red-700',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -136,7 +178,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Needs Correction',
     className: 'bg-orange-100 text-orange-700',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -150,7 +198,13 @@ const statusConfig: Record<SubmissionStatus, StatusConfig> = {
     label: 'Cancelled',
     className: 'bg-gray-100 text-gray-500',
     icon: (
-      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+      <svg
+        className="h-3.5 w-3.5"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
         <path
           strokeLinecap="round"
           strokeLinejoin="round"

@@ -18,6 +18,12 @@
       },
       "style": {
         "noNonNullAssertion": "off"
+      },
+      "a11y": {
+        "noSvgWithoutTitle": "warn"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "warn"
       }
     }
   },
