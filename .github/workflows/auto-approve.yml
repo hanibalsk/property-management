@@ -1,7 +1,11 @@
 name: Auto-Approve after Copilot Review
 
 on:
-  # Manual trigger - use this after Copilot finishes reviewing
+  # Automatic trigger when a PR review is submitted
+  pull_request_review:
+    types: [submitted]
+
+  # Manual trigger as fallback
   workflow_dispatch:
     inputs:
       pr_number:
@@ -13,6 +17,10 @@ jobs:
   auto-approve:
     name: Auto-Approve PR
     runs-on: ubuntu-latest
+    # Only run for Copilot reviews or manual trigger
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.user.login, 'copilot'))
 
     permissions:
       pull-requests: write
@@ -21,11 +29,25 @@ jobs:
       actions: read
 
     steps:
+      - name: Get PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Initial delay
+        run: |
+          echo "Waiting 2 minutes for CI to start and Copilot review to settle..."
+          sleep 120
+
       - name: Wait for CI to complete
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          PR_NUMBER=${{ steps.pr.outputs.number }}
           REPO=${{ github.repository }}
 
           echo "Waiting for CI checks to complete on PR #$PR_NUMBER..."
@@ -85,7 +107,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          PR_NUMBER=${{ steps.pr.outputs.number }}
           REPO=${{ github.repository }}
 
           echo "Checking review status for PR #$PR_NUMBER..."
@@ -134,7 +156,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          PR_NUMBER=${{ steps.pr.outputs.number }}
           REASON="${{ steps.check.outputs.reason }}"
 
           gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: $REASON
