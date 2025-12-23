@@ -4,18 +4,18 @@ use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpS
 use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
-        BudgetRepository, BuildingRepository, CriticalNotificationRepository, DataExportRepository,
-        DelegationRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
-        EquipmentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
-        FinancialRepository, GovernmentPortalRepository, GranularNotificationRepository,
-        HealthMonitoringRepository, HelpRepository, InsuranceRepository, LeaseRepository,
-        LegalRepository, ListingRepository, MeterRepository, NotificationPreferenceRepository,
-        OAuthRepository, OnboardingRepository, OrganizationMemberRepository,
-        OrganizationRepository, PasswordResetRepository, PersonMonthRepository,
-        PlatformAdminRepository, RentalRepository, RoleRepository, SensorRepository,
-        SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
-        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
-        UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
+        AutomationRepository, BudgetRepository, BuildingRepository, CommunityRepository,
+        CriticalNotificationRepository, DataExportRepository, DelegationRepository,
+        DocumentRepository, DocumentTemplateRepository, EmergencyRepository, EquipmentRepository,
+        FacilityRepository, FaultRepository, FeatureFlagRepository, FinancialRepository,
+        GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
+        HelpRepository, InsuranceRepository, LeaseRepository, LegalRepository, ListingRepository,
+        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        OrganizationMemberRepository, OrganizationRepository, PasswordResetRepository,
+        PersonMonthRepository, PlatformAdminRepository, RentalRepository, RoleRepository,
+        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
+        SubscriptionRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
+        UnitRepository, UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
         WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
@@ -89,6 +89,10 @@ pub struct AppState {
     pub subscription_repo: SubscriptionRepository,
     // Epic 30: Government Portal Integration
     pub government_portal_repo: GovernmentPortalRepository,
+    // Epic 37: Community & Social Features
+    pub community_repo: CommunityRepository,
+    // Epic 38: Workflow Automation
+    pub automation_repo: AutomationRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -163,6 +167,10 @@ impl AppState {
         let subscription_repo = SubscriptionRepository::new(db.clone());
         // Epic 30: Government Portal Integration
         let government_portal_repo = GovernmentPortalRepository::new(db.clone());
+        // Epic 37: Community & Social Features
+        let community_repo = CommunityRepository::new(db.clone());
+        // Epic 38: Workflow Automation
+        let automation_repo = AutomationRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -219,6 +227,8 @@ impl AppState {
             legal_repo,
             subscription_repo,
             government_portal_repo,
+            community_repo,
+            automation_repo,
             auth_service,
             email_service,
             jwt_service,

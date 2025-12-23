@@ -56,3 +56,9 @@ pub mod subscriptions;
 
 // Epic 30: Government Portal Integration
 pub mod government_portal;
+
+// Epic 37: Community & Social Features
+pub mod community;
+
+// Epic 38: Workflow Automation
+pub mod automation;

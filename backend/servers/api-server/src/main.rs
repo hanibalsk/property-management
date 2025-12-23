@@ -166,7 +166,9 @@ use state::AppState;
         (name = "Sentiment Analysis", description = "Resident sentiment tracking"),
         (name = "Equipment", description = "Equipment and predictive maintenance"),
         (name = "Workflows", description = "Automated workflow management"),
-        (name = "IoT Sensors", description = "IoT sensor registration and management")
+        (name = "IoT Sensors", description = "IoT sensor registration and management"),
+        (name = "Community", description = "Community & social features: groups, posts, events, marketplace"),
+        (name = "Automation", description = "Workflow automation rules, templates, and execution")
     )
 )]
 struct ApiDoc;
@@ -352,6 +354,10 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/government-portal",
             routes::government_portal::router(),
         )
+        // Community routes (Epic 37)
+        .nest("/api/v1/community", routes::community::router())
+        // Automation routes (Epic 38)
+        .nest("/api/v1/automation", routes::automation::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware

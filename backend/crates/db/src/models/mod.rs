@@ -422,3 +422,26 @@ pub use reality_portal::{
     UpdateImportJob as UpdatePortalImportJob, UpdatePortalFavorite, UpdatePortalSavedSearch,
     UpdateRealityAgency, UpdateRealtorProfile, UpdateViewing, ViewingSchedule,
 };
+
+// Epic 37: Community & Social Features
+pub mod community;
+
+pub use community::{
+    CommunityComment, CommunityEvent, CommunityEventRsvp, CommunityEventWithRsvp, CommunityGroup,
+    CommunityGroupMember, CommunityGroupWithMembership, CommunityPost, CommunityPostWithAuthor,
+    CreateCommunityComment, CreateCommunityEvent, CreateCommunityGroup, CreateCommunityPost,
+    CreateMarketplaceInquiry, CreateMarketplaceItem, EventRsvpRequest, JoinGroupRequest,
+    MarketplaceInquiry, MarketplaceItem, MarketplaceItemWithSeller, PollOption,
+    UpdateCommunityEvent, UpdateCommunityGroup, UpdateCommunityPost, UpdateMarketplaceItem,
+};
+
+// Epic 38: Workflow Automation
+pub mod automation;
+
+pub use automation::{
+    AutomationAction, AutomationLogSummary, AutomationRuleWithStats, CallWebhookConfig,
+    ConditionTriggerConfig, CreateAutomationRule, CreateRuleFromTemplate, EventTriggerConfig,
+    GenerateReportConfig, ScheduleTriggerConfig, SendEmailConfig, SendNotificationConfig,
+    UpdateAutomationRule, WorkflowAutomationLog, WorkflowAutomationRule,
+    WorkflowAutomationTemplate,
+};
