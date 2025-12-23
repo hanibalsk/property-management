@@ -158,9 +158,9 @@ export function GroupingSettings({ config, loading, onUpdate }: GroupingSettings
                 className="block w-full rounded-md border-0 py-2 pl-3 pr-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm disabled:opacity-50"
               >
                 <option value={0}>Never auto-expand</option>
-                <option value={2}>2 or fewer</option>
-                <option value={3}>3 or fewer</option>
-                <option value={5}>5 or fewer</option>
+                {config.maxGroupSize >= 2 && <option value={2}>2 or fewer</option>}
+                {config.maxGroupSize >= 3 && <option value={3}>3 or fewer</option>}
+                {config.maxGroupSize >= 5 && <option value={5}>5 or fewer</option>}
               </select>
               <p className="text-xs text-gray-500 mt-1">Expand groups with fewer items</p>
             </div>

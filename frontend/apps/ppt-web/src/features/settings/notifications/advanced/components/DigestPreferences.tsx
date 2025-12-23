@@ -118,6 +118,7 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
                 <button
                   key={freq}
                   type="button"
+                  aria-pressed={config.frequency === freq}
                   onClick={() => onUpdate({ frequency: freq })}
                   disabled={loading}
                   className={`
@@ -168,12 +169,7 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
                   <select
                     id="delivery-day"
                     value={config.deliveryDay || 'monday'}
-                    onChange={(e) => {
-                      const value = e.target.value as DayOfWeek;
-                      // Ensure valid weekday, fallback to monday if invalid
-                      const validDay = WEEKDAYS.includes(value) ? value : 'monday';
-                      onUpdate({ deliveryDay: validDay });
-                    }}
+                    onChange={(e) => onUpdate({ deliveryDay: e.target.value as DayOfWeek })}
                     disabled={loading}
                     className="block w-full rounded-md border-0 py-2 pl-3 pr-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm disabled:opacity-50"
                   >
@@ -206,6 +202,7 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
                   <button
                     key={category}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => handleCategoryToggle(category)}
                     disabled={loading}
                     className={`

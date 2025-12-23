@@ -15,9 +15,10 @@ jobs:
     name: Auto-Approve PR
     runs-on: ubuntu-latest
     # Run when Copilot submits a review OR when manually triggered
+    # Note: REST API includes [bot] suffix, GraphQL does not
     if: |
       github.event_name == 'workflow_dispatch' ||
-      github.event.review.user.login == 'copilot-pull-request-reviewer[bot]'
+      contains(github.event.review.user.login, 'copilot-pull-request-reviewer')
 
     permissions:
       pull-requests: write

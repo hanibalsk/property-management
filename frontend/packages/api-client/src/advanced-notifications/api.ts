@@ -37,8 +37,7 @@ export async function getCategoryPreferences(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to fetch category preferences');
   }
 
   return response.json();
@@ -63,8 +62,7 @@ export async function updateCategoryPreference(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to update category preference');
   }
 
   return response.json();
@@ -90,8 +88,7 @@ export async function getQuietHours(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to fetch quiet hours');
   }
 
   return response.json();
@@ -115,8 +112,7 @@ export async function updateQuietHours(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to update quiet hours');
   }
 
   return response.json();
@@ -142,8 +138,7 @@ export async function getDigestPreferences(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to fetch digest preferences');
   }
 
   return response.json();
@@ -167,8 +162,7 @@ export async function updateDigestPreferences(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to update digest preferences');
   }
 
   return response.json();
@@ -194,8 +188,7 @@ export async function getGroupingPreferences(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to fetch grouping preferences');
   }
 
   return response.json();
@@ -219,8 +212,7 @@ export async function updateGroupingPreferences(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to update grouping preferences');
   }
 
   return response.json();
@@ -246,8 +238,7 @@ export async function getAdvancedPreferences(
   });
 
   if (!response.ok) {
-    const error = await parseError(response);
-    throw new Error(error);
+    await handleErrorResponse(response, 'Failed to fetch advanced preferences');
   }
 
   return response.json();
@@ -257,11 +248,16 @@ export async function getAdvancedPreferences(
 // Helpers
 // ============================================================================
 
-async function parseError(response: Response): Promise<string> {
+async function handleErrorResponse(
+  response: Response,
+  defaultMessage: string
+): Promise<never> {
+  let errorMessage = defaultMessage;
   try {
-    const data = await response.json();
-    return data.error?.message || 'An error occurred';
+    const errorData = await response.json();
+    errorMessage = errorData.error?.message || defaultMessage;
   } catch {
-    return 'An error occurred';
+    // Response is not JSON, use default message
   }
+  throw new Error(errorMessage);
 }

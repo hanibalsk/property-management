@@ -110,6 +110,7 @@ export function QuietHoursConfig({ config, loading, onUpdate }: QuietHoursConfig
                   <button
                     key={day}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => handleDayToggle(day)}
                     disabled={loading}
                     className={`
