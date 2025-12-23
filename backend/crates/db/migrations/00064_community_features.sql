@@ -442,7 +442,7 @@ INSERT INTO workflow_automation_templates (name, description, category, trigger_
 
 -- Update member count on join/leave
 CREATE OR REPLACE FUNCTION update_group_member_count()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         UPDATE community_groups SET member_count = member_count + 1, updated_at = NOW()
@@ -453,7 +453,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_group_member_count
 AFTER INSERT OR DELETE ON community_group_members
@@ -461,7 +461,7 @@ FOR EACH ROW EXECUTE FUNCTION update_group_member_count();
 
 -- Update post count on create/delete
 CREATE OR REPLACE FUNCTION update_group_post_count()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         UPDATE community_groups SET post_count = post_count + 1, updated_at = NOW()
@@ -472,7 +472,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_group_post_count
 AFTER INSERT OR DELETE ON community_posts
@@ -480,7 +480,7 @@ FOR EACH ROW EXECUTE FUNCTION update_group_post_count();
 
 -- Update event attendee count
 CREATE OR REPLACE FUNCTION update_event_attendee_count()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
         UPDATE community_events SET attendee_count = (
@@ -497,7 +497,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_event_attendee_count
 AFTER INSERT OR UPDATE OR DELETE ON community_event_rsvps
@@ -505,7 +505,7 @@ FOR EACH ROW EXECUTE FUNCTION update_event_attendee_count();
 
 -- Update comment count on post
 CREATE OR REPLACE FUNCTION update_post_comment_count()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         UPDATE community_posts SET comment_count = comment_count + 1, updated_at = NOW()
@@ -516,7 +516,7 @@ BEGIN
     END IF;
     RETURN NULL;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_post_comment_count
 AFTER INSERT OR DELETE ON community_comments
