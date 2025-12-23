@@ -186,7 +186,6 @@ export function GroupingSettings({ config, loading, onUpdate }: GroupingSettings
                     strokeWidth={2}
                     stroke="currentColor"
                     aria-hidden="true"
-                    role="img"
                   >
                     <path
                       strokeLinecap="round"
