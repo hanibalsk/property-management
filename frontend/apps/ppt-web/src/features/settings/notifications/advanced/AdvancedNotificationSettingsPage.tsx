@@ -6,6 +6,8 @@
  * - Story 40.2: Quiet hours configuration
  * - Story 40.3: Digest preferences
  * - Story 40.4: Smart notification grouping
+ *
+ * @module features/settings/notifications/advanced
  */
 
 import type { NotificationCategory, NotificationChannel } from '@ppt/api-client';
