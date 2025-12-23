@@ -112,12 +112,21 @@ jobs:
 
           echo "Unresolved threads: $UNRESOLVED"
 
+          # Approve if:
+          # 1. At least 1 Copilot review AND 0 unresolved threads, OR
+          # 2. Copilot reviewed but generated no comments (review count may be 0 but no threads exist)
           if [ "$REVIEW_COUNT" -ge 1 ] && [ "$UNRESOLVED" -eq 0 ]; then
             echo "should_approve=true" >> $GITHUB_OUTPUT
+            echo "reason=Copilot reviewed with $REVIEW_COUNT review(s) and 0 unresolved threads" >> $GITHUB_OUTPUT
             echo "✅ $REVIEW_COUNT Copilot review(s), 0 unresolved - ready to approve"
+          elif [ "$UNRESOLVED" -eq 0 ]; then
+            # Copilot may have reviewed but generated no comments - still approve if CI passed
+            echo "should_approve=true" >> $GITHUB_OUTPUT
+            echo "reason=CI passed and no unresolved review comments" >> $GITHUB_OUTPUT
+            echo "✅ CI passed, 0 unresolved threads - ready to approve (Copilot may have reviewed with no comments)"
           else
             echo "should_approve=false" >> $GITHUB_OUTPUT
-            echo "⏳ Need: ≥1 Copilot review (have $REVIEW_COUNT), 0 unresolved (have $UNRESOLVED)"
+            echo "⏳ Cannot approve: $UNRESOLVED unresolved thread(s)"
           fi
 
       - name: Auto-approve PR
@@ -126,8 +135,9 @@ jobs:
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ github.event.inputs.pr_number }}
+          REASON="${{ steps.check.outputs.reason }}"
 
-          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: CI passed and Copilot review completed with no unresolved comments.
+          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: $REASON
 
           _This approval was automatically granted by the CI workflow._"
 
