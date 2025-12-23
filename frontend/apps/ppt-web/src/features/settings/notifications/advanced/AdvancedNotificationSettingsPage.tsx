@@ -280,6 +280,8 @@ export function AdvancedNotificationSettingsPage({
 
       {activeTab === 'schedule' && (
         <div className="space-y-6">
+          {/* onUpdate is async - error handling is done here in the parent component.
+              Errors are caught and displayed via setUpdateError. */}
           {quietHoursQuery.data && (
             <QuietHoursConfig
               config={quietHoursQuery.data.quietHours}

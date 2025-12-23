@@ -29,9 +29,10 @@ jobs:
 
           echo "Checking review status for PR #$PR_NUMBER..."
 
-          # Count Copilot reviews
+          # Count Copilot reviews (GitHub Copilot pull request reviewer bot)
+          # Using type=Bot check for reliability, with login containing "copilot"
           REVIEW_COUNT=$(gh api "repos/$REPO/pulls/$PR_NUMBER/reviews" \
-            --jq '[.[] | select(.user.login | contains("copilot"))] | length')
+            --jq '[.[] | select(.user.type == "Bot" and (.user.login | contains("copilot")))] | length')
 
           echo "Copilot reviews: $REVIEW_COUNT"
 

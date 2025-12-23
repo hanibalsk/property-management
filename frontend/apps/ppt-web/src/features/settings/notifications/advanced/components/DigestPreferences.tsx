@@ -43,8 +43,9 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
         return `Every day at ${time}`;
       case 'weekly':
         return `Every ${DAY_FULL_LABELS[config.deliveryDay || 'monday']} at ${time}`;
-      default:
-        return '';
+      case 'disabled':
+        // Already handled above, but included for exhaustiveness
+        return 'Digests are disabled';
     }
   };
 
@@ -196,6 +197,7 @@ export function DigestPreferences({ config, loading, onUpdate }: DigestPreferenc
                 );
               })}
             </div>
+            {/* Empty array = no filter = all categories included in digest */}
             <p className="text-xs text-gray-500 mt-2">
               {config.includeCategories.length === 0
                 ? 'All categories included (no filter applied)'

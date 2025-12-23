@@ -248,11 +248,18 @@ export async function getAdvancedPreferences(
 // Helpers
 // ============================================================================
 
+/**
+ * Handle error responses from the API.
+ *
+ * Expected API error format: { error: { message: string, code?: string } }
+ * Falls back to checking errorData.message if error.message is not present.
+ */
 async function handleErrorResponse(response: Response, defaultMessage: string): Promise<never> {
   let errorMessage = defaultMessage;
   try {
     const errorData = await response.json();
-    errorMessage = errorData.error?.message || defaultMessage;
+    // Try standard API error format first, then fall back to direct message
+    errorMessage = errorData.error?.message || errorData.message || defaultMessage;
   } catch {
     // Response is not JSON, use default message
   }

@@ -166,14 +166,23 @@ export const DAY_FULL_LABELS: Record<DayOfWeek, string> = {
 /** Digest frequency options */
 export type DigestFrequency = 'hourly' | 'daily' | 'weekly' | 'disabled';
 
-/** Digest configuration */
+/**
+ * Digest configuration
+ *
+ * Note: The `enabled` field and `frequency` field work together:
+ * - When `enabled` is false, digests are disabled (frequency should be 'disabled')
+ * - When `enabled` is true, frequency should be 'hourly', 'daily', or 'weekly'
+ *
+ * The UI ensures these stay in sync by setting frequency='disabled' when
+ * toggling enabled to false.
+ */
 export interface DigestConfig {
   enabled: boolean;
   frequency: DigestFrequency;
   deliveryTime: string; // HH:mm format for daily/weekly
   deliveryDay?: DayOfWeek; // For weekly digests
   timezone: string;
-  includeCategories: NotificationCategory[];
+  includeCategories: NotificationCategory[]; // Empty array means include all categories
   updatedAt: string;
 }
 
@@ -192,8 +201,14 @@ export interface UpdateDigestRequest {
   includeCategories?: NotificationCategory[];
 }
 
-/** All digest frequencies in display order */
-export const ALL_FREQUENCIES: DigestFrequency[] = ['disabled', 'hourly', 'daily', 'weekly'];
+/** All digest options (including disabled) in display order */
+export const DIGEST_OPTIONS: DigestFrequency[] = ['disabled', 'hourly', 'daily', 'weekly'];
+
+/**
+ * @deprecated Use DIGEST_OPTIONS instead. This constant includes 'disabled',
+ * which is not a frequency but an option to turn off digests.
+ */
+export const ALL_FREQUENCIES: DigestFrequency[] = DIGEST_OPTIONS;
 
 /** Human-readable frequency labels */
 export const FREQUENCY_LABELS: Record<DigestFrequency, string> = {

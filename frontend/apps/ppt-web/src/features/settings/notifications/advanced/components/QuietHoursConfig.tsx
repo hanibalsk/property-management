@@ -71,6 +71,7 @@ export function QuietHoursConfig({ config, loading, onUpdate }: QuietHoursConfig
                 value={config.startTime}
                 onChange={(e) => onUpdate({ startTime: e.target.value })}
                 disabled={loading}
+                aria-describedby="time-format-hint"
                 className="block w-full rounded-md border-0 py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm disabled:opacity-50"
               />
             </div>
@@ -84,10 +85,14 @@ export function QuietHoursConfig({ config, loading, onUpdate }: QuietHoursConfig
                 value={config.endTime}
                 onChange={(e) => onUpdate({ endTime: e.target.value })}
                 disabled={loading}
+                aria-describedby="time-format-hint"
                 className="block w-full rounded-md border-0 py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm disabled:opacity-50"
               />
             </div>
           </div>
+          <p id="time-format-hint" className="text-xs text-gray-500 mt-1">
+            Times are in 24-hour format (HH:MM) and use the timezone selected below.
+          </p>
 
           {/* Visual schedule preview */}
           <div className="bg-gray-50 rounded-lg p-3">
