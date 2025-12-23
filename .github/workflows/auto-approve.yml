@@ -3,13 +3,21 @@ name: Auto-Approve after Copilot Review
 on:
   pull_request_review:
     types: [submitted]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to approve'
+        required: true
+        type: number
 
 jobs:
   auto-approve:
     name: Auto-Approve PR
     runs-on: ubuntu-latest
-    # Only run when Copilot submits a review
-    if: github.event.review.user.login == 'copilot-pull-request-reviewer[bot]'
+    # Run when Copilot submits a review OR when manually triggered
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.review.user.login == 'copilot-pull-request-reviewer[bot]'
 
     permissions:
       pull-requests: write
@@ -21,7 +29,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=${{ github.event.pull_request.number }}
+          # Use input PR number for manual trigger, otherwise use event
+          PR_NUMBER=${{ github.event.inputs.pr_number || github.event.pull_request.number }}
           REPO=${{ github.repository }}
 
           echo "Checking Copilot review for PR #$PR_NUMBER..."
@@ -63,7 +72,7 @@ jobs:
           # Option 1: Personal Access Token from another account
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=${{ github.event.pull_request.number }}
+          PR_NUMBER=${{ github.event.inputs.pr_number || github.event.pull_request.number }}
 
           echo "🤖 Auto-approving PR #$PR_NUMBER after successful Copilot review..."
 
