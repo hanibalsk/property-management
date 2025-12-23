@@ -3,8 +3,14 @@
  * Epic 41: Government Portal UI (Story 41.1)
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CountryFlag } from './CountrySelector';
+
+// Progress animation constants
+const INITIAL_PROGRESS = 10;
+const PROGRESS_INCREMENT = 15;
+const MAX_SIMULATED_PROGRESS = 90;
+const PROGRESS_INTERVAL_MS = 200;
 
 interface GuestData {
   id: string;
@@ -42,21 +48,38 @@ export function SubmissionPreviewModal({
   isSubmitting = false,
 }: SubmissionPreviewModalProps) {
   const [progress, setProgress] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup interval on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
 
   if (!isOpen) return null;
 
   const handleConfirm = async () => {
-    setProgress(10);
+    setProgress(INITIAL_PROGRESS);
     try {
-      const interval = setInterval(() => {
-        setProgress((prev) => Math.min(prev + 15, 90));
-      }, 200);
+      intervalRef.current = setInterval(() => {
+        setProgress((prev) => Math.min(prev + PROGRESS_INCREMENT, MAX_SIMULATED_PROGRESS));
+      }, PROGRESS_INTERVAL_MS);
 
       await onConfirm();
 
-      clearInterval(interval);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       setProgress(100);
     } catch {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       setProgress(0);
     }
   };
@@ -74,7 +97,7 @@ export function SubmissionPreviewModal({
       <div className="flex min-h-screen items-center justify-center p-4">
         <button
           type="button"
-          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity cursor-default"
+          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity cursor-pointer"
           onClick={onClose}
           aria-label="Close modal"
         />

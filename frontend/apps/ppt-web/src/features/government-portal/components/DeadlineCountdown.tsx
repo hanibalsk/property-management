@@ -3,6 +3,12 @@
  * Epic 41: Government Portal UI (Story 41.3)
  */
 
+// Urgency threshold constants (in days)
+const OVERDUE_THRESHOLD = 0;
+const TOMORROW_THRESHOLD = 1;
+const URGENT_THRESHOLD = 3;
+const SOON_THRESHOLD = 7;
+
 interface DeadlineCountdownProps {
   dueDate: string;
   templateName: string;
@@ -11,7 +17,7 @@ interface DeadlineCountdownProps {
 
 export function DeadlineCountdown({ dueDate, templateName, daysUntilDue }: DeadlineCountdownProps) {
   const getUrgencyStyles = () => {
-    if (daysUntilDue <= 1) {
+    if (daysUntilDue <= TOMORROW_THRESHOLD) {
       return {
         border: 'border-red-300',
         background: 'bg-red-50',
@@ -19,7 +25,7 @@ export function DeadlineCountdown({ dueDate, templateName, daysUntilDue }: Deadl
         icon: 'text-red-500',
       };
     }
-    if (daysUntilDue <= 3) {
+    if (daysUntilDue <= URGENT_THRESHOLD) {
       return {
         border: 'border-amber-300',
         background: 'bg-amber-50',
@@ -27,7 +33,7 @@ export function DeadlineCountdown({ dueDate, templateName, daysUntilDue }: Deadl
         icon: 'text-amber-500',
       };
     }
-    if (daysUntilDue <= 7) {
+    if (daysUntilDue <= SOON_THRESHOLD) {
       return {
         border: 'border-yellow-300',
         background: 'bg-yellow-50',
@@ -44,10 +50,10 @@ export function DeadlineCountdown({ dueDate, templateName, daysUntilDue }: Deadl
   };
 
   const getUrgencyLabel = () => {
-    if (daysUntilDue <= 0) return 'Overdue!';
-    if (daysUntilDue === 1) return 'Due tomorrow';
-    if (daysUntilDue <= 3) return 'Urgent';
-    if (daysUntilDue <= 7) return 'Soon';
+    if (daysUntilDue <= OVERDUE_THRESHOLD) return 'Overdue!';
+    if (daysUntilDue === TOMORROW_THRESHOLD) return 'Due tomorrow';
+    if (daysUntilDue <= URGENT_THRESHOLD) return 'Urgent';
+    if (daysUntilDue <= SOON_THRESHOLD) return 'Soon';
     return `${daysUntilDue} days`;
   };
 

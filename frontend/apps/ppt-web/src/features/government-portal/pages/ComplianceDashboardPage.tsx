@@ -73,13 +73,23 @@ export function ComplianceDashboardPage({
 
   const validatedSubmissions = pendingSubmissions.filter((s) => s.status === 'validated');
 
+  // Static placeholder IDs for loading skeleton widgets
+  const loadingWidgetPlaceholders = [
+    'widget-1',
+    'widget-2',
+    'widget-3',
+    'widget-4',
+    'widget-5',
+    'widget-6',
+  ];
+
   if (isLoading) {
     return (
       <div className="animate-pulse max-w-6xl mx-auto p-6">
         <div className="h-8 w-64 bg-gray-200 rounded mb-6" />
         <div className="grid grid-cols-3 gap-4 mb-8">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-24 bg-gray-100 rounded-lg" />
+          {loadingWidgetPlaceholders.map((placeholderKey) => (
+            <div key={placeholderKey} className="h-24 bg-gray-100 rounded-lg" />
           ))}
         </div>
         <div className="h-64 bg-gray-100 rounded-lg" />

@@ -174,14 +174,17 @@ export function GuestReportSubmissionPage({
     });
   };
 
+  // Static placeholder IDs for loading skeleton
+  const loadingSkeletonIds = ['skeleton-row-1', 'skeleton-row-2', 'skeleton-row-3'];
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="animate-pulse">
           <div className="h-8 w-64 bg-gray-200 rounded mb-6" />
           <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-16 bg-gray-100 rounded-lg" />
+            {loadingSkeletonIds.map((id) => (
+              <div key={id} className="h-16 bg-gray-100 rounded-lg" />
             ))}
           </div>
         </div>
