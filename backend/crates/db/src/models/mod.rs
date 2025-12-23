@@ -110,12 +110,15 @@ pub use delegation::{
     UpdateDelegation,
 };
 pub use document::{
-    access_scope, document_category, share_type, CreateDocument, CreateDocumentVersion,
-    CreateFolder, CreateShare, CreateVersionResponse, Document, DocumentFolder, DocumentListQuery,
-    DocumentShare, DocumentSummary, DocumentVersion, DocumentVersionHistory, DocumentWithDetails,
-    FolderTreeNode, FolderWithCount, LogShareAccess, MoveDocument, RestoreVersionRequest,
-    RestoreVersionResponse, RevokeShare, ShareAccessLog, ShareWithDocument, UpdateDocument,
-    UpdateFolder, ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
+    access_scope, document_category, ocr_status, share_type, ClassificationFeedback,
+    CreateDocument, CreateDocumentVersion, CreateFolder, CreateShare, CreateVersionResponse,
+    Document, DocumentClassificationHistory, DocumentFolder, DocumentIntelligenceStats,
+    DocumentListQuery, DocumentOcrQueue, DocumentSearchRequest, DocumentSearchResponse,
+    DocumentSearchResult, DocumentShare, DocumentSummarizationQueue, DocumentSummary,
+    DocumentVersion, DocumentVersionHistory, DocumentWithDetails, DocumentWithIntelligence,
+    FolderTreeNode, FolderWithCount, GenerateSummaryRequest, LogShareAccess, MoveDocument,
+    RestoreVersionRequest, RestoreVersionResponse, RevokeShare, ShareAccessLog, ShareWithDocument,
+    UpdateDocument, UpdateFolder, ALLOWED_MIME_TYPES, MAX_FILE_SIZE,
 };
 pub use document_template::{
     placeholder_type, template_type, CreateTemplate, DocumentTemplate, GenerateDocumentRequest,
