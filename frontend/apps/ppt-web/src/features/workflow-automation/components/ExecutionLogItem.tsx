@@ -172,9 +172,9 @@ export function ExecutionLogItem({ log, onViewDetails, isExpanded }: ExecutionLo
           <div className="flex items-center gap-2 text-xs">
             <span className="text-gray-500">Actions:</span>
             <div className="flex gap-1">
-              {log.actionResults.map((result) => (
+              {log.actionResults.map((result, index) => (
                 <span
-                  key={`action-${result.actionName}`}
+                  key={`action-${result.actionName}-${index}`}
                   className={`w-2 h-2 rounded-full ${
                     result.status === 'completed'
                       ? 'bg-green-500'

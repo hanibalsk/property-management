@@ -85,7 +85,7 @@ export function ExecutionDetailsModal({ log, onClose, onRetry }: ExecutionDetail
               type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-500"
-              aria-label="Close"
+              aria-label="Close execution details"
             >
               <svg
                 className="w-6 h-6"

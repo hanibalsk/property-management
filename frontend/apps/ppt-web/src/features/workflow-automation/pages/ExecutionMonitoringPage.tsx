@@ -7,6 +7,7 @@
 
 import type { ExecutionLog, ExecutionStatus } from '@ppt/api-client';
 import { useExecutionLogs, useExecutionStats, useRetryExecution } from '@ppt/api-client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { ExecutionDetailsModal } from '../components/ExecutionDetailsModal';
@@ -18,6 +19,7 @@ type DateRange = 'today' | 'week' | 'month' | 'all';
 const skeletonKeys = ['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4', 'skeleton-5'];
 
 export function ExecutionMonitoringPage() {
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<ExecutionStatus | 'all'>('all');
   const [dateRange, setDateRange] = useState<DateRange>('week');
   const [ruleFilter, setRuleFilter] = useState<string>('');
@@ -26,12 +28,21 @@ export function ExecutionMonitoringPage() {
   const getDateFilter = () => {
     const now = new Date();
     switch (dateRange) {
-      case 'today':
-        return new Date(now.setHours(0, 0, 0, 0)).toISOString();
-      case 'week':
-        return new Date(now.setDate(now.getDate() - 7)).toISOString();
-      case 'month':
-        return new Date(now.setMonth(now.getMonth() - 1)).toISOString();
+      case 'today': {
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        return today.toISOString();
+      }
+      case 'week': {
+        const weekAgo = new Date(now);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return weekAgo.toISOString();
+      }
+      case 'month': {
+        const monthAgo = new Date(now);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        return monthAgo.toISOString();
+      }
       default:
         return undefined;
     }
@@ -149,7 +160,10 @@ export function ExecutionMonitoringPage() {
           {/* Refresh Button */}
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              queryClient.invalidateQueries({ queryKey: ['executionLogs'] });
+              queryClient.invalidateQueries({ queryKey: ['executionStats'] });
+            }}
             className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             <svg
