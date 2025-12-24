@@ -18,6 +18,7 @@ export * from './government-portal';
 export * from './messaging';
 export * from './neighbors';
 export * from './notification-preferences';
+export * from './workflow-automation';
 
 // API client configuration
 export interface ApiConfig {
