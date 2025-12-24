@@ -212,11 +212,7 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
                   value={filter.operator}
                   onChange={(e) => {
                     const newOperator = e.target.value as ReportFilter['operator'];
-                    let newValue:
-                      | string
-                      | number
-                      | string[]
-                      | [number, number] = filter.value;
+                    let newValue: string | number | string[] | [number, number] = filter.value;
 
                     if (newOperator === 'between') {
                       if (!Array.isArray(newValue) || newValue.length !== 2) {
