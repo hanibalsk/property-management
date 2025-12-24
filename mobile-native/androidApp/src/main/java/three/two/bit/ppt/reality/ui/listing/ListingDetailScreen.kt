@@ -91,12 +91,16 @@ fun ListingDetailScreen(
                         onClick = {
                             if (authState is AuthState.Authenticated) {
                                 isFavorite = !isFavorite
-                                // TODO: Persist favorites to repository
-                                // Epic 48 - Note: Favorites currently only toggle local state and
-                                // are
-                                // not persisted. They will be lost on screen navigation or app
-                                // restart.
-                                // Implement FavoritesRepository to persist favorites to backend.
+                                // TODO(Epic-48): Persist favorites via FavoritesRepository
+                                // Current limitation: Favorites only toggle local UI state and are
+                                // not persisted to backend. Changes will be lost on screen
+                                // navigation or app restart.
+                                // Required implementation:
+                                // - Create FavoritesRepository instance with session token
+                                // - Call addFavorite(listingId) when isFavorite becomes true
+                                // - Call removeFavorite(listingId) when isFavorite becomes false
+                                // - Handle Result.failure with error message display
+                                // - Load initial favorite state via isFavorite(listingId) on mount
                             }
                         }
                     ) {
@@ -181,7 +185,16 @@ fun ListingDetailScreen(
             isAuthenticated = authState is AuthState.Authenticated,
             onDismiss = { showInquiryDialog = false },
             onSubmit = { message ->
-                // TODO: Submit inquiry via repository
+                // TODO(Epic-48): Submit inquiry via InquiryRepository
+                // Current limitation: Dialog collects inquiry message but does not submit to
+                // backend. User will see success feedback without actual inquiry being sent.
+                // Required implementation:
+                // - Create InquiryRepository instance with session token from authState
+                // - Build CreateInquiryRequest with listingId and message
+                // - Call createInquiry(request) in coroutine scope
+                // - Handle Result.success: close dialog and call onInquirySuccess()
+                // - Handle Result.failure: display error message to user
+                // - For unauthenticated users, include optional name/email/phone fields
                 showInquiryDialog = false
                 onInquirySuccess()
             }

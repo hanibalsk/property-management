@@ -21,6 +21,29 @@ class InquiryRepository(
         sessionToken?.let { header(HttpHeaders.Authorization, "Bearer $it") }
     }
 
+    /**
+     * Convert InquiryStatus enum to API query parameter value. Uses explicit mapping to
+     * match @SerialName annotations and avoid fragile .name.lowercase().
+     */
+    private fun InquiryStatus.toQueryParam(): String =
+        when (this) {
+            InquiryStatus.PENDING -> "pending"
+            InquiryStatus.RESPONDED -> "responded"
+            InquiryStatus.CLOSED -> "closed"
+        }
+
+    /**
+     * Convert ViewingStatus enum to API query parameter value. Uses explicit mapping to
+     * match @SerialName annotations and avoid fragile .name.lowercase().
+     */
+    private fun ViewingStatus.toQueryParam(): String =
+        when (this) {
+            ViewingStatus.PENDING -> "pending"
+            ViewingStatus.CONFIRMED -> "confirmed"
+            ViewingStatus.COMPLETED -> "completed"
+            ViewingStatus.CANCELLED -> "cancelled"
+        }
+
     // --- Inquiries ---
 
     /** Get user's inquiries. */
@@ -35,7 +58,7 @@ class InquiryRepository(
                     configureRequest()
                     parameter("page", page)
                     parameter("page_size", pageSize)
-                    status?.let { parameter("status", it.name.lowercase()) }
+                    status?.let { parameter("status", it.toQueryParam()) }
                 }
 
             if (response.status.isSuccess()) {
@@ -117,7 +140,7 @@ class InquiryRepository(
             val response =
                 client.get("$baseUrl/api/v1/viewings") {
                     configureRequest()
-                    status?.let { parameter("status", it.name.lowercase()) }
+                    status?.let { parameter("status", it.toQueryParam()) }
                 }
 
             if (response.status.isSuccess()) {
