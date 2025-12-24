@@ -1,0 +1,85 @@
+/**
+ * BudgetCard component for displaying budget vs actual spending.
+ */
+
+interface BudgetCardProps {
+  category: string;
+  budgeted: number;
+  actual: number;
+  currency?: string;
+  period?: string;
+}
+
+function formatCurrency(amount: number, currency = 'EUR'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+  }).format(amount);
+}
+
+export function BudgetCard({
+  category,
+  budgeted,
+  actual,
+  currency = 'EUR',
+  period,
+}: BudgetCardProps) {
+  const variance = budgeted - actual;
+  const percentUsed = budgeted > 0 ? (actual / budgeted) * 100 : 0;
+  const isOverBudget = actual > budgeted;
+
+  const getProgressColor = () => {
+    if (percentUsed >= 100) return 'bg-red-500';
+    if (percentUsed >= 80) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow p-4">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h4 className="text-sm font-medium text-gray-900">{category}</h4>
+          {period && <p className="text-xs text-gray-500">{period}</p>}
+        </div>
+        {isOverBudget && (
+          <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+            Over Budget
+          </span>
+        )}
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-3">
+        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full ${getProgressColor()} transition-all duration-300`}
+            style={{ width: `${Math.min(percentUsed, 100)}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1 text-xs text-gray-500">
+          <span>{percentUsed.toFixed(0)}% used</span>
+          <span>{formatCurrency(budgeted, currency)} budget</span>
+        </div>
+      </div>
+
+      {/* Values */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div>
+          <p className="text-xs text-gray-500">Budget</p>
+          <p className="text-sm font-medium text-gray-900">{formatCurrency(budgeted, currency)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Actual</p>
+          <p className="text-sm font-medium text-gray-900">{formatCurrency(actual, currency)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-500">Variance</p>
+          <p className={`text-sm font-medium ${variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {variance >= 0 ? '+' : ''}
+            {formatCurrency(variance, currency)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
