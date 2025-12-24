@@ -180,4 +180,10 @@ pub use community::CommunityRepository;
 // Epic 38: Workflow Automation
 pub mod automation;
 
+// Epic 54: Forms Management
+pub mod form;
+
 pub use automation::AutomationRepository;
+
+// Epic 54: Forms Management
+pub use form::FormRepository;

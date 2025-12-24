@@ -358,6 +358,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/community", routes::community::router())
         // Automation routes (Epic 38)
         .nest("/api/v1/automation", routes::automation::router())
+        // Forms routes (Epic 54)
+        .nest("/api/v1/forms", routes::forms::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware

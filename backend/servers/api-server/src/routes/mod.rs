@@ -62,3 +62,6 @@ pub mod community;
 
 // Epic 38: Workflow Automation
 pub mod automation;
+
+// Epic 54: Forms Management
+pub mod forms;
