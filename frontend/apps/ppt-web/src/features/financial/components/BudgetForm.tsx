@@ -125,7 +125,7 @@ export function BudgetForm({
 
         <div className="space-y-2">
           {categories.map((category, index) => (
-            <div key={category.name || `category-${index}`} className="flex items-center gap-3">
+            <div key={index} className="flex items-center gap-3">
               <input
                 type="text"
                 value={category.name}

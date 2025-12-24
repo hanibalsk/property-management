@@ -4,6 +4,8 @@
 
 import type { Invoice, PaymentMethod, RecordPayment } from '@ppt/api-client';
 import { useState } from 'react';
+import { formatCurrency } from '../utils/formatting';
+import { PAYMENT_METHODS } from '../utils/constants';
 
 interface Unit {
   id: string;
@@ -24,23 +26,6 @@ interface FormErrors {
   unit_id?: string;
   amount?: string;
   payment_method?: string;
-}
-
-const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
-  { value: 'bank_transfer', label: 'Bank Transfer' },
-  { value: 'card', label: 'Card' },
-  { value: 'cash', label: 'Cash' },
-  { value: 'check', label: 'Check' },
-  { value: 'online', label: 'Online Payment' },
-  { value: 'direct_debit', label: 'Direct Debit' },
-  { value: 'other', label: 'Other' },
-];
-
-function formatCurrency(amount: number, currency = 'EUR'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount);
 }
 
 export function PaymentForm({

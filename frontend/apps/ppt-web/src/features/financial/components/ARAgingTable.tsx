@@ -3,19 +3,13 @@
  */
 
 import type { ARReportEntry, ARReportTotals } from '@ppt/api-client';
+import { formatCurrency } from '../utils/formatting';
 
 interface ARAgingTableProps {
   entries: ARReportEntry[];
   totals: ARReportTotals;
   isLoading?: boolean;
   onRowClick?: (unitId: string) => void;
-}
-
-function formatCurrency(amount: number, currency = 'EUR'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount);
 }
 
 export function ARAgingTable({ entries, totals, isLoading, onRowClick }: ARAgingTableProps) {
@@ -102,6 +96,8 @@ export function ARAgingTable({ entries, totals, isLoading, onRowClick }: ARAging
                   }
                 }}
                 tabIndex={onRowClick ? 0 : undefined}
+                role={onRowClick ? 'button' : undefined}
+                aria-label={onRowClick ? `View details for unit ${entry.unit_number}` : undefined}
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {entry.unit_number}

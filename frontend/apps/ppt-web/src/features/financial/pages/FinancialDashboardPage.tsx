@@ -16,6 +16,7 @@ import {
   OverdueInvoicesList,
   RecentPaymentsList,
 } from '../components';
+import { formatCurrency } from '../utils/formatting';
 
 interface Building {
   id: string;
@@ -50,13 +51,6 @@ interface FinancialDashboardPageProps {
   onViewAllPayments?: () => void;
   onSendReminder?: (invoiceId: string) => void;
   onUnitClick?: (unitId: string) => void;
-}
-
-function formatCurrency(amount: number, currency = 'EUR'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount);
 }
 
 export function FinancialDashboardPage({

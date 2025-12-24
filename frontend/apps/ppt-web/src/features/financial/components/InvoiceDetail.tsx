@@ -3,6 +3,8 @@
  */
 
 import type { InvoiceResponse } from '@ppt/api-client';
+import { formatCurrency, formatDetailedDate } from '../utils/formatting';
+import { INVOICE_STATUS_STYLES } from '../utils/constants';
 
 interface InvoiceDetailProps {
   invoice: InvoiceResponse;
@@ -11,31 +13,6 @@ interface InvoiceDetailProps {
   onRecordPayment?: () => void;
   onClose: () => void;
   isSending?: boolean;
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-800',
-  sent: 'bg-blue-100 text-blue-800',
-  paid: 'bg-green-100 text-green-800',
-  partial: 'bg-yellow-100 text-yellow-800',
-  overdue: 'bg-red-100 text-red-800',
-  cancelled: 'bg-gray-100 text-gray-500',
-  void: 'bg-gray-100 text-gray-500',
-};
-
-function formatCurrency(amount: number, currency = 'EUR'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount);
-}
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 export function InvoiceDetail({
@@ -55,7 +32,11 @@ export function InvoiceDetail({
         <div
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
           onClick={onClose}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+              onClose();
+            }
+          }}
           role="button"
           tabIndex={0}
           aria-label="Close modal"
@@ -68,7 +49,7 @@ export function InvoiceDetail({
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Invoice {inv.invoice_number}</h2>
               <span
-                className={`mt-1 inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[inv.status]}`}
+                className={`mt-1 inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${INVOICE_STATUS_STYLES[inv.status]}`}
               >
                 {inv.status.toUpperCase()}
               </span>
@@ -102,19 +83,19 @@ export function InvoiceDetail({
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Issue Date</p>
-                <p className="font-medium">{formatDate(inv.issue_date)}</p>
+                <p className="font-medium">{formatDetailedDate(inv.issue_date)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Due Date</p>
                 <p className={`font-medium ${inv.status === 'overdue' ? 'text-red-600' : ''}`}>
-                  {formatDate(inv.due_date)}
+                  {formatDetailedDate(inv.due_date)}
                 </p>
               </div>
               {inv.billing_period_start && inv.billing_period_end && (
                 <div>
                   <p className="text-sm text-gray-500">Billing Period</p>
                   <p className="font-medium">
-                    {formatDate(inv.billing_period_start)} - {formatDate(inv.billing_period_end)}
+                    {formatDetailedDate(inv.billing_period_start)} - {formatDetailedDate(inv.billing_period_end)}
                   </p>
                 </div>
               )}
@@ -209,7 +190,7 @@ export function InvoiceDetail({
                   {payments.map((payment) => (
                     <li key={payment.id} className="px-4 py-3 flex justify-between">
                       <span className="text-sm text-gray-500">
-                        {formatDate(payment.created_at)}
+                        {formatDetailedDate(payment.created_at)}
                       </span>
                       <span className="text-sm font-medium text-green-600">
                         {formatCurrency(payment.amount, inv.currency)}

@@ -227,7 +227,7 @@ export function InvoiceForm({
         <div className="space-y-3">
           {items.map((item, index) => (
             <div
-              key={item.description || `item-${index}`}
+              key={`item-${index}`}
               className="grid grid-cols-12 gap-2 items-start"
             >
               <div className="col-span-5">

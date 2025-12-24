@@ -3,27 +3,13 @@
  */
 
 import type { Invoice } from '@ppt/api-client';
+import { formatCurrency, formatDate } from '../utils/formatting';
 
 interface OverdueInvoicesListProps {
   invoices: Invoice[];
   isLoading?: boolean;
   onViewInvoice?: (invoiceId: string) => void;
   onSendReminder?: (invoiceId: string) => void;
-}
-
-function formatCurrency(amount: number, currency = 'EUR'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount);
-}
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 function getDaysOverdue(dueDate: string): number {
