@@ -1,5 +1,6 @@
 package three.two.bit.ppt.reality.ui.account
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,10 +20,13 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.notifications.NotificationPreferences
 import three.two.bit.ppt.reality.notifications.NotificationRepository
+
+private const val TAG = "AccountScreen"
 
 /**
  * Account screen for Reality Portal mobile app.
@@ -42,7 +46,7 @@ fun AccountScreen(ssoService: SsoService, onBackClick: () -> Unit, onLogout: () 
     val notificationRepository =
         remember(authState) {
             val token = (authState as? AuthState.Authenticated)?.sessionToken
-            NotificationRepository(sessionToken = token)
+            NotificationRepository(baseUrl = ApiConfig.requireBaseUrl(), sessionToken = token)
         }
 
     // Load notification preferences
@@ -52,7 +56,10 @@ fun AccountScreen(ssoService: SsoService, onBackClick: () -> Unit, onLogout: () 
                 .getPreferences()
                 .fold(
                     onSuccess = { prefs -> notificationPrefs = prefs },
-                    onFailure = { /* Use defaults */}
+                    onFailure = { error ->
+                        Log.e(TAG, "Failed to load notification preferences", error)
+                        // Use default preferences if loading fails
+                    }
                 )
         }
     }
@@ -105,7 +112,10 @@ fun AccountScreen(ssoService: SsoService, onBackClick: () -> Unit, onLogout: () 
                                             .updatePreferences(newPrefs)
                                             .fold(
                                                 onSuccess = { notificationPrefs = it },
-                                                onFailure = { /* Show error */}
+                                                onFailure = { error ->
+                                                    Log.e(TAG, "Failed to update notification preferences", error)
+                                                    // Revert to previous preferences on failure
+                                                }
                                             )
                                     }
                                 }

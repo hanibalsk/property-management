@@ -1,5 +1,6 @@
 package three.two.bit.ppt.reality.ui.favorites
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,11 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.favorites.*
 import three.two.bit.ppt.reality.listing.ListingRepository
 import three.two.bit.ppt.reality.ui.search.ListingCard
+
+private const val TAG = "FavoritesScreen"
 
 /**
  * Favorites screen for Reality Portal mobile app.
@@ -44,7 +48,7 @@ fun FavoritesScreen(
     val favoritesRepository =
         remember(authState) {
             val token = (authState as? AuthState.Authenticated)?.sessionToken
-            FavoritesRepository(sessionToken = token)
+            FavoritesRepository(baseUrl = ApiConfig.requireBaseUrl(), sessionToken = token)
         }
 
     // Load data
@@ -66,7 +70,10 @@ fun FavoritesScreen(
                 .getSavedSearches()
                 .fold(
                     onSuccess = { response -> savedSearches = response.searches },
-                    onFailure = { /* Already showing error if favorites failed */}
+                    onFailure = { error ->
+                        Log.e(TAG, "Failed to load saved searches", error)
+                        // Don't overwrite error message if favorites already failed
+                    }
                 )
 
             isLoading = false
@@ -181,7 +188,10 @@ fun FavoritesScreen(
                                                             it.listingId != listingId
                                                         }
                                                 },
-                                                onFailure = { /* Show error */}
+                                                onFailure = { error ->
+                                                    Log.e(TAG, "Failed to remove favorite", error)
+                                                    errorMessage = error.message
+                                                }
                                             )
                                     }
                                 }
@@ -202,7 +212,10 @@ fun FavoritesScreen(
                                                             if (it.id == searchId) updated else it
                                                         }
                                                 },
-                                                onFailure = { /* Show error */}
+                                                onFailure = { error ->
+                                                    Log.e(TAG, "Failed to toggle alert", error)
+                                                    errorMessage = error.message
+                                                }
                                             )
                                     }
                                 },
@@ -215,7 +228,10 @@ fun FavoritesScreen(
                                                     savedSearches =
                                                         savedSearches.filter { it.id != searchId }
                                                 },
-                                                onFailure = { /* Show error */}
+                                                onFailure = { error ->
+                                                    Log.e(TAG, "Failed to delete saved search", error)
+                                                    errorMessage = error.message
+                                                }
                                             )
                                     }
                                 }

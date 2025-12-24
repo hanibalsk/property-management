@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 import three.two.bit.ppt.reality.listing.*
+import three.two.bit.ppt.reality.util.FormatUtils
 
 /**
  * Search screen for Reality Portal mobile app.
@@ -659,20 +660,9 @@ private fun PropertyDetail(icon: androidx.compose.ui.graphics.vector.ImageVector
 }
 
 private fun formatPrice(price: Long, currency: String): String {
-    val formatted =
-        when {
-            price >= 1_000_000 -> String.format("%.2fM", price / 1_000_000.0)
-            price >= 1_000 -> String.format("%,d", price)
-            else -> price.toString()
-        }
-    return when (currency) {
-        "EUR" -> "€$formatted"
-        "USD" -> "$$formatted"
-        "GBP" -> "£$formatted"
-        else -> "$formatted $currency"
-    }
+    return FormatUtils.formatPrice(price, currency)
 }
 
 private fun buildLocationString(address: Address): String {
-    return listOfNotNull(address.district, address.city, address.region).joinToString(", ")
+    return FormatUtils.buildSimpleLocationString(address)
 }

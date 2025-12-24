@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.listing.ListingRepository
 import three.two.bit.ppt.reality.navigation.RealityNavHost
@@ -24,6 +25,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize API configuration
+        // TODO: Load from BuildConfig or environment in production
+        if (!ApiConfig.isInitialized) {
+            ApiConfig.initialize(BuildConfig.API_BASE_URL)
+        }
 
         // Handle deep-link on initial launch
         handleDeepLink(intent)
@@ -65,7 +72,7 @@ fun RealityPortalApp(ssoService: SsoService) {
     val navController = rememberNavController()
 
     // Create listing repository - in production this would be injected via DI
-    val listingRepository = remember { ListingRepository() }
+    val listingRepository = remember { ListingRepository(baseUrl = ApiConfig.requireBaseUrl()) }
 
     RealityNavHost(
         navController = navController,

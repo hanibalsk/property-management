@@ -24,6 +24,7 @@ import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.listing.*
 import three.two.bit.ppt.reality.ui.search.ListingCard
+import three.two.bit.ppt.reality.util.FormatUtils
 
 /**
  * Home screen for Reality Portal mobile app.
@@ -407,16 +408,5 @@ private fun FeaturedListingCard(listing: ListingSummary, onClick: () -> Unit) {
 }
 
 private fun formatPrice(price: Long, currency: String): String {
-    val formatted =
-        when {
-            price >= 1_000_000 -> String.format("%.2fM", price / 1_000_000.0)
-            price >= 1_000 -> String.format("%,d", price)
-            else -> price.toString()
-        }
-    return when (currency) {
-        "EUR" -> "€$formatted"
-        "USD" -> "$$formatted"
-        "GBP" -> "£$formatted"
-        else -> "$formatted $currency"
-    }
+    return FormatUtils.formatPrice(price, currency)
 }

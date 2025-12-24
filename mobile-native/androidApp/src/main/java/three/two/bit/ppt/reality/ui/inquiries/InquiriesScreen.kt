@@ -1,5 +1,6 @@
 package three.two.bit.ppt.reality.ui.inquiries
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,10 +20,13 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.inquiry.*
 import three.two.bit.ppt.reality.listing.ListingRepository
+
+private const val TAG = "InquiriesScreen"
 
 /**
  * Inquiries screen for Reality Portal mobile app.
@@ -50,7 +54,7 @@ fun InquiriesScreen(
     val inquiryRepository =
         remember(authState) {
             val token = (authState as? AuthState.Authenticated)?.sessionToken
-            InquiryRepository(sessionToken = token)
+            InquiryRepository(baseUrl = ApiConfig.requireBaseUrl(), sessionToken = token)
         }
 
     // Load data
@@ -72,7 +76,10 @@ fun InquiriesScreen(
                 .getViewings()
                 .fold(
                     onSuccess = { response -> viewings = response.viewings },
-                    onFailure = { /* Already showing error if inquiries failed */}
+                    onFailure = { error ->
+                        Log.e(TAG, "Failed to load viewings", error)
+                        // Don't overwrite error message if inquiries already failed
+                    }
                 )
 
             isLoading = false
@@ -195,7 +202,10 @@ fun InquiriesScreen(
                                                     viewings =
                                                         viewings.filter { it.id != viewingId }
                                                 },
-                                                onFailure = { /* Show error */}
+                                                onFailure = { error ->
+                                                    Log.e(TAG, "Failed to cancel viewing", error)
+                                                    errorMessage = error.message
+                                                }
                                             )
                                     }
                                 }

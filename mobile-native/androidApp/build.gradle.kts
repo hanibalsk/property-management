@@ -28,6 +28,9 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = calculatedVersionCode
         versionName = appVersion
+
+        // API base URL - use emulator localhost for debug, configure for production
+        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8081\"")
     }
 
     buildTypes {
@@ -37,6 +40,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Production API URL - must use HTTPS
+            buildConfigField("String", "API_BASE_URL", "\"https://api.realityportal.example.com\"")
         }
     }
 

@@ -2,13 +2,9 @@ package three.two.bit.ppt.reality.listing
 
 import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.defaultRequest
-import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
+import three.two.bit.ppt.reality.api.HttpClientProvider
 
 /**
  * Repository for listing operations.
@@ -16,21 +12,10 @@ import kotlinx.serialization.json.Json
  * Epic 48 - Story 48.1: Portal Mobile Search
  */
 class ListingRepository(
-    private val baseUrl: String = "http://localhost:8081",
-    private val sessionToken: String? = null
+    private val baseUrl: String,
+    private val sessionToken: String? = null,
+    private val client: HttpClient = HttpClientProvider.client
 ) {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        encodeDefaults = true
-        prettyPrint = false
-    }
-
-    private val client = HttpClient {
-        install(ContentNegotiation) { json(json) }
-        install(Logging) { level = LogLevel.HEADERS }
-        defaultRequest { contentType(ContentType.Application.Json) }
-    }
 
     private fun HttpRequestBuilder.configureRequest() {
         sessionToken?.let { header(HttpHeaders.Authorization, "Bearer $it") }

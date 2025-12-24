@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.listing.*
+import three.two.bit.ppt.reality.util.FormatUtils
 
 /**
  * Listing detail screen for Reality Portal mobile app.
@@ -730,21 +731,10 @@ private fun ShareListingSheet(listing: ListingDetail, onDismiss: () -> Unit) {
 }
 
 private fun formatPrice(price: Long, currency: String): String {
-    val formatted =
-        when {
-            price >= 1_000_000 -> String.format("%.2fM", price / 1_000_000.0)
-            price >= 1_000 -> String.format("%,d", price)
-            else -> price.toString()
-        }
-    return when (currency) {
-        "EUR" -> "€$formatted"
-        "USD" -> "$$formatted"
-        "GBP" -> "£$formatted"
-        else -> "$formatted $currency"
-    }
+    return FormatUtils.formatPrice(price, currency)
 }
 
 private fun buildLocationString(address: Address): String {
-    return listOfNotNull(address.street, address.district, address.city, address.postalCode)
-        .joinToString(", ")
+    // Use detailed location for listing detail view (includes street and postal code)
+    return FormatUtils.buildDetailedLocationString(address)
 }
