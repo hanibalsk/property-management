@@ -189,7 +189,9 @@ function FieldPreview({ field, isEditing, onEdit, onDelete }: FieldPreviewProps)
         </div>
         {field.helpText && <p className="text-sm text-gray-500">{field.helpText}</p>}
         {field.options && field.options.length > 0 && (
-          <p className="text-xs text-gray-400 mt-1">Options: {field.options.join(', ')}</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Options: {field.options.map((o) => o.label).join(', ')}
+          </p>
         )}
       </div>
       {isEditing && (
@@ -244,17 +246,25 @@ function FieldEditor({ field, onSave, onCancel }: FieldEditorProps) {
   const [required, setRequired] = useState(field.required);
   const [placeholder, setPlaceholder] = useState(field.placeholder || '');
   const [helpText, setHelpText] = useState(field.helpText || '');
-  const [options, setOptions] = useState(field.options?.join('\n') || '');
+  // Convert FieldOption[] to newline-separated string for editing
+  const [options, setOptions] = useState(field.options?.map((o) => o.label).join('\n') || '');
 
   const needsOptions = ['radio', 'select', 'multiselect'].includes(field.fieldType);
 
   const handleSave = () => {
+    // Convert newline-separated string back to FieldOption[]
+    const optionLines = options.split('\n').filter(Boolean);
+    const fieldOptions = optionLines.map((line) => ({
+      value: line.toLowerCase().replace(/\s+/g, '_'),
+      label: line,
+    }));
+
     onSave({
       label,
       required,
       placeholder: placeholder || undefined,
       helpText: helpText || undefined,
-      options: needsOptions ? options.split('\n').filter(Boolean) : undefined,
+      options: needsOptions ? fieldOptions : undefined,
     });
   };
 

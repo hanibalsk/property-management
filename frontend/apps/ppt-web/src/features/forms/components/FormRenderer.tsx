@@ -212,18 +212,18 @@ export function FormRenderer({
         return (
           <div className="space-y-2">
             {field.options?.map((option) => (
-              <div key={option} className="flex items-center gap-2">
+              <div key={option.value} className="flex items-center gap-2">
                 <input
                   type="radio"
-                  id={`${field.id}-${option}`}
+                  id={`${field.id}-${option.value}`}
                   name={field.id}
-                  value={option}
-                  checked={value === option}
+                  value={option.value}
+                  checked={value === option.value}
                   onChange={(e) => handleInputChange(field.id, e.target.value)}
                   className="border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor={`${field.id}-${option}`} className="text-sm text-gray-700">
-                  {option}
+                <label htmlFor={`${field.id}-${option.value}`} className="text-sm text-gray-700">
+                  {option.label}
                 </label>
               </div>
             ))}
@@ -239,8 +239,8 @@ export function FormRenderer({
           >
             <option value="">{field.placeholder || 'Select an option'}</option>
             {field.options?.map((option) => (
-              <option key={option} value={option}>
-                {option}
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
@@ -252,14 +252,14 @@ export function FormRenderer({
             multiple
             value={value as string[]}
             onChange={(e) => {
-              const selected = Array.from(e.target.selectedOptions, (option) => option.value);
+              const selected = Array.from(e.target.selectedOptions, (opt) => opt.value);
               handleInputChange(field.id, selected);
             }}
             className={`${baseInputClass} h-32`}
           >
             {field.options?.map((option) => (
-              <option key={option} value={option}>
-                {option}
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>

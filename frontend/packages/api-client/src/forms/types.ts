@@ -86,8 +86,23 @@ export interface FormWithDetails extends Form {
 // ============================================================================
 
 export interface ConditionalDisplay {
-  dependsOnFieldId: string;
-  showWhenValue: string;
+  field: string;
+  operator: string; // "equals", "not_equals", "contains", "not_empty"
+  value: string;
+}
+
+export interface FieldOption {
+  value: string;
+  label: string;
+}
+
+export interface ValidationRules {
+  min?: number;
+  max?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  patternMessage?: string;
 }
 
 export interface FormField {
@@ -99,8 +114,8 @@ export interface FormField {
   placeholder?: string;
   helpText?: string;
   defaultValue?: string;
-  options?: string[]; // For radio, select, multiselect
-  validation?: Record<string, unknown>; // JSON schema for validation rules
+  options?: FieldOption[]; // For radio, select, multiselect
+  validation?: ValidationRules;
   conditionalDisplay?: ConditionalDisplay;
   sortOrder: number;
   createdAt: string;
@@ -114,8 +129,8 @@ export interface CreateFormField {
   placeholder?: string;
   helpText?: string;
   defaultValue?: string;
-  options?: string[];
-  validation?: Record<string, unknown>;
+  options?: FieldOption[];
+  validation?: ValidationRules;
   conditionalDisplay?: ConditionalDisplay;
   sortOrder?: number;
 }
@@ -127,8 +142,8 @@ export interface UpdateFormField {
   placeholder?: string;
   helpText?: string;
   defaultValue?: string;
-  options?: string[];
-  validation?: Record<string, unknown>;
+  options?: FieldOption[];
+  validation?: ValidationRules;
   conditionalDisplay?: ConditionalDisplay;
   sortOrder?: number;
 }
