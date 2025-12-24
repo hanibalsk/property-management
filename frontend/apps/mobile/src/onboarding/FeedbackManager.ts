@@ -6,6 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+import { API_BASE_URL, APP_VERSION, BUILD_NUMBER } from '../config';
 import type { AppContext, DeviceInfo, FeedbackSubmission, FeedbackType } from './types';
 
 const FEEDBACK_DRAFTS_KEY = '@ppt/feedback_drafts';
@@ -50,8 +51,8 @@ export class FeedbackManager {
    * Get device information.
    */
   getDeviceInfo(): DeviceInfo {
-    // Note: For more detailed device info, consider using react-native-device-info
-    // which provides actual device model, manufacturer, etc.
+    // Note: For production use, consider react-native-device-info for detailed device info
+    // (device model, manufacturer, etc.) and react-native-localize for proper locale detection.
     return {
       platform: Platform.OS as 'ios' | 'android',
       osVersion: Platform.Version?.toString() ?? 'unknown',
@@ -59,7 +60,7 @@ export class FeedbackManager {
       deviceModel: Platform.OS === 'ios' ? 'iOS Device' : 'Android Device',
       appVersion: this.appVersion,
       buildNumber: this.buildNumber,
-      // Use NativeModules or react-native-localize for proper locale detection
+      // Use system locale via Intl API (limited) or react-native-localize for full support
       locale: Intl.DateTimeFormat().resolvedOptions().locale ?? 'en-US',
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
@@ -110,10 +111,8 @@ export class FeedbackManager {
 
       return { success: true, id: response.id };
     } catch (error) {
-      // Log error in development for debugging
-      if (__DEV__) {
-        console.warn('Failed to submit feedback:', error);
-      }
+      // Log error for debugging and monitoring
+      console.error('Failed to submit feedback:', error);
       // Store for later submission
       await this.storePendingFeedback(feedback);
       return { success: false };
@@ -169,10 +168,8 @@ export class FeedbackManager {
         await this.apiRequest('/api/v1/feedback', 'POST', feedback);
         successCount++;
       } catch (error) {
-        // Log retry failures in development
-        if (__DEV__) {
-          console.warn('Failed to retry feedback submission:', error);
-        }
+        // Log retry failures for monitoring
+        console.error('Failed to retry feedback submission:', error);
         remaining.push(feedback);
       }
     }
@@ -268,10 +265,6 @@ Timestamp: ${appContext.timestamp}
 
 /**
  * Global singleton instance of FeedbackManager.
- * Should be configured at app startup with proper base URL and version info.
+ * Configuration is loaded from environment variables and package.json.
  */
-export const feedbackManager = new FeedbackManager(
-  'https://api.ppt.example.com', // Will be configured at runtime
-  '1.0.0',
-  '1'
-);
+export const feedbackManager = new FeedbackManager(API_BASE_URL, APP_VERSION, BUILD_NUMBER);

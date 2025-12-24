@@ -195,10 +195,8 @@ export class HelpCenter {
         }
       }
     } catch (error) {
-      // Handle corrupted data gracefully - start fresh
-      if (__DEV__) {
-        console.warn('Failed to load FAQ votes, starting fresh:', error);
-      }
+      // Handle corrupted or invalid JSON data gracefully - start fresh
+      console.warn('Failed to parse FAQ votes from storage, resetting to default:', error);
       this.userVotes = {};
     }
   }
@@ -218,8 +216,8 @@ export class HelpCenter {
         fullContent:
           'The dashboard shows a summary of your buildings, recent notifications, and quick actions. You can see pending votes, active faults, and upcoming meetings at a glance.',
         relatedFAQs: ['faq-1', 'faq-2'],
-        // Note: In production, lastUpdated should come from CMS/API
-        // For now, we use a fixed date to indicate when content was written
+        // Note: In production, lastUpdated should be fetched dynamically from CMS/API
+        // to reflect actual content updates. This static value is temporary seed data.
         lastUpdated: '2025-06-01',
       },
       {
@@ -271,9 +269,12 @@ export class HelpCenter {
     }
 
     // FAQs
-    // Note: helpful/notHelpful counts are seed values for display purposes.
-    // User votes are tracked locally per-device. In production, these counts
-    // would be fetched from a backend API for accurate aggregation.
+    // Note: Vote counts (helpful/notHelpful) are:
+    // 1. Initial seed values for demonstration
+    // 2. User votes stored locally per-device in AsyncStorage (see FAQ_VOTES_KEY)
+    // 3. Not synced across devices or aggregated globally
+    // In production, vote counts should be fetched from backend API for accurate
+    // cross-device aggregation and analytics.
     const faqItems: FAQItem[] = [
       {
         id: 'faq-1',

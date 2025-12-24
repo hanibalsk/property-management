@@ -275,16 +275,23 @@ export class TourManager {
       const stored = await AsyncStorage.getItem(ONBOARDING_STATE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Validate basic structure before assignment
-        if (parsed && typeof parsed === 'object' && 'hasCompletedOnboarding' in parsed) {
+        // Validate schema: check structure and required fields
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          'hasCompletedOnboarding' in parsed &&
+          typeof parsed.hasCompletedOnboarding === 'boolean' &&
+          'tours' in parsed &&
+          typeof parsed.tours === 'object'
+        ) {
           this.state = parsed;
+        } else {
+          console.warn('Invalid onboarding state schema, using defaults');
         }
       }
     } catch (error) {
-      // Handle corrupted data gracefully - reset to default state
-      if (__DEV__) {
-        console.warn('Failed to load onboarding state, starting fresh:', error);
-      }
+      // Handle JSON parse errors or corrupted data gracefully - reset to default state
+      console.warn('Failed to parse onboarding state from storage, resetting to default:', error);
       // State already initialized to default values in constructor
     }
   }
