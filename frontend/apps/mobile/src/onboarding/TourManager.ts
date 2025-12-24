@@ -271,9 +271,21 @@ export class TourManager {
   // Private methods
 
   private async loadState(): Promise<void> {
-    const stored = await AsyncStorage.getItem(ONBOARDING_STATE_KEY);
-    if (stored) {
-      this.state = JSON.parse(stored);
+    try {
+      const stored = await AsyncStorage.getItem(ONBOARDING_STATE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Validate basic structure before assignment
+        if (parsed && typeof parsed === 'object' && 'hasCompletedOnboarding' in parsed) {
+          this.state = parsed;
+        }
+      }
+    } catch (error) {
+      // Handle corrupted data gracefully - reset to default state
+      if (__DEV__) {
+        console.warn('Failed to load onboarding state, starting fresh:', error);
+      }
+      // State already initialized to default values in constructor
     }
   }
 

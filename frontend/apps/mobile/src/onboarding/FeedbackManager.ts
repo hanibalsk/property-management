@@ -50,13 +50,17 @@ export class FeedbackManager {
    * Get device information.
    */
   getDeviceInfo(): DeviceInfo {
+    // Note: For more detailed device info, consider using react-native-device-info
+    // which provides actual device model, manufacturer, etc.
     return {
       platform: Platform.OS as 'ios' | 'android',
       osVersion: Platform.Version?.toString() ?? 'unknown',
+      // Generic placeholder - use react-native-device-info for actual model
       deviceModel: Platform.OS === 'ios' ? 'iOS Device' : 'Android Device',
       appVersion: this.appVersion,
       buildNumber: this.buildNumber,
-      locale: 'en-US', // Would use i18n in real app
+      // Use NativeModules or react-native-localize for proper locale detection
+      locale: Intl.DateTimeFormat().resolvedOptions().locale ?? 'en-US',
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
   }
@@ -82,7 +86,8 @@ export class FeedbackManager {
     title: string,
     description: string,
     email?: string,
-    screenshot?: string
+    screenshot?: string,
+    includeDeviceInfo = true
   ): FeedbackSubmission {
     return {
       type,
@@ -90,8 +95,9 @@ export class FeedbackManager {
       description,
       email,
       screenshot,
-      deviceInfo: this.getDeviceInfo(),
-      appContext: this.getAppContext(),
+      // Only include device info if the user opted in
+      deviceInfo: includeDeviceInfo ? this.getDeviceInfo() : undefined,
+      appContext: includeDeviceInfo ? this.getAppContext() : undefined,
     };
   }
 
@@ -103,7 +109,11 @@ export class FeedbackManager {
       const response = await this.apiRequest<{ id: string }>('/api/v1/feedback', 'POST', feedback);
 
       return { success: true, id: response.id };
-    } catch {
+    } catch (error) {
+      // Log error in development for debugging
+      if (__DEV__) {
+        console.warn('Failed to submit feedback:', error);
+      }
       // Store for later submission
       await this.storePendingFeedback(feedback);
       return { success: false };
@@ -158,7 +168,11 @@ export class FeedbackManager {
       try {
         await this.apiRequest('/api/v1/feedback', 'POST', feedback);
         successCount++;
-      } catch {
+      } catch (error) {
+        // Log retry failures in development
+        if (__DEV__) {
+          console.warn('Failed to retry feedback submission:', error);
+        }
         remaining.push(feedback);
       }
     }

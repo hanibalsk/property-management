@@ -16,16 +16,21 @@ import {
   View,
 } from 'react-native';
 
-import { FeedbackManager } from '../../onboarding';
+import { FeedbackManager, feedbackManager as globalFeedbackManager } from '../../onboarding';
 import type { FeedbackType } from '../../onboarding/types';
+import { getApiBaseUrl } from '../../config/api';
+// Import version from package.json or build config
+// In production, these would come from app.json or native build config
+import { version as APP_VERSION } from '../../../../../package.json';
 
 interface FeedbackScreenProps {
   onNavigate: (screen: string) => void;
 }
 
-const API_BASE_URL = 'http://localhost:8080';
-const APP_VERSION = '1.0.0';
-const BUILD_NUMBER = '1';
+const BUILD_NUMBER = '1'; // Would come from native build config
+
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('bug');
@@ -35,10 +40,12 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
   const [includeDeviceInfo, setIncludeDeviceInfo] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const feedbackManager = useMemo(
-    () => new FeedbackManager(API_BASE_URL, APP_VERSION, BUILD_NUMBER),
-    []
-  );
+  // Use singleton pattern for FeedbackManager
+  const feedbackManager = useMemo(() => {
+    // Initialize the global singleton if needed
+    globalFeedbackManager.updateContext({ screen: 'Feedback' });
+    return globalFeedbackManager;
+  }, []);
 
   const feedbackTypes = useMemo(() => feedbackManager.getFeedbackTypes(), [feedbackManager]);
 
@@ -60,6 +67,12 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
       return;
     }
 
+    // Validate email format if provided
+    if (email.trim() && !EMAIL_REGEX.test(email.trim())) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
     setIsSubmitting(true);
 
     const feedback = feedbackManager.createFeedback(
@@ -67,7 +80,8 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
       title.trim(),
       description.trim(),
       email.trim() || undefined,
-      undefined // screenshot would be captured here
+      undefined, // screenshot would be captured here
+      includeDeviceInfo // Pass the includeDeviceInfo flag
     );
 
     const result = await feedbackManager.submitFeedback(feedback);

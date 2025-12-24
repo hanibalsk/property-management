@@ -185,9 +185,21 @@ export class HelpCenter {
   // Private methods
 
   private async loadUserVotes(): Promise<void> {
-    const stored = await AsyncStorage.getItem(FAQ_VOTES_KEY);
-    if (stored) {
-      this.userVotes = JSON.parse(stored);
+    try {
+      const stored = await AsyncStorage.getItem(FAQ_VOTES_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Validate structure before assignment
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          this.userVotes = parsed;
+        }
+      }
+    } catch (error) {
+      // Handle corrupted data gracefully - start fresh
+      if (__DEV__) {
+        console.warn('Failed to load FAQ votes, starting fresh:', error);
+      }
+      this.userVotes = {};
     }
   }
 
@@ -206,7 +218,9 @@ export class HelpCenter {
         fullContent:
           'The dashboard shows a summary of your buildings, recent notifications, and quick actions. You can see pending votes, active faults, and upcoming meetings at a glance.',
         relatedFAQs: ['faq-1', 'faq-2'],
-        lastUpdated: '2025-01-01',
+        // Note: In production, lastUpdated should come from CMS/API
+        // For now, we use a fixed date to indicate when content was written
+        lastUpdated: '2025-06-01',
       },
       {
         id: 'buildings',
@@ -216,7 +230,7 @@ export class HelpCenter {
         fullContent:
           'View all buildings you have access to. Tap on a building to see details, residents, faults, documents, and more.',
         relatedFAQs: ['faq-3'],
-        lastUpdated: '2025-01-01',
+        lastUpdated: '2025-06-01',
       },
       {
         id: 'faults',
@@ -227,7 +241,7 @@ export class HelpCenter {
           'Report maintenance issues, track their status, and receive updates. Include photos and detailed descriptions for faster resolution.',
         relatedFAQs: ['faq-4', 'faq-5'],
         relatedTutorials: ['tutorial-faults'],
-        lastUpdated: '2025-01-01',
+        lastUpdated: '2025-06-01',
       },
       {
         id: 'voting',
@@ -238,7 +252,7 @@ export class HelpCenter {
           'Cast your vote on building proposals. View active votes, past results, and upcoming decisions.',
         relatedFAQs: ['faq-6'],
         relatedTutorials: ['tutorial-voting'],
-        lastUpdated: '2025-01-01',
+        lastUpdated: '2025-06-01',
       },
       {
         id: 'documents',
@@ -248,7 +262,7 @@ export class HelpCenter {
         fullContent:
           'View and download building documents including regulations, meeting minutes, contracts, and more.',
         relatedFAQs: ['faq-7'],
-        lastUpdated: '2025-01-01',
+        lastUpdated: '2025-06-01',
       },
     ];
 
@@ -257,6 +271,9 @@ export class HelpCenter {
     }
 
     // FAQs
+    // Note: helpful/notHelpful counts are seed values for display purposes.
+    // User votes are tracked locally per-device. In production, these counts
+    // would be fetched from a backend API for accurate aggregation.
     const faqItems: FAQItem[] = [
       {
         id: 'faq-1',
