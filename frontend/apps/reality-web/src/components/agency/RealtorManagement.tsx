@@ -282,6 +282,9 @@ function RealtorCard({
       className="realtor-card"
       onClick={onSelect}
       onKeyDown={(e) => e.key === 'Enter' && onSelect()}
+      tabIndex={0}
+      // biome-ignore lint/a11y/useSemanticElements: Using div for complex card layout with styled-jsx
+      role="button"
     >
       <div className="avatar">
         {realtor.photoUrl ? (
@@ -863,8 +866,8 @@ function RealtorDetailModal({
           {/* Status Actions */}
           {realtor.status !== 'invited' && (
             // biome-ignore lint/a11y/useSemanticElements: Using div with ARIA to avoid fieldset styling issues
-            <div className="status-section" role="group" aria-labelledby="status-label">
-              <span id="status-label" className="status-label-text">
+            <div className="status-section" role="group" aria-labelledby="status-label-text">
+              <span id="status-label-text" className="status-label-text">
                 Status
               </span>
               <div className="status-buttons">

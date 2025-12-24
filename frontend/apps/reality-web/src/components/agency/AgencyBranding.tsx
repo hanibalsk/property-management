@@ -7,7 +7,7 @@
 'use client';
 import { useAgencyBranding, useMyAgency, useUpdateBranding } from '@ppt/reality-api-client';
 import Link from 'next/link';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function AgencyBranding() {
   const { data: agency } = useMyAgency();
@@ -24,13 +24,21 @@ export function AgencyBranding() {
   const [hasChanges, setHasChanges] = useState(false);
 
   // Initialize from branding data
-  useState(() => {
+  useEffect(() => {
     if (branding) {
       setPrimaryColor(branding.primaryColor || '#2563eb');
       setSecondaryColor(branding.secondaryColor || '#1e40af');
       setAccentColor(branding.accentColor || '#10b981');
     }
-  });
+  }, [branding]);
+
+  // Cleanup object URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [logoPreview, coverPreview]);
 
   const handleLogoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
