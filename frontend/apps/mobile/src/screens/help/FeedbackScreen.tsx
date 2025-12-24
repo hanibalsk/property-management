@@ -19,6 +19,12 @@ import {
 import { feedbackManager as globalFeedbackManager } from '../../onboarding';
 import type { FeedbackType } from '../../onboarding/types';
 
+interface FeedbackTypeOption {
+  type: FeedbackType;
+  label: string;
+  icon: string;
+}
+
 interface FeedbackScreenProps {
   onNavigate: (screen: string) => void;
 }
@@ -127,7 +133,7 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Feedback Type</Text>
           <View style={styles.typeGrid}>
-            {feedbackTypes.map((type) => (
+            {feedbackTypes.map((type: FeedbackTypeOption) => (
               <Pressable
                 key={type.type}
                 style={[styles.typeButton, feedbackType === type.type && styles.typeButtonActive]}

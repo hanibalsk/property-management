@@ -128,8 +128,8 @@ export interface FeedbackSubmission {
   description: string;
   email?: string;
   screenshot?: string;
-  deviceInfo: DeviceInfo;
-  appContext: AppContext;
+  deviceInfo?: DeviceInfo;
+  appContext?: AppContext;
 }
 
 /**

@@ -29,4 +29,4 @@ export { TourManager, tourManager } from './TourManager';
 export { HelpCenter, helpCenter } from './HelpCenter';
 
 // Feedback Manager
-export { FeedbackManager } from './FeedbackManager';
+export { FeedbackManager, feedbackManager } from './FeedbackManager';

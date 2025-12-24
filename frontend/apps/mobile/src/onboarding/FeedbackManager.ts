@@ -265,3 +265,13 @@ Timestamp: ${appContext.timestamp}
     return response.json();
   }
 }
+
+/**
+ * Global singleton instance of FeedbackManager.
+ * Should be configured at app startup with proper base URL and version info.
+ */
+export const feedbackManager = new FeedbackManager(
+  'https://api.ppt.example.com', // Will be configured at runtime
+  '1.0.0',
+  '1'
+);
