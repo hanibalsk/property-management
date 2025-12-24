@@ -234,10 +234,7 @@ export function ComparisonView() {
                     <Link href={`/listings/${listing.slug}`} className="property-link">
                       <div className="property-image">
                         {listing.primaryPhoto ? (
-                          <img
-                            src={listing.primaryPhoto.thumbnailUrl}
-                            alt={`Property image for ${listing.title}`}
-                          />
+                          <img src={listing.primaryPhoto.thumbnailUrl} alt={listing.title} />
                         ) : (
                           <div className="no-image">🏠</div>
                         )}
@@ -279,9 +276,9 @@ export function ComparisonView() {
       </div>
 
       {toast && (
-        <div className={`toast toast-${toast.type}`} role="status" aria-live="polite">
+        <output className={`toast toast-${toast.type}`} aria-live="polite">
           {toast.message}
-        </div>
+        </output>
       )}
 
       <style jsx>{`

@@ -91,7 +91,7 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
     const baseUrl =
       typeof window !== 'undefined'
         ? window.location.origin
-        : process.env.NEXT_PUBLIC_APP_URL ?? '';
+        : (process.env.NEXT_PUBLIC_APP_URL ?? '');
     const url = baseUrl ? `${baseUrl}/compare?ids=${ids}` : `/compare?ids=${ids}`;
     setShareUrl(url);
     return url;
