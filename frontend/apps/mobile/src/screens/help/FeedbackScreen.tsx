@@ -16,18 +16,12 @@ import {
   View,
 } from 'react-native';
 
-import { FeedbackManager, feedbackManager as globalFeedbackManager } from '../../onboarding';
+import { feedbackManager as globalFeedbackManager } from '../../onboarding';
 import type { FeedbackType } from '../../onboarding/types';
-import { getApiBaseUrl } from '../../config/api';
-// Import version from package.json or build config
-// In production, these would come from app.json or native build config
-import { version as APP_VERSION } from '../../../../../package.json';
 
 interface FeedbackScreenProps {
   onNavigate: (screen: string) => void;
 }
-
-const BUILD_NUMBER = '1'; // Would come from native build config
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,7 +93,7 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
         [{ text: 'OK' }]
       );
     }
-  }, [feedbackManager, feedbackType, title, description, email, onNavigate]);
+  }, [feedbackManager, feedbackType, title, description, email, includeDeviceInfo, onNavigate]);
 
   const handleSaveDraft = useCallback(async () => {
     if (!title.trim() && !description.trim()) {
