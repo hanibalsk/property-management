@@ -4,6 +4,8 @@
  * Site footer for Reality Portal (Epic 44).
  */
 
+'use client';
+
 import Link from 'next/link';
 
 export function Footer() {

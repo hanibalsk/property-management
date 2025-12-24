@@ -1,0 +1,294 @@
+/**
+ * Agency Hooks
+ *
+ * React Query hooks for agency management in Reality Portal (Epic 45).
+ */
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type {
+  Agency,
+  AgencyBranding,
+  AgencyListing,
+  AgencyPerformance,
+  AgencyStats,
+  CreateAgencyRequest,
+  InviteRealtorRequest,
+  Realtor,
+  RealtorStats,
+  UpdateAgencyRequest,
+  UpdateBrandingRequest,
+  UpdateRealtorRequest,
+} from './types';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081';
+
+async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+    credentials: 'include',
+    ...options,
+  });
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// Agency Queries
+
+export function useAgency(agencyId?: string) {
+  return useQuery({
+    queryKey: ['agency', agencyId],
+    queryFn: () => fetchApi<Agency>(`/api/v1/agencies/${agencyId}`),
+    enabled: !!agencyId,
+  });
+}
+
+export function useMyAgency() {
+  return useQuery({
+    queryKey: ['my-agency'],
+    queryFn: () => fetchApi<Agency>('/api/v1/agencies/me'),
+  });
+}
+
+export function useAgencyStats(agencyId: string, period?: string) {
+  return useQuery({
+    queryKey: ['agency-stats', agencyId, period],
+    queryFn: () =>
+      fetchApi<AgencyStats>(
+        `/api/v1/agencies/${agencyId}/stats${period ? `?period=${period}` : ''}`
+      ),
+    enabled: !!agencyId,
+  });
+}
+
+export function useAgencyPerformance(
+  agencyId: string,
+  startDate?: string,
+  endDate?: string,
+  interval?: 'day' | 'week' | 'month'
+) {
+  return useQuery({
+    queryKey: ['agency-performance', agencyId, startDate, endDate, interval],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      if (interval) params.set('interval', interval);
+      return fetchApi<AgencyPerformance[]>(
+        `/api/v1/agencies/${agencyId}/performance?${params.toString()}`
+      );
+    },
+    enabled: !!agencyId,
+  });
+}
+
+export function useAgencyBranding(agencyId: string) {
+  return useQuery({
+    queryKey: ['agency-branding', agencyId],
+    queryFn: () => fetchApi<AgencyBranding>(`/api/v1/agencies/${agencyId}/branding`),
+    enabled: !!agencyId,
+  });
+}
+
+// Realtor Queries
+
+export function useRealtors(agencyId: string) {
+  return useQuery({
+    queryKey: ['realtors', agencyId],
+    queryFn: () => fetchApi<Realtor[]>(`/api/v1/agencies/${agencyId}/realtors`),
+    enabled: !!agencyId,
+  });
+}
+
+export function useRealtor(agencyId: string, realtorId: string) {
+  return useQuery({
+    queryKey: ['realtor', agencyId, realtorId],
+    queryFn: () => fetchApi<Realtor>(`/api/v1/agencies/${agencyId}/realtors/${realtorId}`),
+    enabled: !!agencyId && !!realtorId,
+  });
+}
+
+export function useRealtorStats(agencyId: string, realtorId: string, period?: string) {
+  return useQuery({
+    queryKey: ['realtor-stats', agencyId, realtorId, period],
+    queryFn: () =>
+      fetchApi<RealtorStats>(
+        `/api/v1/agencies/${agencyId}/realtors/${realtorId}/stats${period ? `?period=${period}` : ''}`
+      ),
+    enabled: !!agencyId && !!realtorId,
+  });
+}
+
+// Listing Queries
+
+export function useAgencyListings(
+  agencyId: string,
+  options?: { status?: string; realtorId?: string; page?: number; limit?: number }
+) {
+  return useQuery({
+    queryKey: ['agency-listings', agencyId, options],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (options?.status) params.set('status', options.status);
+      if (options?.realtorId) params.set('realtorId', options.realtorId);
+      if (options?.page) params.set('page', options.page.toString());
+      if (options?.limit) params.set('limit', options.limit.toString());
+      return fetchApi<{ listings: AgencyListing[]; total: number }>(
+        `/api/v1/agencies/${agencyId}/listings?${params.toString()}`
+      );
+    },
+    enabled: !!agencyId,
+  });
+}
+
+export function useMyListings(options?: { status?: string; page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ['my-listings', options],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (options?.status) params.set('status', options.status);
+      if (options?.page) params.set('page', options.page.toString());
+      if (options?.limit) params.set('limit', options.limit.toString());
+      return fetchApi<{ listings: AgencyListing[]; total: number }>(
+        `/api/v1/realtors/me/listings?${params.toString()}`
+      );
+    },
+  });
+}
+
+// Agency Mutations
+
+export function useCreateAgency() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateAgencyRequest) =>
+      fetchApi<Agency>('/api/v1/agencies', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-agency'] });
+    },
+  });
+}
+
+export function useUpdateAgency() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ agencyId, data }: { agencyId: string; data: UpdateAgencyRequest }) =>
+      fetchApi<Agency>(`/api/v1/agencies/${agencyId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['agency', variables.agencyId] });
+      queryClient.invalidateQueries({ queryKey: ['my-agency'] });
+    },
+  });
+}
+
+export function useUpdateBranding() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ agencyId, data }: { agencyId: string; data: UpdateBrandingRequest }) => {
+      const formData = new FormData();
+      if (data.logo) formData.append('logo', data.logo);
+      if (data.coverImage) formData.append('coverImage', data.coverImage);
+      if (data.primaryColor) formData.append('primaryColor', data.primaryColor);
+      if (data.secondaryColor) formData.append('secondaryColor', data.secondaryColor);
+      if (data.accentColor) formData.append('accentColor', data.accentColor);
+      if (data.fontFamily) formData.append('fontFamily', data.fontFamily);
+
+      const response = await fetch(`${API_BASE}/api/v1/agencies/${agencyId}/branding`, {
+        method: 'PUT',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['agency-branding', variables.agencyId] });
+      queryClient.invalidateQueries({ queryKey: ['agency', variables.agencyId] });
+    },
+  });
+}
+
+// Realtor Mutations
+
+export function useInviteRealtor() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ agencyId, data }: { agencyId: string; data: InviteRealtorRequest }) =>
+      fetchApi<Realtor>(`/api/v1/agencies/${agencyId}/realtors/invite`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['realtors', variables.agencyId] });
+    },
+  });
+}
+
+export function useUpdateRealtor() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      agencyId,
+      realtorId,
+      data,
+    }: {
+      agencyId: string;
+      realtorId: string;
+      data: UpdateRealtorRequest;
+    }) =>
+      fetchApi<Realtor>(`/api/v1/agencies/${agencyId}/realtors/${realtorId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['realtors', variables.agencyId] });
+      queryClient.invalidateQueries({
+        queryKey: ['realtor', variables.agencyId, variables.realtorId],
+      });
+    },
+  });
+}
+
+export function useRemoveRealtor() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ agencyId, realtorId }: { agencyId: string; realtorId: string }) =>
+      fetchApi<void>(`/api/v1/agencies/${agencyId}/realtors/${realtorId}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['realtors', variables.agencyId] });
+    },
+  });
+}
+
+export function useResendInvitation() {
+  return useMutation({
+    mutationFn: ({ agencyId, realtorId }: { agencyId: string; realtorId: string }) =>
+      fetchApi<void>(`/api/v1/agencies/${agencyId}/realtors/${realtorId}/resend-invitation`, {
+        method: 'POST',
+      }),
+  });
+}

@@ -107,6 +107,7 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
       {jsonLd && (
         <script
           type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD for SEO requires dangerouslySetInnerHTML
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}

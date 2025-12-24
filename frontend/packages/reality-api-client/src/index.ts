@@ -13,5 +13,26 @@ export * from './listings';
 export * from './favorites';
 export * from './inquiries';
 
+// Agency module - export with renamed ListingStatus to avoid conflict
+export type {
+  Agency,
+  AgencyAddress,
+  AgencyStats,
+  AgencyPerformance,
+  Realtor,
+  RealtorStatus,
+  RealtorStats,
+  RealtorInvitation,
+  AgencyBranding,
+  AgencyListing,
+  ListingStatus as AgencyListingStatus,
+  CreateAgencyRequest,
+  UpdateAgencyRequest,
+  UpdateBrandingRequest,
+  InviteRealtorRequest,
+  UpdateRealtorRequest,
+} from './agency/types';
+export * from './agency/hooks';
+
 // API version
 export const REALITY_API_VERSION = '1.0.0';

@@ -1,0 +1,873 @@
+/**
+ * AgencyDashboard Component
+ *
+ * Dashboard for agency owners to view performance metrics (Epic 45, Story 45.1).
+ */
+
+'use client';
+
+import type { AgencyPerformance, AgencyStats } from '@ppt/reality-api-client';
+import {
+  useAgencyPerformance,
+  useAgencyStats,
+  useMyAgency,
+  useRealtors,
+} from '@ppt/reality-api-client';
+import Link from 'next/link';
+import { useState } from 'react';
+
+type PeriodType = '7d' | '30d' | '90d' | '12m';
+
+export function AgencyDashboard() {
+  const [period, setPeriod] = useState<PeriodType>('30d');
+  const { data: agency, isLoading: agencyLoading } = useMyAgency();
+  const { data: stats, isLoading: statsLoading } = useAgencyStats(agency?.id || '', period);
+  const { data: performance } = useAgencyPerformance(
+    agency?.id || '',
+    undefined,
+    undefined,
+    'week'
+  );
+  const { data: realtors } = useRealtors(agency?.id || '');
+
+  if (agencyLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (!agency) {
+    return <NoAgencyMessage />;
+  }
+
+  return (
+    <div className="dashboard">
+      {/* Header */}
+      <div className="header">
+        <div className="header-content">
+          <h1 className="title">{agency.name}</h1>
+          <p className="subtitle">Agency Dashboard</p>
+        </div>
+        <div className="period-selector">
+          {(['7d', '30d', '90d', '12m'] as PeriodType[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={`period-button ${period === p ? 'active' : ''}`}
+              onClick={() => setPeriod(p)}
+            >
+              {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : p === '90d' ? '90 Days' : '1 Year'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      {statsLoading ? <StatsCardsSkeleton /> : stats ? <StatsCards stats={stats} /> : null}
+
+      {/* Main Content Grid */}
+      <div className="content-grid">
+        {/* Performance Chart */}
+        <div className="section chart-section">
+          <h2 className="section-title">Performance Overview</h2>
+          {performance && <PerformanceChart data={performance} />}
+        </div>
+
+        {/* Realtor Leaderboard */}
+        <div className="section leaderboard-section">
+          <div className="section-header">
+            <h2 className="section-title">Top Realtors</h2>
+            <Link href="/agency/realtors" className="view-all">
+              View All
+            </Link>
+          </div>
+          <RealtorLeaderboard
+            realtors={
+              realtors
+                ?.filter((r) => r.status === 'active')
+                .sort((a, b) => b.totalSales - a.totalSales)
+                .slice(0, 5) || []
+            }
+          />
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="quick-actions">
+        <h2 className="section-title">Quick Actions</h2>
+        <div className="actions-grid">
+          <Link href="/agency/realtors" className="action-card">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span>Manage Realtors</span>
+          </Link>
+          <Link href="/agency/listings" className="action-card">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            <span>All Listings</span>
+          </Link>
+          <Link href="/agency/branding" className="action-card">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <circle cx="13.5" cy="6.5" r="0.5" />
+              <circle cx="17.5" cy="10.5" r="0.5" />
+              <circle cx="8.5" cy="7.5" r="0.5" />
+              <circle cx="6.5" cy="12.5" r="0.5" />
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z" />
+            </svg>
+            <span>Branding</span>
+          </Link>
+          <Link href="/agency/realtors?action=invite" className="action-card primary">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="8.5" cy="7" r="4" />
+              <line x1="20" y1="8" x2="20" y2="14" />
+              <line x1="23" y1="11" x2="17" y2="11" />
+            </svg>
+            <span>Invite Realtor</span>
+          </Link>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .dashboard {
+          padding: 24px;
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 32px;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+
+        .title {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #111827;
+          margin: 0;
+        }
+
+        .subtitle {
+          font-size: 1rem;
+          color: #6b7280;
+          margin: 4px 0 0;
+        }
+
+        .period-selector {
+          display: flex;
+          gap: 8px;
+          background: #f3f4f6;
+          padding: 4px;
+          border-radius: 8px;
+        }
+
+        .period-button {
+          padding: 8px 16px;
+          border: none;
+          background: transparent;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #6b7280;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .period-button.active {
+          background: #fff;
+          color: #2563eb;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .content-grid {
+          display: grid;
+          gap: 24px;
+          margin-bottom: 32px;
+        }
+
+        @media (min-width: 1024px) {
+          .content-grid {
+            grid-template-columns: 2fr 1fr;
+          }
+        }
+
+        .section {
+          background: #fff;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+        }
+
+        .section-title {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #111827;
+          margin: 0 0 16px;
+        }
+
+        .section-header .section-title {
+          margin: 0;
+        }
+
+        .view-all {
+          font-size: 14px;
+          color: #2563eb;
+          text-decoration: none;
+        }
+
+        .view-all:hover {
+          text-decoration: underline;
+        }
+
+        .quick-actions {
+          background: #fff;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .actions-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
+        }
+
+        .action-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 20px;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          color: #374151;
+          text-decoration: none;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .action-card:hover {
+          background: #f3f4f6;
+          border-color: #d1d5db;
+        }
+
+        .action-card.primary {
+          background: #2563eb;
+          border-color: #2563eb;
+          color: #fff;
+        }
+
+        .action-card.primary:hover {
+          background: #1d4ed8;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function StatsCards({ stats }: { stats: AgencyStats }) {
+  const cards = [
+    {
+      label: 'Active Listings',
+      value: stats.activeListings,
+      total: stats.totalListings,
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        </svg>
+      ),
+      color: '#2563eb',
+    },
+    {
+      label: 'Total Views',
+      value: formatNumber(stats.totalViews),
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      ),
+      color: '#10b981',
+    },
+    {
+      label: 'Inquiries',
+      value: stats.totalInquiries,
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      ),
+      color: '#f59e0b',
+    },
+    {
+      label: 'Conversion Rate',
+      value: `${stats.conversionRate.toFixed(1)}%`,
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+          <polyline points="17 6 23 6 23 12" />
+        </svg>
+      ),
+      color: '#8b5cf6',
+    },
+    {
+      label: 'Realtors',
+      value: stats.totalRealtors,
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          aria-hidden="true"
+        >
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+      color: '#ec4899',
+    },
+    {
+      label: 'Avg. Days on Market',
+      value: Math.round(stats.averageDaysOnMarket),
+      icon: (
+        <svg
+          width="20"
+          height="20"
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      ),
+      color: '#06b6d4',
+    },
+  ];
+
+  return (
+    <div className="stats-cards">
+      {cards.map((card) => (
+        <div key={card.label} className="stat-card">
+          <div
+            className="stat-icon"
+            style={{ backgroundColor: `${card.color}15`, color: card.color }}
+          >
+            {card.icon}
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{card.value}</span>
+            {'total' in card && card.total && <span className="stat-total">/ {card.total}</span>}
+            <span className="stat-label">{card.label}</span>
+          </div>
+        </div>
+      ))}
+      <style jsx>{`
+        .stats-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+
+        .stat-card {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 20px;
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .stat-content {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .stat-value {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #111827;
+          display: inline;
+        }
+
+        .stat-total {
+          font-size: 1rem;
+          color: #9ca3af;
+          font-weight: 500;
+        }
+
+        .stat-label {
+          font-size: 0.875rem;
+          color: #6b7280;
+          margin-top: 2px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function PerformanceChart({ data }: { data: AgencyPerformance[] }) {
+  const maxViews = Math.max(...data.map((d) => d.views), 1);
+  const maxInquiries = Math.max(...data.map((d) => d.inquiries), 1);
+
+  return (
+    <div className="chart">
+      <div className="chart-bars">
+        {data.map((item, index) => (
+          <div key={`${item.period}-${index}`} className="bar-group">
+            <div className="bars">
+              <div
+                className="bar views"
+                style={{ height: `${(item.views / maxViews) * 100}%` }}
+                title={`Views: ${item.views}`}
+              />
+              <div
+                className="bar inquiries"
+                style={{ height: `${(item.inquiries / maxInquiries) * 100}%` }}
+                title={`Inquiries: ${item.inquiries}`}
+              />
+            </div>
+            <span className="bar-label">{item.period}</span>
+          </div>
+        ))}
+      </div>
+      <div className="chart-legend">
+        <span className="legend-item">
+          <span className="legend-color views" />
+          Views
+        </span>
+        <span className="legend-item">
+          <span className="legend-color inquiries" />
+          Inquiries
+        </span>
+      </div>
+      <style jsx>{`
+        .chart {
+          padding-top: 16px;
+        }
+
+        .chart-bars {
+          display: flex;
+          align-items: flex-end;
+          gap: 8px;
+          height: 200px;
+          padding-bottom: 30px;
+        }
+
+        .bar-group {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          height: 100%;
+        }
+
+        .bars {
+          flex: 1;
+          display: flex;
+          align-items: flex-end;
+          gap: 4px;
+          width: 100%;
+        }
+
+        .bar {
+          flex: 1;
+          border-radius: 4px 4px 0 0;
+          min-height: 4px;
+          transition: height 0.3s;
+        }
+
+        .bar.views {
+          background: #2563eb;
+        }
+
+        .bar.inquiries {
+          background: #10b981;
+        }
+
+        .bar-label {
+          font-size: 11px;
+          color: #9ca3af;
+          margin-top: 8px;
+          white-space: nowrap;
+        }
+
+        .chart-legend {
+          display: flex;
+          justify-content: center;
+          gap: 24px;
+          margin-top: 16px;
+        }
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          color: #6b7280;
+        }
+
+        .legend-color {
+          width: 12px;
+          height: 12px;
+          border-radius: 3px;
+        }
+
+        .legend-color.views {
+          background: #2563eb;
+        }
+
+        .legend-color.inquiries {
+          background: #10b981;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function RealtorLeaderboard({
+  realtors,
+}: {
+  realtors: Array<{
+    id: string;
+    name: string;
+    photoUrl?: string;
+    totalSales: number;
+    activeListings: number;
+    rating?: number;
+  }>;
+}) {
+  return (
+    <div className="leaderboard">
+      {realtors.length === 0 ? (
+        <p className="empty">No active realtors yet</p>
+      ) : (
+        realtors.map((realtor, index) => (
+          <div key={realtor.id} className="realtor-row">
+            <span className="rank">{index + 1}</span>
+            <div className="avatar">
+              {realtor.photoUrl ? (
+                <img src={realtor.photoUrl} alt={realtor.name} />
+              ) : (
+                <span>{realtor.name.charAt(0)}</span>
+              )}
+            </div>
+            <div className="realtor-info">
+              <span className="realtor-name">{realtor.name}</span>
+              <span className="realtor-stats">
+                {realtor.totalSales} sales · {realtor.activeListings} active
+              </span>
+            </div>
+            {realtor.rating && (
+              <div className="rating">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <span>{realtor.rating.toFixed(1)}</span>
+              </div>
+            )}
+          </div>
+        ))
+      )}
+      <style jsx>{`
+        .leaderboard {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .empty {
+          color: #9ca3af;
+          font-size: 14px;
+          text-align: center;
+          padding: 24px;
+        }
+
+        .realtor-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px;
+          background: #f9fafb;
+          border-radius: 8px;
+        }
+
+        .rank {
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #e5e7eb;
+          border-radius: 50%;
+          font-size: 12px;
+          font-weight: 600;
+          color: #6b7280;
+        }
+
+        .avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #2563eb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          font-weight: 600;
+          overflow: hidden;
+        }
+
+        .avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .realtor-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .realtor-name {
+          font-weight: 500;
+          color: #111827;
+        }
+
+        .realtor-stats {
+          font-size: 12px;
+          color: #6b7280;
+        }
+
+        .rating {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #374151;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="skeleton-dashboard">
+      <div className="skeleton-header" />
+      <div className="skeleton-stats">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={`stat-skel-${i}`} className="skeleton-stat" />
+        ))}
+      </div>
+      <style jsx>{`
+        .skeleton-dashboard {
+          padding: 24px;
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+        .skeleton-header {
+          height: 48px;
+          width: 300px;
+          background: #e5e7eb;
+          border-radius: 8px;
+          margin-bottom: 32px;
+        }
+        .skeleton-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 16px;
+        }
+        .skeleton-stat {
+          height: 100px;
+          background: #e5e7eb;
+          border-radius: 12px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function StatsCardsSkeleton() {
+  return (
+    <div className="skeleton-stats">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={`stat-skel-${i}`} className="skeleton-stat" />
+      ))}
+      <style jsx>{`
+        .skeleton-stats {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+        .skeleton-stat {
+          height: 100px;
+          background: #e5e7eb;
+          border-radius: 12px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function NoAgencyMessage() {
+  return (
+    <div className="no-agency">
+      <svg
+        width="64"
+        height="64"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#9ca3af"
+        strokeWidth="1.5"
+        aria-hidden="true"
+      >
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+      <h2>No Agency Found</h2>
+      <p>You are not associated with any agency.</p>
+      <Link href="/agency/create" className="create-button">
+        Create Agency
+      </Link>
+      <style jsx>{`
+        .no-agency {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 64px 24px;
+          text-align: center;
+          min-height: 50vh;
+        }
+        h2 {
+          font-size: 1.5rem;
+          color: #111827;
+          margin: 24px 0 8px;
+        }
+        p {
+          color: #6b7280;
+          margin: 0 0 24px;
+        }
+        .create-button {
+          padding: 12px 24px;
+          background: #2563eb;
+          color: #fff;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 500;
+        }
+        .create-button:hover {
+          background: #1d4ed8;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function formatNumber(num: number): string {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+}
