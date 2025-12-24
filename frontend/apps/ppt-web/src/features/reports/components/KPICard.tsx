@@ -98,6 +98,8 @@ export function KPICard({ metric, onClick }: KPICardProps) {
       onClick={onClick}
       onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
       tabIndex={onClick ? 0 : undefined}
+      role={onClick ? 'button' : undefined}
+      aria-label={onClick ? `View details for ${metric.name}` : undefined}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">

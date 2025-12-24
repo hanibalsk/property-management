@@ -56,10 +56,17 @@ export function TrendChart({
   }
 
   // Memoize maxValue calculation to prevent recalculation on every render
-  const maxValue = useMemo(
-    () => Math.max(...trendLines.flatMap((line) => line.data.map((p) => p.value)), 1),
-    [trendLines]
-  );
+  const maxValue = useMemo(() => {
+    let max = 1;
+    for (const line of trendLines) {
+      for (const point of line.data) {
+        if (point.value > max) {
+          max = point.value;
+        }
+      }
+    }
+    return max;
+  }, [trendLines]);
 
   const hasAnomalies = analysis.anomalies.length > 0;
 

@@ -35,6 +35,8 @@ export function BuildingMetricsCard({ analytics, onDrillDown }: BuildingMetricsC
           onClick={() => onDrillDown?.('occupancy')}
           onKeyDown={onDrillDown ? (e) => e.key === 'Enter' && onDrillDown('occupancy') : undefined}
           tabIndex={onDrillDown ? 0 : undefined}
+          role={onDrillDown ? 'button' : undefined}
+          aria-label={onDrillDown ? 'View occupancy metrics details' : undefined}
         >
           <h4 className="text-sm font-medium text-gray-500 mb-3">Occupancy</h4>
           <div className="flex items-end justify-between">
@@ -74,6 +76,8 @@ export function BuildingMetricsCard({ analytics, onDrillDown }: BuildingMetricsC
             onDrillDown ? (e) => e.key === 'Enter' && onDrillDown('maintenance') : undefined
           }
           tabIndex={onDrillDown ? 0 : undefined}
+          role={onDrillDown ? 'button' : undefined}
+          aria-label={onDrillDown ? 'View maintenance metrics details' : undefined}
         >
           <h4 className="text-sm font-medium text-gray-500 mb-3">Maintenance</h4>
           <div className="flex items-end justify-between">
@@ -114,6 +118,8 @@ export function BuildingMetricsCard({ analytics, onDrillDown }: BuildingMetricsC
           onClick={() => onDrillDown?.('financial')}
           onKeyDown={onDrillDown ? (e) => e.key === 'Enter' && onDrillDown('financial') : undefined}
           tabIndex={onDrillDown ? 0 : undefined}
+          role={onDrillDown ? 'button' : undefined}
+          aria-label={onDrillDown ? 'View financial metrics details' : undefined}
         >
           <h4 className="text-sm font-medium text-gray-500 mb-3">Financial</h4>
           <div className="flex items-end justify-between">
@@ -146,6 +152,8 @@ export function BuildingMetricsCard({ analytics, onDrillDown }: BuildingMetricsC
           onClick={() => onDrillDown?.('utility')}
           onKeyDown={onDrillDown ? (e) => e.key === 'Enter' && onDrillDown('utility') : undefined}
           tabIndex={onDrillDown ? 0 : undefined}
+          role={onDrillDown ? 'button' : undefined}
+          aria-label={onDrillDown ? 'View utility metrics details' : undefined}
         >
           <h4 className="text-sm font-medium text-gray-500 mb-3">Utilities</h4>
           <div className="flex items-end justify-between">

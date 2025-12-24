@@ -16,13 +16,15 @@ interface AnalyticsChartProps {
 }
 
 function getMaxValue(data: TrendLine[]): number {
-  let max = 0;
+  let max = 1;
   for (const line of data) {
     for (const point of line.data) {
-      if (point.value > max) max = point.value;
+      if (point.value > max) {
+        max = point.value;
+      }
     }
   }
-  return max || 1;
+  return max;
 }
 
 function formatValue(value: number): string {
@@ -145,10 +147,10 @@ export function AnalyticsChart({
 
               if (chartType === 'area') {
                 // Validate points array before rendering
-                if (points.length === 0) {
+                if (points.length === 0 || points.some((p) => p.x === undefined || p.y === undefined)) {
                   return null;
                 }
-                const pathData = `M ${points[0]?.x || 0} ${points[0]?.y || 100} ${points.map((p) => `L ${p.x} ${p.y}`).join(' ')} L ${points[points.length - 1]?.x || 100} 100 L 0 100 Z`;
+                const pathData = `M ${points[0].x} ${points[0].y} ${points.slice(1).map((p) => `L ${p.x} ${p.y}`).join(' ')} L ${points[points.length - 1].x} 100 L 0 100 Z`;
                 return (
                   <g key={line.id}>
                     <path d={pathData} fill={color} fillOpacity={0.1} />
@@ -184,6 +186,7 @@ export function AnalyticsChart({
                         }}
                         role={onDrillDown ? 'button' : undefined}
                         tabIndex={onDrillDown ? 0 : undefined}
+                        aria-label={onDrillDown ? `View details for ${point.date}: ${formatValue(point.value)}` : undefined}
                       />
                     ))}
                   </g>
@@ -215,6 +218,7 @@ export function AnalyticsChart({
                       }}
                       role={onDrillDown ? 'button' : undefined}
                       tabIndex={onDrillDown ? 0 : undefined}
+                      aria-label={onDrillDown ? `View details for ${point.label || point.date}: ${formatValue(point.value)}` : undefined}
                     >
                       <title>{`${point.label || point.date}: ${formatValue(point.value)}`}</title>
                     </circle>

@@ -168,7 +168,7 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
 
       {filters.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-4 border border-dashed rounded-lg">
-          No filters applied. Click &quot;Add Filter&quot; to filter results.
+          No filters applied. Click "Add Filter" to filter results.
         </p>
       ) : (
         <div className="space-y-2">
@@ -186,7 +186,18 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
                 {/* Field Select */}
                 <select
                   value={filter.field_id}
-                  onChange={(e) => updateFilter(index, { field_id: e.target.value })}
+                  onChange={(e) => {
+                    const newFieldId = e.target.value;
+                    const newField = getFieldById(newFieldId);
+                    if (!newField) return;
+
+                    const newAvailableOperators = getOperatorsForType(newField.type);
+                    const newOperator = newAvailableOperators.includes(filter.operator as Operator)
+                      ? filter.operator
+                      : newAvailableOperators[0];
+
+                    updateFilter(index, { field_id: newFieldId, operator: newOperator, value: '' });
+                  }}
                   className="px-2 py-1 text-sm border border-gray-300 rounded bg-white"
                 >
                   {fields.map((f) => (
@@ -199,9 +210,30 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
                 {/* Operator Select */}
                 <select
                   value={filter.operator}
-                  onChange={(e) =>
-                    updateFilter(index, { operator: e.target.value as ReportFilter['operator'] })
-                  }
+                  onChange={(e) => {
+                    const newOperator = e.target.value as ReportFilter['operator'];
+                    let newValue: any = (filter as any).value;
+
+                    if (newOperator === 'between') {
+                      if (!Array.isArray(newValue) || newValue.length !== 2) {
+                        newValue = ['', ''];
+                      }
+                    } else if (newOperator === 'in') {
+                      if (!Array.isArray(newValue)) {
+                        if (newValue !== undefined && newValue !== null && newValue !== '') {
+                          newValue = [newValue];
+                        } else {
+                          newValue = [];
+                        }
+                      }
+                    } else {
+                      if (Array.isArray(newValue)) {
+                        newValue = newValue[0] ?? '';
+                      }
+                    }
+
+                    updateFilter(index, { operator: newOperator, value: newValue });
+                  }}
                   className="px-2 py-1 text-sm border border-gray-300 rounded bg-white"
                 >
                   {availableOperators.map((op) => (
