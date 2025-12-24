@@ -30,7 +30,20 @@ object FormatUtils {
     private fun formatPriceAmount(price: Long): String {
         return when {
             price >= 1_000_000 -> {
-                val millions = price / 1_000_000.0
+                // Compute millions with two decimal places using integer arithmetic to avoid
+                // floating-point precision issues. Equivalent to truncating (price / 1_000_000.0)
+                // to two decimal places, but without using Double.
+                val scaled = price / 10_000 // price * 100 / 1_000_000, truncated
+                val integerPart = scaled / 100
+                val fractionalPart = scaled % 100
+                val formatted = buildString {
+                    append(integerPart)
+                    append('.')
+                    if (fractionalPart < 10) {
+                        append('0')
+                    }
+                    append(fractionalPart)
+                }
                 val formatted = (millions * 100).toLong() / 100.0 // Round to 2 decimal places
                 "${formatted}M"
             }

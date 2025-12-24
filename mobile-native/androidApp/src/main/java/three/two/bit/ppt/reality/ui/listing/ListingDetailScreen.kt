@@ -91,7 +91,12 @@ fun ListingDetailScreen(
                         onClick = {
                             if (authState is AuthState.Authenticated) {
                                 isFavorite = !isFavorite
-                                // TODO: Save to favorites repository
+                                // TODO: Persist favorites to repository
+                                // Epic 48 - Note: Favorites currently only toggle local state and
+                                // are
+                                // not persisted. They will be lost on screen navigation or app
+                                // restart.
+                                // Implement FavoritesRepository to persist favorites to backend.
                             }
                         }
                     ) {

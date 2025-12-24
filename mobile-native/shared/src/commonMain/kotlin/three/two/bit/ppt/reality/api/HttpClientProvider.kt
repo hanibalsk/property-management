@@ -14,6 +14,12 @@ import kotlinx.serialization.json.Json
  * Creates a single HttpClient instance that can be shared across repositories. This prevents
  * connection pool exhaustion and memory leaks from creating multiple HttpClient instances.
  *
+ * Lifecycle management:
+ * - The HttpClient is created lazily on first access
+ * - Call close() when the application is shutting down to properly release resources
+ * - On Android: Consider calling close() in Application.onTerminate() or MainActivity.onDestroy()
+ * - On iOS: Consider calling close() in the app delegate's applicationWillTerminate
+ *
  * Epic 48 - Code Review Fix: HttpClient resource management
  */
 object HttpClientProvider {
@@ -26,12 +32,12 @@ object HttpClientProvider {
 
     /**
      * Shared HttpClient instance for all API calls. This client is configured with JSON
-     * serialization and logging.
+     * serialization and minimal logging (NONE to avoid exposing sensitive headers in production).
      */
     val client: HttpClient by lazy {
         HttpClient {
             install(ContentNegotiation) { json(json) }
-            install(Logging) { level = LogLevel.HEADERS }
+            install(Logging) { level = LogLevel.NONE }
             defaultRequest { contentType(ContentType.Application.Json) }
         }
     }
