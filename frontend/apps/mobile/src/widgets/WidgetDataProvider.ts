@@ -111,10 +111,7 @@ export class WidgetDataProvider {
   /**
    * Get cached widget data.
    */
-  async getCachedWidgetData(
-    widgetId: string,
-    maxAgeMinutes?: number
-  ): Promise<WidgetData | null> {
+  async getCachedWidgetData(widgetId: string, maxAgeMinutes?: number): Promise<WidgetData | null> {
     const allData = await this.getAllCachedData();
     const cached = allData[widgetId];
 

@@ -40,7 +40,8 @@ const COMMAND_PATTERNS: Array<{
       {
         key: 'location',
         // Match location after "in" or "at", capturing multi-word locations
-        pattern: /(?:in|at)\s+(?:the\s+)?([a-z0-9][\w\s-]*?)(?=\s+(?:is|has|was|are|were|there|please|can|could)|[.,]|$)/i,
+        pattern:
+          /(?:in|at)\s+(?:the\s+)?([a-z0-9][\w\s-]*?)(?=\s+(?:is|has|was|are|were|there|please|can|could)|[.,]|$)/i,
         transform: (match: string) => match.trim(),
       },
       {
