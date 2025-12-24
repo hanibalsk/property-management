@@ -9,6 +9,13 @@
  * In development, uses local server; in production, uses the configured endpoint.
  */
 export function getApiBaseUrl(): string {
+  // Check for environment variable first (react-native-config or similar)
+  // @ts-expect-error - process.env is provided by metro bundler
+  const envApiUrl = process.env.API_BASE_URL;
+  if (envApiUrl) {
+    return envApiUrl;
+  }
+
   // Check for environment-specific configuration
   // In production builds, this should be set via react-native-config or similar
   if (__DEV__) {
