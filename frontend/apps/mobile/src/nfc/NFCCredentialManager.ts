@@ -5,7 +5,12 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { AccessDenialReason, AccessLogEntry, GuestAccessInvitation, NFCCredential } from './types';
+import type {
+  AccessDenialReason,
+  AccessLogEntry,
+  GuestAccessInvitation,
+  NFCCredential,
+} from './types';
 
 // WARNING: NFC credentials are stored in AsyncStorage for offline access.
 // In production, consider using react-native-keychain or expo-secure-store
