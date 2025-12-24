@@ -296,6 +296,7 @@ export function ReportsPage({
                 schedules={schedules}
                 isLoading={isLoading}
                 onEdit={(schedule) => {
+                  // TODO: Implement schedule editing functionality
                   console.log('Edit schedule:', schedule.id);
                 }}
                 onDelete={async (id) => {
@@ -308,6 +309,7 @@ export function ReportsPage({
                   await onRunScheduleNow?.(id);
                 }}
                 onViewHistory={(id) => {
+                  // TODO: Implement schedule history view
                   console.log('View history:', id);
                 }}
               />

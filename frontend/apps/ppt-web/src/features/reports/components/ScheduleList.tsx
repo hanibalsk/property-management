@@ -24,8 +24,9 @@ const FREQUENCY_LABELS: Record<string, string> = {
   yearly: 'Yearly',
 };
 
-function formatNextRun(dateString?: string): string {
+function formatNextRun(dateString?: string, timezone?: string): string {
   if (!dateString) return 'Not scheduled';
+  // Parse as UTC to avoid timezone conversion issues
   const date = new Date(dateString);
   const now = new Date();
   const diff = date.getTime() - now.getTime();
@@ -35,7 +36,11 @@ function formatNextRun(dateString?: string): string {
   if (days === 0) return 'Today';
   if (days === 1) return 'Tomorrow';
   if (days < 7) return `In ${days} days`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: timezone || 'UTC',
+  });
 }
 
 export function ScheduleList({
@@ -169,7 +174,9 @@ export function ScheduleList({
                   </div>
                   <div className="mt-2 flex items-center gap-4 text-xs text-gray-400">
                     {schedule.is_active && schedule.next_run_at && (
-                      <span>Next run: {formatNextRun(schedule.next_run_at)}</span>
+                      <span>
+                        Next run: {formatNextRun(schedule.next_run_at, schedule.timezone)}
+                      </span>
                     )}
                     {schedule.last_run_at && (
                       <span>

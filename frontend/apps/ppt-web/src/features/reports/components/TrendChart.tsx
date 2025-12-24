@@ -5,6 +5,7 @@
  */
 
 import type { TrendAnalysis, TrendLine } from '@ppt/api-client';
+import { useMemo } from 'react';
 
 interface TrendChartProps {
   title: string;
@@ -54,7 +55,11 @@ export function TrendChart({
     );
   }
 
-  const maxValue = Math.max(...trendLines.flatMap((line) => line.data.map((p) => p.value)), 1);
+  // Memoize maxValue calculation to prevent recalculation on every render
+  const maxValue = useMemo(
+    () => Math.max(...trendLines.flatMap((line) => line.data.map((p) => p.value)), 1),
+    [trendLines]
+  );
 
   const hasAnomalies = analysis.anomalies.length > 0;
 
@@ -149,7 +154,12 @@ export function TrendChart({
             </div>
 
             {/* SVG */}
-            <svg className="w-full h-full" preserveAspectRatio="none" aria-hidden="true">
+            <svg
+              className="w-full h-full"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label={`${title} trend chart showing ${trendLines.map((line) => line.name).join(', ')}`}
+            >
               {trendLines.map((line, lineIndex) => {
                 const color = line.color || COLORS[lineIndex % COLORS.length];
                 const points = line.data.map((point, i) => ({

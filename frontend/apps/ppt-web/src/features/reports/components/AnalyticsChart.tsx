@@ -134,7 +134,7 @@ export function AnalyticsChart({
           </div>
 
           {/* SVG Chart */}
-          <svg className="w-full h-full" preserveAspectRatio="none" aria-hidden="true">
+          <svg className="w-full h-full" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
             {data.map((line, lineIndex) => {
               const color = line.color || COLORS[lineIndex % COLORS.length];
               const points = line.data.map((point, pointIndex) => ({
@@ -144,6 +144,10 @@ export function AnalyticsChart({
               }));
 
               if (chartType === 'area') {
+                // Validate points array before rendering
+                if (points.length === 0) {
+                  return null;
+                }
                 const pathData = `M ${points[0]?.x || 0} ${points[0]?.y || 100} ${points.map((p) => `L ${p.x} ${p.y}`).join(' ')} L ${points[points.length - 1]?.x || 100} 100 L 0 100 Z`;
                 return (
                   <g key={line.id}>

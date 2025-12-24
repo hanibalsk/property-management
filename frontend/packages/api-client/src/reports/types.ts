@@ -66,8 +66,8 @@ export interface CreateReportDefinition {
   report_type?: ReportType;
   data_source: string;
   fields: Omit<ReportField, 'id'>[];
-  filters?: Omit<ReportFilter, 'field_id'>[];
-  groupings?: Omit<ReportGrouping, 'field_id'>[];
+  filters?: ReportFilter[];
+  groupings?: ReportGrouping[];
   chart_type?: ChartType;
   is_public?: boolean;
 }

@@ -3,7 +3,6 @@
  */
 
 import type { ReportField, ReportFilter } from '@ppt/api-client';
-import { useState } from 'react';
 
 interface FilterBuilderProps {
   fields: ReportField[];
@@ -38,8 +37,6 @@ const getOperatorsForType = (type: ReportField['type']): Operator[] => {
 };
 
 export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilderProps) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-
   const addFilter = () => {
     if (fields.length === 0) return;
     const newFilter: ReportFilter = {
@@ -48,7 +45,6 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
       value: '',
     };
     onFiltersChange([...filters, newFilter]);
-    setEditingIndex(filters.length);
   };
 
   const updateFilter = (index: number, updates: Partial<ReportFilter>) => {
@@ -59,9 +55,6 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
 
   const removeFilter = (index: number) => {
     onFiltersChange(filters.filter((_, i) => i !== index));
-    if (editingIndex === index) {
-      setEditingIndex(null);
-    }
   };
 
   const getFieldById = (id: string) => fields.find((f) => f.id === id);
@@ -71,18 +64,20 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
     if (!field) return null;
 
     if (filter.operator === 'between') {
-      const [min, max] = (filter.value as [number, number]) || [0, 0];
+      const isDateField = field.type === 'date';
+      const [min, max] = isDateField
+        ? (filter.value as [string, string]) || ['', '']
+        : (filter.value as [number, number]) || [0, 0];
       return (
         <div className="flex items-center gap-2">
           <input
-            type={field.type === 'date' ? 'date' : 'number'}
+            type={isDateField ? 'date' : 'number'}
             value={min}
             onChange={(e) =>
               updateFilter(index, {
-                value: [field.type === 'date' ? e.target.value : Number(e.target.value), max] as [
-                  number,
-                  number,
-                ],
+                value: isDateField
+                  ? [e.target.value, max as string]
+                  : [Number(e.target.value), max as number],
               })
             }
             className="w-28 px-2 py-1 text-sm border border-gray-300 rounded"
@@ -90,14 +85,13 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
           />
           <span className="text-gray-500">and</span>
           <input
-            type={field.type === 'date' ? 'date' : 'number'}
+            type={isDateField ? 'date' : 'number'}
             value={max}
             onChange={(e) =>
               updateFilter(index, {
-                value: [min, field.type === 'date' ? e.target.value : Number(e.target.value)] as [
-                  number,
-                  number,
-                ],
+                value: isDateField
+                  ? [min as string, e.target.value]
+                  : [min as number, Number(e.target.value)],
               })
             }
             className="w-28 px-2 py-1 text-sm border border-gray-300 rounded"

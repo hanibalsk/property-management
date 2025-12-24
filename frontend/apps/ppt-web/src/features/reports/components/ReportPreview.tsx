@@ -142,14 +142,13 @@ export function ReportPreview({ result, fields, isLoading, error }: ReportPrevie
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {result.data.slice(0, 100).map((row) => {
-                // Generate stable key from row data
-                const rowKey = fields.map((f) => String(row[f.source] ?? '')).join('-');
+              {result.data.slice(0, 100).map((row, rowIndex) => {
+                // Use row index for stable keys to avoid issues with duplicate/empty values
                 return (
-                  <tr key={rowKey} className="hover:bg-gray-50">
+                  <tr key={`row-${rowIndex}`} className="hover:bg-gray-50">
                     {fields.map((field) => (
                       <td
-                        key={`${rowKey}-${field.id}`}
+                        key={`row-${rowIndex}-${field.id}`}
                         className={`px-6 py-4 whitespace-nowrap text-sm ${
                           field.type === 'number' ||
                           field.type === 'currency' ||

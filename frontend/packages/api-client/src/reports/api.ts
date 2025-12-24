@@ -27,6 +27,9 @@ import type {
 
 const API_BASE = '/api/v1/reports';
 
+// NOTE: Authentication headers (Authorization, etc.) are handled at a higher level
+// by the global fetch interceptor or API client wrapper, not in individual API calls.
+
 async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
@@ -50,12 +53,11 @@ async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
 
 export async function createReport(
   organizationId: string,
-  userId: string,
   data: CreateReportDefinition
 ): Promise<ReportDefinition> {
   return fetchApi(`${API_BASE}/definitions`, {
     method: 'POST',
-    body: JSON.stringify({ organization_id: organizationId, user_id: userId, ...data }),
+    body: JSON.stringify({ organization_id: organizationId, ...data }),
   });
 }
 

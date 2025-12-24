@@ -84,7 +84,9 @@ export function ScheduleForm({
       newErrors.recipients = 'At least one recipient is required';
     } else {
       const emails = recipients.split(',').map((e) => e.trim());
-      const invalidEmails = emails.filter((e) => !e.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/));
+      const invalidEmails = emails.filter(
+        (e) => !e.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
+      );
       if (invalidEmails.length > 0) {
         newErrors.recipients = `Invalid email(s): ${invalidEmails.join(', ')}`;
       }
@@ -216,13 +218,16 @@ export function ScheduleForm({
             onChange={(e) => setDayOfMonth(Number(e.target.value))}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           >
-            {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
               <option key={day} value={day}>
                 {day}
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-gray-500">Days 29-31 may be skipped in shorter months</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Select day 1-31. For months with fewer days, the schedule will run on the last day of
+            the month.
+          </p>
         </div>
       )}
 
