@@ -21,6 +21,7 @@ export * from './notification-preferences';
 export * from './community';
 export * from './financial';
 export * from './workflow-automation';
+export * from './reports';
 
 // API client configuration
 export interface ApiConfig {
