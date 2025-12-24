@@ -11,9 +11,8 @@ import kotlinx.serialization.json.Json
 /**
  * Shared HttpClient provider to avoid resource leaks.
  *
- * Creates a single HttpClient instance that can be shared across repositories.
- * This prevents connection pool exhaustion and memory leaks from creating
- * multiple HttpClient instances.
+ * Creates a single HttpClient instance that can be shared across repositories. This prevents
+ * connection pool exhaustion and memory leaks from creating multiple HttpClient instances.
  *
  * Epic 48 - Code Review Fix: HttpClient resource management
  */
@@ -26,8 +25,8 @@ object HttpClientProvider {
     }
 
     /**
-     * Shared HttpClient instance for all API calls.
-     * This client is configured with JSON serialization and logging.
+     * Shared HttpClient instance for all API calls. This client is configured with JSON
+     * serialization and logging.
      */
     val client: HttpClient by lazy {
         HttpClient {
@@ -37,10 +36,7 @@ object HttpClientProvider {
         }
     }
 
-    /**
-     * Closes the shared HttpClient.
-     * Call this when the application is shutting down.
-     */
+    /** Closes the shared HttpClient. Call this when the application is shutting down. */
     fun close() {
         client.close()
     }

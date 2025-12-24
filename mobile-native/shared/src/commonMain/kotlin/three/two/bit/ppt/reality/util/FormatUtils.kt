@@ -35,14 +35,12 @@ object FormatUtils {
         }
     }
 
-    /**
-     * Get the symbol for a currency code.
-     */
+    /** Get the symbol for a currency code. */
     private fun currencySymbol(currency: String): String? {
         return when (currency) {
-            "EUR" -> "\u20AC"  // Euro sign
+            "EUR" -> "\u20AC" // Euro sign
             "USD" -> "$"
-            "GBP" -> "\u00A3"  // Pound sign
+            "GBP" -> "\u00A3" // Pound sign
             else -> null
         }
     }
@@ -78,16 +76,12 @@ object FormatUtils {
         return parts.joinToString(", ")
     }
 
-    /**
-     * Build a simple location string (district, city, region only).
-     */
+    /** Build a simple location string (district, city, region only). */
     fun buildSimpleLocationString(address: Address): String {
         return buildLocationString(address, includeStreet = false, includePostalCode = false)
     }
 
-    /**
-     * Build a detailed location string (including street and postal code).
-     */
+    /** Build a detailed location string (including street and postal code). */
     fun buildDetailedLocationString(address: Address): String {
         return buildLocationString(address, includeStreet = true, includePostalCode = true)
     }

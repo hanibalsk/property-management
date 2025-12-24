@@ -113,7 +113,11 @@ fun AccountScreen(ssoService: SsoService, onBackClick: () -> Unit, onLogout: () 
                                             .fold(
                                                 onSuccess = { notificationPrefs = it },
                                                 onFailure = { error ->
-                                                    Log.e(TAG, "Failed to update notification preferences", error)
+                                                    Log.e(
+                                                        TAG,
+                                                        "Failed to update notification preferences",
+                                                        error
+                                                    )
                                                     // Revert to previous preferences on failure
                                                 }
                                             )

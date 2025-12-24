@@ -229,7 +229,11 @@ fun FavoritesScreen(
                                                         savedSearches.filter { it.id != searchId }
                                                 },
                                                 onFailure = { error ->
-                                                    Log.e(TAG, "Failed to delete saved search", error)
+                                                    Log.e(
+                                                        TAG,
+                                                        "Failed to delete saved search",
+                                                        error
+                                                    )
                                                     errorMessage = error.message
                                                 }
                                             )
