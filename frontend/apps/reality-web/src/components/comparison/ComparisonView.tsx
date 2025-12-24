@@ -8,34 +8,44 @@
 
 import type { ListingSummary } from '@ppt/reality-api-client';
 import Link from 'next/link';
+import { useState } from 'react';
 
 import { useComparison } from '../../lib/comparison-context';
 
 interface ComparisonRow {
   label: string;
   getValue: (listing: ListingSummary) => string | number | undefined;
-  format?: (value: string | number | undefined) => string;
+  format?: (value: string | number | undefined, listing?: ListingSummary) => string;
   highlight?: 'lowest' | 'highest' | 'none';
 }
+
+// Format price with the listing's actual currency
+const formatPrice = (value: string | number | undefined, listing?: ListingSummary) => {
+  if (value === undefined) return '-';
+  const currency = listing?.currency ?? 'EUR';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Number(value));
+};
 
 const comparisonRows: ComparisonRow[] = [
   {
     label: 'Price',
     getValue: (l) => l.price,
-    format: (v) =>
-      v !== undefined
-        ? new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'EUR',
-            maximumFractionDigits: 0,
-          }).format(Number(v))
-        : '-',
+    format: formatPrice,
     highlight: 'lowest',
   },
   {
     label: 'Type',
     getValue: (l) => l.transactionType,
-    format: (v) => (v === 'sale' ? 'For Sale' : 'For Rent'),
+    format: (v) => {
+      if (!v) return '-';
+      if (v === 'sale') return 'For Sale';
+      if (v === 'rent') return 'For Rent';
+      return String(v);
+    },
   },
   {
     label: 'Property Type',
@@ -72,14 +82,7 @@ const comparisonRows: ComparisonRow[] = [
   {
     label: 'Price per m²',
     getValue: (l) => (l.area > 0 ? Math.round(l.price / l.area) : undefined),
-    format: (v) =>
-      v !== undefined
-        ? new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'EUR',
-            maximumFractionDigits: 0,
-          }).format(Number(v))
-        : '-',
+    format: formatPrice,
     highlight: 'lowest',
   },
 ];
@@ -87,6 +90,12 @@ const comparisonRows: ComparisonRow[] = [
 export function ComparisonView() {
   const { listings, removeFromComparison, clearComparison, generateShareUrl, shareUrl } =
     useComparison();
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   if (listings.length === 0) {
     return (
@@ -133,15 +142,15 @@ export function ComparisonView() {
     const url = generateShareUrl();
     try {
       await navigator.clipboard.writeText(url);
-      alert('Comparison link copied to clipboard!');
+      showToast('Comparison link copied to clipboard!', 'success');
     } catch {
-      alert(`Share this URL: ${url}`);
+      showToast(`Share this URL: ${url}`, 'info');
     }
   };
 
   const handleExportPDF = () => {
     // In a real implementation, this would generate a PDF
-    alert('PDF export coming soon!');
+    showToast('PDF export coming soon!', 'info');
   };
 
   const getHighlightClass = (row: ComparisonRow, listing: ListingSummary) => {
@@ -153,6 +162,8 @@ export function ComparisonView() {
     const currentValue = row.getValue(listing);
     if (currentValue === undefined) return '';
 
+    // Note: When multiple properties share the same min/max value, all will be highlighted.
+    // This is intentional - if properties are tied, they're all equally "best" for that metric.
     if (row.highlight === 'lowest' && currentValue === Math.min(...values)) {
       return 'highlight-best';
     }
@@ -223,7 +234,10 @@ export function ComparisonView() {
                     <Link href={`/listings/${listing.slug}`} className="property-link">
                       <div className="property-image">
                         {listing.primaryPhoto ? (
-                          <img src={listing.primaryPhoto.thumbnailUrl} alt="" />
+                          <img
+                            src={listing.primaryPhoto.thumbnailUrl}
+                            alt={`Property image for ${listing.title}`}
+                          />
                         ) : (
                           <div className="no-image">🏠</div>
                         )}
@@ -234,6 +248,7 @@ export function ComparisonView() {
                       type="button"
                       className="remove-btn"
                       onClick={() => removeFromComparison(listing.id)}
+                      aria-label={`Remove ${listing.title} from comparison`}
                     >
                       Remove
                     </button>
@@ -248,7 +263,7 @@ export function ComparisonView() {
                 <td className="label-cell">{row.label}</td>
                 {listings.map((listing) => {
                   const value = row.getValue(listing);
-                  const formatted = row.format ? row.format(value) : (value ?? '-');
+                  const formatted = row.format ? row.format(value, listing) : (value ?? '-');
                   const highlightClass = getHighlightClass(row, listing);
 
                   return (
@@ -262,6 +277,12 @@ export function ComparisonView() {
           </tbody>
         </table>
       </div>
+
+      {toast && (
+        <div className={`toast toast-${toast.type}`} role="status" aria-live="polite">
+          {toast.message}
+        </div>
+      )}
 
       <style jsx>{`
         .comparison-view {
@@ -421,6 +442,40 @@ export function ComparisonView() {
         .highlight-best {
           background: #ecfdf5;
           color: #059669;
+        }
+
+        .toast {
+          position: fixed;
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          z-index: 1000;
+          animation: toast-fade-in 0.2s ease;
+        }
+
+        .toast-success {
+          background: #059669;
+          color: white;
+        }
+
+        .toast-info {
+          background: #374151;
+          color: white;
+        }
+
+        @keyframes toast-fade-in {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
         }
 
         @media (max-width: 768px) {

@@ -31,7 +31,7 @@ export function ComparisonTray() {
           <div key={listing.id} className="preview-item">
             <div className="preview-image">
               {listing.primaryPhoto ? (
-                <img src={listing.primaryPhoto.thumbnailUrl} alt="" />
+                <img src={listing.primaryPhoto.thumbnailUrl} alt={`Thumbnail for ${listing.title}`} />
               ) : (
                 <div className="no-image">🏠</div>
               )}
@@ -40,7 +40,7 @@ export function ComparisonTray() {
               type="button"
               className="remove-btn"
               onClick={() => removeFromComparison(listing.id)}
-              aria-label="Remove from comparison"
+              aria-label={`Remove ${listing.title} from comparison`}
             >
               ×
             </button>

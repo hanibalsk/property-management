@@ -29,8 +29,9 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
   const [listings, setListings] = useState<ListingSummary[]>([]);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount (SSR safety: check window exists)
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
@@ -43,8 +44,9 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
-  // Save to localStorage when listings change
+  // Save to localStorage when listings change (SSR safety: check window exists)
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     if (listings.length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(listings));
     } else {
@@ -61,19 +63,20 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
     [listings]
   );
 
-  const addToComparison = useCallback(
-    (listing: ListingSummary) => {
-      if (listings.length >= MAX_COMPARISON_ITEMS) {
-        return false;
+  const addToComparison = useCallback((listing: ListingSummary) => {
+    let added = false;
+    setListings((prev) => {
+      if (prev.length >= MAX_COMPARISON_ITEMS) {
+        return prev;
       }
-      if (isInComparison(listing.id)) {
-        return true;
+      if (prev.some((l) => l.id === listing.id)) {
+        return prev;
       }
-      setListings((prev) => [...prev, listing]);
-      return true;
-    },
-    [listings.length, isInComparison]
-  );
+      added = true;
+      return [...prev, listing];
+    });
+    return added;
+  }, []);
 
   const removeFromComparison = useCallback((listingId: string) => {
     setListings((prev) => prev.filter((l) => l.id !== listingId));
@@ -85,7 +88,11 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
 
   const generateShareUrl = useCallback(() => {
     const ids = listings.map((l) => l.id).join(',');
-    const url = `${window.location.origin}/compare?ids=${ids}`;
+    const baseUrl =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_APP_URL ?? '';
+    const url = baseUrl ? `${baseUrl}/compare?ids=${ids}` : `/compare?ids=${ids}`;
     setShareUrl(url);
     return url;
   }, [listings]);

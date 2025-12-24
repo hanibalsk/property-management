@@ -2,11 +2,12 @@
  * Property comparison page.
  *
  * Epic 51 - Story 51.2: Comparison View
+ * Epic 51 - Story 51.3: Share Comparison
  */
 
 import type { Metadata } from 'next';
 
-import { ComparisonView } from '../../components/comparison';
+import { ComparisonUrlHandler, ComparisonView } from '../../components/comparison';
 import { Header } from '../../components/ui';
 
 export const metadata: Metadata = {
@@ -14,7 +15,14 @@ export const metadata: Metadata = {
   description: 'Compare properties side by side to find your perfect home.',
 };
 
-export default function ComparePage() {
+interface ComparePageProps {
+  searchParams: Promise<{ ids?: string }>;
+}
+
+export default async function ComparePage({ searchParams }: ComparePageProps) {
+  const params = await searchParams;
+  const sharedIds = params.ids?.split(',').filter(Boolean) ?? [];
+
   return (
     <>
       <Header />
@@ -24,6 +32,8 @@ export default function ComparePage() {
             <h1>Compare Properties</h1>
             <p>See how your selected properties stack up against each other.</p>
           </div>
+          {/* Handle shared URL ids parameter */}
+          <ComparisonUrlHandler sharedIds={sharedIds} />
           <ComparisonView />
         </div>
 
