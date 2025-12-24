@@ -21,8 +21,7 @@ export const BUILD_NUMBER = process.env.BUILD_NUMBER ?? '1';
  * API base URL from environment variable or default
  * Set EXPO_PUBLIC_API_BASE_URL in .env file for custom endpoints
  */
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.ppt.example.com';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.ppt.example.com';
 
 /**
  * Default constants
