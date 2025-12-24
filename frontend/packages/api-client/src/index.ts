@@ -14,6 +14,7 @@ export * from './advanced-notifications';
 export * from './announcements';
 export * from './critical-notifications';
 export * from './documents';
+export * from './government-portal';
 export * from './messaging';
 export * from './neighbors';
 export * from './notification-preferences';
