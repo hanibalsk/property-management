@@ -18,7 +18,7 @@ user_name: 'Martin Janci'
 date: '2025-12-23'
 continues_from: 'epics-003.md'
 phase_range: '12, 13, 14, 15'
-epic_range: '39-60'
+epic_range: '39-53'
 ---
 
 # Property Management System (PPT) & Reality Portal - Epic Breakdown (Part 4)

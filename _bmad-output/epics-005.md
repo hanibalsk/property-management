@@ -17,7 +17,7 @@ user_name: 'Martin Janci'
 date: '2025-12-24'
 continues_from: 'epics-004.md'
 phase_range: '16, 17, 18'
-epic_range: '61-75'
+epic_range: '54-63'
 ---
 
 # Property Management System (PPT) & Reality Portal - Epic Breakdown (Part 5)
@@ -26,7 +26,7 @@ epic_range: '61-75'
 
 This document continues from `epics-004.md` and provides epic and story breakdown for **Phases 16, 17, and 18** - covering remaining use cases that were not addressed in previous epic documents.
 
-**Continuation from:** `epics-004.md` (Epics 39-60, Phases 12-15)
+**Continuation from:** `epics-004.md` (Epics 39-53, Phases 12-15)
 
 **Gap Analysis Date:** 2025-12-24
 
@@ -34,15 +34,16 @@ This document addresses the following gaps identified from the 508 use cases in 
 
 | Gap Category | Use Cases | New Epic(s) |
 |--------------|-----------|-------------|
-| Forms Management | UC-09 (8 UCs) | Epic 61 |
-| Reporting & Analytics | UC-17 (5 UCs) | Epic 62 |
-| Facility Booking | UC-24.4 | Epic 63 |
-| Registries (Pet, Vehicle) | UC-24.6, UC-24.7 | Epic 64 |
-| Package & Visitor Mgmt | UC-24.8, UC-24.9 | Epic 65 |
-| News & Media | UC-13 (9 UCs) | Epic 66 |
-| Accessibility Features | UC-25 (8 UCs) | Epic 67 |
-| External Integrations | UC-22 (10 UCs) | Epic 68 |
-| Advanced Portal Features | UC-44-51 remaining | Epics 69-75 |
+| Forms Management | UC-09 (8 UCs) | Epic 54 |
+| Reporting & Analytics | UC-17 (5 UCs) | Epic 55 |
+| Facility Booking | UC-24.4 | Epic 56 |
+| Registries (Pet, Vehicle) | UC-24.6, UC-24.7 | Epic 57 |
+| Package & Visitor Mgmt | UC-24.8, UC-24.9 | Epic 58 |
+| News & Media | UC-13 (9 UCs) | Epic 59 |
+| Accessibility Features | UC-25 (8 UCs) | Epic 60 |
+| External Integrations | UC-22 (10 UCs) | Epic 61 |
+| Emergency Contacts | UC-24.10 | Epic 62 |
+| GDPR Tenant Screening | UC-33.11-12 | Epic 63 |
 
 ---
 
@@ -142,51 +143,51 @@ This document addresses the following gaps identified from the 508 use cases in 
 
 | FR | Epic | Description | Target Apps |
 |----|------|-------------|-------------|
-| FR166 | 61 | Form template creation | api-server, ppt-web |
-| FR167 | 61 | Form search and download | api-server, ppt-web, mobile |
-| FR168 | 61 | Online form submission | api-server, ppt-web, mobile |
-| FR169 | 61 | Form submission management | api-server, ppt-web |
-| FR170 | 61 | Digital form signatures | api-server, ppt-web |
-| FR171 | 62 | Fault statistics reports | api-server, ppt-web |
-| FR172 | 62 | Voting participation reports | api-server, ppt-web |
-| FR173 | 62 | Occupancy reports | api-server, ppt-web |
-| FR174 | 62 | Consumption reports | api-server, ppt-web |
-| FR175 | 62 | Report export (PDF/Excel) | api-server, ppt-web |
-| FR176 | 63 | View available facilities | api-server, ppt-web, mobile |
-| FR177 | 63 | Facility booking | api-server, ppt-web, mobile |
-| FR178 | 63 | Booking configuration | api-server, ppt-web |
-| FR179 | 63 | Booking notifications | api-server |
-| FR180 | 64 | Pet registration | api-server, ppt-web, mobile |
-| FR181 | 64 | Vehicle registration | api-server, ppt-web, mobile |
-| FR182 | 64 | Registry management | api-server, ppt-web |
-| FR183 | 64 | Registry rules | api-server |
-| FR184 | 65 | Package registration | api-server, ppt-web, mobile |
-| FR185 | 65 | Package arrival logging | api-server, ppt-web |
-| FR186 | 65 | Package notifications | api-server |
-| FR187 | 65 | Package history | api-server, ppt-web, mobile |
-| FR188 | 65 | Visitor pre-registration | api-server, ppt-web, mobile |
-| FR189 | 65 | Temporary access codes | api-server |
-| FR190 | 65 | Expected visitor view | api-server, ppt-web |
-| FR191 | 65 | Visitor instructions | api-server |
-| FR192 | 66 | News publishing | api-server, ppt-web |
-| FR193 | 66 | News reactions/comments | api-server, ppt-web, mobile |
-| FR194 | 66 | News lifecycle | api-server, ppt-web |
-| FR195 | 66 | News sharing | ppt-web, mobile |
-| FR196 | 66 | Rich media support | api-server, ppt-web, mobile |
-| FR197 | 67 | Screen reader support | ppt-web, reality-web |
-| FR198 | 67 | High contrast mode | ppt-web, reality-web, mobile |
-| FR199 | 67 | Text size adjustment | ppt-web, reality-web, mobile |
-| FR200 | 67 | Keyboard navigation | ppt-web, reality-web |
-| FR201 | 67 | Video captions | ppt-web, reality-web |
-| FR202 | 68 | Calendar integration | api-server, ppt-web, mobile |
-| FR203 | 68 | Accounting export | api-server, ppt-web |
-| FR204 | 68 | E-signature integration | api-server, ppt-web |
-| FR205 | 68 | Video conferencing | api-server, ppt-web |
-| FR206 | 68 | Webhooks | api-server |
-| FR207 | 69 | Emergency contacts | api-server, ppt-web, mobile |
-| FR208 | 69 | Emergency contact config | api-server, ppt-web |
-| FR209 | 70 | GDPR tenant screening | api-server, ppt-web |
-| FR210 | 70 | Screening consent | api-server, ppt-web |
+| FR166 | 54 | Form template creation | api-server, ppt-web |
+| FR167 | 54 | Form search and download | api-server, ppt-web, mobile |
+| FR168 | 54 | Online form submission | api-server, ppt-web, mobile |
+| FR169 | 54 | Form submission management | api-server, ppt-web |
+| FR170 | 54 | Digital form signatures | api-server, ppt-web |
+| FR171 | 55 | Fault statistics reports | api-server, ppt-web |
+| FR172 | 55 | Voting participation reports | api-server, ppt-web |
+| FR173 | 55 | Occupancy reports | api-server, ppt-web |
+| FR174 | 55 | Consumption reports | api-server, ppt-web |
+| FR175 | 55 | Report export (PDF/Excel) | api-server, ppt-web |
+| FR176 | 56 | View available facilities | api-server, ppt-web, mobile |
+| FR177 | 56 | Facility booking | api-server, ppt-web, mobile |
+| FR178 | 56 | Booking configuration | api-server, ppt-web |
+| FR179 | 56 | Booking notifications | api-server |
+| FR180 | 57 | Pet registration | api-server, ppt-web, mobile |
+| FR181 | 57 | Vehicle registration | api-server, ppt-web, mobile |
+| FR182 | 57 | Registry management | api-server, ppt-web |
+| FR183 | 57 | Registry rules | api-server |
+| FR184 | 58 | Package registration | api-server, ppt-web, mobile |
+| FR185 | 58 | Package arrival logging | api-server, ppt-web |
+| FR186 | 58 | Package notifications | api-server |
+| FR187 | 58 | Package history | api-server, ppt-web, mobile |
+| FR188 | 58 | Visitor pre-registration | api-server, ppt-web, mobile |
+| FR189 | 58 | Temporary access codes | api-server |
+| FR190 | 58 | Expected visitor view | api-server, ppt-web |
+| FR191 | 58 | Visitor instructions | api-server |
+| FR192 | 59 | News publishing | api-server, ppt-web |
+| FR193 | 59 | News reactions/comments | api-server, ppt-web, mobile |
+| FR194 | 59 | News lifecycle | api-server, ppt-web |
+| FR195 | 59 | News sharing | ppt-web, mobile |
+| FR196 | 59 | Rich media support | api-server, ppt-web, mobile |
+| FR197 | 60 | Screen reader support | ppt-web, reality-web |
+| FR198 | 60 | High contrast mode | ppt-web, reality-web, mobile |
+| FR199 | 60 | Text size adjustment | ppt-web, reality-web, mobile |
+| FR200 | 60 | Keyboard navigation | ppt-web, reality-web |
+| FR201 | 60 | Video captions | ppt-web, reality-web |
+| FR202 | 61 | Calendar integration | api-server, ppt-web, mobile |
+| FR203 | 61 | Accounting export | api-server, ppt-web |
+| FR204 | 61 | E-signature integration | api-server, ppt-web |
+| FR205 | 61 | Video conferencing | api-server, ppt-web |
+| FR206 | 61 | Webhooks | api-server |
+| FR207 | 62 | Emergency contacts | api-server, ppt-web, mobile |
+| FR208 | 62 | Emergency contact config | api-server, ppt-web |
+| FR209 | 63 | GDPR tenant screening | api-server, ppt-web |
+| FR210 | 63 | Screening consent | api-server, ppt-web |
 
 ---
 
@@ -194,7 +195,7 @@ This document addresses the following gaps identified from the 508 use cases in 
 
 ### Phase 16: Building Operations & Utilities
 
-#### Epic 61: Forms Management
+#### Epic 54: Forms Management
 **Goal:** Managers can create, publish, and manage form templates. Residents can search, download, and submit forms online with digital signatures.
 
 **FRs covered:** FR166, FR167, FR168, FR169, FR170
@@ -210,7 +211,7 @@ This document addresses the following gaps identified from the 508 use cases in 
 
 ---
 
-#### Story 61.1: Create Form Template
+#### Story 54.1: Create Form Template
 
 As a **manager**,
 I want to **create form templates with various field types**,
@@ -230,7 +231,7 @@ So that **residents can fill them out digitally**.
 
 ---
 
-#### Story 61.2: Search and Download Forms
+#### Story 54.2: Search and Download Forms
 
 As a **resident**,
 I want to **search and download available forms**,
@@ -250,7 +251,7 @@ So that **I can fill them out offline if needed**.
 
 ---
 
-#### Story 61.3: Submit Form Online
+#### Story 54.3: Submit Form Online
 
 As a **resident**,
 I want to **fill out and submit forms online**,
@@ -270,7 +271,7 @@ So that **I don't need to print and deliver them**.
 
 ---
 
-#### Story 61.4: Manage Form Submissions
+#### Story 54.4: Manage Form Submissions
 
 As a **manager**,
 I want to **view and process submitted forms**,
@@ -290,7 +291,7 @@ So that **I can handle resident requests**.
 
 ---
 
-#### Story 61.5: Digital Signature Support
+#### Story 54.5: Digital Signature Support
 
 As a **resident**,
 I want to **digitally sign forms that require signatures**,
@@ -310,7 +311,7 @@ So that **the submission is legally valid**.
 
 ---
 
-#### Epic 62: Advanced Reporting & Analytics
+#### Epic 55: Advanced Reporting & Analytics
 **Goal:** Managers can generate comprehensive reports on faults, voting, occupancy, and consumption with export capabilities.
 
 **FRs covered:** FR171, FR172, FR173, FR174, FR175
@@ -326,7 +327,7 @@ So that **the submission is legally valid**.
 
 ---
 
-#### Story 62.1: Fault Statistics Report
+#### Story 55.1: Fault Statistics Report
 
 As a **manager**,
 I want to **generate reports on fault statistics**,
@@ -346,7 +347,7 @@ So that **I can identify trends and problem areas**.
 
 ---
 
-#### Story 62.2: Voting Participation Report
+#### Story 55.2: Voting Participation Report
 
 As a **manager**,
 I want to **generate reports on voting participation**,
@@ -366,7 +367,7 @@ So that **I can track engagement and quorum achievement**.
 
 ---
 
-#### Story 62.3: Occupancy Report
+#### Story 55.3: Occupancy Report
 
 As a **manager**,
 I want to **generate occupancy reports from person-month data**,
@@ -386,7 +387,7 @@ So that **I can plan resources and fees**.
 
 ---
 
-#### Story 62.4: Consumption Report
+#### Story 55.4: Consumption Report
 
 As a **manager**,
 I want to **generate utility consumption reports**,
@@ -406,7 +407,7 @@ So that **I can monitor usage and detect anomalies**.
 
 ---
 
-#### Story 62.5: Export Reports to PDF/Excel
+#### Story 55.5: Export Reports to PDF/Excel
 
 As a **manager**,
 I want to **export any report to PDF or Excel**,
@@ -426,7 +427,7 @@ So that **I can share with stakeholders**.
 
 ---
 
-#### Epic 63: Facility Booking
+#### Epic 56: Facility Booking
 **Goal:** Residents can view and book common areas. Managers configure availability and booking rules.
 
 **FRs covered:** FR176, FR177, FR178, FR179
@@ -442,7 +443,7 @@ So that **I can share with stakeholders**.
 
 ---
 
-#### Story 63.1: View Available Facilities
+#### Story 56.1: View Available Facilities
 
 As a **resident**,
 I want to **see available common areas and their schedules**,
@@ -462,7 +463,7 @@ So that **I can plan my booking**.
 
 ---
 
-#### Story 63.2: Book a Facility
+#### Story 56.2: Book a Facility
 
 As a **resident**,
 I want to **book a facility for a specific date and time**,
@@ -482,7 +483,7 @@ So that **I can use the common area**.
 
 ---
 
-#### Story 63.3: Configure Booking Rules
+#### Story 56.3: Configure Booking Rules
 
 As a **manager**,
 I want to **configure booking rules for facilities**,
@@ -502,7 +503,7 @@ So that **usage is fair and organized**.
 
 ---
 
-#### Story 63.4: Booking Notifications
+#### Story 56.4: Booking Notifications
 
 As a **resident**,
 I want to **receive reminders about my bookings**,
@@ -522,7 +523,7 @@ So that **I don't forget**.
 
 ---
 
-#### Epic 64: Building Registries (Pets & Vehicles)
+#### Epic 57: Building Registries (Pets & Vehicles)
 **Goal:** Residents can register pets and vehicles. Managers can view and manage registrations per building rules.
 
 **FRs covered:** FR180, FR181, FR182, FR183
@@ -538,7 +539,7 @@ So that **I don't forget**.
 
 ---
 
-#### Story 64.1: Register a Pet
+#### Story 57.1: Register a Pet
 
 As a **resident**,
 I want to **register my pet with the building**,
@@ -558,7 +559,7 @@ So that **I comply with building rules**.
 
 ---
 
-#### Story 64.2: Register a Vehicle
+#### Story 57.2: Register a Vehicle
 
 As a **resident**,
 I want to **register my vehicle for parking**,
@@ -578,7 +579,7 @@ So that **I can use the building parking**.
 
 ---
 
-#### Story 64.3: Manage Registry Entries
+#### Story 57.3: Manage Registry Entries
 
 As a **manager**,
 I want to **view and manage all registry entries**,
@@ -598,7 +599,7 @@ So that **I can enforce building policies**.
 
 ---
 
-#### Story 64.4: Configure Registry Rules
+#### Story 57.4: Configure Registry Rules
 
 As a **manager**,
 I want to **configure registry rules per building**,
@@ -618,7 +619,7 @@ So that **policies are enforced**.
 
 ---
 
-#### Epic 65: Package & Visitor Management
+#### Epic 58: Package & Visitor Management
 **Goal:** Residents can track packages and pre-register visitors with temporary access codes.
 
 **FRs covered:** FR184, FR185, FR186, FR187, FR188, FR189, FR190, FR191
@@ -634,7 +635,7 @@ So that **policies are enforced**.
 
 ---
 
-#### Story 65.1: Register Expected Package
+#### Story 58.1: Register Expected Package
 
 As a **resident**,
 I want to **register an expected package**,
@@ -654,7 +655,7 @@ So that **building staff knows to accept it**.
 
 ---
 
-#### Story 65.2: Log Package Arrival
+#### Story 58.2: Log Package Arrival
 
 As a **building staff/manager**,
 I want to **log when packages arrive**,
@@ -674,7 +675,7 @@ So that **residents are notified**.
 
 ---
 
-#### Story 65.3: Track Package Pickup
+#### Story 58.3: Track Package Pickup
 
 As a **resident**,
 I want to **see my package history**,
@@ -694,7 +695,7 @@ So that **I know what I've received**.
 
 ---
 
-#### Story 65.4: Pre-Register Visitor
+#### Story 58.4: Pre-Register Visitor
 
 As a **resident**,
 I want to **pre-register a visitor**,
@@ -714,7 +715,7 @@ So that **they can access the building easily**.
 
 ---
 
-#### Story 65.5: View Expected Visitors
+#### Story 58.5: View Expected Visitors
 
 As a **building staff/manager**,
 I want to **see expected visitors**,
@@ -734,7 +735,7 @@ So that **I can prepare for their arrival**.
 
 ---
 
-#### Epic 66: News & Media Management
+#### Epic 59: News & Media Management
 **Goal:** Managers can publish rich news articles. Residents can react, comment, and share.
 
 **FRs covered:** FR192, FR193, FR194, FR195, FR196
@@ -750,7 +751,7 @@ So that **I can prepare for their arrival**.
 
 ---
 
-#### Story 66.1: Publish News Article
+#### Story 59.1: Publish News Article
 
 As a **manager**,
 I want to **publish news articles with rich content**,
@@ -770,7 +771,7 @@ So that **residents stay informed**.
 
 ---
 
-#### Story 66.2: React to Articles
+#### Story 59.2: React to Articles
 
 As a **resident**,
 I want to **react to news articles**,
@@ -790,7 +791,7 @@ So that **I can express my opinion quickly**.
 
 ---
 
-#### Story 66.3: Comment on Articles
+#### Story 59.3: Comment on Articles
 
 As a **resident**,
 I want to **comment on news articles**,
@@ -810,7 +811,7 @@ So that **I can discuss with neighbors**.
 
 ---
 
-#### Story 66.4: Manage News Lifecycle
+#### Story 59.4: Manage News Lifecycle
 
 As a **manager**,
 I want to **archive and manage old news**,
@@ -832,7 +833,7 @@ So that **the feed stays relevant**.
 
 ### Phase 17: Accessibility & Emergency
 
-#### Epic 67: Accessibility Features
+#### Epic 60: Accessibility Features
 **Goal:** Application meets WCAG 2.1 AA standards with screen reader support, high contrast, and keyboard navigation.
 
 **FRs covered:** FR197, FR198, FR199, FR200, FR201
@@ -848,7 +849,7 @@ So that **the feed stays relevant**.
 
 ---
 
-#### Story 67.1: Screen Reader Compatibility
+#### Story 60.1: Screen Reader Compatibility
 
 As a **user with visual impairment**,
 I want to **navigate the app with a screen reader**,
@@ -868,7 +869,7 @@ So that **I can use all features**.
 
 ---
 
-#### Story 67.2: High Contrast Mode
+#### Story 60.2: High Contrast Mode
 
 As a **user with low vision**,
 I want to **enable high contrast mode**,
@@ -888,7 +889,7 @@ So that **I can see content clearly**.
 
 ---
 
-#### Story 67.3: Text Size Adjustment
+#### Story 60.3: Text Size Adjustment
 
 As a **user**,
 I want to **adjust text size**,
@@ -908,7 +909,7 @@ So that **I can read comfortably**.
 
 ---
 
-#### Story 67.4: Keyboard Navigation
+#### Story 60.4: Keyboard Navigation
 
 As a **user who cannot use a mouse**,
 I want to **navigate using only keyboard**,
@@ -928,7 +929,7 @@ So that **I can complete all tasks**.
 
 ---
 
-#### Epic 68: External Integrations Suite
+#### Epic 61: External Integrations Suite
 **Goal:** Integrate with external services for calendars, accounting, e-signatures, video conferencing, and webhooks.
 
 **FRs covered:** FR202, FR203, FR204, FR205, FR206
@@ -944,7 +945,7 @@ So that **I can complete all tasks**.
 
 ---
 
-#### Story 68.1: Calendar Integration
+#### Story 61.1: Calendar Integration
 
 As a **user**,
 I want to **sync meetings to my calendar**,
@@ -964,7 +965,7 @@ So that **I don't miss important events**.
 
 ---
 
-#### Story 68.2: Accounting System Export
+#### Story 61.2: Accounting System Export
 
 As a **manager**,
 I want to **export financial data to accounting software**,
@@ -984,7 +985,7 @@ So that **I can streamline bookkeeping**.
 
 ---
 
-#### Story 68.3: E-Signature Integration
+#### Story 61.3: E-Signature Integration
 
 As a **manager**,
 I want to **send documents for electronic signature**,
@@ -1004,7 +1005,7 @@ So that **I can complete agreements digitally**.
 
 ---
 
-#### Story 68.4: Video Conferencing
+#### Story 61.4: Video Conferencing
 
 As a **manager**,
 I want to **schedule video meetings from the app**,
@@ -1024,7 +1025,7 @@ So that **I can conduct virtual owners' meetings**.
 
 ---
 
-#### Story 68.5: Webhook Notifications
+#### Story 61.5: Webhook Notifications
 
 As a **system administrator**,
 I want to **configure webhooks for events**,
@@ -1045,7 +1046,7 @@ So that **external systems can react to changes**.
 
 ---
 
-#### Epic 69: Emergency Contact Directory
+#### Epic 62: Emergency Contact Directory
 **Goal:** Users can access emergency contacts. Managers configure contacts per building.
 
 **FRs covered:** FR207, FR208
@@ -1055,7 +1056,7 @@ So that **external systems can react to changes**.
 
 ---
 
-#### Story 69.1: View Emergency Contacts
+#### Story 62.1: View Emergency Contacts
 
 As a **resident**,
 I want to **access emergency contacts quickly**,
@@ -1075,7 +1076,7 @@ So that **I can call for help in emergencies**.
 
 ---
 
-#### Story 69.2: Configure Emergency Contacts
+#### Story 62.2: Configure Emergency Contacts
 
 As a **manager**,
 I want to **configure emergency contacts per building**,
@@ -1095,7 +1096,7 @@ So that **residents have correct local numbers**.
 
 ---
 
-#### Epic 70: GDPR-Compliant Tenant Screening
+#### Epic 63: GDPR-Compliant Tenant Screening
 **Goal:** Tenant screening follows GDPR requirements with explicit consent management.
 
 **FRs covered:** FR209, FR210
@@ -1105,7 +1106,7 @@ So that **residents have correct local numbers**.
 
 ---
 
-#### Story 70.1: GDPR Screening Workflow
+#### Story 63.1: GDPR Screening Workflow
 
 As a **landlord**,
 I want to **perform tenant screening with GDPR compliance**,
@@ -1125,7 +1126,7 @@ So that **I don't violate privacy laws**.
 
 ---
 
-#### Story 70.2: Manage Screening Consent
+#### Story 63.2: Manage Screening Consent
 
 As a **prospective tenant**,
 I want to **review and provide consent for screening**,
@@ -1151,9 +1152,9 @@ So that **I control my personal data**.
 
 | Phase | Epics | Stories | FRs | Estimate |
 |-------|-------|---------|-----|----------|
-| **Phase 16** | 61-66 | 27 | FR166-FR196 | ~12 weeks |
-| **Phase 17** | 67-68 | 9 | FR197-FR206 | ~5 weeks |
-| **Phase 18** | 69-70 | 4 | FR207-FR210 | ~2 weeks |
+| **Phase 16** | 54-59 | 27 | FR166-FR196 | ~12 weeks |
+| **Phase 17** | 60-61 | 9 | FR197-FR206 | ~5 weeks |
+| **Phase 18** | 62-63 | 4 | FR207-FR210 | ~2 weeks |
 | **Total** | 10 | 40 | 45 FRs | ~19 weeks |
 
 ### Complete Epic Inventory (All Documents)
@@ -1163,9 +1164,9 @@ So that **I control my personal data**.
 | epics.md | 1-17 | 1-3 (MVP) |
 | epics-002.md | 18-27 | 4-7 |
 | epics-003.md | 28-38 | 8-11 |
-| epics-004.md | 39-60 | 12-15 |
-| epics-005.md | 61-70 | 16-18 |
-| **Total** | **70 Epics** | **18 Phases** |
+| epics-004.md | 39-53 | 12-15 |
+| epics-005.md | 54-63 | 16-18 |
+| **Total** | **63 Epics** | **18 Phases** |
 
 ### Use Case Coverage
 
@@ -1174,12 +1175,12 @@ With these new epics, the coverage of the 508 use cases is now:
 | Category | UC Count | Covered |
 |----------|----------|---------|
 | UC-01 to UC-08 | ~75 | ✅ |
-| UC-09 (Forms) | 8 | ✅ Epic 61 |
+| UC-09 (Forms) | 8 | ✅ Epic 54 |
 | UC-10 to UC-16 | ~60 | ✅ |
-| UC-17 (Reports) | 5 | ✅ Epic 62 |
+| UC-17 (Reports) | 5 | ✅ Epic 55 |
 | UC-18 to UC-23 | ~70 | ✅ |
-| UC-24 (Community) | 10 | ✅ Epics 63-66 |
-| UC-25 (Accessibility) | 8 | ✅ Epic 67 |
+| UC-24 (Community) | 10 | ✅ Epics 56-59 |
+| UC-25 (Accessibility) | 8 | ✅ Epic 60 |
 | UC-26 to UC-43 | ~150 | ✅ |
 | UC-44 to UC-51 | ~70 | ✅ |
 | **Total** | 508 | ✅ 100% |
