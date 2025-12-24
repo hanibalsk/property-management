@@ -70,4 +70,13 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+
+    // Image loading
+    implementation(libs.coil.compose)
+
+    // Location services
+    implementation(libs.play.services.location)
+
+    // DataStore for preferences
+    implementation(libs.datastore.preferences)
 }
