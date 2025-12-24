@@ -293,7 +293,7 @@ export function RuleBuilder({ initialRule, onSave, onCancel, isLoading }: RuleBu
                     {rule.actions && rule.actions.length > 0 && (
                       <ul className="mt-1 text-xs text-gray-400">
                         {rule.actions.map((action, i) => (
-                          <li key={`action-summary-${i}`}>
+                          <li key={`action-summary-${action.type}-${action.order}`}>
                             {i + 1}. {action.name ?? action.type}
                           </li>
                         ))}

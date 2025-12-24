@@ -132,7 +132,10 @@ export function TemplatePreviewModal({ template, onClose, onUse }: TemplatePrevi
               </h3>
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 {template.conditionsPreview.map((condition, index) => (
-                  <div key={`condition-preview-${index}`} className="flex items-center gap-2">
+                  <div
+                    key={`condition-preview-${condition.slice(0, 20)}-${index}`}
+                    className="flex items-center gap-2"
+                  >
                     {index > 0 && (
                       <span className="text-xs font-medium text-gray-400 uppercase">AND</span>
                     )}
@@ -152,7 +155,10 @@ export function TemplatePreviewModal({ template, onClose, onUse }: TemplatePrevi
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               {template.actionsPreview && template.actionsPreview.length > 0 ? (
                 template.actionsPreview.map((action, index) => (
-                  <div key={`action-preview-${index}`} className="flex items-start gap-3">
+                  <div
+                    key={`action-preview-${action.slice(0, 20)}-${index}`}
+                    className="flex items-start gap-3"
+                  >
                     <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-medium">
                       {index + 1}
                     </span>

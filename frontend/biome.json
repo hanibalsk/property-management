@@ -24,6 +24,9 @@
       },
       "suspicious": {
         "noArrayIndexKey": "warn"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "warn"
       }
     }
   },

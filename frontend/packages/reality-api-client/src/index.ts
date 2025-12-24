@@ -8,5 +8,10 @@
 // Export generated types and client
 // export * from './generated';
 
-// Placeholder exports until SDK is generated
+// Export domain-specific modules
+export * from './listings';
+export * from './favorites';
+export * from './inquiries';
+
+// API version
 export const REALITY_API_VERSION = '1.0.0';
