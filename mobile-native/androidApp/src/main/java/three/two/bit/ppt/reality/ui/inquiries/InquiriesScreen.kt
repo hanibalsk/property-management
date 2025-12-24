@@ -356,7 +356,7 @@ private fun EmptyInquiries() {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            Icons.Default.EmailRead,
+            Icons.Default.MarkEmailRead,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
