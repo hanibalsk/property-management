@@ -15,9 +15,9 @@ import {
   View,
 } from 'react-native';
 
+import { getApiBaseUrl } from '../../config/api';
 import { WidgetBridge } from '../../widgets';
 import type { WidgetConfig, WidgetType } from '../../widgets/types';
-import { getApiBaseUrl } from '../../config/api';
 
 interface WidgetSettingsScreenProps {
   onNavigate: (screen: string) => void;
