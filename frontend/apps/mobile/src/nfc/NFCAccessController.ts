@@ -308,13 +308,19 @@ export class NFCAccessController {
       };
 
       const isAllowed = accessPoint.timeRestrictions.some((restriction) => {
+        if (!restriction.days.includes(currentDay)) {
+          return false;
+        }
+
         const startMinutes = parseTimeToMinutes(restriction.startTime);
         const endMinutes = parseTimeToMinutes(restriction.endTime);
-        return (
-          restriction.days.includes(currentDay) &&
-          currentMinutes >= startMinutes &&
-          currentMinutes <= endMinutes
-        );
+
+        // Handle time range that crosses midnight (e.g., 23:00 to 01:00)
+        if (endMinutes < startMinutes) {
+          return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+        }
+
+        return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
       });
 
       if (!isAllowed) {
@@ -374,7 +380,7 @@ export class NFCAccessController {
     const passData: WalletPass = {
       // passTypeIdentifier must be configured in Apple Developer Portal
       // and match the provisioning profile. See docs/ios-wallet-setup.md
-      passTypeIdentifier: 'pass.three.two.bit.ppt.access',
+      passTypeIdentifier: 'pass.bit.two.three.ppt.access',
       serialNumber: credential.id,
       description: `${credential.buildingName} Access`,
       organizationName: 'Property Management',

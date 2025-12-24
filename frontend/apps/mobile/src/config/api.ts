@@ -9,8 +9,14 @@
  * In development, uses local server; in production, uses the configured endpoint.
  */
 export function getApiBaseUrl(): string {
+  // Check for environment variable first (react-native-config or similar)
+  // @ts-expect-error - process.env is provided by metro bundler
+  const envApiUrl = process.env.API_BASE_URL;
+  if (envApiUrl) {
+    return envApiUrl;
+  }
+
   // Check for environment-specific configuration
-  // In production builds, this should be set via react-native-config or similar
   if (__DEV__) {
     // Android emulator uses 10.0.2.2 to reach host localhost
     // iOS simulator can use localhost directly
@@ -18,8 +24,7 @@ export function getApiBaseUrl(): string {
     return Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
   }
 
-  // Production API endpoint
-  // TODO: Configure via environment variables or react-native-config
+  // Production API endpoint fallback
   return 'https://api.ppt.example.com';
 }
 

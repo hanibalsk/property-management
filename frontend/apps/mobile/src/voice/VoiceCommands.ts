@@ -39,9 +39,9 @@ const COMMAND_PATTERNS: Array<{
       },
       {
         key: 'location',
-        // Match location after "in" or "at", stopping at sentence boundaries or action words
-        pattern:
-          /(?:in\s+|at\s+)(?:the\s+)?([a-zA-Z0-9\s]+?)(?:\s+(?:is|has|was|are|were|there|please|can|could)|\.|,|$)/i,
+        // Match location after "in" or "at", capturing multi-word locations
+        pattern: /(?:in|at)\s+(?:the\s+)?([a-z0-9][\w\s-]*?)(?=\s+(?:is|has|was|are|were|there|please|can|could)|[.,]|$)/i,
+        transform: (match: string) => match.trim(),
       },
       {
         key: 'priority',

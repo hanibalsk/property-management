@@ -179,6 +179,12 @@ export class WidgetBridge {
 
       const path = parsed.hostname + parsed.pathname;
 
+      // Extract query parameters
+      const queryParams: Record<string, string> = {};
+      parsed.searchParams.forEach((value, key) => {
+        queryParams[key] = value;
+      });
+
       // Extract ID from path if present (e.g., "faults/123" -> "123")
       const pathSegments = path.split('/');
       const baseRoute = pathSegments[0];
@@ -186,20 +192,20 @@ export class WidgetBridge {
 
       switch (baseRoute) {
         case 'dashboard':
-          return { screen: 'Dashboard' };
+          return { screen: 'Dashboard', query: queryParams };
         case 'faults':
-          return { screen: 'Faults', faultId: entityId };
+          return { screen: 'Faults', faultId: entityId, query: queryParams };
         case 'fault':
           if (pathSegments[1] === 'report') {
-            return { screen: 'ReportFault' };
+            return { screen: 'ReportFault', query: queryParams };
           }
           return null;
         case 'announcements':
-          return { screen: 'Announcements', announcementId: entityId };
+          return { screen: 'Announcements', announcementId: entityId, query: queryParams };
         case 'voting':
-          return { screen: 'Voting', voteId: entityId };
+          return { screen: 'Voting', voteId: entityId, query: queryParams };
         case 'documents':
-          return { screen: 'Documents' };
+          return { screen: 'Documents', query: queryParams };
         default:
           return null;
       }

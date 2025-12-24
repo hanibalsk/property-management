@@ -112,7 +112,14 @@ export class NFCCredentialManager {
     accessPointId: string,
     accessPointName: string,
     result: 'granted' | 'denied',
-    denialReason?: string
+    denialReason?:
+      | 'invalid_credential'
+      | 'credential_expired'
+      | 'credential_suspended'
+      | 'credential_revoked'
+      | 'access_point_not_allowed'
+      | 'time_restriction'
+      | 'hardware_error'
   ): Promise<void> {
     const entry: AccessLogEntry = {
       id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,

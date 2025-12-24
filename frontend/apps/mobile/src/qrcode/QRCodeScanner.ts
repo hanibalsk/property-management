@@ -48,7 +48,15 @@ export function parseQRCode(content: string): ParsedQRCode {
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     // Validate URL format to prevent malformed URLs
     try {
-      new URL(trimmed);
+      const parsedUrl = new URL(trimmed);
+
+      // Warn about external URLs in development
+      if (__DEV__) {
+        console.warn(
+          `[QR Scanner] External URL detected: ${parsedUrl.hostname}. User should be prompted before opening external links for security.`
+        );
+      }
+
       return {
         type: 'external_url',
         raw: trimmed,

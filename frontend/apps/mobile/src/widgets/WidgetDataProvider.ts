@@ -111,9 +111,29 @@ export class WidgetDataProvider {
   /**
    * Get cached widget data.
    */
-  async getCachedWidgetData(widgetId: string): Promise<WidgetData | null> {
+  async getCachedWidgetData(
+    widgetId: string,
+    maxAgeMinutes?: number
+  ): Promise<WidgetData | null> {
     const allData = await this.getAllCachedData();
-    return allData[widgetId]?.data ?? null;
+    const cached = allData[widgetId];
+
+    if (!cached) {
+      return null;
+    }
+
+    // Check cache age if maxAgeMinutes is specified
+    if (maxAgeMinutes !== undefined) {
+      const cachedTime = new Date(cached.cachedAt).getTime();
+      const now = Date.now();
+      const ageMinutes = (now - cachedTime) / (60 * 1000);
+
+      if (ageMinutes > maxAgeMinutes) {
+        return null; // Cache expired
+      }
+    }
+
+    return cached.data;
   }
 
   /**

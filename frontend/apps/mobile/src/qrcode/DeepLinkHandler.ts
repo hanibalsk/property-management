@@ -224,8 +224,8 @@ export class DeepLinkManager {
     const parsed = parseDeepLink(url);
 
     if (!parsed.success) {
-      // Using console.error for production-visible logging
-      // In production, this should integrate with error reporting (e.g., Sentry)
+      // Note: In production, integrate with a proper logging service (e.g., Sentry, LogRocket)
+      // for centralized error tracking and monitoring. Console logs are development-only.
       if (__DEV__) {
         console.warn('Failed to parse deep link:', parsed.error);
       }

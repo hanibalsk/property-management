@@ -145,9 +145,9 @@ export interface WidgetUpdateRequest {
  * Widget deep link targets.
  */
 export type WidgetDeepLink =
-  | { screen: 'Dashboard' }
-  | { screen: 'Faults'; faultId?: string }
-  | { screen: 'Announcements'; announcementId?: string }
-  | { screen: 'Voting'; voteId?: string }
-  | { screen: 'Documents' }
-  | { screen: 'ReportFault' };
+  | { screen: 'Dashboard'; query?: Record<string, string> }
+  | { screen: 'Faults'; faultId?: string; query?: Record<string, string> }
+  | { screen: 'Announcements'; announcementId?: string; query?: Record<string, string> }
+  | { screen: 'Voting'; voteId?: string; query?: Record<string, string> }
+  | { screen: 'Documents'; query?: Record<string, string> }
+  | { screen: 'ReportFault'; query?: Record<string, string> };
