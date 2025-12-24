@@ -153,13 +153,13 @@ export function AnalyticsChart({
                 ) {
                   return null;
                 }
-                const pathData = `M ${points[0].x} ${points[0].y} ${points
-                  .slice(1)
-                  .map((p) => `L ${p.x} ${p.y}`)
-                  .join(' ')} L ${points[points.length - 1].x} 100 L 0 100 Z`;
+                const linePath = points
+                  .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
+                  .join(' ');
+                const areaPath = `${linePath} L ${points[points.length - 1].x} 100 L ${points[0].x} 100 Z`;
                 return (
                   <g key={line.id}>
-                    <path d={pathData} fill={color} fillOpacity={0.1} />
+                    <path d={areaPath} fill={color} fillOpacity={0.1} />
                     <polyline
                       fill="none"
                       stroke={color}

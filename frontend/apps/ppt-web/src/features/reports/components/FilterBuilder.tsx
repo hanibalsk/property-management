@@ -228,7 +228,20 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
                       }
                     } else {
                       if (Array.isArray(newValue)) {
-                        newValue = String(newValue[0] ?? '');
+                        const firstValue = newValue[0];
+                        if (
+                          field &&
+                          (field.type === 'number' ||
+                            field.type === 'currency' ||
+                            field.type === 'percentage')
+                        ) {
+                          newValue = typeof firstValue === 'number' ? firstValue : 0;
+                        } else {
+                          newValue =
+                            firstValue !== undefined && firstValue !== null
+                              ? String(firstValue)
+                              : '';
+                        }
                       }
                     }
 

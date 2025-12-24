@@ -64,7 +64,9 @@ export function ScheduleForm({
   const [dayOfWeek, setDayOfWeek] = useState(initialData?.day_of_week ?? 1);
   const [dayOfMonth, setDayOfMonth] = useState(initialData?.day_of_month ?? 1);
   const [time, setTime] = useState(initialData?.time || '09:00');
-  const [timezone, setTimezone] = useState(initialData?.timezone || 'Europe/Bratislava');
+  const [timezone, setTimezone] = useState(
+    initialData?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
   const [format, setFormat] = useState<ReportFormat>(initialData?.format || 'pdf');
   const [recipients, setRecipients] = useState(initialData?.recipients?.join(', ') || '');
   const [errors, setErrors] = useState<FormErrors>({});
@@ -212,21 +214,23 @@ export function ScheduleForm({
           <label htmlFor="day-of-month" className="block text-sm font-medium text-gray-700">
             Day of Month
           </label>
-          <select
+          <input
+            type="number"
             id="day-of-month"
+            min="1"
+            max="31"
             value={dayOfMonth}
-            onChange={(e) => setDayOfMonth(Number(e.target.value))}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              if (value >= 1 && value <= 31) {
+                setDayOfMonth(value);
+              }
+            }}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          >
-            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ))}
-          </select>
+          />
           <p className="mt-1 text-xs text-gray-500">
-            Select day 1-31. For months with fewer days, the schedule will run on the last day of
-            the month.
+            Enter a day between 1-31. For months with fewer days, the schedule will run on the last
+            day of the month.
           </p>
         </div>
       )}

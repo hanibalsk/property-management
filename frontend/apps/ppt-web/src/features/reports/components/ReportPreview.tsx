@@ -11,14 +11,14 @@ interface ReportPreviewProps {
   error?: string;
 }
 
-function formatValue(value: unknown, type: ReportField['type']): string {
+function formatValue(value: unknown, type: ReportField['type'], currency = 'EUR'): string {
   if (value === null || value === undefined) return '-';
 
   switch (type) {
     case 'currency':
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'EUR',
+        currency: currency,
       }).format(value as number);
     case 'percentage':
       return `${(value as number).toFixed(2)}%`;
@@ -142,8 +142,11 @@ export function ReportPreview({ result, fields, isLoading, error }: ReportPrevie
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {result.data.slice(0, 100).map((row) => {
-                const rowKey = JSON.stringify(row);
+              {result.data.slice(0, 100).map((row, index) => {
+                // Create a stable key from field values to avoid using array index
+                const rowKey =
+                  fields.map((field) => `${field.id}:${row[field.source] ?? ''}`).join('|') ||
+                  `row-${index}`;
                 return (
                   <tr key={rowKey} className="hover:bg-gray-50">
                     {fields.map((field) => (

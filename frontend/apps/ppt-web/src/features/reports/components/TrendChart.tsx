@@ -169,8 +169,9 @@ export function TrendChart({
             >
               {trendLines.map((line, lineIndex) => {
                 const color = line.color || COLORS[lineIndex % COLORS.length];
+                const dataLength = line.data.length;
                 const points = line.data.map((point, i) => ({
-                  x: (i / (line.data.length - 1 || 1)) * 100,
+                  x: dataLength > 1 ? (i / (dataLength - 1)) * 100 : 50,
                   y: 100 - (point.value / maxValue) * 100,
                   ...point,
                 }));

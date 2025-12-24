@@ -201,8 +201,14 @@ export function ReportsPage({
                   setShowReportBuilder(false);
                 }}
                 onPreview={async (data) => {
-                  const result = await onPreviewReport?.(data);
-                  return result as unknown as import('@ppt/api-client').ReportResult;
+                  if (!onPreviewReport) {
+                    throw new Error('Preview handler not provided');
+                  }
+                  const result = await onPreviewReport(data);
+                  if (!result || typeof result !== 'object') {
+                    throw new Error('Invalid preview result');
+                  }
+                  return result as import('@ppt/api-client').ReportResult;
                 }}
                 onCancel={() => setShowReportBuilder(false)}
               />
@@ -297,7 +303,7 @@ export function ReportsPage({
                 isLoading={isLoading}
                 onEdit={(schedule) => {
                   // TODO: Implement schedule editing functionality
-                  console.log('Edit schedule:', schedule.id);
+                  void schedule.id;
                 }}
                 onDelete={async (id) => {
                   await onDeleteSchedule?.(id);
@@ -310,7 +316,7 @@ export function ReportsPage({
                 }}
                 onViewHistory={(id) => {
                   // TODO: Implement schedule history view
-                  console.log('View history:', id);
+                  void id;
                 }}
               />
             )}
