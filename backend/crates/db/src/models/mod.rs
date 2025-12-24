@@ -441,9 +441,6 @@ pub mod automation;
 // Epic 54: Forms Management
 pub mod form;
 
-// Epic 55: Advanced Reporting & Analytics
-pub mod reports;
-
 pub use automation::{
     AutomationAction, AutomationLogSummary, AutomationRuleWithStats, CallWebhookConfig,
     ConditionTriggerConfig, CreateAutomationRule, CreateRuleFromTemplate, EventTriggerConfig,
@@ -461,13 +458,4 @@ pub use form::{
     FormSubmissionParams, FormSubmissionSummary, FormSubmissionWithDetails, FormSummary,
     FormWithDetails, ReviewSubmission, SignatureData, SubmissionListQuery, SubmissionListResponse,
     SubmitForm, SubmitFormResponse, UpdateForm, UpdateFormField, ValidationRules,
-};
-
-// Epic 55: Advanced Reporting & Analytics
-pub use reports::{
-    CategoryTrend, ConsumptionAnomaly, ConsumptionReportData, ConsumptionSummary, DateRange,
-    ExportReportRequest, ExportReportResponse, FaultTrends, MonthlyAverage, MonthlyConsumption,
-    MonthlyPersonCount, OccupancyReportData, OccupancySummary, OccupancyTrends, ReportMonthlyCount,
-    UnitConsumption, UnitOccupancy, UtilityTypeConsumption, VoteParticipationDetail,
-    VotingParticipationSummary, YearComparison,
 };
