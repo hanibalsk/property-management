@@ -44,7 +44,6 @@ object FormatUtils {
                     }
                     append(fractionalPart)
                 }
-                val formatted = (millions * 100).toLong() / 100.0 // Round to 2 decimal places
                 "${formatted}M"
             }
             price >= 1_000 -> formatWithThousandsSeparator(price)
