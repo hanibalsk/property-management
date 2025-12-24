@@ -216,8 +216,6 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
                       | string
                       | number
                       | string[]
-                      | number[]
-                      | [string, string]
                       | [number, number] = filter.value;
 
                     if (newOperator === 'between') {
