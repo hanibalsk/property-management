@@ -1,0 +1,207 @@
+/**
+ * Workflow Automation Types
+ *
+ * TypeScript types for workflow automation API (Epic 43).
+ */
+
+// Trigger Types
+export type TriggerType = 'time_based' | 'event_based' | 'condition_based' | 'manual';
+
+export type EventTriggerType =
+  | 'fault_created'
+  | 'fault_status_changed'
+  | 'payment_received'
+  | 'payment_overdue'
+  | 'document_uploaded'
+  | 'announcement_published'
+  | 'vote_started'
+  | 'vote_ended'
+  | 'guest_registered'
+  | 'maintenance_scheduled'
+  | 'meter_reading_due'
+  | 'lease_expiring';
+
+export interface TimeTriggerConfig {
+  schedule: string; // Cron expression
+  timezone?: string;
+}
+
+export interface EventTriggerConfig {
+  eventType: EventTriggerType;
+  filters?: Record<string, unknown>;
+}
+
+// Condition Types
+export type ConditionOperator =
+  | 'equals'
+  | 'not_equals'
+  | 'contains'
+  | 'not_contains'
+  | 'greater_than'
+  | 'less_than'
+  | 'greater_than_or_equals'
+  | 'less_than_or_equals'
+  | 'is_empty'
+  | 'is_not_empty'
+  | 'in_list'
+  | 'not_in_list';
+
+export interface TriggerCondition {
+  field: string;
+  operator: ConditionOperator;
+  value: string | number | boolean | string[];
+}
+
+// Action Types
+export type ActionType =
+  | 'send_notification'
+  | 'send_email'
+  | 'create_task'
+  | 'update_status'
+  | 'assign_user'
+  | 'add_tag'
+  | 'webhook'
+  | 'delay';
+
+export interface AutomationAction {
+  type: ActionType;
+  name: string;
+  config: Record<string, unknown>;
+  order: number;
+}
+
+// Trigger
+export interface AutomationTrigger {
+  type: TriggerType;
+  name: string;
+  timeConfig?: TimeTriggerConfig;
+  eventConfig?: EventTriggerConfig;
+  conditions?: TriggerCondition[];
+}
+
+// Execution Stats
+export interface ExecutionStats {
+  totalRuns: number;
+  successfulRuns: number;
+  failedRuns: number;
+  lastRunAt?: string;
+}
+
+// Automation Rule
+export interface AutomationRule {
+  id: string;
+  name: string;
+  description?: string;
+  isEnabled: boolean;
+  trigger: AutomationTrigger;
+  actions: AutomationAction[];
+  executionStats?: ExecutionStats;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+// Template Types
+export type TemplateCategory =
+  | 'faults'
+  | 'payments'
+  | 'communications'
+  | 'documents'
+  | 'maintenance'
+  | 'general';
+
+export interface AutomationTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: TemplateCategory;
+  triggerType: TriggerType;
+  triggerDetails?: {
+    schedule?: string;
+    eventType?: string;
+  };
+  conditionsPreview?: string[];
+  actionsPreview?: string[];
+  actionsCount?: number;
+  tags?: string[];
+  isPopular?: boolean;
+  usageCount?: number;
+}
+
+// Execution Types
+export type ExecutionStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'skipped';
+
+export interface ActionResult {
+  actionName: string;
+  status: ExecutionStatus;
+  duration?: number;
+  output?: unknown;
+  error?: string;
+}
+
+export interface ExecutionLog {
+  id: string;
+  ruleId: string;
+  ruleName: string;
+  status: ExecutionStatus;
+  triggerType?: TriggerType;
+  triggerContext?: Record<string, unknown>;
+  startedAt: string;
+  completedAt?: string;
+  duration?: number;
+  actionResults?: ActionResult[];
+  errorMessage?: string;
+  errorStack?: string;
+}
+
+// API Request/Response Types
+export interface WorkflowPaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface AutomationRulesQuery {
+  page?: number;
+  pageSize?: number;
+  isEnabled?: boolean;
+  triggerType?: TriggerType;
+  search?: string;
+}
+
+export interface AutomationTemplatesQuery {
+  page?: number;
+  pageSize?: number;
+  category?: TemplateCategory;
+  search?: string;
+}
+
+export interface ExecutionLogsQuery {
+  page?: number;
+  pageSize?: number;
+  status?: ExecutionStatus;
+  ruleId?: string;
+  since?: string;
+}
+
+export interface ExecutionStatsQuery {
+  ruleId?: string;
+  since?: string;
+}
+
+export interface ExecutionStatsResponse {
+  totalExecutions: number;
+  successfulExecutions: number;
+  failedExecutions: number;
+  pendingExecutions: number;
+  averageDuration?: number;
+  successRate?: number;
+}
