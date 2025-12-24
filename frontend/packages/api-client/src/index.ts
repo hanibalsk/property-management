@@ -19,6 +19,7 @@ export * from './messaging';
 export * from './neighbors';
 export * from './notification-preferences';
 export * from './community';
+export * from './financial';
 export * from './workflow-automation';
 
 // API client configuration
