@@ -147,10 +147,16 @@ export function AnalyticsChart({
 
               if (chartType === 'area') {
                 // Validate points array before rendering
-                if (points.length === 0 || points.some((p) => p.x === undefined || p.y === undefined)) {
+                if (
+                  points.length === 0 ||
+                  points.some((p) => p.x === undefined || p.y === undefined)
+                ) {
                   return null;
                 }
-                const pathData = `M ${points[0].x} ${points[0].y} ${points.slice(1).map((p) => `L ${p.x} ${p.y}`).join(' ')} L ${points[points.length - 1].x} 100 L 0 100 Z`;
+                const pathData = `M ${points[0].x} ${points[0].y} ${points
+                  .slice(1)
+                  .map((p) => `L ${p.x} ${p.y}`)
+                  .join(' ')} L ${points[points.length - 1].x} 100 L 0 100 Z`;
                 return (
                   <g key={line.id}>
                     <path d={pathData} fill={color} fillOpacity={0.1} />
@@ -186,7 +192,11 @@ export function AnalyticsChart({
                         }}
                         role={onDrillDown ? 'button' : undefined}
                         tabIndex={onDrillDown ? 0 : undefined}
-                        aria-label={onDrillDown ? `View details for ${point.date}: ${formatValue(point.value)}` : undefined}
+                        aria-label={
+                          onDrillDown
+                            ? `View details for ${point.date}: ${formatValue(point.value)}`
+                            : undefined
+                        }
                       />
                     ))}
                   </g>
@@ -218,7 +228,11 @@ export function AnalyticsChart({
                       }}
                       role={onDrillDown ? 'button' : undefined}
                       tabIndex={onDrillDown ? 0 : undefined}
-                      aria-label={onDrillDown ? `View details for ${point.label || point.date}: ${formatValue(point.value)}` : undefined}
+                      aria-label={
+                        onDrillDown
+                          ? `View details for ${point.label || point.date}: ${formatValue(point.value)}`
+                          : undefined
+                      }
                     >
                       <title>{`${point.label || point.date}: ${formatValue(point.value)}`}</title>
                     </circle>

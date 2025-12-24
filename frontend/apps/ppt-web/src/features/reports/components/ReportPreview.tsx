@@ -142,9 +142,10 @@ export function ReportPreview({ result, fields, isLoading, error }: ReportPrevie
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {result.data.slice(0, 100).map((row, rowIndex) => {
+              {result.data.slice(0, 100).map((row) => {
+                const rowKey = JSON.stringify(row);
                 return (
-                  <tr key={`row-${rowIndex}`} className="hover:bg-gray-50">
+                  <tr key={rowKey} className="hover:bg-gray-50">
                     {fields.map((field) => (
                       <td
                         key={field.id}

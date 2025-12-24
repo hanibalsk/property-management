@@ -212,7 +212,13 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
                   value={filter.operator}
                   onChange={(e) => {
                     const newOperator = e.target.value as ReportFilter['operator'];
-                    let newValue: any = (filter as any).value;
+                    let newValue:
+                      | string
+                      | number
+                      | string[]
+                      | number[]
+                      | [string, string]
+                      | [number, number] = filter.value;
 
                     if (newOperator === 'between') {
                       if (!Array.isArray(newValue) || newValue.length !== 2) {
@@ -221,14 +227,14 @@ export function FilterBuilder({ fields, filters, onFiltersChange }: FilterBuilde
                     } else if (newOperator === 'in') {
                       if (!Array.isArray(newValue)) {
                         if (newValue !== undefined && newValue !== null && newValue !== '') {
-                          newValue = [newValue];
+                          newValue = [String(newValue)];
                         } else {
                           newValue = [];
                         }
                       }
                     } else {
                       if (Array.isArray(newValue)) {
-                        newValue = newValue[0] ?? '';
+                        newValue = String(newValue[0] ?? '');
                       }
                     }
 
