@@ -20,6 +20,7 @@ export * from './neighbors';
 export * from './notification-preferences';
 export * from './community';
 export * from './financial';
+export * from './forms';
 export * from './workflow-automation';
 export * from './reports';
 
