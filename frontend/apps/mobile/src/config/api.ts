@@ -17,6 +17,7 @@ export function getApiBaseUrl(): string {
   }
 
   // Check for environment-specific configuration
+  // In production builds, this should be set via react-native-config or similar
   if (__DEV__) {
     // Android emulator uses 10.0.2.2 to reach host localhost
     // iOS simulator can use localhost directly
@@ -24,7 +25,8 @@ export function getApiBaseUrl(): string {
     return Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
   }
 
-  // Production API endpoint fallback
+  // Production API endpoint
+  // TODO: Configure via environment variables or react-native-config
   return 'https://api.ppt.example.com';
 }
 
