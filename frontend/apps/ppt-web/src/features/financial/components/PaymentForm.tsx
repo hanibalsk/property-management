@@ -4,8 +4,8 @@
 
 import type { Invoice, PaymentMethod, RecordPayment } from '@ppt/api-client';
 import { useState } from 'react';
-import { formatCurrency } from '../utils/formatting';
 import { PAYMENT_METHODS } from '../utils/constants';
+import { formatCurrency } from '../utils/formatting';
 
 interface Unit {
   id: string;

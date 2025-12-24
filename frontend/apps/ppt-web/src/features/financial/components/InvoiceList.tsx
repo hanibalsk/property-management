@@ -4,8 +4,8 @@
 
 import type { Invoice, InvoiceStatus } from '@ppt/api-client';
 import { useState } from 'react';
+import { INVOICE_STATUS_LABELS, INVOICE_STATUS_STYLES } from '../utils/constants';
 import { formatCurrency, formatDate } from '../utils/formatting';
-import { INVOICE_STATUS_STYLES, INVOICE_STATUS_LABELS } from '../utils/constants';
 
 interface InvoiceListProps {
   invoices: Invoice[];

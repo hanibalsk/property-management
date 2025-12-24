@@ -226,10 +226,8 @@ export function InvoiceForm({
         {errors.items && <p className="mb-2 text-sm text-red-600">{errors.items}</p>}
         <div className="space-y-3">
           {items.map((item, index) => (
-            <div
-              key={`item-${index}`}
-              className="grid grid-cols-12 gap-2 items-start"
-            >
+            // biome-ignore lint/suspicious/noArrayIndexKey: items don't have stable IDs
+            <div key={`item-${index}`} className="grid grid-cols-12 gap-2 items-start">
               <div className="col-span-5">
                 <input
                   type="text"

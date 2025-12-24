@@ -125,6 +125,7 @@ export function BudgetForm({
 
         <div className="space-y-2">
           {categories.map((category, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: categories don't have stable IDs
             <div key={index} className="flex items-center gap-3">
               <input
                 type="text"

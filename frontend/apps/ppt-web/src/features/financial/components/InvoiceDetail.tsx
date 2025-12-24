@@ -3,8 +3,8 @@
  */
 
 import type { InvoiceResponse } from '@ppt/api-client';
-import { formatCurrency, formatDetailedDate } from '../utils/formatting';
 import { INVOICE_STATUS_STYLES } from '../utils/constants';
+import { formatCurrency, formatDetailedDate } from '../utils/formatting';
 
 interface InvoiceDetailProps {
   invoice: InvoiceResponse;
@@ -95,7 +95,8 @@ export function InvoiceDetail({
                 <div>
                   <p className="text-sm text-gray-500">Billing Period</p>
                   <p className="font-medium">
-                    {formatDetailedDate(inv.billing_period_start)} - {formatDetailedDate(inv.billing_period_end)}
+                    {formatDetailedDate(inv.billing_period_start)} -{' '}
+                    {formatDetailedDate(inv.billing_period_end)}
                   </p>
                 </div>
               )}
