@@ -3,10 +3,10 @@
 //! Handles all database operations for forms, fields, and submissions.
 
 use crate::models::{
-    form_status, submission_status, CreateForm, CreateFormField, Form, FormField, FormListQuery,
-    FormStatistics, FormSubmission, FormSubmissionSummary, FormSubmissionWithDetails, FormSummary,
-    FormWithDetails, ReviewSubmission, SubmissionListQuery, SubmitForm, UpdateForm,
-    UpdateFormField,
+    form::FormSubmissionParams, form_status, submission_status, CreateForm, CreateFormField, Form,
+    FormField, FormListQuery, FormStatistics, FormSubmission, FormSubmissionSummary,
+    FormSubmissionWithDetails, FormSummary, FormWithDetails, ReviewSubmission, SubmissionListQuery,
+    UpdateForm, UpdateFormField,
 };
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
@@ -535,21 +535,16 @@ impl FormRepository {
     /// Submits a form.
     pub async fn submit(
         &self,
-        org_id: Uuid,
-        form_id: Uuid,
-        user_id: Uuid,
-        building_id: Option<Uuid>,
-        unit_id: Option<Uuid>,
-        data: SubmitForm,
-        ip_address: Option<String>,
-        user_agent: Option<String>,
+        params: FormSubmissionParams,
     ) -> Result<FormSubmission, sqlx::Error> {
-        let attachments = data
+        let attachments = params
+            .data
             .attachments
             .map(|a| serde_json::to_value(a).unwrap_or_default())
             .unwrap_or_else(|| serde_json::json!([]));
 
-        let signature_data = data
+        let signature_data = params
+            .data
             .signature_data
             .map(|s| serde_json::to_value(s).unwrap_or_default());
 
@@ -564,17 +559,17 @@ impl FormRepository {
             RETURNING *
             "#,
         )
-        .bind(form_id)
-        .bind(org_id)
-        .bind(building_id)
-        .bind(unit_id)
-        .bind(user_id)
-        .bind(&data.data)
+        .bind(params.form_id)
+        .bind(params.org_id)
+        .bind(params.building_id)
+        .bind(params.unit_id)
+        .bind(params.user_id)
+        .bind(&params.data.data)
         .bind(&attachments)
         .bind(&signature_data)
         .bind(submission_status::PENDING)
-        .bind(&ip_address)
-        .bind(&user_agent)
+        .bind(&params.ip_address)
+        .bind(&params.user_agent)
         .fetch_one(&self.pool)
         .await
     }

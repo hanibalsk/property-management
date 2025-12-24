@@ -374,6 +374,19 @@ pub struct SubmitForm {
     pub signature_data: Option<SignatureData>,
 }
 
+/// Parameters for submitting a form (used internally by repository).
+#[derive(Debug, Clone)]
+pub struct FormSubmissionParams {
+    pub org_id: Uuid,
+    pub form_id: Uuid,
+    pub user_id: Uuid,
+    pub building_id: Option<Uuid>,
+    pub unit_id: Option<Uuid>,
+    pub data: SubmitForm,
+    pub ip_address: Option<String>,
+    pub user_agent: Option<String>,
+}
+
 /// Form attachment reference.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct FormAttachment {

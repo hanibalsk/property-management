@@ -13,9 +13,9 @@ use axum::{
 use common::errors::ErrorResponse;
 use db::models::{
     form_status, CreateForm, CreateFormField, CreateFormResponse, Form, FormField, FormListQuery,
-    FormListResponse, FormStatistics, FormSubmissionWithDetails, FormSummary, FormWithDetails,
-    ReviewSubmission, SubmissionListQuery, SubmissionListResponse, SubmitForm, SubmitFormResponse,
-    UpdateForm, UpdateFormField,
+    FormListResponse, FormStatistics, FormSubmissionParams, FormSubmissionWithDetails, FormSummary,
+    FormWithDetails, ReviewSubmission, SubmissionListQuery, SubmissionListResponse, SubmitForm,
+    SubmitFormResponse, UpdateForm, UpdateFormField,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -1477,16 +1477,16 @@ async fn submit_form(
     };
 
     let submission = repo
-        .submit(
-            tenant.tenant_id,
-            id,
-            auth.user_id,
-            None, // building_id - could be extracted from user context if needed
-            None, // unit_id - could be extracted from user context if needed
-            submit_data,
-            None, // TODO: Get IP from request
-            None, // TODO: Get User-Agent from request
-        )
+        .submit(FormSubmissionParams {
+            org_id: tenant.tenant_id,
+            form_id: id,
+            user_id: auth.user_id,
+            building_id: None, // could be extracted from user context if needed
+            unit_id: None,     // could be extracted from user context if needed
+            data: submit_data,
+            ip_address: None, // TODO: Get IP from request
+            user_agent: None, // TODO: Get User-Agent from request
+        })
         .await
         .map_err(|e| {
             tracing::error!("Failed to submit form: {:?}", e);
