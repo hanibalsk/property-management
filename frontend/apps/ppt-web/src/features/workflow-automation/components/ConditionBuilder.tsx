@@ -151,7 +151,7 @@ export function ConditionBuilder({ conditions, onChange, disabled }: ConditionBu
         <div className="space-y-3">
           {conditions.map((condition, index) => (
             <div
-              key={`condition-${index}`}
+              key={`condition-${condition.field}-${condition.operator}-${index}`}
               className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg"
             >
               {index > 0 && (

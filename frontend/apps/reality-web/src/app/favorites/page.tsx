@@ -1,0 +1,236 @@
+/**
+ * Favorites Page
+ *
+ * User's saved favorite listings (Epic 44, Story 44.5).
+ */
+
+'use client';
+
+import { ProtectedRoute } from '@/components/auth';
+import { ListingCard } from '@/components/listings';
+import { Footer, Header } from '@/components/ui';
+import { useFavorites, useRemoveFavorite } from '@ppt/reality-api-client';
+import Link from 'next/link';
+import { useState } from 'react';
+
+function FavoritesContent() {
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error } = useFavorites(page, 12);
+  const removeFavorite = useRemoveFavorite();
+
+  const handleRemoveFavorite = (listingId: string) => {
+    removeFavorite.mutate(listingId);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="favorites-grid loading">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={`fav-skeleton-${i}`} className="skeleton-card" />
+        ))}
+        <style jsx>{`
+          .favorites-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+          }
+          .skeleton-card {
+            height: 320px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="error-state">
+        <p>Failed to load favorites. Please try again.</p>
+        <style jsx>{`
+          .error-state {
+            padding: 64px 24px;
+            text-align: center;
+            color: #dc2626;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (!data || data.data.length === 0) {
+    return (
+      <div className="empty-state">
+        <svg
+          width="64"
+          height="64"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          aria-hidden="true"
+        >
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+        </svg>
+        <h2 className="empty-title">No favorites yet</h2>
+        <p className="empty-text">
+          Start exploring listings and save your favorites by clicking the heart icon.
+        </p>
+        <Link href="/listings" className="browse-link">
+          Browse listings
+        </Link>
+        <style jsx>{`
+          .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 64px 24px;
+            text-align: center;
+            color: #6b7280;
+          }
+          .empty-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #111827;
+            margin: 24px 0 8px;
+          }
+          .empty-text {
+            margin: 0 0 24px;
+            max-width: 400px;
+          }
+          .browse-link {
+            padding: 12px 24px;
+            background: #2563eb;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+          }
+          .browse-link:hover {
+            background: #1d4ed8;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="favorites-grid">
+        {data.data.map((favorite) => (
+          <ListingCard
+            key={favorite.id}
+            listing={{ ...favorite.listing, isFavorite: true }}
+            onToggleFavorite={() => handleRemoveFavorite(favorite.listingId)}
+          />
+        ))}
+      </div>
+
+      {data.totalPages > 1 && (
+        <div className="pagination">
+          <button
+            type="button"
+            disabled={page === 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="page-button"
+          >
+            Previous
+          </button>
+          <span className="page-info">
+            Page {page} of {data.totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= data.totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="page-button"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      <style jsx>{`
+        .favorites-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 24px;
+        }
+        .pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
+          margin-top: 32px;
+        }
+        .page-button {
+          padding: 8px 16px;
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .page-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .page-button:hover:not(:disabled) {
+          background: #f9fafb;
+        }
+        .page-info {
+          font-size: 14px;
+          color: #6b7280;
+        }
+      `}</style>
+    </>
+  );
+}
+
+export default function FavoritesPage() {
+  return (
+    <div className="page-container">
+      <Header />
+      <main className="main">
+        <div className="container">
+          <h1 className="page-title">My Favorites</h1>
+          <ProtectedRoute>
+            <FavoritesContent />
+          </ProtectedRoute>
+        </div>
+      </main>
+      <Footer />
+
+      <style jsx>{`
+        .page-container {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          background: #f9fafb;
+        }
+        .main {
+          flex: 1;
+          padding: 32px 0;
+        }
+        .container {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 0 16px;
+        }
+        .page-title {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #111827;
+          margin: 0 0 32px;
+        }
+      `}</style>
+    </div>
+  );
+}

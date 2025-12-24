@@ -152,7 +152,7 @@ export function ActionBuilder({ actions, onChange, disabled }: ActionBuilderProp
         <div className="space-y-3">
           {actions.map((action, index) => (
             <div
-              key={`action-${index}`}
+              key={`action-${action.type}-${action.name}-${action.order}`}
               className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200"
             >
               <div className="flex flex-col items-center gap-1">
