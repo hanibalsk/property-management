@@ -1,7 +1,10 @@
 import { AuthProvider } from '@/lib/auth-context';
+import { ComparisonProvider } from '@/lib/comparison-context';
 import { QueryProvider } from '@/lib/query-provider';
 import type { Metadata } from 'next';
 import './globals.css';
+
+import { ComparisonTray } from '../components/comparison';
 
 export const metadata: Metadata = {
   title: 'Reality Portal - Find Your Perfect Property',
@@ -26,7 +29,12 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <QueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ComparisonProvider>
+              {children}
+              <ComparisonTray />
+            </ComparisonProvider>
+          </AuthProvider>
         </QueryProvider>
       </body>
     </html>

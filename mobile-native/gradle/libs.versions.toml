@@ -30,6 +30,7 @@ compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 
 # AndroidX
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
@@ -52,6 +53,15 @@ ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version
 
 # Testing
 kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test" }
+
+# Image Loading
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version = "2.5.0" }
+
+# Location
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version = "21.0.1" }
+
+# DataStore
+datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version = "1.0.0" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
