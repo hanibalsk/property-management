@@ -216,7 +216,7 @@ export function EventForm({
               type={allDay ? 'date' : 'datetime-local'}
               id="startDate"
               value={allDay ? startDate.slice(0, 10) : startDate}
-              onChange={(e) => setStartDate(allDay ? e.target.value : e.target.value)}
+              onChange={(e) => setStartDate(e.target.value)}
               className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
                 errors.startDate ? 'border-red-300' : 'border-gray-300'
               }`}
@@ -231,7 +231,7 @@ export function EventForm({
               type={allDay ? 'date' : 'datetime-local'}
               id="endDate"
               value={allDay ? endDate.slice(0, 10) : endDate}
-              onChange={(e) => setEndDate(allDay ? e.target.value : e.target.value)}
+              onChange={(e) => setEndDate(e.target.value)}
               className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
                 errors.endDate ? 'border-red-300' : 'border-gray-300'
               }`}
