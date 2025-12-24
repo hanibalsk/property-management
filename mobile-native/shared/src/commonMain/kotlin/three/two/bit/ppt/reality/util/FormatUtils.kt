@@ -29,10 +29,29 @@ object FormatUtils {
      */
     private fun formatPriceAmount(price: Long): String {
         return when {
-            price >= 1_000_000 -> String.format("%.2fM", price / 1_000_000.0)
-            price >= 1_000 -> String.format("%,d", price)
+            price >= 1_000_000 -> {
+                val millions = price / 1_000_000.0
+                val formatted = (millions * 100).toLong() / 100.0 // Round to 2 decimal places
+                "${formatted}M"
+            }
+            price >= 1_000 -> formatWithThousandsSeparator(price)
             else -> price.toString()
         }
+    }
+
+    /** Format a number with thousands separators. */
+    private fun formatWithThousandsSeparator(value: Long): String {
+        val str = value.toString()
+        val result = StringBuilder()
+        var count = 0
+        for (i in str.length - 1 downTo 0) {
+            if (count > 0 && count % 3 == 0) {
+                result.insert(0, ',')
+            }
+            result.insert(0, str[i])
+            count++
+        }
+        return result.toString()
     }
 
     /** Get the symbol for a currency code. */
