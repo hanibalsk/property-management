@@ -1,0 +1,297 @@
+'use client';
+
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
+import type { ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
+// Token storage keys
+const ACCESS_TOKEN_KEY = 'ppt_access_token';
+const REFRESH_TOKEN_KEY = 'ppt_refresh_token';
+const USER_KEY = 'ppt_user';
+const BIOMETRIC_ENABLED_KEY = 'ppt_biometric_enabled';
+
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'owner' | 'tenant' | 'resident' | 'manager' | 'admin';
+  buildingId?: string;
+  unitId?: string;
+  avatarUrl?: string;
+}
+
+export interface AuthState {
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  user: User | null;
+  accessToken: string | null;
+  biometricEnabled: boolean;
+  biometricAvailable: boolean;
+}
+
+export interface AuthContextValue extends AuthState {
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshToken: () => Promise<void>;
+  enableBiometric: () => Promise<boolean>;
+  disableBiometric: () => Promise<void>;
+  authenticateWithBiometric: () => Promise<boolean>;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
+interface AuthProviderProps {
+  children: ReactNode;
+  apiBaseUrl: string;
+}
+
+export function AuthProvider({ children, apiBaseUrl }: AuthProviderProps) {
+  const [state, setState] = useState<AuthState>({
+    isLoading: true,
+    isAuthenticated: false,
+    user: null,
+    accessToken: null,
+    biometricEnabled: false,
+    biometricAvailable: false,
+  });
+
+  // Check biometric availability and load stored auth on mount
+  useEffect(() => {
+    async function initialize() {
+      try {
+        // Check biometric availability
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        const biometricAvailable = compatible && enrolled;
+
+        // Load stored tokens
+        const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+        const userJson = await SecureStore.getItemAsync(USER_KEY);
+        const biometricEnabled = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
+
+        if (accessToken && userJson) {
+          const user = JSON.parse(userJson) as User;
+          setState({
+            isLoading: false,
+            isAuthenticated: true,
+            user,
+            accessToken,
+            biometricEnabled: biometricEnabled === 'true',
+            biometricAvailable,
+          });
+        } else {
+          setState((prev) => ({
+            ...prev,
+            isLoading: false,
+            biometricAvailable,
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+        }));
+      }
+    }
+
+    initialize();
+  }, []);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      setState((prev) => ({ ...prev, isLoading: true }));
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Login failed');
+        }
+
+        const data = await response.json();
+        const { accessToken, refreshToken, user } = data;
+
+        // Store tokens securely
+        await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
+        await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
+        await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          isAuthenticated: true,
+          user,
+          accessToken,
+        }));
+      } catch (error) {
+        setState((prev) => ({ ...prev, isLoading: false }));
+        throw error;
+      }
+    },
+    [apiBaseUrl]
+  );
+
+  const logout = useCallback(async () => {
+    try {
+      // Clear stored tokens
+      await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(USER_KEY);
+
+      setState((prev) => ({
+        ...prev,
+        isAuthenticated: false,
+        user: null,
+        accessToken: null,
+      }));
+    } catch (error) {
+      console.error('Failed to logout:', error);
+      throw error;
+    }
+  }, []);
+
+  const refreshToken = useCallback(async () => {
+    try {
+      const storedRefreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+
+      if (!storedRefreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await fetch(`${apiBaseUrl}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken: storedRefreshToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+      const { accessToken, refreshToken: newRefreshToken } = data;
+
+      // Store new tokens
+      await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
+      await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, newRefreshToken);
+
+      setState((prev) => ({
+        ...prev,
+        accessToken,
+      }));
+    } catch (error) {
+      // If refresh fails, log out
+      await logout();
+      throw error;
+    }
+  }, [apiBaseUrl, logout]);
+
+  const enableBiometric = useCallback(async (): Promise<boolean> => {
+    if (!state.biometricAvailable) {
+      return false;
+    }
+
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Enable biometric login',
+        cancelLabel: 'Cancel',
+        fallbackLabel: 'Use passcode',
+      });
+
+      if (result.success) {
+        await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
+        setState((prev) => ({ ...prev, biometricEnabled: true }));
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Failed to enable biometric:', error);
+      return false;
+    }
+  }, [state.biometricAvailable]);
+
+  const disableBiometric = useCallback(async () => {
+    await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
+    setState((prev) => ({ ...prev, biometricEnabled: false }));
+  }, []);
+
+  const authenticateWithBiometric = useCallback(async (): Promise<boolean> => {
+    if (!state.biometricEnabled || !state.biometricAvailable) {
+      return false;
+    }
+
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Login to Property Management',
+        cancelLabel: 'Cancel',
+        fallbackLabel: 'Use password',
+      });
+
+      if (result.success) {
+        // Check if we have stored credentials
+        const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+        const userJson = await SecureStore.getItemAsync(USER_KEY);
+
+        if (accessToken && userJson) {
+          const user = JSON.parse(userJson) as User;
+          setState((prev) => ({
+            ...prev,
+            isAuthenticated: true,
+            user,
+            accessToken,
+          }));
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Biometric authentication failed:', error);
+      return false;
+    }
+  }, [state.biometricEnabled, state.biometricAvailable]);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      ...state,
+      login,
+      logout,
+      refreshToken,
+      enableBiometric,
+      disableBiometric,
+      authenticateWithBiometric,
+    }),
+    [
+      state,
+      login,
+      logout,
+      refreshToken,
+      enableBiometric,
+      disableBiometric,
+      authenticateWithBiometric,
+    ]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
