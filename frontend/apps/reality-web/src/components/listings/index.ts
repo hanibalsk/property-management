@@ -10,3 +10,4 @@ export { ListingGrid } from './ListingGrid';
 export { SearchBar } from './SearchBar';
 export { PhotoGallery } from './PhotoGallery';
 export { ContactForm } from './ContactForm';
+export { ListingDetailContent, ListingNotFound } from './ListingDetailContent';

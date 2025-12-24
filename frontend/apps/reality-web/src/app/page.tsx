@@ -4,6 +4,8 @@
  * Reality Portal homepage with hero search and featured listings (Epic 44, Story 44.1).
  */
 
+'use client';
+
 import { CategoryCards, FeaturedListings, HeroSearch } from '@/components/home';
 import { Footer, Header } from '@/components/ui';
 
