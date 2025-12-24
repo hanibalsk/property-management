@@ -7,6 +7,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { AccessLogEntry, GuestAccessInvitation, NFCCredential } from './types';
 
+// WARNING: NFC credentials are stored in AsyncStorage for offline access.
+// In production, consider using react-native-keychain or expo-secure-store
+// for sensitive credential data. AsyncStorage is not encrypted on most devices.
+// See security review: docs/security/credential-storage.md
 const CREDENTIALS_KEY = '@ppt/nfc_credentials';
 const ACCESS_LOG_KEY = '@ppt/access_log';
 const MAX_LOG_ENTRIES = 100;
@@ -68,8 +72,10 @@ export class NFCCredentialManager {
    * Get all active credentials.
    */
   getActiveCredentials(): NFCCredential[] {
-    const now = new Date().toISOString();
-    return this.credentials.filter((c) => c.status === 'active' && c.validUntil > now);
+    const nowMs = Date.now();
+    return this.credentials.filter(
+      (c) => c.status === 'active' && new Date(c.validUntil).getTime() > nowMs
+    );
   }
 
   /**
@@ -115,7 +121,7 @@ export class NFCCredentialManager {
       accessPointId,
       accessPointName,
       result,
-      denialReason: denialReason as AccessLogEntry['denialReason'],
+      denialReason: denialReason as AccessLogEntry['denialReason'] | undefined,
       timestamp: new Date().toISOString(),
     };
 

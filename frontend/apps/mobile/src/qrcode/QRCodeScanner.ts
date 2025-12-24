@@ -46,12 +46,24 @@ export function parseQRCode(content: string): ParsedQRCode {
 
   // Check if it's a URL
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return {
-      type: 'external_url',
-      raw: trimmed,
-      data: { type: 'external_url', url: trimmed },
-      isValid: true,
-    };
+    // Validate URL format to prevent malformed URLs
+    try {
+      new URL(trimmed);
+      return {
+        type: 'external_url',
+        raw: trimmed,
+        data: { type: 'external_url', url: trimmed },
+        isValid: true,
+      };
+    } catch {
+      return {
+        type: 'unknown',
+        raw: trimmed,
+        data: { type: 'unknown', content: trimmed },
+        isValid: false,
+        error: 'Invalid URL format',
+      };
+    }
   }
 
   // Unknown content
@@ -193,6 +205,10 @@ function parseVCard(vcard: string): ParsedQRCode {
     name: '',
   };
 
+  // Check for required vCard structure
+  const hasBegin = lines.some((line) => line.trim() === 'BEGIN:VCARD');
+  const hasEnd = lines.some((line) => line.trim() === 'END:VCARD');
+
   for (const line of lines) {
     if (line.startsWith('FN:')) {
       contact.name = line.substring(3);
@@ -205,11 +221,15 @@ function parseVCard(vcard: string): ParsedQRCode {
     }
   }
 
+  // vCard requires BEGIN, END, and at least FN (formatted name) per RFC 6350
+  const isValid = hasBegin && hasEnd && contact.name.length > 0;
+
   return {
     type: 'contact',
     raw: vcard,
     data: contact,
-    isValid: !!contact.name,
+    isValid,
+    error: isValid ? undefined : 'Missing required vCard fields (BEGIN, END, or FN)',
   };
 }
 

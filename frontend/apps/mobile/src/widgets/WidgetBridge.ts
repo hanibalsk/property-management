@@ -52,8 +52,10 @@ export class WidgetBridge {
 
     // Widgets require iOS 14+ or Android
     if (Platform.OS === 'ios') {
-      const majorVersion = Number.parseInt(Platform.Version as string, 10);
-      this.isSupported = majorVersion >= 14;
+      // Platform.Version on iOS is a string like "14.0" or "15.2.1"
+      const versionString = String(Platform.Version);
+      const majorVersion = Number.parseInt(versionString.split('.')[0], 10);
+      this.isSupported = !Number.isNaN(majorVersion) && majorVersion >= 14;
     } else if (Platform.OS === 'android') {
       this.isSupported = true;
     } else {
@@ -168,29 +170,42 @@ export class WidgetBridge {
    * Handle deep link from widget tap.
    */
   parseWidgetDeepLink(url: string): WidgetDeepLink | null {
-    const parsed = new URL(url);
+    try {
+      const parsed = new URL(url);
 
-    if (parsed.protocol !== 'ppt:') {
-      return null;
-    }
-
-    const path = parsed.hostname + parsed.pathname;
-
-    switch (path) {
-      case 'dashboard':
-        return { screen: 'Dashboard' };
-      case 'faults':
-        return { screen: 'Faults' };
-      case 'fault/report':
-        return { screen: 'ReportFault' };
-      case 'announcements':
-        return { screen: 'Announcements' };
-      case 'voting':
-        return { screen: 'Voting' };
-      case 'documents':
-        return { screen: 'Documents' };
-      default:
+      if (parsed.protocol !== 'ppt:') {
         return null;
+      }
+
+      const path = parsed.hostname + parsed.pathname;
+
+      // Extract ID from path if present (e.g., "faults/123" -> "123")
+      const pathSegments = path.split('/');
+      const baseRoute = pathSegments[0];
+      const entityId = pathSegments[1];
+
+      switch (baseRoute) {
+        case 'dashboard':
+          return { screen: 'Dashboard' };
+        case 'faults':
+          return { screen: 'Faults', faultId: entityId };
+        case 'fault':
+          if (pathSegments[1] === 'report') {
+            return { screen: 'ReportFault' };
+          }
+          return null;
+        case 'announcements':
+          return { screen: 'Announcements', announcementId: entityId };
+        case 'voting':
+          return { screen: 'Voting', voteId: entityId };
+        case 'documents':
+          return { screen: 'Documents' };
+        default:
+          return null;
+      }
+    } catch {
+      // Invalid URL format
+      return null;
     }
   }
 

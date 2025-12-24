@@ -252,12 +252,21 @@ export class NFCAccessController {
 
     // Check credential status
     if (credential.status !== 'active') {
+      // Map credential status to known denial reasons
+      const statusToDenialReason: Record<string, AccessDenialReason> = {
+        suspended: 'credential_suspended',
+        revoked: 'credential_revoked',
+        expired: 'credential_expired',
+      };
+      const denialReason: AccessDenialReason =
+        statusToDenialReason[credential.status] ?? 'invalid_credential';
+
       return {
         granted: false,
         timestamp,
         accessPointId,
         accessPointName: this.getAccessPointName(credential, accessPointId),
-        denialReason: `credential_${credential.status}` as AccessDenialReason,
+        denialReason,
         message: `Credential is ${credential.status}`,
       };
     }
@@ -290,14 +299,23 @@ export class NFCAccessController {
     // Check time restrictions
     if (accessPoint.timeRestrictions && accessPoint.timeRestrictions.length > 0) {
       const currentDay = now.getDay();
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      // Convert current time to minutes since midnight for numeric comparison
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-      const isAllowed = accessPoint.timeRestrictions.some(
-        (restriction) =>
+      const parseTimeToMinutes = (timeStr: string): number => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        return hours * 60 + minutes;
+      };
+
+      const isAllowed = accessPoint.timeRestrictions.some((restriction) => {
+        const startMinutes = parseTimeToMinutes(restriction.startTime);
+        const endMinutes = parseTimeToMinutes(restriction.endTime);
+        return (
           restriction.days.includes(currentDay) &&
-          currentTime >= restriction.startTime &&
-          currentTime <= restriction.endTime
-      );
+          currentMinutes >= startMinutes &&
+          currentMinutes <= endMinutes
+        );
+      });
 
       if (!isAllowed) {
         return {
@@ -347,7 +365,15 @@ export class NFCAccessController {
       return false;
     }
 
+    // Validate encryptedData before creating wallet pass
+    if (!credential.encryptedData || credential.encryptedData.length === 0) {
+      console.error('Cannot add to wallet: credential has no encrypted data');
+      return false;
+    }
+
     const passData: WalletPass = {
+      // passTypeIdentifier must be configured in Apple Developer Portal
+      // and match the provisioning profile. See docs/ios-wallet-setup.md
       passTypeIdentifier: 'pass.three.two.bit.ppt.access',
       serialNumber: credential.id,
       description: `${credential.buildingName} Access`,

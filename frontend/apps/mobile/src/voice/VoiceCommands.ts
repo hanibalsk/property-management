@@ -39,7 +39,8 @@ const COMMAND_PATTERNS: Array<{
       },
       {
         key: 'location',
-        pattern: /(?:in\s+|at\s+)(the\s+)?(.+?)(?:\s+is|\s+has|\.|$)/i,
+        // Match location after "in" or "at", stopping at sentence boundaries or action words
+        pattern: /(?:in\s+|at\s+)(?:the\s+)?([a-zA-Z0-9\s]+?)(?:\s+(?:is|has|was|are|were|there|please|can|could)|\.|,|$)/i,
       },
       {
         key: 'priority',
@@ -138,9 +139,26 @@ export function parseVoiceCommand(transcript: string): ParsedVoiceCommand {
     for (const pattern of commandDef.patterns) {
       const match = normalizedTranscript.match(pattern);
       if (match) {
-        // Calculate confidence based on match coverage
+        // Calculate confidence based on multiple factors:
+        // 1. Match coverage (how much of the transcript matches)
+        // 2. Match position (earlier matches are more intentional)
+        // 3. Pattern specificity (longer patterns are more specific)
         const matchLength = match[0].length;
-        const confidence = Math.min(1, matchLength / normalizedTranscript.length + 0.5);
+        const transcriptLength = normalizedTranscript.length;
+        const matchStart = match.index ?? 0;
+
+        // Coverage: ratio of matched text to total text
+        const coverageScore = matchLength / transcriptLength;
+        // Position: prefer matches at the start (1.0 at start, decreasing)
+        const positionScore = 1 - matchStart / transcriptLength;
+        // Base confidence from pattern match
+        const baseConfidence = 0.4;
+
+        // Weighted combination
+        const confidence = Math.min(
+          1,
+          baseConfidence + coverageScore * 0.35 + positionScore * 0.25
+        );
 
         if (confidence > bestMatch.confidence) {
           const params: VoiceCommandParams = {};

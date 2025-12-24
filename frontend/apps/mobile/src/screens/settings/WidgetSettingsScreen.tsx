@@ -17,19 +17,18 @@ import {
 
 import { WidgetBridge } from '../../widgets';
 import type { WidgetConfig, WidgetType } from '../../widgets/types';
+import { getApiBaseUrl } from '../../config/api';
 
 interface WidgetSettingsScreenProps {
   onNavigate: (screen: string) => void;
 }
-
-const API_BASE_URL = 'http://localhost:8080';
 
 export function WidgetSettingsScreen({ onNavigate }: WidgetSettingsScreenProps) {
   const [isSupported, setIsSupported] = useState<boolean | null>(null);
   const [configs, setConfigs] = useState<WidgetConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const bridge = useMemo(() => new WidgetBridge(API_BASE_URL), []);
+  const bridge = useMemo(() => new WidgetBridge(getApiBaseUrl()), []);
   const availableTypes = useMemo(() => bridge.getAvailableWidgetTypes(), [bridge]);
 
   useEffect(() => {
@@ -314,13 +313,14 @@ const styles = StyleSheet.create({
   sizeChips: {
     flexDirection: 'row',
     marginTop: 8,
-    gap: 6,
+    // Using margin on children for RN < 0.71 compatibility (gap requires 0.71+)
   },
   sizeChip: {
     backgroundColor: '#f3f4f6',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
+    marginRight: 6,
   },
   sizeChipText: {
     fontSize: 12,

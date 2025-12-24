@@ -118,21 +118,38 @@ export class WidgetDataProvider {
 
   /**
    * Update all widgets in the background.
+   * Uses Promise.allSettled to fetch all widgets concurrently without race conditions.
    */
   async updateAllWidgets(): Promise<Map<string, WidgetData>> {
     const configs = await this.getAllWidgetConfigs();
     const results = new Map<string, WidgetData>();
 
-    for (const config of configs) {
+    // Fetch all widgets concurrently
+    const fetchPromises = configs.map(async (config) => {
       try {
         const data = await this.fetchWidgetData(config);
-        await this.cacheWidgetData(config.id, data);
-        results.set(config.id, data);
-      } catch {
-        // Use cached data on failure
-        const cached = await this.getCachedWidgetData(config.id);
-        if (cached) {
-          results.set(config.id, cached);
+        return { config, data, success: true as const };
+      } catch (error) {
+        console.warn(`Failed to fetch widget ${config.id}:`, error);
+        return { config, error, success: false as const };
+      }
+    });
+
+    const settledResults = await Promise.allSettled(fetchPromises);
+
+    // Process results sequentially to avoid AsyncStorage race conditions
+    for (const settled of settledResults) {
+      if (settled.status === 'fulfilled') {
+        const result = settled.value;
+        if (result.success) {
+          await this.cacheWidgetData(result.config.id, result.data);
+          results.set(result.config.id, result.data);
+        } else {
+          // Use cached data on failure
+          const cached = await this.getCachedWidgetData(result.config.id);
+          if (cached) {
+            results.set(result.config.id, cached);
+          }
         }
       }
     }
@@ -339,7 +356,11 @@ export class WidgetDataProvider {
       }
 
       return response.json();
-    } catch {
+    } catch (error) {
+      // Log error for debugging; in production, integrate with error reporting
+      if (__DEV__) {
+        console.error(`Widget API request failed for ${endpoint}:`, error);
+      }
       // Return empty object for mock data fallback
       return {} as T;
     }
