@@ -153,10 +153,24 @@ export function ComparisonView() {
     showToast('PDF export coming soon!', 'info');
   };
 
+  // Check if all listings use the same currency
+  const currenciesMatch = () => {
+    if (listings.length < 2) return true;
+    const firstCurrency = listings[0]?.currency ?? 'EUR';
+    return listings.every((l: ListingSummary) => (l.currency ?? 'EUR') === firstCurrency);
+  };
+
   const getHighlightClass = (row: ComparisonRow, listing: ListingSummary) => {
     if (row.highlight === 'none' || !row.highlight) return '';
 
-    const values = listings.map((l) => row.getValue(l)).filter((v) => v !== undefined) as number[];
+    // Disable price highlighting when currencies differ
+    if ((row.label === 'Price' || row.label === 'Price per m²') && !currenciesMatch()) {
+      return '';
+    }
+
+    const values = listings
+      .map((l: ListingSummary) => row.getValue(l))
+      .filter((v: string | number | undefined) => v !== undefined) as number[];
     if (values.length < 2) return '';
 
     const currentValue = row.getValue(listing);
@@ -223,12 +237,20 @@ export function ComparisonView() {
         </div>
       )}
 
+      {!currenciesMatch() && (
+        <div className="currency-warning" role="alert">
+          <p>
+            Note: Properties use different currencies. Price comparison highlighting is disabled.
+          </p>
+        </div>
+      )}
+
       <div className="comparison-table">
         <table>
           <thead>
             <tr>
               <th className="label-column">Property</th>
-              {listings.map((listing) => (
+              {listings.map((listing: ListingSummary) => (
                 <th key={listing.id} className="property-column">
                   <div className="property-header">
                     <Link href={`/listings/${listing.slug}`} className="property-link">
@@ -258,7 +280,7 @@ export function ComparisonView() {
             {comparisonRows.map((row) => (
               <tr key={row.label}>
                 <td className="label-cell">{row.label}</td>
-                {listings.map((listing) => {
+                {listings.map((listing: ListingSummary) => {
                   const value = row.getValue(listing);
                   const formatted = row.format ? row.format(value, listing) : (value ?? '-');
                   const highlightClass = getHighlightClass(row, listing);
@@ -333,6 +355,20 @@ export function ComparisonView() {
           border-radius: 8px;
           font-size: 14px;
           background: #f9fafb;
+        }
+
+        .currency-warning {
+          background: #fffbeb;
+          border: 1px solid #fcd34d;
+          border-radius: 8px;
+          padding: 12px 16px;
+          margin-bottom: 24px;
+          color: #92400e;
+        }
+
+        .currency-warning p {
+          margin: 0;
+          font-size: 14px;
         }
 
         .comparison-table {

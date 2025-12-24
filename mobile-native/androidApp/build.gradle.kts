@@ -28,6 +28,9 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = calculatedVersionCode
         versionName = appVersion
+
+        // API base URL - use emulator localhost for debug, configure for production
+        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8081\"")
     }
 
     buildTypes {
@@ -37,6 +40,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Production API URL - must use HTTPS
+            buildConfigField("String", "API_BASE_URL", "\"https://api.realityportal.example.com\"")
         }
     }
 
@@ -60,6 +65,7 @@ dependencies {
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
 
@@ -70,4 +76,17 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+
+    // Ktor (needed for repository default parameters)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.android)
+
+    // Image loading
+    implementation(libs.coil.compose)
+
+    // Location services
+    implementation(libs.play.services.location)
+
+    // DataStore for preferences
+    implementation(libs.datastore.preferences)
 }
