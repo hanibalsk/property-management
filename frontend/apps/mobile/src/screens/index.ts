@@ -8,6 +8,9 @@ export { AnnouncementsScreen } from './announcements';
 export { VotingScreen } from './voting';
 export { DocumentsScreen } from './documents';
 
+// Settings screens (Epic 49)
+export { WidgetSettingsScreen } from './settings';
+
 // Types
 export type { Fault, FaultStatus, FaultPriority, FaultCategory } from './faults';
 export type { Announcement, AnnouncementCategory, AnnouncementAttachment } from './announcements';
