@@ -1,0 +1,529 @@
+/**
+ * AgencyListings Component
+ *
+ * Manage listings for agency/realtors (Epic 45, Story 45.3).
+ */
+
+'use client';
+
+import type { AgencyListing, AgencyListingStatus } from '@ppt/reality-api-client';
+import { useAgencyListings, useMyAgency, useRealtors } from '@ppt/reality-api-client';
+import Link from 'next/link';
+import { useState } from 'react';
+
+type StatusFilter = 'all' | AgencyListingStatus;
+
+export function AgencyListings() {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [realtorFilter, setRealtorFilter] = useState<string>('all');
+  const [page, setPage] = useState(1);
+
+  const { data: agency } = useMyAgency();
+  const { data: realtors } = useRealtors(agency?.id || '');
+  const { data: listingsData, isLoading } = useAgencyListings(agency?.id || '', {
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    realtorId: realtorFilter === 'all' ? undefined : realtorFilter,
+    page,
+    limit: 20,
+  });
+
+  const statusOptions: { value: StatusFilter; label: string }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'active', label: 'Active' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'sold', label: 'Sold' },
+    { value: 'rented', label: 'Rented' },
+    { value: 'withdrawn', label: 'Withdrawn' },
+  ];
+
+  return (
+    <div className="agency-listings">
+      {/* Header */}
+      <div className="header">
+        <div>
+          <Link href="/agency" className="back-link">
+            ← Back to Dashboard
+          </Link>
+          <h1 className="title">Agency Listings</h1>
+          <p className="subtitle">Manage all property listings</p>
+        </div>
+        <Link href="/listings/create" className="create-button">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Create Listing
+        </Link>
+      </div>
+
+      {/* Filters */}
+      <div className="filters">
+        <div className="filter-group">
+          <label htmlFor="status-filter">Status</label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value as StatusFilter);
+              setPage(1);
+            }}
+          >
+            {statusOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="realtor-filter">Realtor</label>
+          <select
+            id="realtor-filter"
+            value={realtorFilter}
+            onChange={(e) => {
+              setRealtorFilter(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All Realtors</option>
+            {realtors?.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-stats">
+          {listingsData && (
+            <span>
+              Showing {listingsData.listings.length} of {listingsData.total} listings
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Listings Table */}
+      <div className="table-container">
+        {isLoading ? (
+          <ListingsTableSkeleton />
+        ) : listingsData?.listings.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <table className="listings-table">
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Realtor</th>
+                <th>Views</th>
+                <th>Inquiries</th>
+                <th>Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listingsData?.listings.map((listing) => (
+                <ListingRow key={listing.id} listing={listing} />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {listingsData && listingsData.total > 20 && (
+        <div className="pagination">
+          <button
+            type="button"
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
+          </button>
+          <span>
+            Page {page} of {Math.ceil(listingsData.total / 20)}
+          </span>
+          <button
+            type="button"
+            disabled={page >= Math.ceil(listingsData.total / 20)}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      <style jsx>{`
+        .agency-listings {
+          padding: 24px;
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 24px;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+
+        .back-link {
+          font-size: 14px;
+          color: #6b7280;
+          text-decoration: none;
+          display: inline-block;
+          margin-bottom: 8px;
+        }
+
+        .back-link:hover {
+          color: #2563eb;
+        }
+
+        .title {
+          font-size: 1.75rem;
+          font-weight: bold;
+          color: #111827;
+          margin: 0;
+        }
+
+        .subtitle {
+          font-size: 1rem;
+          color: #6b7280;
+          margin: 4px 0 0;
+        }
+
+        .create-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 20px;
+          background: #2563eb;
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          text-decoration: none;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .create-button:hover {
+          background: #1d4ed8;
+        }
+
+        .filters {
+          display: flex;
+          gap: 16px;
+          align-items: flex-end;
+          margin-bottom: 24px;
+          flex-wrap: wrap;
+        }
+
+        .filter-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .filter-group label {
+          font-size: 13px;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        .filter-group select {
+          padding: 8px 32px 8px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 14px;
+          background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") no-repeat right 8px center;
+          background-size: 16px;
+          appearance: none;
+          cursor: pointer;
+        }
+
+        .filter-stats {
+          margin-left: auto;
+          font-size: 14px;
+          color: #6b7280;
+        }
+
+        .table-container {
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .listings-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .listings-table th {
+          text-align: left;
+          padding: 12px 16px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #6b7280;
+          background: #f9fafb;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
+          margin-top: 24px;
+        }
+
+        .pagination button {
+          padding: 8px 16px;
+          border: 1px solid #d1d5db;
+          background: #fff;
+          border-radius: 6px;
+          font-size: 14px;
+          cursor: pointer;
+        }
+
+        .pagination button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .pagination span {
+          font-size: 14px;
+          color: #6b7280;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ListingRow({ listing }: { listing: AgencyListing }) {
+  const statusConfig: Record<AgencyListingStatus, { label: string; color: string; bg: string }> = {
+    active: { label: 'Active', color: '#10b981', bg: '#d1fae5' },
+    draft: { label: 'Draft', color: '#6b7280', bg: '#e5e7eb' },
+    pending: { label: 'Pending', color: '#f59e0b', bg: '#fef3c7' },
+    sold: { label: 'Sold', color: '#8b5cf6', bg: '#ede9fe' },
+    rented: { label: 'Rented', color: '#06b6d4', bg: '#cffafe' },
+    withdrawn: { label: 'Withdrawn', color: '#ef4444', bg: '#fee2e2' },
+  };
+
+  const status = statusConfig[listing.status];
+
+  const formatPrice = (price: number, currency: string) =>
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(price);
+
+  return (
+    <tr className="listing-row">
+      <td className="property-cell">
+        <div className="property-info">
+          {listing.primaryPhotoUrl && (
+            <img src={listing.primaryPhotoUrl} alt={listing.title} className="property-image" />
+          )}
+          <div>
+            <span className="property-title">{listing.title}</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span className="type-badge">{listing.transactionType === 'sale' ? 'Sale' : 'Rent'}</span>
+      </td>
+      <td className="price-cell">{formatPrice(listing.price, listing.currency)}</td>
+      <td>
+        <span className="status-badge" style={{ color: status.color, backgroundColor: status.bg }}>
+          {status.label}
+        </span>
+      </td>
+      <td>{listing.realtorName}</td>
+      <td>{listing.views}</td>
+      <td>{listing.inquiries}</td>
+      <td className="date-cell">{new Date(listing.updatedAt).toLocaleDateString()}</td>
+      <td>
+        <div className="actions">
+          <Link href={`/listings/${listing.slug}`} className="action-link">
+            View
+          </Link>
+          <Link href={`/listings/${listing.slug}/edit`} className="action-link">
+            Edit
+          </Link>
+        </div>
+      </td>
+
+      <style jsx>{`
+        .listing-row {
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .listing-row:hover {
+          background: #f9fafb;
+        }
+
+        .listing-row td {
+          padding: 16px;
+          font-size: 14px;
+          color: #374151;
+        }
+
+        .property-cell {
+          max-width: 300px;
+        }
+
+        .property-info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .property-image {
+          width: 48px;
+          height: 36px;
+          object-fit: cover;
+          border-radius: 6px;
+        }
+
+        .property-title {
+          font-weight: 500;
+          color: #111827;
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .type-badge {
+          padding: 4px 10px;
+          background: #f3f4f6;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        .price-cell {
+          font-weight: 600;
+          color: #111827;
+        }
+
+        .status-badge {
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .date-cell {
+          color: #6b7280;
+        }
+
+        .actions {
+          display: flex;
+          gap: 12px;
+        }
+
+        .action-link {
+          font-size: 14px;
+          color: #2563eb;
+          text-decoration: none;
+        }
+
+        .action-link:hover {
+          text-decoration: underline;
+        }
+      `}</style>
+    </tr>
+  );
+}
+
+function ListingsTableSkeleton() {
+  return (
+    <div className="skeleton">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={`skel-${i}`} className="skeleton-row" />
+      ))}
+      <style jsx>{`
+        .skeleton {
+          padding: 16px;
+        }
+        .skeleton-row {
+          height: 64px;
+          background: #e5e7eb;
+          border-radius: 8px;
+          margin-bottom: 8px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="empty-state">
+      <svg
+        width="64"
+        height="64"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#9ca3af"
+        strokeWidth="1.5"
+        aria-hidden="true"
+      >
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+      <h3>No listings found</h3>
+      <p>Create your first listing to get started.</p>
+      <Link href="/listings/create" className="create-button">
+        Create Listing
+      </Link>
+      <style jsx>{`
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 64px 24px;
+          text-align: center;
+        }
+        h3 {
+          font-size: 1.25rem;
+          color: #111827;
+          margin: 24px 0 8px;
+        }
+        p {
+          color: #6b7280;
+          margin: 0 0 24px;
+        }
+        .create-button {
+          padding: 12px 24px;
+          background: #2563eb;
+          color: #fff;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 500;
+        }
+      `}</style>
+    </div>
+  );
+}
