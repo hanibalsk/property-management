@@ -1,0 +1,1189 @@
+/**
+ * CsvImport Component
+ *
+ * Bulk import listings from CSV (Epic 46, Story 46.1).
+ */
+
+'use client';
+
+import type { ColumnMapping, CsvImportPreview, CsvValidationError } from '@ppt/reality-api-client';
+import { useCsvImport, useCsvPreview, useMyAgency } from '@ppt/reality-api-client';
+import { useCallback, useState } from 'react';
+
+const REQUIRED_FIELDS = ['title', 'propertyType', 'transactionType', 'price'];
+const OPTIONAL_FIELDS = [
+  'description',
+  'currency',
+  'address',
+  'city',
+  'postalCode',
+  'rooms',
+  'bathrooms',
+  'size',
+  'yearBuilt',
+  'features',
+  'photos',
+];
+
+type ImportStep = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
+
+export function CsvImport() {
+  const [step, setStep] = useState<ImportStep>('upload');
+  const [file, setFile] = useState<File | null>(null);
+  const [mapping, setMapping] = useState<Partial<ColumnMapping>>({});
+  const [skipInvalid, setSkipInvalid] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const { data: agency } = useMyAgency();
+  const {
+    data: preview,
+    isLoading: isPreviewLoading,
+    error: previewError,
+  } = useCsvPreview(agency?.id || '', file);
+  const importMutation = useCsvImport(agency?.id || '');
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile?.type === 'text/csv' || droppedFile?.name.endsWith('.csv')) {
+      setFile(droppedFile);
+      setStep('mapping');
+    }
+  }, []);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setStep('mapping');
+    }
+  }, []);
+
+  const handleMappingChange = (field: keyof ColumnMapping, value: string) => {
+    setMapping((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const isMappingComplete = REQUIRED_FIELDS.every((field) => mapping[field as keyof ColumnMapping]);
+
+  const handleStartImport = async () => {
+    if (!file || !isMappingComplete) return;
+    setStep('importing');
+
+    try {
+      await importMutation.mutateAsync({
+        file,
+        mapping: mapping as ColumnMapping,
+        skipInvalid,
+      });
+      setStep('complete');
+    } catch {
+      setStep('preview');
+    }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setMapping({});
+    setStep('upload');
+    importMutation.reset();
+  };
+
+  return (
+    <div className="csv-import">
+      {/* Progress Steps */}
+      <div className="steps">
+        <Step number={1} label="Upload" active={step === 'upload'} complete={step !== 'upload'} />
+        <StepConnector complete={step !== 'upload'} />
+        <Step
+          number={2}
+          label="Map Columns"
+          active={step === 'mapping'}
+          complete={['preview', 'importing', 'complete'].includes(step)}
+        />
+        <StepConnector complete={['preview', 'importing', 'complete'].includes(step)} />
+        <Step
+          number={3}
+          label="Preview"
+          active={step === 'preview'}
+          complete={['importing', 'complete'].includes(step)}
+        />
+        <StepConnector complete={['importing', 'complete'].includes(step)} />
+        <Step
+          number={4}
+          label="Import"
+          active={step === 'importing' || step === 'complete'}
+          complete={step === 'complete'}
+        />
+      </div>
+
+      {/* Step Content */}
+      <div className="step-content">
+        {step === 'upload' && (
+          <UploadStep
+            isDragging={isDragging}
+            onDragEnter={() => setIsDragging(true)}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            onFileSelect={handleFileSelect}
+          />
+        )}
+
+        {step === 'mapping' && preview && (
+          <MappingStep
+            preview={preview}
+            mapping={mapping}
+            onMappingChange={handleMappingChange}
+            isComplete={isMappingComplete}
+            onNext={() => setStep('preview')}
+            onBack={handleReset}
+            isLoading={isPreviewLoading}
+          />
+        )}
+
+        {step === 'mapping' && isPreviewLoading && <LoadingState message="Analyzing CSV file..." />}
+        {step === 'mapping' && previewError && (
+          <ErrorState message="Failed to parse CSV file" onRetry={handleReset} />
+        )}
+
+        {step === 'preview' && preview && (
+          <PreviewStep
+            preview={preview}
+            mapping={mapping as ColumnMapping}
+            skipInvalid={skipInvalid}
+            onSkipInvalidChange={setSkipInvalid}
+            onStartImport={handleStartImport}
+            onBack={() => setStep('mapping')}
+          />
+        )}
+
+        {step === 'importing' && <ImportingState />}
+
+        {step === 'complete' && importMutation.data && (
+          <CompleteStep result={importMutation.data} onNewImport={handleReset} />
+        )}
+
+        {importMutation.error && (
+          <ErrorState
+            message="Import failed. Please try again."
+            onRetry={() => setStep('preview')}
+          />
+        )}
+      </div>
+
+      <style jsx>{`
+        .csv-import {
+          padding: 24px;
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        .steps {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 32px;
+        }
+
+        .step-content {
+          background: #fff;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 32px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function Step({
+  number,
+  label,
+  active,
+  complete,
+}: { number: number; label: string; active: boolean; complete: boolean }) {
+  return (
+    <div className={`step ${active ? 'active' : ''} ${complete ? 'complete' : ''}`}>
+      <div className="step-number">
+        {complete ? (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            aria-hidden="true"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          number
+        )}
+      </div>
+      <span className="step-label">{label}</span>
+
+      <style jsx>{`
+        .step {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .step-number {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 14px;
+          background: #e5e7eb;
+          color: #6b7280;
+        }
+
+        .step.active .step-number {
+          background: #2563eb;
+          color: #fff;
+        }
+
+        .step.complete .step-number {
+          background: #10b981;
+          color: #fff;
+        }
+
+        .step-label {
+          font-size: 14px;
+          color: #6b7280;
+        }
+
+        .step.active .step-label {
+          color: #111827;
+          font-weight: 500;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function StepConnector({ complete }: { complete: boolean }) {
+  return (
+    <div className={`connector ${complete ? 'complete' : ''}`}>
+      <style jsx>{`
+        .connector {
+          width: 48px;
+          height: 2px;
+          background: #e5e7eb;
+          margin: 0 8px;
+        }
+
+        .connector.complete {
+          background: #10b981;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function UploadStep({
+  isDragging,
+  onDragEnter,
+  onDragLeave,
+  onDrop,
+  onFileSelect,
+}: {
+  isDragging: boolean;
+  onDragEnter: () => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div
+      className={`upload-zone ${isDragging ? 'dragging' : ''}`}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDrop}
+    >
+      <svg
+        width="64"
+        height="64"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#9ca3af"
+        strokeWidth="1.5"
+        aria-hidden="true"
+      >
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="17 8 12 3 7 8" />
+        <line x1="12" y1="3" x2="12" y2="15" />
+      </svg>
+      <h3>Drag and drop your CSV file</h3>
+      <p>or click to browse</p>
+      <label className="browse-button">
+        Browse Files
+        <input type="file" accept=".csv,text/csv" onChange={onFileSelect} hidden />
+      </label>
+      <p className="hint">Supported format: CSV (.csv)</p>
+
+      <style jsx>{`
+        .upload-zone {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 64px 24px;
+          border: 2px dashed #d1d5db;
+          border-radius: 12px;
+          text-align: center;
+          transition: all 0.2s;
+        }
+
+        .upload-zone.dragging {
+          border-color: #2563eb;
+          background: #eff6ff;
+        }
+
+        h3 {
+          font-size: 1.25rem;
+          color: #111827;
+          margin: 24px 0 8px;
+        }
+
+        p {
+          color: #6b7280;
+          margin: 0 0 16px;
+        }
+
+        .browse-button {
+          padding: 12px 24px;
+          background: #2563eb;
+          color: #fff;
+          border-radius: 8px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s;
+        }
+
+        .browse-button:hover {
+          background: #1d4ed8;
+        }
+
+        .hint {
+          margin-top: 24px;
+          font-size: 13px;
+          color: #9ca3af;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function MappingStep({
+  preview,
+  mapping,
+  onMappingChange,
+  isComplete,
+  onNext,
+  onBack,
+  isLoading,
+}: {
+  preview: CsvImportPreview;
+  mapping: Partial<ColumnMapping>;
+  onMappingChange: (field: keyof ColumnMapping, value: string) => void;
+  isComplete: boolean;
+  onNext: () => void;
+  onBack: () => void;
+  isLoading: boolean;
+}) {
+  const allFields = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS];
+
+  return (
+    <div className="mapping-step">
+      <h2>Map CSV Columns</h2>
+      <p className="subtitle">Match your CSV columns to listing fields</p>
+
+      <div className="mapping-info">
+        <span className="file-info">
+          <strong>{preview.totalRows}</strong> rows found
+        </span>
+        {preview.errors.length > 0 && (
+          <span className="error-count">{preview.errors.length} validation issues</span>
+        )}
+      </div>
+
+      <div className="mapping-grid">
+        {allFields.map((field) => (
+          <div key={field} className="mapping-row">
+            <label htmlFor={`map-${field}`} className="field-label">
+              {formatFieldName(field)}
+              {REQUIRED_FIELDS.includes(field) && <span className="required">*</span>}
+            </label>
+            <select
+              id={`map-${field}`}
+              value={mapping[field as keyof ColumnMapping] || ''}
+              onChange={(e) => onMappingChange(field as keyof ColumnMapping, e.target.value)}
+              disabled={isLoading}
+            >
+              <option value="">-- Select column --</option>
+              {preview.headers.map((header) => (
+                <option key={header} value={header}>
+                  {header}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      </div>
+
+      <div className="actions">
+        <button type="button" className="secondary" onClick={onBack}>
+          Back
+        </button>
+        <button type="button" className="primary" onClick={onNext} disabled={!isComplete}>
+          Preview Import
+        </button>
+      </div>
+
+      <style jsx>{`
+        .mapping-step h2 {
+          font-size: 1.5rem;
+          color: #111827;
+          margin: 0 0 8px;
+        }
+
+        .subtitle {
+          color: #6b7280;
+          margin: 0 0 24px;
+        }
+
+        .mapping-info {
+          display: flex;
+          gap: 16px;
+          margin-bottom: 24px;
+          padding: 12px 16px;
+          background: #f9fafb;
+          border-radius: 8px;
+        }
+
+        .file-info {
+          font-size: 14px;
+          color: #374151;
+        }
+
+        .error-count {
+          font-size: 14px;
+          color: #dc2626;
+        }
+
+        .mapping-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .mapping-row {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .field-label {
+          font-size: 13px;
+          font-weight: 500;
+          color: #374151;
+        }
+
+        .required {
+          color: #dc2626;
+          margin-left: 2px;
+        }
+
+        select {
+          padding: 10px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          font-size: 14px;
+          background: #fff;
+        }
+
+        select:focus {
+          outline: none;
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .actions {
+          display: flex;
+          justify-content: space-between;
+          padding-top: 24px;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        button {
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .secondary {
+          background: #fff;
+          border: 1px solid #d1d5db;
+          color: #374151;
+        }
+
+        .secondary:hover {
+          background: #f9fafb;
+        }
+
+        .primary {
+          background: #2563eb;
+          border: none;
+          color: #fff;
+        }
+
+        .primary:hover:not(:disabled) {
+          background: #1d4ed8;
+        }
+
+        .primary:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 640px) {
+          .mapping-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function PreviewStep({
+  preview,
+  mapping,
+  skipInvalid,
+  onSkipInvalidChange,
+  onStartImport,
+  onBack,
+}: {
+  preview: CsvImportPreview;
+  mapping: ColumnMapping;
+  skipInvalid: boolean;
+  onSkipInvalidChange: (value: boolean) => void;
+  onStartImport: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <div className="preview-step">
+      <h2>Preview Import</h2>
+      <p className="subtitle">Review your data before importing</p>
+
+      <div className="summary-cards">
+        <div className="summary-card">
+          <span className="value">{preview.totalRows}</span>
+          <span className="label">Total Rows</span>
+        </div>
+        <div className="summary-card success">
+          <span className="value">{preview.validRows}</span>
+          <span className="label">Valid</span>
+        </div>
+        <div className="summary-card error">
+          <span className="value">{preview.invalidRows}</span>
+          <span className="label">Invalid</span>
+        </div>
+      </div>
+
+      {/* Sample Preview */}
+      {preview.sampleData.length > 0 && (
+        <div className="sample-section">
+          <h3>Sample Data Preview</h3>
+          <div className="sample-table-container">
+            <table className="sample-table">
+              <thead>
+                <tr>
+                  {Object.keys(mapping)
+                    .filter((k) => mapping[k as keyof ColumnMapping])
+                    .map((field) => (
+                      <th key={field}>{formatFieldName(field)}</th>
+                    ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.sampleData.slice(0, 3).map((row, i) => (
+                  <tr key={`row-${i}-${Object.values(row).join('-')}`}>
+                    {Object.entries(mapping)
+                      .filter(([, csvCol]) => csvCol)
+                      .map(([field, csvCol]) => (
+                        <td key={`${field}-${csvCol}`}>{row[csvCol as string] || '-'}</td>
+                      ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Validation Errors */}
+      {preview.errors.length > 0 && (
+        <div className="errors-section">
+          <h3>Validation Issues ({preview.errors.length})</h3>
+          <div className="errors-list">
+            {preview.errors.slice(0, 10).map((error: CsvValidationError, i) => (
+              <div
+                key={`err-${error.row}-${error.column}-${i}`}
+                className={`error-item ${error.severity}`}
+              >
+                <span className="error-location">
+                  Row {error.row}, {error.column}:
+                </span>
+                <span className="error-message">{error.message}</span>
+              </div>
+            ))}
+            {preview.errors.length > 10 && (
+              <p className="more-errors">... and {preview.errors.length - 10} more issues</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Skip Invalid Option */}
+      {preview.invalidRows > 0 && (
+        <label className="skip-option">
+          <input
+            type="checkbox"
+            checked={skipInvalid}
+            onChange={(e) => onSkipInvalidChange(e.target.checked)}
+          />
+          <span>Skip invalid rows and import only valid data ({preview.validRows} rows)</span>
+        </label>
+      )}
+
+      <div className="actions">
+        <button type="button" className="secondary" onClick={onBack}>
+          Back to Mapping
+        </button>
+        <button
+          type="button"
+          className="primary"
+          onClick={onStartImport}
+          disabled={preview.validRows === 0}
+        >
+          Import {skipInvalid ? preview.validRows : preview.totalRows} Listings
+        </button>
+      </div>
+
+      <style jsx>{`
+        .preview-step h2 {
+          font-size: 1.5rem;
+          color: #111827;
+          margin: 0 0 8px;
+        }
+
+        .subtitle {
+          color: #6b7280;
+          margin: 0 0 24px;
+        }
+
+        .summary-cards {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .summary-card {
+          padding: 20px;
+          background: #f9fafb;
+          border-radius: 12px;
+          text-align: center;
+        }
+
+        .summary-card .value {
+          display: block;
+          font-size: 2rem;
+          font-weight: bold;
+          color: #111827;
+        }
+
+        .summary-card .label {
+          font-size: 14px;
+          color: #6b7280;
+        }
+
+        .summary-card.success {
+          background: #d1fae5;
+        }
+
+        .summary-card.success .value {
+          color: #059669;
+        }
+
+        .summary-card.error {
+          background: #fee2e2;
+        }
+
+        .summary-card.error .value {
+          color: #dc2626;
+        }
+
+        .sample-section,
+        .errors-section {
+          margin-bottom: 24px;
+        }
+
+        h3 {
+          font-size: 1rem;
+          color: #111827;
+          margin: 0 0 12px;
+        }
+
+        .sample-table-container {
+          overflow-x: auto;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+        }
+
+        .sample-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+        }
+
+        .sample-table th,
+        .sample-table td {
+          padding: 10px 12px;
+          text-align: left;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .sample-table th {
+          background: #f9fafb;
+          font-weight: 600;
+          color: #374151;
+        }
+
+        .sample-table td {
+          color: #6b7280;
+          max-width: 200px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .errors-list {
+          border: 1px solid #fecaca;
+          border-radius: 8px;
+          background: #fef2f2;
+        }
+
+        .error-item {
+          padding: 10px 12px;
+          border-bottom: 1px solid #fecaca;
+          font-size: 13px;
+        }
+
+        .error-item:last-child {
+          border-bottom: none;
+        }
+
+        .error-item.warning {
+          background: #fffbeb;
+          border-color: #fde68a;
+        }
+
+        .error-location {
+          font-weight: 500;
+          color: #991b1b;
+          margin-right: 8px;
+        }
+
+        .error-message {
+          color: #dc2626;
+        }
+
+        .more-errors {
+          padding: 10px 12px;
+          margin: 0;
+          font-size: 13px;
+          color: #991b1b;
+          font-style: italic;
+        }
+
+        .skip-option {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 16px;
+          background: #f9fafb;
+          border-radius: 8px;
+          margin-bottom: 24px;
+          cursor: pointer;
+        }
+
+        .skip-option input {
+          width: 18px;
+          height: 18px;
+        }
+
+        .skip-option span {
+          font-size: 14px;
+          color: #374151;
+        }
+
+        .actions {
+          display: flex;
+          justify-content: space-between;
+          padding-top: 24px;
+          border-top: 1px solid #e5e7eb;
+        }
+
+        button {
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .secondary {
+          background: #fff;
+          border: 1px solid #d1d5db;
+          color: #374151;
+        }
+
+        .secondary:hover {
+          background: #f9fafb;
+        }
+
+        .primary {
+          background: #2563eb;
+          border: none;
+          color: #fff;
+        }
+
+        .primary:hover:not(:disabled) {
+          background: #1d4ed8;
+        }
+
+        .primary:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ImportingState() {
+  return (
+    <div className="importing-state">
+      <div className="spinner" />
+      <h3>Importing listings...</h3>
+      <p>Please wait while we process your data.</p>
+
+      <style jsx>{`
+        .importing-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 64px 24px;
+          text-align: center;
+        }
+
+        .spinner {
+          width: 48px;
+          height: 48px;
+          border: 3px solid #e5e7eb;
+          border-top-color: #2563eb;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        h3 {
+          font-size: 1.25rem;
+          color: #111827;
+          margin: 24px 0 8px;
+        }
+
+        p {
+          color: #6b7280;
+          margin: 0;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function CompleteStep({
+  result,
+  onNewImport,
+}: {
+  result: { successCount: number; failedCount: number; skippedCount: number };
+  onNewImport: () => void;
+}) {
+  return (
+    <div className="complete-state">
+      <svg
+        width="64"
+        height="64"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#10b981"
+        strokeWidth="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="16 8 10 14 8 12" />
+      </svg>
+      <h3>Import Complete!</h3>
+
+      <div className="result-summary">
+        <div className="result-item success">
+          <span className="value">{result.successCount}</span>
+          <span className="label">Imported</span>
+        </div>
+        {result.failedCount > 0 && (
+          <div className="result-item error">
+            <span className="value">{result.failedCount}</span>
+            <span className="label">Failed</span>
+          </div>
+        )}
+        {result.skippedCount > 0 && (
+          <div className="result-item warning">
+            <span className="value">{result.skippedCount}</span>
+            <span className="label">Skipped</span>
+          </div>
+        )}
+      </div>
+
+      <div className="actions">
+        <a href="/agency/listings" className="view-button">
+          View Listings
+        </a>
+        <button type="button" onClick={onNewImport} className="new-import">
+          Import More
+        </button>
+      </div>
+
+      <style jsx>{`
+        .complete-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 48px 24px;
+          text-align: center;
+        }
+
+        h3 {
+          font-size: 1.5rem;
+          color: #111827;
+          margin: 24px 0;
+        }
+
+        .result-summary {
+          display: flex;
+          gap: 24px;
+          margin-bottom: 32px;
+        }
+
+        .result-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 16px 24px;
+          border-radius: 12px;
+        }
+
+        .result-item .value {
+          font-size: 2rem;
+          font-weight: bold;
+        }
+
+        .result-item .label {
+          font-size: 14px;
+        }
+
+        .result-item.success {
+          background: #d1fae5;
+        }
+
+        .result-item.success .value {
+          color: #059669;
+        }
+
+        .result-item.success .label {
+          color: #047857;
+        }
+
+        .result-item.error {
+          background: #fee2e2;
+        }
+
+        .result-item.error .value {
+          color: #dc2626;
+        }
+
+        .result-item.error .label {
+          color: #b91c1c;
+        }
+
+        .result-item.warning {
+          background: #fef3c7;
+        }
+
+        .result-item.warning .value {
+          color: #d97706;
+        }
+
+        .result-item.warning .label {
+          color: #b45309;
+        }
+
+        .actions {
+          display: flex;
+          gap: 16px;
+        }
+
+        .view-button,
+        .new-import {
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          text-decoration: none;
+        }
+
+        .view-button {
+          background: #2563eb;
+          color: #fff;
+        }
+
+        .new-import {
+          background: #fff;
+          border: 1px solid #d1d5db;
+          color: #374151;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function LoadingState({ message }: { message: string }) {
+  return (
+    <div className="loading-state">
+      <div className="spinner" />
+      <p>{message}</p>
+
+      <style jsx>{`
+        .loading-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 64px 24px;
+        }
+
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid #e5e7eb;
+          border-top-color: #2563eb;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        p {
+          margin-top: 16px;
+          color: #6b7280;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="error-state">
+      <svg
+        width="48"
+        height="48"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#dc2626"
+        strokeWidth="2"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <h3>Something went wrong</h3>
+      <p>{message}</p>
+      <button type="button" onClick={onRetry}>
+        Try Again
+      </button>
+
+      <style jsx>{`
+        .error-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 64px 24px;
+          text-align: center;
+        }
+
+        h3 {
+          font-size: 1.25rem;
+          color: #111827;
+          margin: 24px 0 8px;
+        }
+
+        p {
+          color: #6b7280;
+          margin: 0 0 24px;
+        }
+
+        button {
+          padding: 12px 24px;
+          background: #2563eb;
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          font-weight: 500;
+          cursor: pointer;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function formatFieldName(field: string): string {
+  return field
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
+}

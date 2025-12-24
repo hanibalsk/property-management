@@ -34,5 +34,8 @@ export type {
 } from './agency/types';
 export * from './agency/hooks';
 
+// Import module - property import functionality (Epic 46)
+export * from './import';
+
 // API version
 export const REALITY_API_VERSION = '1.0.0';
