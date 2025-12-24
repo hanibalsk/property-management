@@ -26,50 +26,18 @@ export default async function ComparePage({ searchParams }: ComparePageProps) {
   return (
     <>
       <Header />
-      <main className="compare-page">
-        <div className="container">
-          <div className="page-header">
-            <h1>Compare Properties</h1>
-            <p>See how your selected properties stack up against each other.</p>
+      <main className="min-h-screen bg-gray-50">
+        <div className="mx-auto max-w-[1200px] px-6">
+          <div className="border-b border-gray-200 bg-white py-8 -mx-6 px-6 mb-6">
+            <h1 className="text-[28px] font-bold text-gray-900 mb-2">Compare Properties</h1>
+            <p className="text-gray-500">
+              See how your selected properties stack up against each other.
+            </p>
           </div>
           {/* Handle shared URL ids parameter */}
           <ComparisonUrlHandler sharedIds={sharedIds} />
           <ComparisonView />
         </div>
-
-        <style jsx>{`
-          .compare-page {
-            min-height: 100vh;
-            background: #f9fafb;
-          }
-
-          .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 24px;
-          }
-
-          .page-header {
-            padding: 32px 0;
-            border-bottom: 1px solid #e5e7eb;
-            background: white;
-            margin: 0 -24px 24px;
-            padding-left: 24px;
-            padding-right: 24px;
-          }
-
-          h1 {
-            font-size: 28px;
-            font-weight: bold;
-            color: #111827;
-            margin: 0 0 8px;
-          }
-
-          p {
-            color: #6b7280;
-            margin: 0;
-          }
-        `}</style>
       </main>
     </>
   );
