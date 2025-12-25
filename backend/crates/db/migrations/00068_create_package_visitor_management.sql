@@ -50,7 +50,7 @@ CREATE TYPE visitor_purpose AS ENUM (
 
 CREATE TABLE packages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     building_id UUID NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
     unit_id UUID NOT NULL REFERENCES units(id) ON DELETE CASCADE,
     resident_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -96,7 +96,7 @@ CREATE INDEX idx_packages_expected_date ON packages(expected_date);
 
 CREATE TABLE visitors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     building_id UUID NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
     unit_id UUID NOT NULL REFERENCES units(id) ON DELETE CASCADE,
     host_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -186,7 +186,7 @@ CREATE INDEX idx_visitor_access_logs_performed_at ON visitor_access_logs(perform
 
 CREATE TABLE building_package_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     building_id UUID NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
 
     -- Package policies
@@ -216,7 +216,7 @@ CREATE INDEX idx_building_package_settings_tenant_building ON building_package_s
 
 CREATE TABLE building_visitor_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     building_id UUID NOT NULL REFERENCES buildings(id) ON DELETE CASCADE,
 
     -- Access code settings
