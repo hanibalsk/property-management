@@ -50,7 +50,8 @@ export function ArticleReactions({
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Article reactions">
+    <fieldset className="flex items-center gap-2 flex-wrap border-0 p-0 m-0">
+      <legend className="sr-only">Article reactions</legend>
       {(Object.keys(reactionEmojis) as ReactionType[]).map((reaction) => {
         const count = reactionCounts[reaction];
         const isActive = userReaction === reaction;
@@ -89,6 +90,6 @@ export function ArticleReactions({
           {reactionCounts.total} {reactionCounts.total === 1 ? 'reaction' : 'reactions'}
         </span>
       )}
-    </div>
+    </fieldset>
   );
 }

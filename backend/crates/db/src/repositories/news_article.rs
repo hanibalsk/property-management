@@ -150,9 +150,8 @@ impl NewsArticleRepository {
         organization_id: Uuid,
         query: &ArticleListQuery,
     ) -> Result<i64, SqlxError> {
-        let mut sql = String::from(
-            "SELECT COUNT(*) as count FROM news_articles WHERE organization_id = $1",
-        );
+        let mut sql =
+            String::from("SELECT COUNT(*) as count FROM news_articles WHERE organization_id = $1");
 
         let mut param_count = 1;
 
@@ -355,13 +354,11 @@ impl NewsArticleRepository {
                 Ok(true)
             } else {
                 // Same reaction type, so toggle it off by deleting.
-                sqlx::query(
-                    "DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2",
-                )
-                .bind(article_id)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await?;
+                sqlx::query("DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2")
+                    .bind(article_id)
+                    .bind(user_id)
+                    .execute(&self.pool)
+                    .await?;
                 Ok(false)
             }
         }
