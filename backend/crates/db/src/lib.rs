@@ -17,6 +17,9 @@ pub use tenant_context::{
     clear_request_context, set_request_context, set_tenant_context, user_has_permission,
 };
 
+// Re-export repositories for direct import
+pub use repositories::FormRepository;
+
 /// Create database connection pool.
 pub async fn create_pool(database_url: &str) -> Result<DbPool, sqlx::Error> {
     PgPoolOptions::new()
