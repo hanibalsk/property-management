@@ -457,6 +457,49 @@ async fn create_form(
 
     let repo = &state.form_repo;
 
+    // Validate and convert fields, returning error on malformed JSON
+    let mut fields = Vec::new();
+    for f in req.fields {
+        // Validate validation_rules JSON if present
+        let validation_rules = match f.validation_rules {
+            Some(v) => {
+                Some(serde_json::from_value(v).map_err(|e| {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        Json(ErrorResponse::new(
+                            "INVALID_VALIDATION_RULES",
+                            &format!("Invalid validation rules JSON for field '{}': {}", f.field_key, e),
+                        )),
+                    )
+                })?)
+            }
+            None => None,
+        };
+
+        fields.push(CreateFormField {
+            field_key: f.field_key,
+            label: f.label,
+            field_type: f.field_type,
+            required: f.required,
+            help_text: f.help_text,
+            placeholder: f.placeholder,
+            default_value: f.default_value,
+            validation_rules,
+            options: f.options.map(|opts| {
+                opts.into_iter()
+                    .map(|o| db::models::FieldOption {
+                        value: o.value,
+                        label: o.label,
+                    })
+                    .collect()
+            }),
+            field_order: f.field_order,
+            width: f.width,
+            section: f.section,
+            conditional_display: None,
+        });
+    }
+
     // Convert request to domain model
     let create_data = CreateForm {
         title: req.title,
@@ -469,34 +512,7 @@ async fn create_form(
         allow_multiple_submissions: req.allow_multiple_submissions,
         submission_deadline: req.submission_deadline,
         confirmation_message: req.confirmation_message,
-        fields: req
-            .fields
-            .into_iter()
-            .map(|f| CreateFormField {
-                field_key: f.field_key,
-                label: f.label,
-                field_type: f.field_type,
-                required: f.required,
-                help_text: f.help_text,
-                placeholder: f.placeholder,
-                default_value: f.default_value,
-                validation_rules: f
-                    .validation_rules
-                    .map(|v| serde_json::from_value(v).unwrap_or_default()),
-                options: f.options.map(|opts| {
-                    opts.into_iter()
-                        .map(|o| db::models::FieldOption {
-                            value: o.value,
-                            label: o.label,
-                        })
-                        .collect()
-                }),
-                field_order: f.field_order,
-                width: f.width,
-                section: f.section,
-                conditional_display: None,
-            })
-            .collect(),
+        fields,
     };
 
     let form = repo
