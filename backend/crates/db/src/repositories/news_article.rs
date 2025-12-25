@@ -79,6 +79,45 @@ impl NewsArticleRepository {
         Ok(vec![])
     }
 
+    /// Count articles matching the given query (for pagination).
+    pub async fn count(&self, query: &ArticleListQuery) -> Result<i64, SqlxError> {
+        // Build dynamic WHERE clause
+        let mut conditions = vec!["1=1".to_string()];
+        let mut param_idx = 1;
+
+        if query.status.is_some() {
+            conditions.push(format!("status = ${}", param_idx));
+            param_idx += 1;
+        }
+        if query.building_id.is_some() {
+            conditions.push(format!("building_ids @> ${}", param_idx));
+            param_idx += 1;
+        }
+        if let Some(true) = query.pinned_only {
+            conditions.push("pinned = true".to_string());
+        }
+
+        let where_clause = conditions.join(" AND ");
+        let sql = format!(
+            "SELECT COUNT(*) as count FROM news_articles WHERE {}",
+            where_clause
+        );
+
+        let mut query_builder = sqlx::query_scalar::<_, i64>(&sql);
+
+        if let Some(ref status) = query.status {
+            query_builder = query_builder.bind(status);
+        }
+        if let Some(building_id) = query.building_id {
+            // Convert building_id to a JSON array for the @> operator
+            let building_ids_json = serde_json::json!([building_id]);
+            query_builder = query_builder.bind(building_ids_json);
+        }
+
+        let count = query_builder.fetch_one(&self.pool).await?;
+        Ok(count)
+    }
+
     pub async fn update(
         &self,
         id: Uuid,
