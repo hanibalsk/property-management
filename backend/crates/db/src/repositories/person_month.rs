@@ -290,4 +290,123 @@ impl PersonMonthRepository {
 
         Ok(count.0 as i32)
     }
+
+    // ========================================================================
+    // Epic 55: Reporting Analytics
+    // ========================================================================
+
+    /// Get occupancy report data (Epic 55, Story 55.3).
+    pub async fn get_occupancy_report(
+        &self,
+        organization_id: Uuid,
+        building_id: Option<Uuid>,
+        from_date: chrono::NaiveDate,
+        to_date: chrono::NaiveDate,
+    ) -> Result<crate::models::reports::OccupancyReportData, SqlxError> {
+        // Get total units count
+        let (total_units,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM units u
+            JOIN buildings b ON u.building_id = b.id
+            WHERE b.organization_id = $1
+              AND ($2::uuid IS NULL OR u.building_id = $2)
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Get occupied units (units with person_months in the period)
+        let (occupied_units,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(DISTINCT pm.unit_id) FROM person_months pm
+            JOIN units u ON pm.unit_id = u.id
+            JOIN buildings b ON u.building_id = b.id
+            WHERE b.organization_id = $1
+              AND ($2::uuid IS NULL OR u.building_id = $2)
+              AND (pm.year > EXTRACT(YEAR FROM $3::date) OR
+                   (pm.year = EXTRACT(YEAR FROM $3::date) AND pm.month >= EXTRACT(MONTH FROM $3::date)))
+              AND (pm.year < EXTRACT(YEAR FROM $4::date) OR
+                   (pm.year = EXTRACT(YEAR FROM $4::date) AND pm.month <= EXTRACT(MONTH FROM $4::date)))
+              AND pm.person_count > 0
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .bind(from_date)
+        .bind(to_date)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Get total person months
+        let (total_person_months,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COALESCE(SUM(pm.person_count), 0) FROM person_months pm
+            JOIN units u ON pm.unit_id = u.id
+            JOIN buildings b ON u.building_id = b.id
+            WHERE b.organization_id = $1
+              AND ($2::uuid IS NULL OR u.building_id = $2)
+              AND (pm.year > EXTRACT(YEAR FROM $3::date) OR
+                   (pm.year = EXTRACT(YEAR FROM $3::date) AND pm.month >= EXTRACT(MONTH FROM $3::date)))
+              AND (pm.year < EXTRACT(YEAR FROM $4::date) OR
+                   (pm.year = EXTRACT(YEAR FROM $4::date) AND pm.month <= EXTRACT(MONTH FROM $4::date)))
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .bind(from_date)
+        .bind(to_date)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Get monthly totals
+        let monthly_totals = sqlx::query_as::<_, crate::models::reports::ReportMonthlyCount>(
+            r#"
+            SELECT pm.year, pm.month, SUM(pm.person_count)::int8 as count
+            FROM person_months pm
+            JOIN units u ON pm.unit_id = u.id
+            JOIN buildings b ON u.building_id = b.id
+            WHERE b.organization_id = $1
+              AND ($2::uuid IS NULL OR u.building_id = $2)
+              AND (pm.year > EXTRACT(YEAR FROM $3::date) OR
+                   (pm.year = EXTRACT(YEAR FROM $3::date) AND pm.month >= EXTRACT(MONTH FROM $3::date)))
+              AND (pm.year < EXTRACT(YEAR FROM $4::date) OR
+                   (pm.year = EXTRACT(YEAR FROM $4::date) AND pm.month <= EXTRACT(MONTH FROM $4::date)))
+            GROUP BY pm.year, pm.month
+            ORDER BY pm.year, pm.month
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .bind(from_date)
+        .bind(to_date)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let vacant_units = total_units - occupied_units;
+        let occupancy_rate = if total_units > 0 {
+            (occupied_units as f64 / total_units as f64) * 100.0
+        } else {
+            0.0
+        };
+        let average_occupants_per_unit = if occupied_units > 0 {
+            total_person_months as f64 / occupied_units as f64
+        } else {
+            0.0
+        };
+
+        Ok(crate::models::reports::OccupancyReportData {
+            summary: crate::models::reports::OccupancySummary {
+                total_units,
+                occupied_units,
+                vacant_units,
+                occupancy_rate,
+                total_person_months,
+                average_occupants_per_unit,
+            },
+            by_unit: vec![], // Could be expanded with per-unit details if needed
+            monthly_totals,
+        })
+    }
 }

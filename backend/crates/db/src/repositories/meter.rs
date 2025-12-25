@@ -949,4 +949,148 @@ impl MeterRepository {
         .fetch_optional(&self.pool)
         .await
     }
+
+    // ========================================================================
+    // Epic 55: Reporting Analytics
+    // ========================================================================
+
+    /// Get consumption report data (Epic 55, Story 55.4).
+    pub async fn get_consumption_report(
+        &self,
+        organization_id: Uuid,
+        building_id: Option<Uuid>,
+        utility_type: Option<&str>,
+        from_date: chrono::NaiveDate,
+        to_date: chrono::NaiveDate,
+    ) -> Result<crate::models::reports::ConsumptionReportData, SqlxError> {
+        use rust_decimal::Decimal;
+
+        // Get summary data
+        let (total_consumption, total_cost, meter_count): (Option<Decimal>, Option<Decimal>, i64) =
+            sqlx::query_as(
+                r#"
+            SELECT
+                COALESCE(SUM(mr.consumption), 0),
+                COALESCE(SUM(mr.cost), 0),
+                COUNT(DISTINCT m.id)
+            FROM meter_readings mr
+            JOIN meters m ON mr.meter_id = m.id
+            JOIN units u ON m.unit_id = u.id
+            JOIN buildings b ON u.building_id = b.id
+            WHERE b.organization_id = $1
+              AND ($2::uuid IS NULL OR u.building_id = $2)
+              AND ($3::text IS NULL OR m.meter_type::text = $3)
+              AND mr.reading_date >= $4 AND mr.reading_date <= $5
+            "#,
+            )
+            .bind(organization_id)
+            .bind(building_id)
+            .bind(utility_type)
+            .bind(from_date)
+            .bind(to_date)
+            .fetch_one(&self.pool)
+            .await?;
+
+        // Get unit count for average
+        let (unit_count,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(DISTINCT m.unit_id)
+            FROM meters m
+            JOIN units u ON m.unit_id = u.id
+            JOIN buildings b ON u.building_id = b.id
+            WHERE b.organization_id = $1
+              AND ($2::uuid IS NULL OR u.building_id = $2)
+              AND ($3::text IS NULL OR m.meter_type::text = $3)
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .bind(utility_type)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let total_consumption = total_consumption.unwrap_or(Decimal::ZERO);
+        let total_cost = total_cost.unwrap_or(Decimal::ZERO);
+        let average_consumption_per_unit = if unit_count > 0 {
+            total_consumption / Decimal::from(unit_count)
+        } else {
+            Decimal::ZERO
+        };
+
+        Ok(crate::models::reports::ConsumptionReportData {
+            summary: crate::models::reports::ConsumptionSummary {
+                total_consumption,
+                total_cost,
+                meter_count,
+                average_consumption_per_unit,
+            },
+            by_utility_type: vec![], // Could be expanded with per-type breakdown
+            by_unit: vec![],         // Could be expanded with per-unit details
+        })
+    }
+
+    /// Detect consumption anomalies (Epic 55, Story 55.4).
+    pub async fn detect_consumption_anomalies(
+        &self,
+        organization_id: Uuid,
+        building_id: Option<Uuid>,
+        from_date: chrono::NaiveDate,
+        to_date: chrono::NaiveDate,
+    ) -> Result<Vec<crate::models::reports::ConsumptionAnomaly>, SqlxError> {
+        // Detect readings that deviate more than 50% from the average
+        let anomalies = sqlx::query_as::<_, crate::models::reports::ConsumptionAnomaly>(
+            r#"
+            WITH avg_consumption AS (
+                SELECT
+                    m.id as meter_id,
+                    AVG(mr.consumption) as avg_consumption
+                FROM meter_readings mr
+                JOIN meters m ON mr.meter_id = m.id
+                JOIN units u ON m.unit_id = u.id
+                JOIN buildings b ON u.building_id = b.id
+                WHERE b.organization_id = $1
+                  AND ($2::uuid IS NULL OR u.building_id = $2)
+                GROUP BY m.id
+            )
+            SELECT
+                u.id as unit_id,
+                u.designation as unit_designation,
+                m.id as meter_id,
+                m.meter_type::text as utility_type,
+                mr.reading_date,
+                mr.consumption,
+                ac.avg_consumption as expected_consumption,
+                CASE
+                    WHEN ac.avg_consumption > 0 THEN
+                        ABS(mr.consumption - ac.avg_consumption) / ac.avg_consumption * 100.0
+                    ELSE 0.0
+                END as deviation_percentage,
+                CASE
+                    WHEN ABS(mr.consumption - ac.avg_consumption) / NULLIF(ac.avg_consumption, 0) * 100.0 > 100 THEN 'high'
+                    WHEN ABS(mr.consumption - ac.avg_consumption) / NULLIF(ac.avg_consumption, 0) * 100.0 > 50 THEN 'medium'
+                    ELSE 'low'
+                END as severity
+            FROM meter_readings mr
+            JOIN meters m ON mr.meter_id = m.id
+            JOIN units u ON m.unit_id = u.id
+            JOIN buildings b ON u.building_id = b.id
+            JOIN avg_consumption ac ON m.id = ac.meter_id
+            WHERE b.organization_id = $1
+              AND ($2::uuid IS NULL OR u.building_id = $2)
+              AND mr.reading_date >= $3 AND mr.reading_date <= $4
+              AND ac.avg_consumption > 0
+              AND ABS(mr.consumption - ac.avg_consumption) / ac.avg_consumption * 100.0 > 50
+            ORDER BY deviation_percentage DESC
+            LIMIT 100
+            "#,
+        )
+        .bind(organization_id)
+        .bind(building_id)
+        .bind(from_date)
+        .bind(to_date)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(anomalies)
+    }
 }

@@ -438,10 +438,48 @@ pub use community::{
 // Epic 38: Workflow Automation
 pub mod automation;
 
+// Epic 54: Forms Management
+pub mod form;
+
+// Epic 57: Building Registries (Pets & Vehicles)
+pub mod registry;
+
 pub use automation::{
     AutomationAction, AutomationLogSummary, AutomationRuleWithStats, CallWebhookConfig,
     ConditionTriggerConfig, CreateAutomationRule, CreateRuleFromTemplate, EventTriggerConfig,
     GenerateReportConfig, ScheduleTriggerConfig, SendEmailConfig, SendNotificationConfig,
     UpdateAutomationRule, WorkflowAutomationLog, WorkflowAutomationRule,
     WorkflowAutomationTemplate,
+};
+
+// Epic 54: Forms Management
+pub use form::{
+    field_type, form_status, submission_status, target_type as form_target_type,
+    ConditionalDisplay, CreateForm, CreateFormField, CreateFormResponse,
+    ExportFormat as FormExportFormat, ExportSubmissionsRequest, FieldOption, Form, FormAttachment,
+    FormDownload, FormField, FormListQuery, FormListResponse, FormStatistics, FormSubmission,
+    FormSubmissionParams, FormSubmissionSummary, FormSubmissionWithDetails, FormSummary,
+    FormWithDetails, ReviewSubmission, SignatureData, SubmissionListQuery, SubmissionListResponse,
+    SubmitForm, SubmitFormResponse, UpdateForm, UpdateFormField, ValidationRules,
+};
+
+// Epic 55: Advanced Reporting & Analytics
+pub mod reports;
+
+pub use reports::{
+    CategoryTrend, ConsumptionAnomaly, ConsumptionReportData, ConsumptionSummary, DateRange,
+    FaultTrends, MonthlyAverage, MonthlyConsumption, MonthlyPersonCount, OccupancyReportData,
+    OccupancySummary, OccupancyTrends, ReportMonthlyCount, UnitConsumption, UnitOccupancy,
+    UtilityTypeConsumption, VoteParticipationDetail, VotingParticipationSummary, YearComparison,
+};
+
+// Epic 57: Building Registries (Pets & Vehicles)
+pub use registry::{
+    BuildingRegistryRules, CreateParkingSpotRequest, CreatePetRegistrationRequest,
+    CreateVehicleRegistrationRequest, ListParkingSpotsQuery, ListRegistrationsQuery, ParkingSpot,
+    ParkingSpotListResponse, PetRegistration, PetRegistrationListResponse,
+    PetRegistrationWithDetails, PetSize, PetType, RegistryStatus, ReviewRegistrationRequest,
+    UpdatePetRegistrationRequest, UpdateRegistryRulesRequest, UpdateVehicleRegistrationRequest,
+    VehicleRegistration, VehicleRegistrationListResponse, VehicleRegistrationWithDetails,
+    VehicleType,
 };
