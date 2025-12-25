@@ -104,6 +104,9 @@ export interface CommentWithAuthor extends ArticleComment {
   replyCount: number;
 }
 
+// Alias for backend naming consistency
+export type ArticleCommentWithAuthor = CommentWithAuthor;
+
 export interface CreateArticleRequest {
   title: string;
   content: string;

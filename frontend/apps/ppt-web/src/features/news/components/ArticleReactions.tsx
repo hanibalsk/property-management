@@ -7,7 +7,6 @@ import { useState } from 'react';
 import type { ReactionCounts, ReactionType } from '../types';
 
 interface ArticleReactionsProps {
-  articleId: string;
   reactionCounts: ReactionCounts;
   userReaction?: ReactionType | null;
   onToggleReaction: (reaction: ReactionType) => Promise<void>;

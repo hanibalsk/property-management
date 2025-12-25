@@ -7,7 +7,6 @@ import { useState } from 'react';
 import type { CommentWithAuthor } from '../types';
 
 interface ArticleCommentsProps {
-  articleId: string;
   comments: CommentWithAuthor[];
   onAddComment: (content: string, parentId?: string) => Promise<void>;
   onEditComment: (commentId: string, content: string) => Promise<void>;

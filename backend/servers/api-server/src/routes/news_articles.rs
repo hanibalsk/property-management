@@ -255,19 +255,20 @@ pub fn router() -> Router<AppState> {
 async fn list_articles(
     State(state): State<AppState>,
     TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    _user: AuthUser,
     Query(query): Query<ArticleListQuery>,
 ) -> Result<Json<ArticleListResponse>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
+    // Filter articles by organization_id from tenant context for multi-tenant security
     let articles = repo
-        .list(&query)
+        .list(tenant.organization_id, &query)
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list articles: {}", e)))?;
 
     // Use separate count query for accurate pagination totals
     let total = repo
-        .count(&query)
+        .count(tenant.organization_id, &query)
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to count articles: {}", e)))?;
 
@@ -352,6 +353,7 @@ async fn create_article(
     user: AuthUser,
     Json(req): Json<CreateArticleRequest>,
 ) -> Result<(StatusCode, Json<CreateArticleResponse>), ErrorResponse> {
+    // TODO: Add authorization check - only managers can create articles
     // Validate input
     if req.title.is_empty() || req.title.len() > MAX_TITLE_LENGTH {
         return Err(ErrorResponse::bad_request(&format!(
@@ -432,6 +434,7 @@ async fn update_article(
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateArticleRequest>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+    // TODO: Add authorization check - only author or managers can update
     // Validate input
     if let Some(ref title) = req.title {
         if title.is_empty() || title.len() > MAX_TITLE_LENGTH {
@@ -504,7 +507,7 @@ async fn publish_article(
         .publish(id, req.published_at)
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to publish article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Article not found or already published"))?;
+        .ok_or_else(|| ErrorResponse::not_found("Cannot publish article"))?;
 
     Ok(Json(ArticleActionResponse {
         message: "Article published successfully".to_string(),
@@ -572,7 +575,7 @@ async fn restore_article(
         .restore(id)
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to restore article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Article not found or not archived"))?;
+        .ok_or_else(|| ErrorResponse::not_found("Cannot restore article"))?;
 
     Ok(Json(ArticleActionResponse {
         message: "Article restored successfully".to_string(),
@@ -743,6 +746,15 @@ async fn toggle_reaction(
     Path(id): Path<Uuid>,
     Json(req): Json<ToggleReactionRequest>,
 ) -> Result<Json<ReactionResponse>, ErrorResponse> {
+    // Validate reaction type
+    const VALID_REACTIONS: &[&str] = &["like", "love", "surprised", "sad", "angry"];
+    if !VALID_REACTIONS.contains(&req.reaction.as_str()) {
+        return Err(ErrorResponse::bad_request(&format!(
+            "Invalid reaction type. Must be one of: {:?}",
+            VALID_REACTIONS
+        )));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let added = repo
@@ -861,6 +873,7 @@ async fn update_comment(
     Path((id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<UpdateCommentRequest>,
 ) -> Result<Json<ArticleComment>, ErrorResponse> {
+    // TODO: Verify comment ownership matches user_id
     // Validate input
     if req.content.is_empty() || req.content.len() > MAX_COMMENT_LENGTH {
         return Err(ErrorResponse::bad_request(&format!(
@@ -909,6 +922,7 @@ async fn moderate_comment(
     Path((id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<ModerateCommentRequest>,
 ) -> Result<Json<ArticleComment>, ErrorResponse> {
+    // TODO: Add authorization check - only managers can moderate
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let comment = repo

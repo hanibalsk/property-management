@@ -382,7 +382,7 @@ pub struct ModerateComment {
 }
 
 /// Article list query parameters.
-#[derive(Debug, Clone, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize, ToSchema, utoipa::IntoParams)]
 pub struct ArticleListQuery {
     pub status: Option<String>,
     pub building_id: Option<Uuid>,
