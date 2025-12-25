@@ -130,7 +130,7 @@ CREATE TABLE screening_consents (
 -- Consent Audit Log (GDPR Article 30: Records of processing)
 CREATE TABLE screening_consent_audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE CASCADE,
+    consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE RESTRICT,
 
     -- Event details
     event_type VARCHAR(50) NOT NULL, -- 'granted', 'withdrawn', 'accessed', 'shared', 'deleted'
@@ -159,7 +159,7 @@ CREATE TABLE screening_data_processing_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     application_id UUID NOT NULL REFERENCES tenant_applications(id) ON DELETE CASCADE,
-    consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE CASCADE,
+    consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE RESTRICT,
 
     -- Processing details
     processing_purpose VARCHAR(255) NOT NULL,
