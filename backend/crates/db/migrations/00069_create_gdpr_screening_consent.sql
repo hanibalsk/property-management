@@ -398,8 +398,7 @@ BEGIN
         updated_at = NOW()
     WHERE
         status = 'granted'
-        AND expires_at < NOW()
-        AND status != 'expired';
+        AND expires_at < NOW();
 END;
 $$ LANGUAGE plpgsql;
 
