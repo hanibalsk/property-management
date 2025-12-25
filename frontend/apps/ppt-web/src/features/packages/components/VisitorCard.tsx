@@ -39,7 +39,13 @@ const purposeLabels: Record<VisitorPurpose, string> = {
   other: 'Other',
 };
 
-export function VisitorCard({ visitor, onView, onCheckIn, onCheckOut, onCancel }: VisitorCardProps) {
+export function VisitorCard({
+  visitor,
+  onView,
+  onCheckIn,
+  onCheckOut,
+  onCancel,
+}: VisitorCardProps) {
   const status = visitor.status as VisitorStatus;
   const purpose = visitor.purpose as VisitorPurpose;
   const showCheckIn = status === 'pending' && onCheckIn;

@@ -935,7 +935,7 @@ impl PackageVisitorRepository {
             }
         }
         if let Some(hours) = data.default_code_validity_hours {
-            if hours < 1 || hours > 8760 {
+            if !(1..=8760).contains(&hours) {
                 // max 1 year
                 return Err(sqlx::Error::Protocol(
                     "default_code_validity_hours must be between 1 and 8760 (1 year)".into(),

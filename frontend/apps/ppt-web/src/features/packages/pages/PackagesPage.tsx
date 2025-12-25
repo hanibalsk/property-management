@@ -4,8 +4,8 @@
  * Main page for package management (Epic 58, Story 58.1-58.3).
  */
 
-import { useState } from 'react';
 import type { PackageStatus } from '@ppt/api-client';
+import { useState } from 'react';
 import { PackageCard } from '../components/PackageCard';
 
 // Mock data for development - will be replaced with API calls
@@ -52,9 +52,7 @@ type FilterStatus = 'all' | PackageStatus;
 export function PackagesPage() {
   const [filter, setFilter] = useState<FilterStatus>('all');
 
-  const filteredPackages = mockPackages.filter(
-    (pkg) => filter === 'all' || pkg.status === filter
-  );
+  const filteredPackages = mockPackages.filter((pkg) => filter === 'all' || pkg.status === filter);
 
   const handleView = (id: string) => {
     console.log('View package:', id);
