@@ -13,13 +13,14 @@ import {
 } from '@ppt/api-client';
 import type { CreateEmergencyContact, EmergencyContact } from '@ppt/api-client';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { ConfirmationDialog } from '../../../components';
+import { useOrganization } from '../../../hooks';
 import { EmergencyContactForm, EmergencyContactsList } from '../components';
 import '../styles/emergency-contacts.css';
 
 export const EmergencyContactDirectoryPage: React.FC = () => {
-  // TODO: Replace with actual organization ID from auth context
-  const organizationId = 'org-123';
+  const { organizationId } = useOrganization();
 
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +28,11 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<EmergencyContact | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters
   const [filterType, setFilterType] = useState<string>('');
@@ -56,7 +62,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
     };
 
     loadContacts();
-  }, [filterType, showInactive]);
+  }, [organizationId, filterType, showInactive]);
 
   // Filter contacts by search query
   const filteredContacts = contacts.filter((contact) => {
@@ -72,7 +78,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
   });
 
   // Reload contacts function for handlers
-  const reloadContacts = async () => {
+  const reloadContacts = useCallback(async () => {
     try {
       const data = await listEmergencyContacts({
         organization_id: organizationId,
@@ -84,7 +90,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Failed to reload emergency contacts');
       console.error('Failed to reload emergency contacts:', err);
     }
-  };
+  }, [organizationId, filterType, showInactive]);
 
   const handleCreate = async (data: CreateEmergencyContact) => {
     try {
@@ -123,20 +129,36 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (contact: EmergencyContact) => {
-    if (!confirm(`Are you sure you want to delete ${contact.name}?`)) {
-      return;
-    }
+  // Open delete confirmation dialog
+  const handleDeleteRequest = useCallback((contact: EmergencyContact) => {
+    setContactToDelete(contact);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  // Cancel delete action
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteDialogOpen(false);
+    setContactToDelete(null);
+  }, []);
+
+  // Confirm and execute delete
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!contactToDelete) return;
 
     try {
+      setIsDeleting(true);
       setError(null);
-      await deleteEmergencyContact(contact.id, organizationId);
+      await deleteEmergencyContact(contactToDelete.id, organizationId);
+      setDeleteDialogOpen(false);
+      setContactToDelete(null);
       await reloadContacts();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete emergency contact');
       console.error('Failed to delete emergency contact:', err);
+    } finally {
+      setIsDeleting(false);
     }
-  };
+  }, [contactToDelete, organizationId, reloadContacts]);
 
   const handleEdit = (contact: EmergencyContact) => {
     setEditingContact(contact);
@@ -236,11 +258,28 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
         <EmergencyContactsList
           contacts={filteredContacts}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+          onDelete={handleDeleteRequest}
           showActions={true}
           groupByType={true}
         />
       )}
+
+      {/* Accessible delete confirmation dialog */}
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        title="Delete Emergency Contact"
+        message={
+          contactToDelete
+            ? `Are you sure you want to delete "${contactToDelete.name}"? This action cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        isLoading={isDeleting}
+      />
     </div>
   );
 };
