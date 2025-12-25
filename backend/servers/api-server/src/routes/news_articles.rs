@@ -255,17 +255,20 @@ pub fn router() -> Router<AppState> {
 async fn list_articles(
     State(state): State<AppState>,
     TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    _user: AuthUser,
     Query(query): Query<ArticleListQuery>,
 ) -> Result<Json<ArticleListResponse>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let articles = repo
-        .list(&query)
+        .list(tenant.tenant_id, &query)
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list articles: {}", e)))?;
 
-    let total = articles.len() as i64; // In a real implementation, do a separate count query
+    let total = repo
+        .count(tenant.tenant_id, &query)
+        .await
+        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to count articles: {}", e)))?;
 
     Ok(Json(ArticleListResponse {
         count: articles.len(),
@@ -388,7 +391,7 @@ async fn create_article(
     };
 
     let article = repo
-        .create(tenant.organization_id, user.user_id, data)
+        .create(tenant.tenant_id, user.user_id, data)
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to create article: {}", e)))?;
 

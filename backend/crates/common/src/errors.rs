@@ -1,5 +1,10 @@
 //! Common error types.
 
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use utoipa::ToSchema;
@@ -40,6 +45,44 @@ impl ErrorResponse {
     pub fn with_details(mut self, details: Vec<ValidationError>) -> Self {
         self.details = Some(details);
         self
+    }
+
+    // Helper methods for common errors
+    pub fn bad_request(message: impl Into<String>) -> Self {
+        Self::new("BAD_REQUEST", message)
+    }
+
+    pub fn not_found(message: impl Into<String>) -> Self {
+        Self::new("NOT_FOUND", message)
+    }
+
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::new("INTERNAL_ERROR", message)
+    }
+
+    pub fn unauthorized(message: impl Into<String>) -> Self {
+        Self::new("UNAUTHORIZED", message)
+    }
+
+    pub fn forbidden(message: impl Into<String>) -> Self {
+        Self::new("FORBIDDEN", message)
+    }
+}
+
+impl IntoResponse for ErrorResponse {
+    fn into_response(self) -> Response {
+        let status = match self.code.as_str() {
+            "BAD_REQUEST" => StatusCode::BAD_REQUEST,
+            "UNAUTHORIZED" => StatusCode::UNAUTHORIZED,
+            "FORBIDDEN" => StatusCode::FORBIDDEN,
+            "NOT_FOUND" => StatusCode::NOT_FOUND,
+            "CONFLICT" => StatusCode::CONFLICT,
+            "UNPROCESSABLE_ENTITY" => StatusCode::UNPROCESSABLE_ENTITY,
+            "RATE_LIMIT_EXCEEDED" => StatusCode::TOO_MANY_REQUESTS,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+
+        (status, Json(self)).into_response()
     }
 }
 
