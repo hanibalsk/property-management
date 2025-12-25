@@ -170,53 +170,135 @@ impl FormRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        // Main query - use safe sort_by values
-        let order_column = match sort_by {
-            "title" => "f.title",
-            "status" => "f.status",
-            "published_at" => "f.published_at",
-            "category" => "f.category",
-            _ => "f.created_at",
-        };
-        let order_dir = if sort_order.to_uppercase() == "ASC" {
-            "ASC"
-        } else {
-            "DESC"
-        };
-
-        let sql = format!(
-            r#"
-            SELECT
-                f.id,
-                f.title,
-                f.description,
-                f.category,
-                f.status,
-                f.target_type,
-                f.require_signatures,
-                f.submission_deadline,
-                f.published_at,
-                f.created_at,
-                COALESCE(
-                    (SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id),
-                    0
-                ) as submission_count,
-                u.first_name || ' ' || u.last_name as created_by_name
-            FROM forms f
-            LEFT JOIN users u ON u.id = f.created_by
-            WHERE f.organization_id = $1
-                AND f.deleted_at IS NULL
-                AND ($2::text IS NULL OR f.status = $2)
-                AND ($3::text IS NULL OR f.category = $3)
-                AND ($4::uuid IS NULL OR f.building_id = $4)
-                AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
-            ORDER BY {} {}
-            LIMIT $6 OFFSET $7
+        // Build complete SQL with safe ORDER BY - avoid format!() with user input
+        // Use match to select the complete query with hardcoded ORDER BY clause
+        let is_asc = sort_order.to_uppercase() == "ASC";
+        let sql = match (sort_by, is_asc) {
+            ("title", true) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.title ASC LIMIT $6 OFFSET $7
             "#,
-            order_column, order_dir
-        );
+            ("title", false) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.title DESC LIMIT $6 OFFSET $7
+            "#,
+            ("status", true) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.status ASC LIMIT $6 OFFSET $7
+            "#,
+            ("status", false) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.status DESC LIMIT $6 OFFSET $7
+            "#,
+            ("published_at", true) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.published_at ASC LIMIT $6 OFFSET $7
+            "#,
+            ("published_at", false) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.published_at DESC LIMIT $6 OFFSET $7
+            "#,
+            ("category", true) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.category ASC LIMIT $6 OFFSET $7
+            "#,
+            ("category", false) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.category DESC LIMIT $6 OFFSET $7
+            "#,
+            // Default: created_at DESC
+            (_, false) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.created_at DESC LIMIT $6 OFFSET $7
+            "#,
+            // Default: created_at ASC
+            (_, true) => r#"
+                SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
+                       f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
+                       COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
+                       u.first_name || ' ' || u.last_name as created_by_name
+                FROM forms f LEFT JOIN users u ON u.id = f.created_by
+                WHERE f.organization_id = $1 AND f.deleted_at IS NULL
+                  AND ($2::text IS NULL OR f.status = $2) AND ($3::text IS NULL OR f.category = $3)
+                  AND ($4::uuid IS NULL OR f.building_id = $4)
+                  AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
+                ORDER BY f.created_at ASC LIMIT $6 OFFSET $7
+            "#,
+        };
 
-        let rows = sqlx::query(&sql)
+        let rows = sqlx::query(sql)
             .bind(org_id)
             .bind(&query.status)
             .bind(&query.category)
