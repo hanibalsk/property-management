@@ -22,6 +22,7 @@ export * from './community';
 export * from './financial';
 export * from './workflow-automation';
 export * from './reports';
+export * from './facilities';
 
 // API client configuration
 export interface ApiConfig {

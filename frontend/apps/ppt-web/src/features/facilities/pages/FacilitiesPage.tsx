@@ -1,0 +1,90 @@
+/**
+ * Facilities Page (Epic 56: Facility Booking).
+ *
+ * Lists all facilities in a building with filtering options.
+ */
+
+import type { FacilitySummary, FacilityType, ListFacilitiesQuery } from '@ppt/api-client';
+import { listFacilities } from '@ppt/api-client';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { FacilityList } from '../components';
+
+const PAGE_SIZE = 10;
+
+export function FacilitiesPage() {
+  const { buildingId } = useParams<{ buildingId: string }>();
+  const navigate = useNavigate();
+
+  const [facilities, setFacilities] = useState<FacilitySummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filters, setFilters] = useState<ListFacilitiesQuery>({});
+  const [isManager] = useState(true); // TODO: Get from auth context
+
+  useEffect(() => {
+    if (!buildingId) return;
+
+    const fetchFacilities = async () => {
+      setIsLoading(true);
+      try {
+        const response = await listFacilities(buildingId, filters);
+        setFacilities(response.items);
+        setTotal(response.total);
+      } catch (error) {
+        console.error('Failed to fetch facilities:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFacilities();
+  }, [buildingId, filters]);
+
+  const handleTypeFilter = (type?: FacilityType) => {
+    setFilters((prev) => ({ ...prev, facility_type: type }));
+    setPage(1);
+  };
+
+  const handleBookableFilter = (bookable?: boolean) => {
+    setFilters((prev) => ({ ...prev, is_bookable: bookable }));
+    setPage(1);
+  };
+
+  const handleView = (id: string) => {
+    navigate(`/buildings/${buildingId}/facilities/${id}`);
+  };
+
+  const handleBook = (id: string) => {
+    navigate(`/buildings/${buildingId}/facilities/${id}/book`);
+  };
+
+  const handleEdit = (id: string) => {
+    navigate(`/buildings/${buildingId}/facilities/${id}/edit`);
+  };
+
+  const handleCreate = () => {
+    navigate(`/buildings/${buildingId}/facilities/new`);
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <FacilityList
+        facilities={facilities}
+        total={total}
+        page={page}
+        pageSize={PAGE_SIZE}
+        isLoading={isLoading}
+        isManager={isManager}
+        onPageChange={setPage}
+        onTypeFilter={handleTypeFilter}
+        onBookableFilter={handleBookableFilter}
+        onView={handleView}
+        onBook={handleBook}
+        onEdit={handleEdit}
+        onCreate={handleCreate}
+      />
+    </div>
+  );
+}
