@@ -67,9 +67,76 @@ impl FormRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        // Create fields if provided
-        for (index, field) in data.fields.into_iter().enumerate() {
-            self.create_field(form.id, field, index as i32).await?;
+        // Batch insert fields if provided (avoids N+1 query problem)
+        if !data.fields.is_empty() {
+            // Build values for batch insert
+            let mut values_clause = Vec::new();
+            let mut bindings = Vec::new();
+
+            for (index, field) in data.fields.into_iter().enumerate() {
+                let validation_rules = field
+                    .validation_rules
+                    .map(|r| serde_json::to_value(r).unwrap_or_default())
+                    .unwrap_or_else(|| serde_json::json!({}));
+
+                let options = field
+                    .options
+                    .map(|o| serde_json::to_value(o).unwrap_or_default())
+                    .unwrap_or_else(|| serde_json::json!([]));
+
+                let conditional_display = field
+                    .conditional_display
+                    .map(|c| serde_json::to_value(c).unwrap_or_default());
+
+                let order = if field.field_order > 0 {
+                    field.field_order
+                } else {
+                    index as i32
+                };
+
+                values_clause.push(format!(
+                    "($1, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${})",
+                    bindings.len() + 2, bindings.len() + 3, bindings.len() + 4, bindings.len() + 5,
+                    bindings.len() + 6, bindings.len() + 7, bindings.len() + 8, bindings.len() + 9,
+                    bindings.len() + 10, bindings.len() + 11, bindings.len() + 12, bindings.len() + 13,
+                    bindings.len() + 14
+                ));
+
+                bindings.push((field, validation_rules, options, conditional_display, order));
+            }
+
+            let sql = format!(
+                r#"
+                INSERT INTO form_fields (
+                    form_id, field_key, label, field_type, required,
+                    help_text, placeholder, default_value, validation_rules,
+                    options, field_order, width, section, conditional_display
+                )
+                VALUES {}
+                "#,
+                values_clause.join(", ")
+            );
+
+            let mut query = sqlx::query(&sql).bind(form.id);
+
+            for (field, validation_rules, options, conditional_display, order) in bindings {
+                query = query
+                    .bind(&field.field_key)
+                    .bind(&field.label)
+                    .bind(&field.field_type)
+                    .bind(field.required)
+                    .bind(&field.help_text)
+                    .bind(&field.placeholder)
+                    .bind(&field.default_value)
+                    .bind(&validation_rules)
+                    .bind(&options)
+                    .bind(order)
+                    .bind(&field.width)
+                    .bind(&field.section)
+                    .bind(&conditional_display);
+            }
+
+            query.execute(&self.pool).await?;
         }
 
         Ok(form)
