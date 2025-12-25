@@ -444,6 +444,9 @@ pub mod form;
 // Epic 58: Package & Visitor Management
 pub mod package_visitor;
 
+// Epic 61: External Integrations Suite
+// pub mod integration;
+
 pub use automation::{
     AutomationAction, AutomationLogSummary, AutomationRuleWithStats, CallWebhookConfig,
     ConditionTriggerConfig, CreateAutomationRule, CreateRuleFromTemplate, EventTriggerConfig,
@@ -481,4 +484,16 @@ pub use package_visitor::{
     PackageWithDetails, PickupPackage, ReceivePackage, UpdateBuildingPackageSettings,
     UpdateBuildingVisitorSettings, UpdatePackage, UpdateVisitor, VerifyAccessCode, Visitor,
     VisitorQuery, VisitorStatistics, VisitorSummary, VisitorWithDetails,
+};
+
+// Epic 59: News & Media Management
+pub mod news_article;
+
+pub use news_article::{
+    article_status, reaction_type, ArchiveArticle, ArticleComment, ArticleListQuery, ArticleMedia,
+    ArticleReaction, ArticleStatistics, ArticleSummary, ArticleView, ArticleWithDetails,
+    CommentWithAuthor as ArticleCommentWithAuthor,
+    CommentWithAuthorRow as ArticleCommentWithAuthorRow, CreateArticle, CreateArticleComment,
+    CreateArticleMedia, ModerateComment, NewsArticle, PinArticle, PublishArticle, ReactionCounts,
+    ToggleReaction, UpdateArticle, UpdateArticleComment,
 };
