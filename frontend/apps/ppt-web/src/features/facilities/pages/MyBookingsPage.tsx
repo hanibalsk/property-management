@@ -17,7 +17,6 @@ export function MyBookingsPage() {
 
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<BookingStatus | undefined>();
 
@@ -29,15 +28,8 @@ export function MyBookingsPage() {
       setIsLoading(true);
       try {
         const response = await getMyBookings();
-        let filtered = response.items;
-
-        // Client-side filtering by status
-        if (statusFilter) {
-          filtered = filtered.filter((b) => b.status === statusFilter);
-        }
-
-        setBookings(filtered);
-        setTotal(filtered.length);
+        setBookings(response.items);
+        setTotal(response.total);
       } catch (error) {
         console.error('Failed to fetch bookings:', error);
       } finally {
@@ -46,11 +38,10 @@ export function MyBookingsPage() {
     };
 
     fetchBookings();
-  }, [statusFilter]);
+  }, []);
 
   const handleStatusFilter = (status?: BookingStatus) => {
     setStatusFilter(status);
-    setPage(1);
   };
 
   const handleView = (id: string) => {
@@ -82,17 +73,22 @@ export function MyBookingsPage() {
     }
   };
 
+  // Filter bookings for display (client-side only for UI filtering)
+  const displayedBookings = statusFilter
+    ? bookings.filter((b) => b.status === statusFilter)
+    : bookings;
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <BookingList
-        bookings={bookings}
+        bookings={displayedBookings}
         total={total}
-        page={page}
+        page={1}
         pageSize={PAGE_SIZE}
         isLoading={isLoading}
         isManager={false}
         title="My Bookings"
-        onPageChange={setPage}
+        onPageChange={() => {}}
         onStatusFilter={handleStatusFilter}
         onView={handleView}
         onCancel={handleCancelClick}

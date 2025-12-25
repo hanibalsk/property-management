@@ -16,6 +16,10 @@ const PAGE_SIZE = 10;
 // This controls visibility of manager-only features (create, edit facilities)
 // Backend still enforces authorization - this is for UI only
 function useIsManager(): boolean {
+  // TODO: Implement proper role check - get user role from auth context
+  // Example: const { user } = useAuth(); return user?.role === 'manager' || user?.role === 'admin';
+  // For now, return true to enable manager features during development
+  // In production, this should check actual user role from JWT claims
   return true;
 }
 
@@ -26,7 +30,6 @@ export function FacilitiesPage() {
 
   const [facilities, setFacilities] = useState<FacilitySummary[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<ListFacilitiesQuery>({});
 
@@ -51,12 +54,10 @@ export function FacilitiesPage() {
 
   const handleTypeFilter = (type?: FacilityType) => {
     setFilters((prev) => ({ ...prev, facility_type: type }));
-    setPage(1);
   };
 
   const handleBookableFilter = (bookable?: boolean) => {
     setFilters((prev) => ({ ...prev, is_bookable: bookable }));
-    setPage(1);
   };
 
   const handleView = (id: string) => {
@@ -80,11 +81,11 @@ export function FacilitiesPage() {
       <FacilityList
         facilities={facilities}
         total={total}
-        page={page}
+        page={1}
         pageSize={PAGE_SIZE}
         isLoading={isLoading}
         isManager={isManager}
-        onPageChange={setPage}
+        onPageChange={() => {}}
         onTypeFilter={handleTypeFilter}
         onBookableFilter={handleBookableFilter}
         onView={handleView}

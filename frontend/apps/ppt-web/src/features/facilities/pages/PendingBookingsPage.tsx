@@ -18,7 +18,6 @@ export function PendingBookingsPage() {
 
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
   const [rejectDialogBooking, setRejectDialogBooking] = useState<BookingWithDetails | null>(null);
@@ -87,12 +86,12 @@ export function PendingBookingsPage() {
       <BookingList
         bookings={bookings}
         total={total}
-        page={page}
+        page={1}
         pageSize={PAGE_SIZE}
         isLoading={isLoading || isProcessing}
         isManager={true}
         title="Pending Booking Approvals"
-        onPageChange={setPage}
+        onPageChange={() => {}}
         onView={handleView}
         onApprove={handleApprove}
         onReject={handleRejectClick}
