@@ -680,19 +680,34 @@ impl FormRepository {
         form_id: Uuid,
         field_orders: Vec<(Uuid, i32)>,
     ) -> Result<(), sqlx::Error> {
-        for (field_id, order) in field_orders {
-            sqlx::query(
-                r#"
-                UPDATE form_fields SET field_order = $1, updated_at = NOW()
-                WHERE id = $2 AND form_id = $3
-                "#,
-            )
-            .bind(order)
-            .bind(field_id)
-            .bind(form_id)
-            .execute(&self.pool)
-            .await?;
+        // If there are no fields to reorder, avoid running a no-op query.
+        if field_orders.is_empty() {
+            return Ok(());
         }
+
+        // Split the (field_id, order) pairs into parallel vectors for efficient bulk update.
+        let (field_ids, orders): (Vec<Uuid>, Vec<i32>) = field_orders.into_iter().unzip();
+
+        // Perform a single bulk UPDATE using array parameters and UNNEST.
+        sqlx::query(
+            r#"
+            UPDATE form_fields AS f
+            SET field_order = v.field_order,
+                updated_at = NOW()
+            FROM (
+                SELECT
+                    UNNEST($1::uuid[]) AS id,
+                    UNNEST($2::int4[]) AS field_order
+            ) AS v
+            WHERE f.form_id = $3
+              AND f.id = v.id
+            "#,
+        )
+        .bind(&field_ids)
+        .bind(&orders)
+        .bind(form_id)
+        .execute(&self.pool)
+        .await?;
 
         Ok(())
     }
