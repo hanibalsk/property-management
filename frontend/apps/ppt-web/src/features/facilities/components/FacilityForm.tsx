@@ -442,6 +442,7 @@ export function FacilityForm({ facility, onSubmit, onCancel, isSubmitting }: Fac
                   type="button"
                   onClick={() => removeAmenity(amenity)}
                   className="text-gray-500 hover:text-red-600"
+                  aria-label={`Remove ${amenity}`}
                 >
                   <svg
                     className="w-4 h-4"

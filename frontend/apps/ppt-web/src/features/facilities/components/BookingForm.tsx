@@ -79,13 +79,13 @@ export function BookingForm({
     e.preventDefault();
     if (!validate()) return;
 
-    // Create ISO datetime strings with timezone offset
-    const startDate = new Date(`${selectedDate}T${startTime}:00`);
-    const endDate = new Date(`${selectedDate}T${endTime}:00`);
+    // Use the selected local date and time directly to avoid unintended timezone conversion
+    const startDateTime = `${selectedDate}T${startTime}:00`;
+    const endDateTime = `${selectedDate}T${endTime}:00`;
 
     onSubmit({
-      start_time: startDate.toISOString(),
-      end_time: endDate.toISOString(),
+      start_time: startDateTime,
+      end_time: endDateTime,
       purpose: purpose || undefined,
       notes: notes || undefined,
       attendees_count: attendeesCount ? Number(attendeesCount) : undefined,
@@ -266,6 +266,9 @@ export function BookingForm({
                 const end = new Date(`2000-01-01T${endTime}`);
                 const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                 const fee = Number.parseFloat(facility.hourly_fee || '0');
+                if (Number.isNaN(fee)) {
+                  return '$0.00';
+                }
                 return `$${(fee * hours).toFixed(2)}`;
               })()}
             </span>
