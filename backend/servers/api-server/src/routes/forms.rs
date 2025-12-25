@@ -51,32 +51,30 @@ fn validate_signature_image(signature_b64: &str) -> Result<(), (StatusCode, Json
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
                 "SIGNATURE_TOO_LARGE",
-                &format!("Signature image must be less than {}KB", MAX_SIGNATURE_SIZE / 1024),
+                &format!(
+                    "Signature image must be less than {}KB",
+                    MAX_SIGNATURE_SIZE / 1024
+                ),
             )),
         ));
     }
 
     // Validate base64 format and decode
-    let decoded = base64::Engine::decode(
-        &base64::engine::general_purpose::STANDARD,
-        signature_b64,
-    )
-    .map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_BASE64",
-                "Signature image must be valid base64-encoded data",
-            )),
-        )
-    })?;
+    let decoded = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, signature_b64)
+        .map_err(|_| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_BASE64",
+                    "Signature image must be valid base64-encoded data",
+                )),
+            )
+        })?;
 
     // Check if it's a valid image by checking magic bytes
     let is_png = decoded.starts_with(b"\x89PNG\r\n\x1a\n");
     let is_jpeg = decoded.starts_with(&[0xFF, 0xD8, 0xFF]);
-    let is_webp = decoded.len() > 12
-        && &decoded[0..4] == b"RIFF"
-        && &decoded[8..12] == b"WEBP";
+    let is_webp = decoded.len() > 12 && &decoded[0..4] == b"RIFF" && &decoded[8..12] == b"WEBP";
 
     if !is_png && !is_jpeg && !is_webp {
         return Err((
@@ -462,17 +460,18 @@ async fn create_form(
     for f in req.fields {
         // Validate validation_rules JSON if present
         let validation_rules = match f.validation_rules {
-            Some(v) => {
-                Some(serde_json::from_value(v).map_err(|e| {
-                    (
-                        StatusCode::BAD_REQUEST,
-                        Json(ErrorResponse::new(
-                            "INVALID_VALIDATION_RULES",
-                            &format!("Invalid validation rules JSON for field '{}': {}", f.field_key, e),
-                        )),
-                    )
-                })?)
-            }
+            Some(v) => Some(serde_json::from_value(v).map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse::new(
+                        "INVALID_VALIDATION_RULES",
+                        &format!(
+                            "Invalid validation rules JSON for field '{}': {}",
+                            f.field_key, e
+                        ),
+                    )),
+                )
+            })?),
             None => None,
         };
 
