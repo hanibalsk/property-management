@@ -12,6 +12,7 @@ use axum::{
     Json, Router,
 };
 use common::errors::ErrorResponse;
+use common::TenantRole;
 use db::models::PackageSummary;
 use db::models::{
     AccessCodeVerification, BuildingPackageSettings, BuildingVisitorSettings, CheckInVisitor,
@@ -23,6 +24,29 @@ use db::models::{
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
+
+// ============================================================================
+// Authorization Helpers
+// ============================================================================
+
+/// Check if user has staff or manager role.
+/// Staff-level operations require at least Manager, TechnicalManager, OrgAdmin, or SuperAdmin.
+fn require_staff_role(auth: &AuthUser) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    match &auth.role {
+        Some(TenantRole::Manager)
+        | Some(TenantRole::TechnicalManager)
+        | Some(TenantRole::OrgAdmin)
+        | Some(TenantRole::SuperAdmin)
+        | Some(TenantRole::PropertyManager) => Ok(()),
+        _ => Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "This action requires staff or manager privileges",
+            )),
+        )),
+    }
+}
 
 // ============================================================================
 // Response Types
@@ -292,6 +316,9 @@ async fn receive_package(
     Path(id): Path<Uuid>,
     Json(data): Json<ReceivePackage>,
 ) -> Result<Json<PackageActionResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Only staff/managers can mark packages as received
+    require_staff_role(&auth)?;
+
     let package = state
         .package_visitor_repo
         .receive_package(tenant.tenant_id, id, auth.user_id, data)
@@ -661,6 +688,9 @@ async fn check_in_visitor(
     Path(id): Path<Uuid>,
     Json(data): Json<CheckInVisitor>,
 ) -> Result<Json<VisitorActionResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Only staff/managers can check in visitors
+    require_staff_role(&auth)?;
+
     let visitor = state
         .package_visitor_repo
         .check_in_visitor(tenant.tenant_id, id, auth.user_id, data)
@@ -714,6 +744,9 @@ async fn check_out_visitor(
     Path(id): Path<Uuid>,
     Json(data): Json<CheckOutVisitor>,
 ) -> Result<Json<VisitorActionResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Only staff/managers can check out visitors
+    require_staff_role(&auth)?;
+
     let visitor = state
         .package_visitor_repo
         .check_out_visitor(tenant.tenant_id, id, auth.user_id, data)

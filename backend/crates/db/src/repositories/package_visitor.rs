@@ -347,6 +347,44 @@ impl PackageVisitorRepository {
             .collect()
     }
 
+    /// Generates a unique access code, checking for collisions with active visitors.
+    async fn generate_unique_access_code(
+        &self,
+        building_id: Uuid,
+        length: usize,
+    ) -> Result<String, sqlx::Error> {
+        const MAX_ATTEMPTS: i32 = 10;
+
+        for _ in 0..MAX_ATTEMPTS {
+            let code = Self::generate_access_code(length);
+
+            // Check if code already exists for an active visitor in this building
+            let exists: Option<bool> = sqlx::query_scalar(
+                r#"
+                SELECT EXISTS(
+                    SELECT 1 FROM visitors
+                    WHERE access_code = $1
+                    AND building_id = $2
+                    AND status IN ('pending', 'checked_in')
+                )
+                "#,
+            )
+            .bind(&code)
+            .bind(building_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+            if !exists.unwrap_or(false) {
+                return Ok(code);
+            }
+        }
+
+        // If we exhausted attempts, return an error
+        Err(sqlx::Error::Protocol(
+            "Failed to generate unique access code after maximum attempts".into(),
+        ))
+    }
+
     /// Creates a new visitor registration.
     pub async fn create_visitor(
         &self,
@@ -385,7 +423,10 @@ impl PackageVisitorRepository {
                 updated_at: Utc::now(),
             });
 
-        let access_code = Self::generate_access_code(settings.code_length as usize);
+        // Generate unique access code with retry logic
+        let access_code = self
+            .generate_unique_access_code(building_id, settings.code_length as usize)
+            .await?;
         let expires_at = Utc::now() + Duration::hours(settings.default_code_validity_hours as i64);
 
         sqlx::query_as(
@@ -812,6 +853,24 @@ impl PackageVisitorRepository {
         building_id: Uuid,
         data: UpdateBuildingPackageSettings,
     ) -> Result<BuildingPackageSettings, sqlx::Error> {
+        // Validate settings
+        if let Some(days) = data.max_storage_days {
+            if !(1..=365).contains(&days) {
+                return Err(sqlx::Error::Protocol(
+                    "max_storage_days must be between 1 and 365".into(),
+                ));
+            }
+        }
+        if let Some(reminder) = data.send_reminder_after_days {
+            let max_days = data.max_storage_days.unwrap_or(7);
+            if reminder < 0 || reminder > max_days {
+                return Err(sqlx::Error::Protocol(
+                    "send_reminder_after_days must be non-negative and not exceed max_storage_days"
+                        .into(),
+                ));
+            }
+        }
+
         sqlx::query_as(
             r#"
             INSERT INTO building_package_settings (
@@ -867,6 +926,37 @@ impl PackageVisitorRepository {
         building_id: Uuid,
         data: UpdateBuildingVisitorSettings,
     ) -> Result<BuildingVisitorSettings, sqlx::Error> {
+        // Validate settings
+        if let Some(code_length) = data.code_length {
+            if !(4..=12).contains(&code_length) {
+                return Err(sqlx::Error::Protocol(
+                    "code_length must be between 4 and 12".into(),
+                ));
+            }
+        }
+        if let Some(hours) = data.default_code_validity_hours {
+            if hours < 1 || hours > 8760 {
+                // max 1 year
+                return Err(sqlx::Error::Protocol(
+                    "default_code_validity_hours must be between 1 and 8760 (1 year)".into(),
+                ));
+            }
+        }
+        if let Some(days) = data.max_advance_registration_days {
+            if !(1..=365).contains(&days) {
+                return Err(sqlx::Error::Protocol(
+                    "max_advance_registration_days must be between 1 and 365".into(),
+                ));
+            }
+        }
+        if let Some(max_visitors) = data.max_visitors_per_day_per_unit {
+            if max_visitors < 1 {
+                return Err(sqlx::Error::Protocol(
+                    "max_visitors_per_day_per_unit must be at least 1".into(),
+                ));
+            }
+        }
+
         sqlx::query_as(
             r#"
             INSERT INTO building_visitor_settings (
