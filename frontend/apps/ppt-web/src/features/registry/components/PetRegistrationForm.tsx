@@ -32,7 +32,8 @@ const petTypes: { value: PetType; label: string }[] = [
 const petSizes: { value: PetSize; label: string }[] = [
   { value: 'small', label: 'Small (< 10 kg)' },
   { value: 'medium', label: 'Medium (10-25 kg)' },
-  { value: 'large', label: 'Large (> 25 kg)' },
+  { value: 'large', label: 'Large (25-45 kg)' },
+  { value: 'extra_large', label: 'Extra Large (> 45 kg)' },
 ];
 
 export function PetRegistrationForm({

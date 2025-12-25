@@ -6,13 +6,13 @@
 
 // Pet types
 export type PetType = 'dog' | 'cat' | 'bird' | 'fish' | 'reptile' | 'rodent' | 'other';
-export type PetSize = 'small' | 'medium' | 'large';
+export type PetSize = 'small' | 'medium' | 'large' | 'extra_large';
 
 // Vehicle types
 export type VehicleType = 'car' | 'motorcycle' | 'bicycle' | 'scooter' | 'other';
 
 // Registry status
-export type RegistryStatus = 'pending' | 'approved' | 'rejected';
+export type RegistryStatus = 'pending' | 'approved' | 'rejected' | 'expired';
 
 // ============================================================================
 // Pet Registration Types

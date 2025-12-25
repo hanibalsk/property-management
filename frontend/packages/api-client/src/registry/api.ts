@@ -41,7 +41,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 };
 
 export const createRegistryApi = (config: ApiConfig) => {
-  const baseUrl = `${config.baseUrl}/api/v1/registries`;
+  const baseUrl = `${config.baseUrl}/api/v1/registry`;
   const headers = buildHeaders(config);
 
   return {
