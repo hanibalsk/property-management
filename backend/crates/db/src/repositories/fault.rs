@@ -1063,4 +1063,73 @@ impl FaultRepository {
 
         Ok(count.0)
     }
+
+    // ========================================================================
+    // Epic 55: Reporting Analytics
+    // ========================================================================
+
+    /// Get monthly fault counts for trend analysis (Epic 55, Story 55.1).
+    pub async fn get_monthly_fault_counts(
+        &self,
+        organization_id: Uuid,
+        building_id: Option<Uuid>,
+        from_date: chrono::NaiveDate,
+        to_date: chrono::NaiveDate,
+    ) -> Result<Vec<crate::models::reports::ReportMonthlyCount>, SqlxError> {
+        let rows = sqlx::query_as::<_, crate::models::reports::ReportMonthlyCount>(
+            r#"
+            SELECT
+                EXTRACT(YEAR FROM created_at)::int4 as year,
+                EXTRACT(MONTH FROM created_at)::int4 as month,
+                COUNT(*)::int8 as count
+            FROM faults
+            WHERE organization_id = $1
+              AND created_at >= $2 AND created_at <= $3
+              AND ($4::uuid IS NULL OR building_id = $4)
+            GROUP BY EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at)
+            ORDER BY year, month
+            "#,
+        )
+        .bind(organization_id)
+        .bind(from_date)
+        .bind(to_date)
+        .bind(building_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    /// Get monthly average resolution times (Epic 55, Story 55.1).
+    pub async fn get_monthly_resolution_times(
+        &self,
+        organization_id: Uuid,
+        building_id: Option<Uuid>,
+        from_date: chrono::NaiveDate,
+        to_date: chrono::NaiveDate,
+    ) -> Result<Vec<crate::models::reports::MonthlyAverage>, SqlxError> {
+        let rows = sqlx::query_as::<_, crate::models::reports::MonthlyAverage>(
+            r#"
+            SELECT
+                EXTRACT(YEAR FROM resolved_at)::int4 as year,
+                EXTRACT(MONTH FROM resolved_at)::int4 as month,
+                COALESCE(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600), 0)::float8 as average
+            FROM faults
+            WHERE organization_id = $1
+              AND resolved_at IS NOT NULL
+              AND resolved_at >= $2 AND resolved_at <= $3
+              AND ($4::uuid IS NULL OR building_id = $4)
+            GROUP BY EXTRACT(YEAR FROM resolved_at), EXTRACT(MONTH FROM resolved_at)
+            ORDER BY year, month
+            "#,
+        )
+        .bind(organization_id)
+        .bind(from_date)
+        .bind(to_date)
+        .bind(building_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
 }

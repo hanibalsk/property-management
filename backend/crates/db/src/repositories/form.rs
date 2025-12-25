@@ -174,7 +174,8 @@ impl FormRepository {
         // Use match to select the complete query with hardcoded ORDER BY clause
         let is_asc = sort_order.to_uppercase() == "ASC";
         let sql = match (sort_by, is_asc) {
-            ("title", true) => r#"
+            ("title", true) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -185,8 +186,10 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.title ASC LIMIT $6 OFFSET $7
-            "#,
-            ("title", false) => r#"
+            "#
+            }
+            ("title", false) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -197,8 +200,10 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.title DESC LIMIT $6 OFFSET $7
-            "#,
-            ("status", true) => r#"
+            "#
+            }
+            ("status", true) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -209,8 +214,10 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.status ASC LIMIT $6 OFFSET $7
-            "#,
-            ("status", false) => r#"
+            "#
+            }
+            ("status", false) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -221,8 +228,10 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.status DESC LIMIT $6 OFFSET $7
-            "#,
-            ("published_at", true) => r#"
+            "#
+            }
+            ("published_at", true) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -233,8 +242,10 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.published_at ASC LIMIT $6 OFFSET $7
-            "#,
-            ("published_at", false) => r#"
+            "#
+            }
+            ("published_at", false) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -245,8 +256,10 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.published_at DESC LIMIT $6 OFFSET $7
-            "#,
-            ("category", true) => r#"
+            "#
+            }
+            ("category", true) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -257,8 +270,10 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.category ASC LIMIT $6 OFFSET $7
-            "#,
-            ("category", false) => r#"
+            "#
+            }
+            ("category", false) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -269,9 +284,11 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.category DESC LIMIT $6 OFFSET $7
-            "#,
+            "#
+            }
             // Default: created_at DESC
-            (_, false) => r#"
+            (_, false) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -282,9 +299,11 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.created_at DESC LIMIT $6 OFFSET $7
-            "#,
+            "#
+            }
             // Default: created_at ASC
-            (_, true) => r#"
+            (_, true) => {
+                r#"
                 SELECT f.id, f.title, f.description, f.category, f.status, f.target_type,
                        f.require_signatures, f.submission_deadline, f.published_at, f.created_at,
                        COALESCE((SELECT COUNT(*) FROM form_submissions WHERE form_id = f.id), 0) as submission_count,
@@ -295,7 +314,8 @@ impl FormRepository {
                   AND ($4::uuid IS NULL OR f.building_id = $4)
                   AND ($5::text IS NULL OR f.title ILIKE $5 OR f.description ILIKE $5)
                 ORDER BY f.created_at ASC LIMIT $6 OFFSET $7
-            "#,
+            "#
+            }
         };
 
         let rows = sqlx::query(sql)

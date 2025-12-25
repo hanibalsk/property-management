@@ -65,3 +65,6 @@ pub mod automation;
 
 // Epic 54: Forms Management
 pub mod forms;
+
+// Epic 55: Advanced Reporting & Analytics
+pub mod reports;

@@ -1484,4 +1484,76 @@ impl VoteRepository {
 
         Ok(count.0)
     }
+
+    // ========================================================================
+    // Epic 55: Reporting Analytics
+    // ========================================================================
+
+    /// Get voting participation report data (Epic 55, Story 55.2).
+    pub async fn get_participation_report(
+        &self,
+        organization_id: Uuid,
+        building_id: Option<Uuid>,
+        from_date: chrono::NaiveDate,
+        to_date: chrono::NaiveDate,
+    ) -> Result<Vec<crate::models::reports::VoteParticipationDetail>, SqlxError> {
+        let rows = sqlx::query_as::<_, crate::models::reports::VoteParticipationDetail>(
+            r#"
+            SELECT
+                v.id as vote_id,
+                v.title,
+                v.status::text as status,
+                v.start_at::text as start_at,
+                v.end_at::text as end_at,
+                COALESCE(
+                    (SELECT COUNT(DISTINCT ur.user_id) FROM unit_residents ur
+                     JOIN units u ON ur.unit_id = u.id
+                     WHERE u.building_id = v.building_id AND ur.is_active = true),
+                    0
+                )::int8 as eligible_count,
+                COALESCE(
+                    (SELECT COUNT(DISTINCT vr.user_id) FROM vote_responses vr WHERE vr.vote_id = v.id),
+                    0
+                )::int8 as response_count,
+                CASE
+                    WHEN (SELECT COUNT(DISTINCT ur.user_id) FROM unit_residents ur
+                          JOIN units u ON ur.unit_id = u.id
+                          WHERE u.building_id = v.building_id AND ur.is_active = true) > 0
+                    THEN (
+                        (SELECT COUNT(DISTINCT vr.user_id) FROM vote_responses vr WHERE vr.vote_id = v.id)::float8 /
+                        (SELECT COUNT(DISTINCT ur.user_id) FROM unit_residents ur
+                         JOIN units u ON ur.unit_id = u.id
+                         WHERE u.building_id = v.building_id AND ur.is_active = true)::float8 * 100.0
+                    )
+                    ELSE 0.0
+                END as participation_rate,
+                v.quorum_percentage as quorum_required,
+                CASE
+                    WHEN v.quorum_percentage IS NULL THEN true
+                    WHEN (SELECT COUNT(DISTINCT ur.user_id) FROM unit_residents ur
+                          JOIN units u ON ur.unit_id = u.id
+                          WHERE u.building_id = v.building_id AND ur.is_active = true) = 0 THEN false
+                    ELSE (
+                        (SELECT COUNT(DISTINCT vr.user_id) FROM vote_responses vr WHERE vr.vote_id = v.id)::float8 /
+                        (SELECT COUNT(DISTINCT ur.user_id) FROM unit_residents ur
+                         JOIN units u ON ur.unit_id = u.id
+                         WHERE u.building_id = v.building_id AND ur.is_active = true)::float8 * 100.0
+                    ) >= v.quorum_percentage
+                END as quorum_reached
+            FROM votes v
+            WHERE v.organization_id = $1
+              AND v.created_at >= $2 AND v.created_at <= $3
+              AND ($4::uuid IS NULL OR v.building_id = $4)
+            ORDER BY v.created_at DESC
+            "#,
+        )
+        .bind(organization_id)
+        .bind(from_date)
+        .bind(to_date)
+        .bind(building_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
 }
