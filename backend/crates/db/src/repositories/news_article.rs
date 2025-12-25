@@ -229,15 +229,33 @@ impl NewsArticleRepository {
             // A new reaction was inserted (toggled on).
             Ok(true)
         } else {
-            // A reaction already existed; delete it to toggle off.
-            sqlx::query(
-                "DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2",
+            // A reaction already exists. Check if it's the same type.
+            // If it's the same, delete it (toggle off). If different, update it.
+            let update_result = sqlx::query(
+                "UPDATE article_reactions \
+                 SET reaction = $3 \
+                 WHERE article_id = $1 AND user_id = $2 AND reaction != $3",
             )
             .bind(article_id)
             .bind(user_id)
+            .bind(reaction)
             .execute(&self.pool)
             .await?;
-            Ok(false)
+
+            if update_result.rows_affected() == 1 {
+                // Updated to a different reaction type.
+                Ok(true)
+            } else {
+                // Same reaction type, so toggle it off by deleting.
+                sqlx::query(
+                    "DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2",
+                )
+                .bind(article_id)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await?;
+                Ok(false)
+            }
         }
     }
 
