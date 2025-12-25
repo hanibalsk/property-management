@@ -50,7 +50,7 @@ export function ArticleReactions({
   };
 
   return (
-    <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Article reactions">
+    <div className="flex items-center gap-2 flex-wrap" aria-label="Article reactions">
       {(Object.keys(reactionEmojis) as ReactionType[]).map((reaction) => {
         const count = reactionCounts[reaction];
         const isActive = userReaction === reaction;
