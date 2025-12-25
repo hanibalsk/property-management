@@ -51,7 +51,7 @@ fn validate_signature_image(signature_b64: &str) -> Result<(), (StatusCode, Json
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
                 "SIGNATURE_TOO_LARGE",
-                &format!(
+                format!(
                     "Signature image must be less than {}KB",
                     MAX_SIGNATURE_SIZE / 1024
                 ),
@@ -465,7 +465,7 @@ async fn create_form(
                     StatusCode::BAD_REQUEST,
                     Json(ErrorResponse::new(
                         "INVALID_VALIDATION_RULES",
-                        &format!(
+                        format!(
                             "Invalid validation rules JSON for field '{}': {}",
                             f.field_key, e
                         ),
