@@ -168,8 +168,7 @@ use state::AppState;
         (name = "Workflows", description = "Automated workflow management"),
         (name = "IoT Sensors", description = "IoT sensor registration and management"),
         (name = "Community", description = "Community & social features: groups, posts, events, marketplace"),
-        (name = "Automation", description = "Workflow automation rules, templates, and execution"),
-        (name = "Building Registries", description = "Pet and vehicle registration management")
+        (name = "Automation", description = "Workflow automation rules, templates, and execution")
     )
 )]
 struct ApiDoc;
@@ -363,8 +362,16 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/forms", routes::forms::router())
         // Reports routes (Epic 55)
         .nest("/api/v1/reports", routes::reports::router())
-        // Registry routes (Epic 57)
-        .nest("/api/v1/registry", routes::registry::router())
+        // Package routes (Epic 58)
+        .nest(
+            "/api/v1/packages",
+            routes::package_visitor::packages_router(),
+        )
+        // Visitor routes (Epic 58)
+        .nest(
+            "/api/v1/visitors",
+            routes::package_visitor::visitors_router(),
+        )
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware

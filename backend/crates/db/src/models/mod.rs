@@ -441,6 +441,9 @@ pub mod automation;
 // Epic 54: Forms Management
 pub mod form;
 
+// Epic 58: Package & Visitor Management
+pub mod package_visitor;
+
 pub use automation::{
     AutomationAction, AutomationLogSummary, AutomationRuleWithStats, CallWebhookConfig,
     ConditionTriggerConfig, CreateAutomationRule, CreateRuleFromTemplate, EventTriggerConfig,
@@ -463,9 +466,6 @@ pub use form::{
 // Epic 55: Advanced Reporting & Analytics
 pub mod reports;
 
-// Epic 57: Building Registries (Pets & Vehicles)
-pub mod registry;
-
 pub use reports::{
     CategoryTrend, ConsumptionAnomaly, ConsumptionReportData, ConsumptionSummary, DateRange,
     FaultTrends, MonthlyAverage, MonthlyConsumption, MonthlyPersonCount, OccupancyReportData,
@@ -473,12 +473,12 @@ pub use reports::{
     UtilityTypeConsumption, VoteParticipationDetail, VotingParticipationSummary, YearComparison,
 };
 
-// Epic 57: Building Registries
-pub use registry::{
-    pet_size, pet_type, registry_status, vehicle_type, BuildingRegistryRules, CreateParkingSpot,
-    CreatePetRegistration, CreateVehicleRegistration, ParkingSpot, ParkingSpotQuery,
-    ParkingSpotWithDetails, PetRegistration, PetRegistrationQuery, PetRegistrationSummary,
-    PetRegistrationWithDetails, RegistryStatistics, ReviewRegistration, UpdateParkingSpot,
-    UpdatePetRegistration, UpdateRegistryRules, UpdateVehicleRegistration, VehicleRegistration,
-    VehicleRegistrationQuery, VehicleRegistrationSummary, VehicleRegistrationWithDetails,
+// Epic 58: Package & Visitor Management
+pub use package_visitor::{
+    package_carrier, package_status, visitor_purpose, visitor_status, AccessCodeVerification,
+    BuildingPackageSettings, BuildingVisitorSettings, CheckInVisitor, CheckOutVisitor,
+    CreatePackage, CreateVisitor, Package, PackageQuery, PackageStatistics, PackageSummary,
+    PackageWithDetails, PickupPackage, ReceivePackage, UpdateBuildingPackageSettings,
+    UpdateBuildingVisitorSettings, UpdatePackage, UpdateVisitor, VerifyAccessCode, Visitor,
+    VisitorQuery, VisitorStatistics, VisitorSummary, VisitorWithDetails,
 };
