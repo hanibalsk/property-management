@@ -469,13 +469,3 @@ pub use reports::{
     OccupancySummary, OccupancyTrends, ReportMonthlyCount, UnitConsumption, UnitOccupancy,
     UtilityTypeConsumption, VoteParticipationDetail, VotingParticipationSummary, YearComparison,
 };
-
-// Epic 58: Package & Visitor Management
-pub use package_visitor::{
-    package_carrier, package_status, visitor_purpose, visitor_status, AccessCodeVerification,
-    BuildingPackageSettings, BuildingVisitorSettings, CheckInVisitor, CheckOutVisitor,
-    CreatePackage, CreateVisitor, Package, PackageQuery, PackageStatistics, PackageSummary,
-    PackageWithDetails, PickupPackage, ReceivePackage, UpdateBuildingPackageSettings,
-    UpdateBuildingVisitorSettings, UpdatePackage, UpdateVisitor, VerifyAccessCode, Visitor,
-    VisitorQuery, VisitorStatistics, VisitorSummary, VisitorWithDetails,
-};
