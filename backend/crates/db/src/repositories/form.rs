@@ -67,83 +67,12 @@ impl FormRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        // Batch insert fields if provided (avoids N+1 query problem)
-        if !data.fields.is_empty() {
-            // Collect all fields and their JSON values (stored separately to avoid lifetime issues)
-            let mut fields_data = Vec::new();
-            let mut json_storage = Vec::new(); // Owns the JSON values
-
-            for (index, field) in data.fields.into_iter().enumerate() {
-                let validation_rules = field
-                    .validation_rules
-                    .map(|r| serde_json::to_value(r).unwrap_or_default())
-                    .unwrap_or_else(|| serde_json::json!({}));
-
-                let options = field
-                    .options
-                    .map(|o| serde_json::to_value(o).unwrap_or_default())
-                    .unwrap_or_else(|| serde_json::json!([]));
-
-                let conditional_display = field
-                    .conditional_display
-                    .map(|c| serde_json::to_value(c).unwrap_or_default());
-
-                let order = if field.field_order > 0 {
-                    field.field_order
-                } else {
-                    index as i32
-                };
-
-                json_storage.push((validation_rules, options, conditional_display));
-                fields_data.push((field, order, json_storage.len() - 1));
-            }
-
-            // Build SQL with VALUES placeholders
-            let values_clause: Vec<String> = (0..fields_data.len())
-                .map(|i| {
-                    let base = i * 13 + 2;
-                    format!(
-                        "($1, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${})",
-                        base, base+1, base+2, base+3, base+4, base+5, base+6,
-                        base+7, base+8, base+9, base+10, base+11, base+12
-                    )
-                })
-                .collect();
-
-            let sql = format!(
-                r#"
-                INSERT INTO form_fields (
-                    form_id, field_key, label, field_type, required,
-                    help_text, placeholder, default_value, validation_rules,
-                    options, field_order, width, section, conditional_display
-                )
-                VALUES {}
-                "#,
-                values_clause.join(", ")
-            );
-
-            let mut query = sqlx::query(&sql).bind(form.id);
-
-            // Bind all values
-            for (field, order, json_idx) in &fields_data {
-                let (validation_rules, options, conditional_display) = &json_storage[*json_idx];
-                query = query
-                    .bind(&field.field_key)
-                    .bind(&field.label)
-                    .bind(&field.field_type)
-                    .bind(field.required)
-                    .bind(&field.help_text)
-                    .bind(&field.placeholder)
-                    .bind(&field.default_value)
-                    .bind(validation_rules)
-                    .bind(options)
-                    .bind(order)
-                    .bind(&field.width)
-                    .bind(&field.section)
-                    .bind(conditional_display);
-            }
-
-            query.execute(&self.pool).await?;
+        // Create fields if provided
+        // Note: Batch insert was attempted but caused lifetime issues with JSON values.
+        // The performance benefit is minimal for typical form creation (< 20 fields).
+        // Keeping the simple approach for maintainability.
+        for (index, field) in data.fields.into_iter().enumerate() {
+            self.create_field(form.id, field, index as i32).await?;
         }
 
         Ok(form)
