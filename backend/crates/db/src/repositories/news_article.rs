@@ -74,9 +74,117 @@ impl NewsArticleRepository {
         Ok(None)
     }
 
-    pub async fn list(&self, query: &ArticleListQuery) -> Result<Vec<ArticleSummary>, SqlxError> {
-        // Simplified version - returns empty for now
-        Ok(vec![])
+    pub async fn list(
+        &self,
+        organization_id: Uuid,
+        query: &ArticleListQuery,
+    ) -> Result<Vec<ArticleSummary>, SqlxError> {
+        let mut sql = String::from(
+            r#"
+            SELECT 
+                id, title, excerpt, cover_image_url, author_id, status,
+                published_at, pinned, view_count, reaction_count, comment_count,
+                created_at, updated_at
+            FROM news_articles
+            WHERE organization_id = $1
+            "#,
+        );
+
+        let mut param_count = 1;
+
+        // Apply status filter
+        if query.status.is_some() {
+            param_count += 1;
+            sql.push_str(&format!(" AND status = ${}", param_count));
+        }
+
+        // Apply building_id filter
+        if query.building_id.is_some() {
+            param_count += 1;
+            sql.push_str(&format!(" AND building_ids @> ${}", param_count));
+        }
+
+        // Apply pinned_only filter
+        if query.pinned_only == Some(true) {
+            sql.push_str(" AND pinned = true");
+        }
+
+        // Add ordering - pinned first, then by published_at desc
+        sql.push_str(" ORDER BY pinned DESC, published_at DESC NULLS LAST");
+
+        // Apply pagination
+        if let Some(limit) = query.limit {
+            param_count += 1;
+            sql.push_str(&format!(" LIMIT ${}", param_count));
+        }
+
+        if let Some(offset) = query.offset {
+            param_count += 1;
+            sql.push_str(&format!(" OFFSET ${}", param_count));
+        }
+
+        // Build and execute query
+        let mut query_builder = sqlx::query_as::<_, ArticleSummary>(&sql).bind(organization_id);
+
+        if let Some(ref status) = query.status {
+            query_builder = query_builder.bind(status);
+        }
+
+        if let Some(building_id) = query.building_id {
+            query_builder = query_builder.bind(serde_json::json!([building_id]));
+        }
+
+        if let Some(limit) = query.limit {
+            query_builder = query_builder.bind(limit);
+        }
+
+        if let Some(offset) = query.offset {
+            query_builder = query_builder.bind(offset);
+        }
+
+        query_builder.fetch_all(&self.pool).await
+    }
+
+    pub async fn count(
+        &self,
+        organization_id: Uuid,
+        query: &ArticleListQuery,
+    ) -> Result<i64, SqlxError> {
+        let mut sql = String::from(
+            "SELECT COUNT(*) as count FROM news_articles WHERE organization_id = $1",
+        );
+
+        let mut param_count = 1;
+
+        // Apply status filter
+        if query.status.is_some() {
+            param_count += 1;
+            sql.push_str(&format!(" AND status = ${}", param_count));
+        }
+
+        // Apply building_id filter
+        if query.building_id.is_some() {
+            param_count += 1;
+            sql.push_str(&format!(" AND building_ids @> ${}", param_count));
+        }
+
+        // Apply pinned_only filter
+        if query.pinned_only == Some(true) {
+            sql.push_str(" AND pinned = true");
+        }
+
+        // Build and execute query
+        let mut query_builder = sqlx::query_scalar::<_, i64>(&sql).bind(organization_id);
+
+        if let Some(ref status) = query.status {
+            query_builder = query_builder.bind(status);
+        }
+
+        if let Some(building_id) = query.building_id {
+            query_builder = query_builder.bind(serde_json::json!([building_id]));
+        }
+
+        query_builder.fetch_one(&self.pool).await
     }
 
     pub async fn update(
