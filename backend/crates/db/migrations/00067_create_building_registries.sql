@@ -161,6 +161,16 @@ CREATE POLICY building_registry_rules_tenant_isolation ON building_registry_rule
 CREATE POLICY building_registry_rules_insert ON building_registry_rules
     FOR INSERT WITH CHECK (tenant_id = current_setting('app.current_tenant_id')::UUID);
 
+-- Trigger function (create if not exists)
+CREATE OR REPLACE FUNCTION trigger_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
 -- Updated at triggers
 CREATE TRIGGER set_pet_registrations_updated_at
     BEFORE UPDATE ON pet_registrations
