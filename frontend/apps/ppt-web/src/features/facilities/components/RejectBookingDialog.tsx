@@ -41,11 +41,11 @@ export function RejectBookingDialog({
       aria-labelledby="dialog-title"
     >
       {/* Backdrop */}
-      <button
-        type="button"
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-close is intentional, keyboard users use ESC or cancel button */}
+      <div
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={onCancel}
-        aria-label="Close dialog"
+        aria-hidden="true"
       />
 
       {/* Modal */}
