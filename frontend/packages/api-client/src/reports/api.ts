@@ -230,7 +230,307 @@ export async function comparePeriods(
 }
 
 // ============================================================================
-// EXPORT
+// EPIC 55: ADVANCED REPORTS - Types
+// ============================================================================
+
+/** Date range for reports. */
+export interface DateRange {
+  from: string;
+  to: string;
+}
+
+/** Monthly count data point. */
+export interface MonthlyCount {
+  year: number;
+  month: number;
+  count: number;
+}
+
+/** Monthly average data point. */
+export interface MonthlyAverage {
+  year: number;
+  month: number;
+  average: number;
+}
+
+/** Fault statistics summary. */
+export interface FaultStatisticsSummary {
+  total_count: number;
+  open_count: number;
+  closed_count: number;
+  by_status: Array<{ status: string; count: number }>;
+  by_category: Array<{ category: string; count: number }>;
+  by_priority: Array<{ priority: string; count: number }>;
+  average_resolution_time_hours: number | null;
+  average_rating: number | null;
+}
+
+/** Fault trends over time. */
+export interface FaultTrends {
+  monthly_counts: MonthlyCount[];
+  resolution_time_trend: MonthlyAverage[];
+  category_trend: Array<{ category: string; monthly_counts: MonthlyCount[] }>;
+}
+
+/** Fault statistics report response. */
+export interface FaultStatisticsReportResponse {
+  building_id: string | null;
+  building_name: string | null;
+  date_range: DateRange;
+  statistics: FaultStatisticsSummary;
+  trends: FaultTrends;
+}
+
+/** Voting participation summary. */
+export interface VotingParticipationSummary {
+  total_votes: number;
+  votes_with_quorum: number;
+  votes_without_quorum: number;
+  average_participation_rate: number;
+  total_eligible_voters: number;
+  total_responses: number;
+}
+
+/** Individual vote participation detail. */
+export interface VoteParticipationDetail {
+  vote_id: string;
+  title: string;
+  status: string;
+  start_at: string | null;
+  end_at: string;
+  eligible_count: number;
+  response_count: number;
+  participation_rate: number;
+  quorum_required: number | null;
+  quorum_reached: boolean;
+}
+
+/** Voting participation report response. */
+export interface VotingParticipationReportResponse {
+  building_id: string | null;
+  building_name: string | null;
+  date_range: DateRange;
+  summary: VotingParticipationSummary;
+  votes: VoteParticipationDetail[];
+}
+
+/** Occupancy summary. */
+export interface OccupancySummary {
+  total_units: number;
+  occupied_units: number;
+  vacant_units: number;
+  occupancy_rate: number;
+  total_person_months: number;
+  average_occupants_per_unit: number;
+}
+
+/** Year-over-year comparison. */
+export interface YearComparison {
+  current_year: number;
+  previous_year: number;
+  current_total: number;
+  previous_total: number;
+  change_percentage: number;
+}
+
+/** Occupancy trends. */
+export interface OccupancyTrends {
+  monthly_total: MonthlyCount[];
+  year_over_year_comparison: YearComparison | null;
+}
+
+/** Occupancy report response. */
+export interface OccupancyReportResponse {
+  building_id: string | null;
+  building_name: string | null;
+  date_range: DateRange;
+  summary: OccupancySummary;
+  by_unit: Array<{
+    unit_id: string;
+    unit_designation: string;
+    person_months: Array<{ year: number; month: number; count: number }>;
+    total_person_months: number;
+    average_occupants: number;
+  }>;
+  trends: OccupancyTrends;
+}
+
+/** Consumption summary. */
+export interface ConsumptionSummary {
+  total_consumption: string;
+  total_cost: string;
+  meter_count: number;
+  average_consumption_per_unit: string;
+}
+
+/** Consumption anomaly. */
+export interface ConsumptionAnomaly {
+  unit_id: string;
+  unit_designation: string;
+  meter_id: string;
+  utility_type: string;
+  reading_date: string;
+  consumption: string;
+  expected_consumption: string;
+  deviation_percentage: number;
+  severity: 'low' | 'medium' | 'high';
+}
+
+/** Consumption report response. */
+export interface ConsumptionReportResponse {
+  building_id: string | null;
+  building_name: string | null;
+  date_range: DateRange;
+  summary: ConsumptionSummary;
+  by_utility_type: Array<{
+    utility_type: string;
+    total_consumption: string;
+    unit: string;
+    total_cost: string;
+    meter_count: number;
+    monthly_data: Array<{ year: number; month: number; consumption: string; cost: string }>;
+  }>;
+  by_unit: Array<{
+    unit_id: string;
+    unit_designation: string;
+    utility_type: string;
+    total_consumption: string;
+    average_monthly: string;
+    is_above_average: boolean;
+    deviation_percentage: number;
+  }>;
+  anomalies: ConsumptionAnomaly[];
+}
+
+/** Export report response. */
+export interface ExportReportResponse {
+  download_url: string;
+  format: string;
+  expires_at: string;
+}
+
+// ============================================================================
+// EPIC 55: ADVANCED REPORTS - Query Parameters
+// ============================================================================
+
+export interface FaultStatisticsQuery {
+  organization_id: string;
+  building_id?: string;
+  from_date?: string;
+  to_date?: string;
+}
+
+export interface VotingParticipationQuery {
+  organization_id: string;
+  building_id?: string;
+  from_date?: string;
+  to_date?: string;
+}
+
+export interface OccupancyReportQuery {
+  organization_id: string;
+  building_id?: string;
+  year: number;
+  month?: number;
+  include_comparison?: boolean;
+}
+
+export interface ConsumptionReportQuery {
+  organization_id: string;
+  building_id?: string;
+  utility_type?: string;
+  from_date: string;
+  to_date: string;
+  include_anomalies?: boolean;
+}
+
+export interface ExportReportRequest {
+  organization_id: string;
+  report_type: 'faults' | 'voting' | 'occupancy' | 'consumption';
+  format: 'pdf' | 'excel' | 'csv';
+  building_id?: string;
+  from_date?: string;
+  to_date?: string;
+  params?: Record<string, unknown>;
+}
+
+// ============================================================================
+// EPIC 55: ADVANCED REPORTS - API Functions
+// ============================================================================
+
+/**
+ * Get fault statistics report (Story 55.1).
+ */
+export async function getFaultStatisticsReport(
+  params: FaultStatisticsQuery
+): Promise<FaultStatisticsReportResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('organization_id', params.organization_id);
+  if (params.building_id) searchParams.set('building_id', params.building_id);
+  if (params.from_date) searchParams.set('from_date', params.from_date);
+  if (params.to_date) searchParams.set('to_date', params.to_date);
+  return fetchApi(`${API_BASE}/faults?${searchParams}`);
+}
+
+/**
+ * Get voting participation report (Story 55.2).
+ */
+export async function getVotingParticipationReport(
+  params: VotingParticipationQuery
+): Promise<VotingParticipationReportResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('organization_id', params.organization_id);
+  if (params.building_id) searchParams.set('building_id', params.building_id);
+  if (params.from_date) searchParams.set('from_date', params.from_date);
+  if (params.to_date) searchParams.set('to_date', params.to_date);
+  return fetchApi(`${API_BASE}/voting?${searchParams}`);
+}
+
+/**
+ * Get occupancy report (Story 55.3).
+ */
+export async function getOccupancyReport(
+  params: OccupancyReportQuery
+): Promise<OccupancyReportResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('organization_id', params.organization_id);
+  if (params.building_id) searchParams.set('building_id', params.building_id);
+  searchParams.set('year', String(params.year));
+  if (params.month) searchParams.set('month', String(params.month));
+  if (params.include_comparison) searchParams.set('include_comparison', 'true');
+  return fetchApi(`${API_BASE}/occupancy?${searchParams}`);
+}
+
+/**
+ * Get consumption report (Story 55.4).
+ */
+export async function getConsumptionReport(
+  params: ConsumptionReportQuery
+): Promise<ConsumptionReportResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('organization_id', params.organization_id);
+  if (params.building_id) searchParams.set('building_id', params.building_id);
+  if (params.utility_type) searchParams.set('utility_type', params.utility_type);
+  searchParams.set('from_date', params.from_date);
+  searchParams.set('to_date', params.to_date);
+  if (params.include_anomalies) searchParams.set('include_anomalies', 'true');
+  return fetchApi(`${API_BASE}/consumption?${searchParams}`);
+}
+
+/**
+ * Export a report to PDF/Excel/CSV (Story 55.5).
+ */
+export async function exportAdvancedReport(
+  data: ExportReportRequest
+): Promise<ExportReportResponse> {
+  return fetchApi(`${API_BASE}/export`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ============================================================================
+// EXPORT (LEGACY FROM EPIC 53)
 // ============================================================================
 
 export async function exportReport(
