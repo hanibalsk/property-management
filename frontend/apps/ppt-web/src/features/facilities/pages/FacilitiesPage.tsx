@@ -12,16 +12,23 @@ import { FacilityList } from '../components';
 
 const PAGE_SIZE = 10;
 
+// TODO: Replace with useAuth() hook when auth context is implemented
+// This controls visibility of manager-only features (create, edit facilities)
+// Backend still enforces authorization - this is for UI only
+function useIsManager(): boolean {
+  return true;
+}
+
 export function FacilitiesPage() {
   const { buildingId } = useParams<{ buildingId: string }>();
   const navigate = useNavigate();
+  const isManager = useIsManager();
 
   const [facilities, setFacilities] = useState<FacilitySummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState<ListFacilitiesQuery>({});
-  const [isManager] = useState(true); // TODO: Get from auth context
 
   useEffect(() => {
     if (!buildingId) return;

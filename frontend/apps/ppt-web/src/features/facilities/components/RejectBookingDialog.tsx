@@ -33,7 +33,13 @@ export function RejectBookingDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="dialog-title">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto"
+      // biome-ignore lint/a11y/useSemanticElements: custom modal pattern with full ARIA support
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dialog-title"
+    >
       {/* Backdrop */}
       <button
         type="button"

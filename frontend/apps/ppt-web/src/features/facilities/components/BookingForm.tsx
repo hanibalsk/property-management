@@ -79,12 +79,13 @@ export function BookingForm({
     e.preventDefault();
     if (!validate()) return;
 
-    const startDateTime = `${selectedDate}T${startTime}:00`;
-    const endDateTime = `${selectedDate}T${endTime}:00`;
+    // Create ISO datetime strings with timezone offset
+    const startDate = new Date(`${selectedDate}T${startTime}:00`);
+    const endDate = new Date(`${selectedDate}T${endTime}:00`);
 
     onSubmit({
-      start_time: startDateTime,
-      end_time: endDateTime,
+      start_time: startDate.toISOString(),
+      end_time: endDate.toISOString(),
       purpose: purpose || undefined,
       notes: notes || undefined,
       attendees_count: attendeesCount ? Number(attendeesCount) : undefined,
