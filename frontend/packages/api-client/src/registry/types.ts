@@ -90,8 +90,8 @@ export interface VehicleRegistration {
   unitId: string;
   ownerId: string;
   vehicleType: VehicleType;
-  make?: string;
-  model?: string;
+  make: string;
+  model: string;
   year?: number;
   color?: string;
   licensePlate: string;
@@ -118,8 +118,8 @@ export interface VehicleRegistrationWithDetails extends VehicleRegistration {
 
 export interface CreateVehicleRegistrationRequest {
   vehicleType: VehicleType;
-  make?: string;
-  model?: string;
+  make: string;
+  model: string;
   year?: number;
   color?: string;
   licensePlate: string;
