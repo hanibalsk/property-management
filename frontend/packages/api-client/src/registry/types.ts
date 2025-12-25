@@ -6,7 +6,7 @@
 
 // Pet types
 export type PetType = 'dog' | 'cat' | 'bird' | 'fish' | 'reptile' | 'rodent' | 'other';
-export type PetSize = 'small' | 'medium' | 'large' | 'extra_large';
+export type PetSize = 'small' | 'medium' | 'large' | 'extra_large'; // Database uses snake_case
 
 // Vehicle types
 export type VehicleType = 'car' | 'motorcycle' | 'bicycle' | 'scooter' | 'other';
