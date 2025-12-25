@@ -69,9 +69,9 @@ impl FormRepository {
 
         // Batch insert fields if provided (avoids N+1 query problem)
         if !data.fields.is_empty() {
-            // Build values for batch insert
-            let mut values_clause = Vec::new();
-            let mut bindings = Vec::new();
+            // Collect all fields and their JSON values (stored separately to avoid lifetime issues)
+            let mut fields_data = Vec::new();
+            let mut json_storage = Vec::new(); // Owns the JSON values
 
             for (index, field) in data.fields.into_iter().enumerate() {
                 let validation_rules = field
@@ -94,16 +94,21 @@ impl FormRepository {
                     index as i32
                 };
 
-                values_clause.push(format!(
-                    "($1, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${})",
-                    bindings.len() + 2, bindings.len() + 3, bindings.len() + 4, bindings.len() + 5,
-                    bindings.len() + 6, bindings.len() + 7, bindings.len() + 8, bindings.len() + 9,
-                    bindings.len() + 10, bindings.len() + 11, bindings.len() + 12, bindings.len() + 13,
-                    bindings.len() + 14
-                ));
-
-                bindings.push((field, validation_rules, options, conditional_display, order));
+                json_storage.push((validation_rules, options, conditional_display));
+                fields_data.push((field, order, json_storage.len() - 1));
             }
+
+            // Build SQL with VALUES placeholders
+            let values_clause: Vec<String> = (0..fields_data.len())
+                .map(|i| {
+                    let base = i * 13 + 2;
+                    format!(
+                        "($1, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${})",
+                        base, base+1, base+2, base+3, base+4, base+5, base+6,
+                        base+7, base+8, base+9, base+10, base+11, base+12
+                    )
+                })
+                .collect();
 
             let sql = format!(
                 r#"
@@ -119,7 +124,9 @@ impl FormRepository {
 
             let mut query = sqlx::query(&sql).bind(form.id);
 
-            for (field, validation_rules, options, conditional_display, order) in bindings {
+            // Bind all values
+            for (field, order, json_idx) in &fields_data {
+                let (validation_rules, options, conditional_display) = &json_storage[*json_idx];
                 query = query
                     .bind(&field.field_key)
                     .bind(&field.label)
@@ -128,12 +135,12 @@ impl FormRepository {
                     .bind(&field.help_text)
                     .bind(&field.placeholder)
                     .bind(&field.default_value)
-                    .bind(&validation_rules)
-                    .bind(&options)
+                    .bind(validation_rules)
+                    .bind(options)
                     .bind(order)
                     .bind(&field.width)
                     .bind(&field.section)
-                    .bind(&conditional_display);
+                    .bind(conditional_display);
             }
 
             query.execute(&self.pool).await?;
