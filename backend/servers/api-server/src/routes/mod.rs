@@ -71,3 +71,6 @@ pub mod reports;
 
 // Epic 58: Package & Visitor Management
 pub mod package_visitor;
+
+// Epic 59: News & Media Management
+pub mod news_articles;
