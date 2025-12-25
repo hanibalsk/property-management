@@ -1,0 +1,242 @@
+/**
+ * Facilities API client (Epic 56: Facility Booking).
+ *
+ * Client functions for facility management and booking.
+ */
+
+import type {
+  AvailabilityQuery,
+  AvailableSlot,
+  BookingListResponse,
+  BookingWithDetails,
+  CancelBookingRequest,
+  CreateBookingRequest,
+  CreateFacilityRequest,
+  Facility,
+  FacilityListResponse,
+  ListBookingsQuery,
+  ListFacilitiesQuery,
+  RejectBookingRequest,
+  UpdateBookingRequest,
+  UpdateFacilityRequest,
+} from './types';
+
+const API_BASE = '/api/v1';
+
+// NOTE: Authentication headers (Authorization, etc.) are handled at a higher level
+// by the global fetch interceptor or API client wrapper, not in individual API calls.
+
+async function fetchApi<T>(url: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.message || errorMessage;
+    } catch {
+      // Non-JSON response, use status text
+      errorMessage = response.statusText || errorMessage;
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+}
+
+// ============================================================================
+// FACILITY MANAGEMENT
+// ============================================================================
+
+/**
+ * List facilities in a building.
+ */
+export async function listFacilities(
+  buildingId: string,
+  params?: ListFacilitiesQuery
+): Promise<FacilityListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.facility_type) searchParams.set('facility_type', params.facility_type);
+  if (params?.is_bookable !== undefined)
+    searchParams.set('is_bookable', String(params.is_bookable));
+  if (params?.is_active !== undefined) searchParams.set('is_active', String(params.is_active));
+  const query = searchParams.toString();
+  return fetchApi(`${API_BASE}/buildings/${buildingId}/facilities${query ? `?${query}` : ''}`);
+}
+
+/**
+ * Get a single facility by ID.
+ */
+export async function getFacility(buildingId: string, facilityId: string): Promise<Facility> {
+  return fetchApi(`${API_BASE}/buildings/${buildingId}/facilities/${facilityId}`);
+}
+
+/**
+ * Create a new facility.
+ */
+export async function createFacility(
+  buildingId: string,
+  data: CreateFacilityRequest
+): Promise<Facility> {
+  return fetchApi(`${API_BASE}/buildings/${buildingId}/facilities`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Update a facility.
+ */
+export async function updateFacility(
+  buildingId: string,
+  facilityId: string,
+  data: UpdateFacilityRequest
+): Promise<Facility> {
+  return fetchApi(`${API_BASE}/buildings/${buildingId}/facilities/${facilityId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Delete a facility.
+ */
+export async function deleteFacility(buildingId: string, facilityId: string): Promise<void> {
+  await fetchApi(`${API_BASE}/buildings/${buildingId}/facilities/${facilityId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================================================
+// FACILITY AVAILABILITY
+// ============================================================================
+
+/**
+ * Check availability for a facility on a specific date.
+ */
+export async function checkAvailability(
+  buildingId: string,
+  facilityId: string,
+  params: AvailabilityQuery
+): Promise<AvailableSlot[]> {
+  const searchParams = new URLSearchParams();
+  searchParams.set('date', params.date);
+  return fetchApi(
+    `${API_BASE}/buildings/${buildingId}/facilities/${facilityId}/availability?${searchParams}`
+  );
+}
+
+// ============================================================================
+// FACILITY BOOKINGS
+// ============================================================================
+
+/**
+ * List bookings for a facility.
+ */
+export async function listFacilityBookings(
+  buildingId: string,
+  facilityId: string,
+  params?: ListBookingsQuery
+): Promise<BookingListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.from_date) searchParams.set('from_date', params.from_date);
+  if (params?.to_date) searchParams.set('to_date', params.to_date);
+  if (params?.status) searchParams.set('status', params.status);
+  const query = searchParams.toString();
+  return fetchApi(
+    `${API_BASE}/buildings/${buildingId}/facilities/${facilityId}/bookings${query ? `?${query}` : ''}`
+  );
+}
+
+/**
+ * Create a new booking for a facility.
+ */
+export async function createBooking(
+  buildingId: string,
+  facilityId: string,
+  data: CreateBookingRequest
+): Promise<BookingWithDetails> {
+  return fetchApi(`${API_BASE}/buildings/${buildingId}/facilities/${facilityId}/bookings`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Get current user's bookings.
+ */
+export async function getMyBookings(): Promise<BookingListResponse> {
+  return fetchApi(`${API_BASE}/bookings/my`);
+}
+
+/**
+ * Get a booking by ID.
+ */
+export async function getBooking(bookingId: string): Promise<BookingWithDetails> {
+  return fetchApi(`${API_BASE}/bookings/${bookingId}`);
+}
+
+/**
+ * Update a booking.
+ */
+export async function updateBooking(
+  bookingId: string,
+  data: UpdateBookingRequest
+): Promise<BookingWithDetails> {
+  return fetchApi(`${API_BASE}/bookings/${bookingId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Cancel a booking.
+ */
+export async function cancelBooking(
+  bookingId: string,
+  data?: CancelBookingRequest
+): Promise<BookingWithDetails> {
+  return fetchApi(`${API_BASE}/bookings/${bookingId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify(data || {}),
+  });
+}
+
+// ============================================================================
+// BOOKING APPROVAL WORKFLOW
+// ============================================================================
+
+/**
+ * List pending bookings for a building (for managers).
+ */
+export async function listPendingBookings(buildingId: string): Promise<BookingListResponse> {
+  return fetchApi(`${API_BASE}/buildings/${buildingId}/bookings/pending`);
+}
+
+/**
+ * Approve a pending booking.
+ */
+export async function approveBooking(bookingId: string): Promise<BookingWithDetails> {
+  return fetchApi(`${API_BASE}/bookings/${bookingId}/approve`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Reject a pending booking.
+ */
+export async function rejectBooking(
+  bookingId: string,
+  data: RejectBookingRequest
+): Promise<BookingWithDetails> {
+  return fetchApi(`${API_BASE}/bookings/${bookingId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
