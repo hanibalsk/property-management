@@ -109,10 +109,14 @@ export function BookingForm({
   // Filter to available slots if provided
   const isSlotAvailable = (time: string): boolean => {
     if (!availableSlots) return true;
-    const dateTime = `${selectedDate}T${time}:00`;
-    return availableSlots.some(
-      (slot) => slot.is_available && dateTime >= slot.start_time && dateTime < slot.end_time
-    );
+    // Convert to Date objects for proper comparison
+    const dateTime = new Date(`${selectedDate}T${time}:00`);
+    return availableSlots.some((slot) => {
+      if (!slot.is_available) return false;
+      const slotStart = new Date(slot.start_time);
+      const slotEnd = new Date(slot.end_time);
+      return dateTime >= slotStart && dateTime < slotEnd;
+    });
   };
 
   return (
@@ -142,6 +146,13 @@ export function BookingForm({
           value={selectedDate}
           onChange={(e) => onDateChange(e.target.value)}
           min={new Date().toISOString().split('T')[0]}
+          max={
+            facility.max_advance_days
+              ? new Date(Date.now() + facility.max_advance_days * 24 * 60 * 60 * 1000)
+                  .toISOString()
+                  .split('T')[0]
+              : undefined
+          }
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {errors.date && <p className="mt-1 text-sm text-red-600">{errors.date}</p>}

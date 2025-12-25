@@ -89,6 +89,12 @@ export function FacilityForm({ facility, onSubmit, onCancel, isSubmitting }: Fac
     if (maxBookingHours && Number(maxBookingHours) <= 0) {
       newErrors.maxBookingHours = 'Must be greater than 0';
     }
+    if (availableDays === 0) {
+      newErrors.availableDays = 'Select at least one available day';
+    }
+    if (minAdvanceHours && Number(minAdvanceHours) < 0) {
+      newErrors.minAdvanceHours = 'Cannot be negative';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -310,6 +316,9 @@ export function FacilityForm({ facility, onSubmit, onCancel, isSubmitting }: Fac
                 min={0}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              {errors.minAdvanceHours && (
+                <p className="mt-1 text-sm text-red-600">{errors.minAdvanceHours}</p>
+              )}
             </div>
           </div>
 
@@ -368,6 +377,9 @@ export function FacilityForm({ facility, onSubmit, onCancel, isSubmitting }: Fac
                 );
               })}
             </div>
+            {errors.availableDays && (
+              <p className="mt-1 text-sm text-red-600">{errors.availableDays}</p>
+            )}
           </fieldset>
         </div>
       </div>
