@@ -66,7 +66,7 @@ export const createRegistryHooks = (api: RegistryApi) => ({
    */
   useMyPets: (params?: { page?: number; pageSize?: number; status?: string }) =>
     useQuery({
-      queryKey: registryKeys.myPets(),
+      queryKey: [...registryKeys.myPets(), params],
       queryFn: () => api.pets.listMy(params),
     }),
 
@@ -162,7 +162,7 @@ export const createRegistryHooks = (api: RegistryApi) => ({
    */
   useMyVehicles: (params?: { page?: number; pageSize?: number; status?: string }) =>
     useQuery({
-      queryKey: registryKeys.myVehicles(),
+      queryKey: [...registryKeys.myVehicles(), params],
       queryFn: () => api.vehicles.listMy(params),
     }),
 
