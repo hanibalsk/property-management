@@ -23,6 +23,7 @@ export * from './financial';
 export * from './forms';
 export * from './workflow-automation';
 export * from './reports';
+export * from './packages';
 
 // API client configuration
 export interface ApiConfig {

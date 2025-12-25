@@ -183,7 +183,13 @@ pub mod automation;
 // Epic 54: Forms Management
 pub mod form;
 
+// Epic 58: Package & Visitor Management
+pub mod package_visitor;
+
 pub use automation::AutomationRepository;
 
 // Epic 54: Forms Management
 pub use form::FormRepository;
+
+// Epic 58: Package & Visitor Management
+pub use package_visitor::PackageVisitorRepository;
