@@ -84,7 +84,7 @@ export function FacilityForm({ facility, onSubmit, onCancel, isSubmitting }: Fac
       newErrors.facilityType = 'Facility type is required';
     }
     if (availableFrom && availableTo && availableFrom >= availableTo) {
-      newErrors.availableTo = 'End time must be after start time';
+      newErrors.availableTo = 'Available until must be after available from';
     }
     if (maxBookingHours && Number(maxBookingHours) <= 0) {
       newErrors.maxBookingHours = 'Must be greater than 0';
@@ -349,20 +349,24 @@ export function FacilityForm({ facility, onSubmit, onCancel, isSubmitting }: Fac
           <fieldset>
             <legend className="block text-sm font-medium text-gray-700 mb-2">Available Days</legend>
             <div className="flex flex-wrap gap-2">
-              {daysOfWeek.map((day) => (
-                <button
-                  key={day.bit}
-                  type="button"
-                  onClick={() => toggleDay(day.bit)}
-                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                    availableDays & day.bit
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {day.label}
-                </button>
-              ))}
+              {daysOfWeek.map((day) => {
+                const isSelected = Boolean(availableDays & day.bit);
+                return (
+                  <button
+                    key={day.bit}
+                    type="button"
+                    onClick={() => toggleDay(day.bit)}
+                    aria-pressed={isSelected}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                );
+              })}
             </div>
           </fieldset>
         </div>
