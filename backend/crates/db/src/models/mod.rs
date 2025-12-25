@@ -463,9 +463,22 @@ pub use form::{
 // Epic 55: Advanced Reporting & Analytics
 pub mod reports;
 
+// Epic 57: Building Registries (Pets & Vehicles)
+pub mod registry;
+
 pub use reports::{
     CategoryTrend, ConsumptionAnomaly, ConsumptionReportData, ConsumptionSummary, DateRange,
     FaultTrends, MonthlyAverage, MonthlyConsumption, MonthlyPersonCount, OccupancyReportData,
     OccupancySummary, OccupancyTrends, ReportMonthlyCount, UnitConsumption, UnitOccupancy,
     UtilityTypeConsumption, VoteParticipationDetail, VotingParticipationSummary, YearComparison,
+};
+
+// Epic 57: Building Registries
+pub use registry::{
+    pet_size, pet_type, registry_status, vehicle_type, BuildingRegistryRules, CreateParkingSpot,
+    CreatePetRegistration, CreateVehicleRegistration, ParkingSpot, ParkingSpotQuery,
+    ParkingSpotWithDetails, PetRegistration, PetRegistrationQuery, PetRegistrationSummary,
+    PetRegistrationWithDetails, RegistryStatistics, ReviewRegistration, UpdateParkingSpot,
+    UpdatePetRegistration, UpdateRegistryRules, UpdateVehicleRegistration, VehicleRegistration,
+    VehicleRegistrationQuery, VehicleRegistrationSummary, VehicleRegistrationWithDetails,
 };

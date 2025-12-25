@@ -68,3 +68,6 @@ pub mod forms;
 
 // Epic 55: Advanced Reporting & Analytics
 pub mod reports;
+
+// Epic 57: Building Registries
+pub mod registry;
