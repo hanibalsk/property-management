@@ -211,31 +211,33 @@ impl NewsArticleRepository {
         user_id: Uuid,
         reaction: &str,
     ) -> Result<bool, SqlxError> {
-        let existing: Option<(Uuid,)> = sqlx::query_as(
-            "SELECT id FROM article_reactions WHERE article_id = $1 AND user_id = $2",
+        // First, try to insert the reaction. If a reaction already exists for this
+        // (article_id, user_id) pair, ON CONFLICT DO NOTHING will cause the insert
+        // to be skipped (rows_affected will be 0).
+        let insert_result = sqlx::query(
+            "INSERT INTO article_reactions (article_id, user_id, reaction) \
+             VALUES ($1, $2, $3) \
+             ON CONFLICT (article_id, user_id) DO NOTHING",
         )
         .bind(article_id)
         .bind(user_id)
-        .fetch_optional(&self.pool)
+        .bind(reaction)
+        .execute(&self.pool)
         .await?;
 
-        if existing.is_some() {
-            sqlx::query("DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2")
-                .bind(article_id)
-                .bind(user_id)
-                .execute(&self.pool)
-                .await?;
-            Ok(false)
+        if insert_result.rows_affected() == 1 {
+            // A new reaction was inserted (toggled on).
+            Ok(true)
         } else {
+            // A reaction already existed; delete it to toggle off.
             sqlx::query(
-                "INSERT INTO article_reactions (article_id, user_id, reaction) VALUES ($1, $2, $3) ON CONFLICT (article_id, user_id) DO UPDATE SET reaction = $3",
+                "DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2",
             )
             .bind(article_id)
             .bind(user_id)
-            .bind(reaction)
             .execute(&self.pool)
             .await?;
-            Ok(true)
+            Ok(false)
         }
     }
 
