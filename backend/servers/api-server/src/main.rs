@@ -168,7 +168,8 @@ use state::AppState;
         (name = "Workflows", description = "Automated workflow management"),
         (name = "IoT Sensors", description = "IoT sensor registration and management"),
         (name = "Community", description = "Community & social features: groups, posts, events, marketplace"),
-        (name = "Automation", description = "Workflow automation rules, templates, and execution")
+        (name = "Automation", description = "Workflow automation rules, templates, and execution"),
+        (name = "Building Registries", description = "Pet and vehicle registration management")
     )
 )]
 struct ApiDoc;
