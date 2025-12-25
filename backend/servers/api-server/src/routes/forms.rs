@@ -34,6 +34,63 @@ const MAX_DESCRIPTION_LENGTH: usize = 5000;
 /// Maximum number of fields per form.
 const MAX_FIELDS_PER_FORM: usize = 100;
 
+/// Maximum signature image size (1MB in bytes).
+const MAX_SIGNATURE_SIZE: usize = 1024 * 1024;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Validates base64-encoded signature image data.
+/// Returns error if invalid format, too large, or unsupported image type.
+fn validate_signature_image(signature_b64: &str) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    // Check size (base64 is ~33% larger than binary, so divide by 0.75)
+    let estimated_size = (signature_b64.len() * 3) / 4;
+    if estimated_size > MAX_SIGNATURE_SIZE {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "SIGNATURE_TOO_LARGE",
+                &format!("Signature image must be less than {}KB", MAX_SIGNATURE_SIZE / 1024),
+            )),
+        ));
+    }
+
+    // Validate base64 format and decode
+    let decoded = base64::Engine::decode(
+        &base64::engine::general_purpose::STANDARD,
+        signature_b64,
+    )
+    .map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_BASE64",
+                "Signature image must be valid base64-encoded data",
+            )),
+        )
+    })?;
+
+    // Check if it's a valid image by checking magic bytes
+    let is_png = decoded.starts_with(b"\x89PNG\r\n\x1a\n");
+    let is_jpeg = decoded.starts_with(&[0xFF, 0xD8, 0xFF]);
+    let is_webp = decoded.len() > 12
+        && &decoded[0..4] == b"RIFF"
+        && &decoded[8..12] == b"WEBP";
+
+    if !is_png && !is_jpeg && !is_webp {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_IMAGE_TYPE",
+                "Signature image must be PNG, JPEG, or WebP format",
+            )),
+        ));
+    }
+
+    Ok(())
+}
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -1468,12 +1525,19 @@ async fn submit_form(
                 })
                 .collect()
         }),
-        signature_data: req.signature_data.map(|s| db::models::SignatureData {
-            signature_image: s.signature_image,
-            signed_at: chrono::Utc::now(),
-            ip_address: None,
-            user_agent: None,
-        }),
+        signature_data: match req.signature_data {
+            Some(s) => {
+                // Validate signature image before processing
+                validate_signature_image(&s.signature_image)?;
+                Some(db::models::SignatureData {
+                    signature_image: s.signature_image,
+                    signed_at: chrono::Utc::now(),
+                    ip_address: None,
+                    user_agent: None,
+                })
+            }
+            None => None,
+        },
     };
 
     let submission = repo
