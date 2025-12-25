@@ -7,7 +7,7 @@ use crate::models::news_article::{
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
-use sqlx::{Error as SqlxError, FromRow};
+use sqlx::Error as SqlxError;
 use uuid::Uuid;
 
 /// Repository for news article operations.
@@ -68,13 +68,13 @@ impl NewsArticleRepository {
 
     pub async fn find_by_id_with_details(
         &self,
-        id: Uuid,
+        _id: Uuid,
     ) -> Result<Option<ArticleWithDetails>, SqlxError> {
         // Simplified version - to be fully implemented
         Ok(None)
     }
 
-    pub async fn list(&self, query: &ArticleListQuery) -> Result<Vec<ArticleSummary>, SqlxError> {
+    pub async fn list(&self, _query: &ArticleListQuery) -> Result<Vec<ArticleSummary>, SqlxError> {
         // Simplified version - returns empty for now
         Ok(vec![])
     }
@@ -239,7 +239,10 @@ impl NewsArticleRepository {
         }
     }
 
-    pub async fn get_reaction_counts(&self, article_id: Uuid) -> Result<ReactionCounts, SqlxError> {
+    pub async fn get_reaction_counts(
+        &self,
+        _article_id: Uuid,
+    ) -> Result<ReactionCounts, SqlxError> {
         Ok(ReactionCounts::default())
     }
 
