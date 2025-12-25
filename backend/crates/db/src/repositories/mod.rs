@@ -187,3 +187,8 @@ pub use automation::AutomationRepository;
 
 // Epic 54: Forms Management
 pub use form::FormRepository;
+
+// Epic 57: Building Registries
+pub mod registry;
+
+pub use registry::RegistryRepository;
