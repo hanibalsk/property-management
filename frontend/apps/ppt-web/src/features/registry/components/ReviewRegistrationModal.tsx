@@ -51,7 +51,6 @@ export function ReviewRegistrationModal({
         {/* Backdrop */}
         <div
           className="fixed inset-0 bg-black bg-opacity-25 transition-opacity"
-          onClick={resetAndClose}
           onKeyDown={(e) => {
             if (e.key === 'Escape') resetAndClose();
           }}
