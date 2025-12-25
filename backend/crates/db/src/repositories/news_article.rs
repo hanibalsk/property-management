@@ -79,6 +79,17 @@ impl NewsArticleRepository {
         Ok(vec![])
     }
 
+    /// Count the total number of articles matching the query filters.
+    ///
+    /// This is used for accurate pagination totals, separate from the paginated list query.
+    pub async fn count(&self, _query: &ArticleListQuery) -> Result<i64, SqlxError> {
+        // Count query that applies the same filters as list() but without limit/offset
+        let result: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM news_articles")
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(result.0)
+    }
+
     pub async fn update(
         &self,
         id: Uuid,

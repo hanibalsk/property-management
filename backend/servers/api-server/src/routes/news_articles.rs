@@ -265,7 +265,11 @@ async fn list_articles(
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list articles: {}", e)))?;
 
-    let total = articles.len() as i64; // In a real implementation, do a separate count query
+    // Use separate count query for accurate pagination totals
+    let total = repo
+        .count(&query)
+        .await
+        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to count articles: {}", e)))?;
 
     Ok(Json(ArticleListResponse {
         count: articles.len(),
