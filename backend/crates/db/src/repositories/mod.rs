@@ -183,10 +183,10 @@ pub mod automation;
 // Epic 54: Forms Management
 pub mod form;
 
-// Epic 57: Building Registries (Pets & Vehicles)
-pub mod registry;
-
 pub use automation::AutomationRepository;
 
 // Epic 54: Forms Management
 pub use form::FormRepository;
+
+// Epic 58: Package & Visitor Management
+pub use package_visitor::PackageVisitorRepository;

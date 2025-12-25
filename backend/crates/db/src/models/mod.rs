@@ -441,9 +441,6 @@ pub mod automation;
 // Epic 54: Forms Management
 pub mod form;
 
-// Epic 57: Building Registries (Pets & Vehicles)
-pub mod registry;
-
 pub use automation::{
     AutomationAction, AutomationLogSummary, AutomationRuleWithStats, CallWebhookConfig,
     ConditionTriggerConfig, CreateAutomationRule, CreateRuleFromTemplate, EventTriggerConfig,
@@ -473,13 +470,12 @@ pub use reports::{
     UtilityTypeConsumption, VoteParticipationDetail, VotingParticipationSummary, YearComparison,
 };
 
-// Epic 57: Building Registries (Pets & Vehicles)
-pub use registry::{
-    BuildingRegistryRules, CreateParkingSpotRequest, CreatePetRegistrationRequest,
-    CreateVehicleRegistrationRequest, ListParkingSpotsQuery, ListRegistrationsQuery, ParkingSpot,
-    ParkingSpotListResponse, PetRegistration, PetRegistrationListResponse,
-    PetRegistrationWithDetails, PetSize, PetType, RegistryStatus, ReviewRegistrationRequest,
-    UpdatePetRegistrationRequest, UpdateRegistryRulesRequest, UpdateVehicleRegistrationRequest,
-    VehicleRegistration, VehicleRegistrationListResponse, VehicleRegistrationWithDetails,
-    VehicleType,
+// Epic 58: Package & Visitor Management
+pub use package_visitor::{
+    package_carrier, package_status, visitor_purpose, visitor_status, AccessCodeVerification,
+    BuildingPackageSettings, BuildingVisitorSettings, CheckInVisitor, CheckOutVisitor,
+    CreatePackage, CreateVisitor, Package, PackageQuery, PackageStatistics, PackageSummary,
+    PackageWithDetails, PickupPackage, ReceivePackage, UpdateBuildingPackageSettings,
+    UpdateBuildingVisitorSettings, UpdatePackage, UpdateVisitor, VerifyAccessCode, Visitor,
+    VisitorQuery, VisitorStatistics, VisitorSummary, VisitorWithDetails,
 };
