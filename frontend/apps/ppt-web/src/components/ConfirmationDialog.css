@@ -1,0 +1,112 @@
+/**
+ * Accessible Confirmation Dialog Styles.
+ */
+
+.confirmation-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.confirmation-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.5rem;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.confirmation-dialog-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.confirmation-dialog-message {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.confirmation-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.confirmation-dialog-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.confirmation-dialog-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.confirmation-dialog-button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.confirmation-dialog-button--cancel {
+  background-color: white;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.confirmation-dialog-button--cancel:hover:not(:disabled) {
+  background-color: #f9fafb;
+}
+
+.confirmation-dialog-button--confirm {
+  border: 1px solid transparent;
+  color: white;
+}
+
+.confirmation-dialog-button--default {
+  background-color: #3b82f6;
+}
+
+.confirmation-dialog-button--default:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.confirmation-dialog-button--danger {
+  background-color: #ef4444;
+}
+
+.confirmation-dialog-button--danger:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .confirmation-dialog {
+    border: 2px solid #000;
+  }
+
+  .confirmation-dialog-button {
+    border-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .confirmation-dialog-button {
+    transition: none;
+  }
+}

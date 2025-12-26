@@ -7,6 +7,12 @@
 // Placeholder - components will be added during implementation
 export const VERSION = '0.1.0';
 
+// Accessibility components
+export { SkipNavigation } from './SkipNavigation';
+export type { SkipNavigationProps } from './SkipNavigation';
+export { AccessibilityProvider, useAccessibilityContext } from './AccessibilityProvider';
+export type { AccessibilityProviderProps } from './AccessibilityProvider';
+
 // Example component types (to be implemented)
 export interface ButtonProps {
   variant: 'primary' | 'secondary' | 'danger';

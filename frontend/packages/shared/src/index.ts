@@ -5,6 +5,9 @@
 // Re-export API client
 export * from '@ppt/api-client';
 
+// Accessibility
+export * from './accessibility';
+
 // Shared types
 export interface TenantContext {
   tenantId: string;

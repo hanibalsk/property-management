@@ -1,0 +1,344 @@
+/**
+ * Accessibility styles for Epic 62.
+ *
+ * Provides CSS variables and utilities for accessibility features.
+ */
+
+/* ============================================
+ * Skip Navigation
+ * ============================================ */
+
+.skip-navigation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1rem 1.5rem;
+  background-color: var(--color-primary, #3b82f6);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0 0 4px 0;
+}
+
+.skip-link:focus {
+  left: 0;
+  outline: 3px solid var(--color-focus, #f59e0b);
+  outline-offset: 2px;
+}
+
+/* ============================================
+ * Color Schemes
+ * ============================================ */
+
+/* Light theme (default) */
+:root,
+[data-color-scheme="light"],
+.color-scheme-light {
+  --color-background: #ffffff;
+  --color-surface: #f9fafb;
+  --color-surface-hover: #f3f4f6;
+  --color-text: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-border: #e5e7eb;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-focus: #f59e0b;
+}
+
+/* Dark theme */
+[data-color-scheme="dark"],
+.color-scheme-dark {
+  --color-background: #111827;
+  --color-surface: #1f2937;
+  --color-surface-hover: #374151;
+  --color-text: #f9fafb;
+  --color-text-secondary: #9ca3af;
+  --color-border: #374151;
+  --color-primary: #60a5fa;
+  --color-primary-hover: #3b82f6;
+  --color-focus: #fbbf24;
+}
+
+/* High contrast theme */
+[data-color-scheme="high-contrast"],
+.color-scheme-high-contrast {
+  --color-background: #000000;
+  --color-surface: #1a1a1a;
+  --color-surface-hover: #333333;
+  --color-text: #ffffff;
+  --color-text-secondary: #e0e0e0;
+  --color-border: #ffffff;
+  --color-primary: #ffff00;
+  --color-primary-hover: #ffff66;
+  --color-focus: #00ff00;
+}
+
+/* ============================================
+ * Text Sizes
+ * ============================================ */
+
+/* Small */
+[data-text-size="small"],
+.text-size-small {
+  --font-size-base: 14px;
+  --font-size-sm: 12px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+}
+
+/* Medium (default) */
+:root,
+[data-text-size="medium"],
+.text-size-medium {
+  --font-size-base: 16px;
+  --font-size-sm: 14px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+}
+
+/* Large */
+[data-text-size="large"],
+.text-size-large {
+  --font-size-base: 18px;
+  --font-size-sm: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-2xl: 30px;
+  --font-size-3xl: 36px;
+}
+
+/* Extra Large */
+[data-text-size="extra-large"],
+.text-size-extra-large {
+  --font-size-base: 20px;
+  --font-size-sm: 18px;
+  --font-size-lg: 24px;
+  --font-size-xl: 28px;
+  --font-size-2xl: 36px;
+  --font-size-3xl: 48px;
+}
+
+/* ============================================
+ * Motion Preferences
+ * ============================================ */
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] *::before,
+[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ============================================
+ * Keyboard Navigation
+ * ============================================ */
+
+/* Enhanced focus indicators when keyboard navigation is enabled */
+[data-keyboard-nav="true"] *:focus {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+[data-keyboard-nav="true"] button:focus,
+[data-keyboard-nav="true"] a:focus,
+[data-keyboard-nav="true"] input:focus,
+[data-keyboard-nav="true"] select:focus,
+[data-keyboard-nav="true"] textarea:focus {
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+/* ============================================
+ * Screen Reader Support
+ * ============================================ */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ============================================
+ * ARIA Live Regions
+ * ============================================ */
+
+[role="alert"],
+[role="status"],
+[aria-live] {
+  position: relative;
+}
+
+/* ============================================
+ * Component Styles
+ * ============================================ */
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+button,
+a {
+  color: var(--color-primary);
+}
+
+button:hover,
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+input,
+select,
+textarea {
+  border-color: var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-primary);
+  outline-color: var(--color-focus);
+}
+
+/* ============================================
+ * Accessibility Settings Page
+ * ============================================ */
+
+.accessibility-settings-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.accessibility-settings-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.accessibility-settings-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: var(--font-size-xl);
+  color: var(--color-text);
+}
+
+.accessibility-settings-field {
+  margin-bottom: 1.5rem;
+}
+
+.accessibility-settings-field:last-child {
+  margin-bottom: 0;
+}
+
+.accessibility-settings-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.accessibility-settings-description {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.accessibility-settings-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.accessibility-settings-select {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: var(--font-size-base);
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.accessibility-settings-select:focus {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.accessibility-settings-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+}
+
+.accessibility-settings-checkbox:focus {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.accessibility-preview {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: var(--color-surface);
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+}
+
+.accessibility-preview h3 {
+  margin-top: 0;
+  font-size: var(--font-size-lg);
+}
+
+.accessibility-preview p {
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+}

@@ -193,3 +193,8 @@ pub use form::FormRepository;
 
 // Epic 58: Package & Visitor Management
 pub use package_visitor::PackageVisitorRepository;
+
+// Epic 59: News & Media Management
+pub mod news_article;
+
+pub use news_article::NewsArticleRepository;
