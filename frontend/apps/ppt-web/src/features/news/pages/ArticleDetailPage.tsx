@@ -3,6 +3,7 @@
  * Epic 59: News & Media Management
  */
 
+import DOMPurify from 'dompurify';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useOrganization } from '../../../hooks';
@@ -322,8 +323,11 @@ export function ArticleDetailPage({ articleId }: ArticleDetailPageProps) {
         <img src={article.coverImageUrl} alt={article.title} className="article-cover-image" />
       )}
 
-      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: Article content is sanitized on the backend */}
-      <div className="article-content" dangerouslySetInnerHTML={{ __html: article.content }} />
+      <div
+        className="article-content"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: Content is sanitized with DOMPurify as defense-in-depth
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(article.content) }}
+      />
 
       {article.reactionsEnabled && reactionCounts && (
         <section className="article-reactions-section" aria-label="Reactions">
