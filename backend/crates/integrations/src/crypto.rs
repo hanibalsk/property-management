@@ -291,7 +291,8 @@ mod tests {
 
     #[test]
     fn test_invalid_key_length() {
-        let result = IntegrationCrypto::new("tooshort");
+        // Use valid hex but wrong length (only 8 bytes instead of 32)
+        let result = IntegrationCrypto::new("0102030405060708");
         assert!(matches!(result, Err(CryptoError::InvalidKeyLength(_))));
     }
 

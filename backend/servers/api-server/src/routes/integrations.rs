@@ -755,7 +755,7 @@ pub async fn sync_calendar(
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
                     "UNSUPPORTED_PROVIDER",
-                    &format!(
+                    format!(
                         "Calendar provider '{}' is not supported",
                         connection.provider
                     ),
@@ -768,16 +768,14 @@ pub async fn sync_calendar(
     let sync_result = sync_result.map_err(|e| {
         tracing::error!(error = %e, provider = %connection.provider, "Calendar sync failed");
 
-        // Update sync status to error
-        let _ = state
-            .integration_repo
-            .update_sync_status(path.id, "error", Some(&e.to_string()));
+        // Update sync status to error (intentionally not awaited - fire and forget)
+        drop(state.integration_repo.update_sync_status(path.id, "error", Some(&e.to_string())));
 
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "SYNC_ERROR",
-                &format!("Calendar sync failed: {}", e),
+                format!("Calendar sync failed: {}", e),
             )),
         )
     })?;
@@ -1096,7 +1094,7 @@ pub async fn download_accounting_export(
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
                 "EXPORT_NOT_READY",
-                &format!(
+                format!(
                     "Export is not ready for download. Current status: {}",
                     export.status
                 ),
@@ -1127,7 +1125,7 @@ pub async fn download_accounting_export(
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(ErrorResponse::new(
                             "EXPORT_ERROR",
-                            &format!("Failed to generate POHODA export: {}", e),
+                            format!("Failed to generate POHODA export: {}", e),
                         )),
                     )
                 })?;
@@ -1155,7 +1153,7 @@ pub async fn download_accounting_export(
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(ErrorResponse::new(
                             "EXPORT_ERROR",
-                            &format!("Failed to generate Money S3 export: {}", e),
+                            format!("Failed to generate Money S3 export: {}", e),
                         )),
                     )
                 })?;
@@ -1172,7 +1170,7 @@ pub async fn download_accounting_export(
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
                     "UNSUPPORTED_SYSTEM",
-                    &format!(
+                    format!(
                         "Accounting system '{}' is not supported for export",
                         export.system_type
                     ),
