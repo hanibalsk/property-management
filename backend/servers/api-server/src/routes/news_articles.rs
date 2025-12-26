@@ -5,19 +5,19 @@ use api_core::{AuthUser, TenantExtractor};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
+    response::IntoResponse,
     routing::{delete, get, post, put},
     Json, Router,
 };
 use chrono::{DateTime, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    article_status, ArticleComment, ArticleCommentWithAuthor, ArticleListQuery, ArticleMedia,
-    ArticleStatistics, ArticleSummary, ArticleWithDetails, CreateArticle, CreateArticleComment,
-    CreateArticleMedia, NewsArticle, ReactionCounts, UpdateArticle,
+    article_status, ArticleCommentWithAuthor, ArticleListQuery, ArticleMedia, ArticleStatistics,
+    ArticleSummary, ArticleWithDetails, CreateArticle, CreateArticleComment, CreateArticleMedia,
+    NewsArticle, ReactionCounts, UpdateArticle,
 };
 use db::repositories::NewsArticleRepository;
 use serde::{Deserialize, Serialize};
-use sqlx::Error as SqlxError;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -33,6 +33,33 @@ const MAX_CONTENT_LENGTH: usize = 100_000; // Rich text can be larger
 
 /// Maximum allowed comment length (characters).
 const MAX_COMMENT_LENGTH: usize = 2000;
+
+// ============================================================================
+// Error Helpers
+// ============================================================================
+
+type ApiError = (StatusCode, Json<ErrorResponse>);
+
+fn bad_request(message: &str) -> ApiError {
+    (
+        StatusCode::BAD_REQUEST,
+        Json(ErrorResponse::bad_request(message)),
+    )
+}
+
+fn not_found(message: &str) -> ApiError {
+    (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse::not_found(message)),
+    )
+}
+
+fn internal_error(message: &str) -> ApiError {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse::internal_error(message)),
+    )
+}
 
 // ============================================================================
 // Response Types
@@ -257,20 +284,20 @@ async fn list_articles(
     TenantExtractor(tenant): TenantExtractor,
     _user: AuthUser,
     Query(query): Query<ArticleListQuery>,
-) -> Result<Json<ArticleListResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
-    // Filter articles by organization_id from tenant context for multi-tenant security
+    // Filter articles by tenant_id from tenant context for multi-tenant security
     let articles = repo
-        .list(tenant.organization_id, &query)
+        .list(tenant.tenant_id, &query)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list articles: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to list articles: {}", e)))?;
 
     // Use separate count query for accurate pagination totals
     let total = repo
-        .count(tenant.organization_id, &query)
+        .count(tenant.tenant_id, &query)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to count articles: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to count articles: {}", e)))?;
 
     Ok(Json(ArticleListResponse {
         count: articles.len(),
@@ -295,33 +322,32 @@ async fn list_articles(
 )]
 async fn get_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<ArticleDetailResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
         .find_by_id_with_details(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to get article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+        .map_err(|e| internal_error(&format!("Failed to get article: {}", e)))?
+        .ok_or_else(|| not_found("Article not found"))?;
 
     let media = repo
         .list_media(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to get media: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to get media: {}", e)))?;
 
     let user_reaction = repo
         .get_user_reaction(id, user.user_id)
         .await
-        .map_err(|e| {
-            ErrorResponse::internal_error(&format!("Failed to get user reaction: {}", e))
-        })?;
+        .map_err(|e| internal_error(&format!("Failed to get user reaction: {}", e)))?;
 
-    let reaction_counts = repo.get_reaction_counts(id).await.map_err(|e| {
-        ErrorResponse::internal_error(&format!("Failed to get reaction counts: {}", e))
-    })?;
+    let reaction_counts = repo
+        .get_reaction_counts(id)
+        .await
+        .map_err(|e| internal_error(&format!("Failed to get reaction counts: {}", e)))?;
 
     Ok(Json(ArticleDetailResponse {
         article,
@@ -352,18 +378,18 @@ async fn create_article(
     TenantExtractor(tenant): TenantExtractor,
     user: AuthUser,
     Json(req): Json<CreateArticleRequest>,
-) -> Result<(StatusCode, Json<CreateArticleResponse>), ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     // TODO: Add authorization check - only managers can create articles
     // Validate input
     if req.title.is_empty() || req.title.len() > MAX_TITLE_LENGTH {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(bad_request(&format!(
             "Title must be between 1 and {} characters",
             MAX_TITLE_LENGTH
         )));
     }
 
     if req.content.is_empty() || req.content.len() > MAX_CONTENT_LENGTH {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(bad_request(&format!(
             "Content must be between 1 and {} characters",
             MAX_CONTENT_LENGTH
         )));
@@ -372,7 +398,7 @@ async fn create_article(
     // Validate status if provided
     if let Some(ref status) = req.status {
         if !article_status::ALL.contains(&status.as_str()) {
-            return Err(ErrorResponse::bad_request(&format!(
+            return Err(bad_request(&format!(
                 "Invalid status. Must be one of: {:?}",
                 article_status::ALL
             )));
@@ -394,9 +420,9 @@ async fn create_article(
     };
 
     let article = repo
-        .create(tenant.organization_id, user.user_id, data)
+        .create(tenant.tenant_id, user.user_id, data)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to create article: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to create article: {}", e)))?;
 
     Ok((
         StatusCode::CREATED,
@@ -429,16 +455,16 @@ async fn create_article(
 )]
 async fn update_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateArticleRequest>,
-) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     // TODO: Add authorization check - only author or managers can update
     // Validate input
     if let Some(ref title) = req.title {
         if title.is_empty() || title.len() > MAX_TITLE_LENGTH {
-            return Err(ErrorResponse::bad_request(&format!(
+            return Err(bad_request(&format!(
                 "Title must be between 1 and {} characters",
                 MAX_TITLE_LENGTH
             )));
@@ -447,7 +473,7 @@ async fn update_article(
 
     if let Some(ref content) = req.content {
         if content.is_empty() || content.len() > MAX_CONTENT_LENGTH {
-            return Err(ErrorResponse::bad_request(&format!(
+            return Err(bad_request(&format!(
                 "Content must be between 1 and {} characters",
                 MAX_CONTENT_LENGTH
             )));
@@ -470,8 +496,8 @@ async fn update_article(
     let article = repo
         .update(id, data)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to update article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+        .map_err(|e| internal_error(&format!("Failed to update article: {}", e)))?
+        .ok_or_else(|| not_found("Article not found"))?;
 
     Ok(Json(ArticleActionResponse {
         message: "Article updated successfully".to_string(),
@@ -496,18 +522,18 @@ async fn update_article(
 )]
 async fn publish_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<PublishArticleRequest>,
-) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
         .publish(id, req.published_at)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to publish article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Cannot publish article"))?;
+        .map_err(|e| internal_error(&format!("Failed to publish article: {}", e)))?
+        .ok_or_else(|| not_found("Cannot publish article"))?;
 
     Ok(Json(ArticleActionResponse {
         message: "Article published successfully".to_string(),
@@ -531,17 +557,17 @@ async fn publish_article(
 )]
 async fn archive_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
         .archive(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to archive article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+        .map_err(|e| internal_error(&format!("Failed to archive article: {}", e)))?
+        .ok_or_else(|| not_found("Article not found"))?;
 
     Ok(Json(ArticleActionResponse {
         message: "Article archived successfully".to_string(),
@@ -565,17 +591,17 @@ async fn archive_article(
 )]
 async fn restore_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
         .restore(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to restore article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Cannot restore article"))?;
+        .map_err(|e| internal_error(&format!("Failed to restore article: {}", e)))?
+        .ok_or_else(|| not_found("Cannot restore article"))?;
 
     Ok(Json(ArticleActionResponse {
         message: "Article restored successfully".to_string(),
@@ -599,19 +625,19 @@ async fn restore_article(
 )]
 async fn delete_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let deleted = repo
         .delete(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to delete article: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to delete article: {}", e)))?;
 
     if !deleted {
-        return Err(ErrorResponse::not_found("Article not found"));
+        return Err(not_found("Article not found"));
     }
 
     Ok(StatusCode::OK)
@@ -634,18 +660,18 @@ async fn delete_article(
 )]
 async fn pin_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<PinArticleRequest>,
-) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
         .set_pinned(id, req.pinned, Some(user.user_id))
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to pin article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+        .map_err(|e| internal_error(&format!("Failed to pin article: {}", e)))?
+        .ok_or_else(|| not_found("Article not found"))?;
 
     let message = if req.pinned {
         "Article pinned successfully"
@@ -666,16 +692,16 @@ async fn pin_article(
 /// List media for an article.
 async fn list_media(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<MediaResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let media = repo
         .list_media(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list media: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to list media: {}", e)))?;
 
     Ok(Json(MediaResponse { media }))
 }
@@ -683,11 +709,11 @@ async fn list_media(
 /// Add media to an article.
 async fn add_media(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<AddMediaRequest>,
-) -> Result<(StatusCode, Json<ArticleMedia>), ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let data = CreateArticleMedia {
@@ -708,7 +734,7 @@ async fn add_media(
     let media = repo
         .add_media(id, data)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to add media: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to add media: {}", e)))?;
 
     Ok((StatusCode::CREATED, Json(media)))
 }
@@ -716,19 +742,19 @@ async fn add_media(
 /// Delete media from an article.
 async fn delete_media(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
-    Path((id, media_id)): Path<(Uuid, Uuid)>,
-) -> Result<StatusCode, ErrorResponse> {
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
+    Path((_id, media_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let deleted = repo
         .delete_media(media_id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to delete media: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to delete media: {}", e)))?;
 
     if !deleted {
-        return Err(ErrorResponse::not_found("Media not found"));
+        return Err(not_found("Media not found"));
     }
 
     Ok(StatusCode::OK)
@@ -741,15 +767,15 @@ async fn delete_media(
 /// Toggle reaction on an article.
 async fn toggle_reaction(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<ToggleReactionRequest>,
-) -> Result<Json<ReactionResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     // Validate reaction type
     const VALID_REACTIONS: &[&str] = &["like", "love", "surprised", "sad", "angry"];
     if !VALID_REACTIONS.contains(&req.reaction.as_str()) {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(bad_request(&format!(
             "Invalid reaction type. Must be one of: {:?}",
             VALID_REACTIONS
         )));
@@ -760,11 +786,12 @@ async fn toggle_reaction(
     let added = repo
         .toggle_reaction(id, user.user_id, &req.reaction)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to toggle reaction: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to toggle reaction: {}", e)))?;
 
-    let reaction_counts = repo.get_reaction_counts(id).await.map_err(|e| {
-        ErrorResponse::internal_error(&format!("Failed to get reaction counts: {}", e))
-    })?;
+    let reaction_counts = repo
+        .get_reaction_counts(id)
+        .await
+        .map_err(|e| internal_error(&format!("Failed to get reaction counts: {}", e)))?;
 
     Ok(Json(ReactionResponse {
         added,
@@ -775,15 +802,16 @@ async fn toggle_reaction(
 /// Get reaction counts for an article.
 async fn get_reaction_counts(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<ReactionCounts>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
-    let counts = repo.get_reaction_counts(id).await.map_err(|e| {
-        ErrorResponse::internal_error(&format!("Failed to get reaction counts: {}", e))
-    })?;
+    let counts = repo
+        .get_reaction_counts(id)
+        .await
+        .map_err(|e| internal_error(&format!("Failed to get reaction counts: {}", e)))?;
 
     Ok(Json(counts))
 }
@@ -795,16 +823,16 @@ async fn get_reaction_counts(
 /// List top-level comments for an article.
 async fn list_comments(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<CommentsResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let comments = repo
         .list_comments(id, None)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list comments: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to list comments: {}", e)))?;
 
     Ok(Json(CommentsResponse {
         count: comments.len(),
@@ -815,18 +843,16 @@ async fn list_comments(
 /// List replies to a specific comment.
 async fn list_comment_replies(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path((id, comment_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<CommentsResponse>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let comments = repo
         .list_comments(id, Some(comment_id))
         .await
-        .map_err(|e| {
-            ErrorResponse::internal_error(&format!("Failed to list comment replies: {}", e))
-        })?;
+        .map_err(|e| internal_error(&format!("Failed to list comment replies: {}", e)))?;
 
     Ok(Json(CommentsResponse {
         count: comments.len(),
@@ -837,14 +863,14 @@ async fn list_comment_replies(
 /// Create a comment on an article.
 async fn create_comment(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<CreateCommentRequest>,
-) -> Result<(StatusCode, Json<ArticleComment>), ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     // Validate input
     if req.content.is_empty() || req.content.len() > MAX_COMMENT_LENGTH {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(bad_request(&format!(
             "Comment must be between 1 and {} characters",
             MAX_COMMENT_LENGTH
         )));
@@ -860,7 +886,7 @@ async fn create_comment(
     let comment = repo
         .add_comment(id, user.user_id, data)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to create comment: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to create comment: {}", e)))?;
 
     Ok((StatusCode::CREATED, Json(comment)))
 }
@@ -868,15 +894,15 @@ async fn create_comment(
 /// Update a comment.
 async fn update_comment(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
-    Path((id, comment_id)): Path<(Uuid, Uuid)>,
+    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<UpdateCommentRequest>,
-) -> Result<Json<ArticleComment>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     // TODO: Verify comment ownership matches user_id
     // Validate input
     if req.content.is_empty() || req.content.len() > MAX_COMMENT_LENGTH {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(bad_request(&format!(
             "Comment must be between 1 and {} characters",
             MAX_COMMENT_LENGTH
         )));
@@ -887,8 +913,8 @@ async fn update_comment(
     let comment = repo
         .update_comment(comment_id, user.user_id, &req.content)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to update comment: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Comment not found"))?;
+        .map_err(|e| internal_error(&format!("Failed to update comment: {}", e)))?
+        .ok_or_else(|| not_found("Comment not found"))?;
 
     Ok(Json(comment))
 }
@@ -896,19 +922,19 @@ async fn update_comment(
 /// Delete a comment (soft delete).
 async fn delete_comment(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
-    Path((id, comment_id)): Path<(Uuid, Uuid)>,
-) -> Result<StatusCode, ErrorResponse> {
+    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let deleted = repo
         .delete_comment(comment_id, user.user_id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to delete comment: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to delete comment: {}", e)))?;
 
     if !deleted {
-        return Err(ErrorResponse::not_found("Comment not found"));
+        return Err(not_found("Comment not found"));
     }
 
     Ok(StatusCode::OK)
@@ -917,19 +943,19 @@ async fn delete_comment(
 /// Moderate a comment (manager action).
 async fn moderate_comment(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
-    Path((id, comment_id)): Path<(Uuid, Uuid)>,
+    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<ModerateCommentRequest>,
-) -> Result<Json<ArticleComment>, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     // TODO: Add authorization check - only managers can moderate
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let comment = repo
         .moderate_comment(comment_id, user.user_id, req.delete, req.reason)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to moderate comment: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Comment not found"))?;
+        .map_err(|e| internal_error(&format!("Failed to moderate comment: {}", e)))?
+        .ok_or_else(|| not_found("Comment not found"))?;
 
     Ok(Json(comment))
 }
@@ -941,16 +967,16 @@ async fn moderate_comment(
 /// Record a view on an article.
 async fn record_view(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<RecordViewRequest>,
-) -> Result<StatusCode, ErrorResponse> {
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     repo.record_view(id, Some(user.user_id), req.duration_seconds)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to record view: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to record view: {}", e)))?;
 
     Ok(StatusCode::OK)
 }
@@ -958,15 +984,15 @@ async fn record_view(
 /// Get article statistics.
 async fn get_statistics(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
-) -> Result<Json<StatisticsResponse>, ErrorResponse> {
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
+) -> Result<impl IntoResponse, ApiError> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let statistics = repo
         .get_statistics()
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to get statistics: {}", e)))?;
+        .map_err(|e| internal_error(&format!("Failed to get statistics: {}", e)))?;
 
     Ok(Json(StatisticsResponse { statistics }))
 }

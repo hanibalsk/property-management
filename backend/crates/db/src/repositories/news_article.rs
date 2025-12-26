@@ -194,7 +194,7 @@ impl NewsArticleRepository {
             return self.find_by_id(id).await;
         }
 
-        updates.push(format!("updated_at = NOW()"));
+        updates.push("updated_at = NOW()".to_string());
         query.push_str(&updates.join(", "));
         query.push_str(&format!(" WHERE id = ${} RETURNING *", param_count));
 
@@ -410,11 +410,11 @@ impl NewsArticleRepository {
             }
         }
 
-        reaction_counts.total = (reaction_counts.like
+        reaction_counts.total = reaction_counts.like
             + reaction_counts.love
             + reaction_counts.surprised
             + reaction_counts.sad
-            + reaction_counts.angry) as i32;
+            + reaction_counts.angry;
 
         Ok(reaction_counts)
     }
