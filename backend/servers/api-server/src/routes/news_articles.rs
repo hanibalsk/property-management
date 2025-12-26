@@ -486,7 +486,9 @@ async fn update_article(
     let is_manager = user.role.as_ref().map(|r| r.is_manager()).unwrap_or(false);
     let is_author = article.author_id == user.user_id;
     if !is_manager && !is_author {
-        return Err(forbidden("Only the author or managers can update this article"));
+        return Err(forbidden(
+            "Only the author or managers can update this article",
+        ));
     }
 
     // Validate input
