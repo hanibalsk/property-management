@@ -8,7 +8,7 @@ So that **I can get legally binding signatures without paper**.
 
 ## Status
 
-in-progress
+done
 
 ## Acceptance Criteria
 
@@ -30,35 +30,35 @@ in-progress
 
 ## Tasks/Subtasks
 
-- [ ] **Task 1: Database Schema for E-Signatures**
-  - [ ] Create migration 00037 for signature_requests table
-  - [ ] Add signature_request_status enum (pending, in_progress, completed, declined, expired, cancelled)
-  - [ ] Add signers JSONB column for signer details and status
-  - [ ] Add provider_request_id for external integration tracking
-  - [ ] Add audit trail fields (created_at, completed_at, expires_at)
+- [x] **Task 1: Database Schema for E-Signatures**
+  - [x] Create migration 00037 for signature_requests table
+  - [x] Add signature_request_status enum (pending, in_progress, completed, declined, expired, cancelled)
+  - [x] Add signers JSONB column for signer details and status
+  - [x] Add provider_request_id for external integration tracking
+  - [x] Add audit trail fields (created_at, completed_at, expires_at)
 
-- [ ] **Task 2: Update Models**
-  - [ ] Create SignatureRequest model
-  - [ ] Create Signer struct for individual signer tracking
-  - [ ] Create SignatureRequestStatus enum
-  - [ ] Create request/response types for API
+- [x] **Task 2: Update Models**
+  - [x] Create SignatureRequest model
+  - [x] Create Signer struct for individual signer tracking
+  - [x] Create SignatureRequestStatus enum
+  - [x] Create request/response types for API
 
-- [ ] **Task 3: Repository Methods**
-  - [ ] Implement create_signature_request()
-  - [ ] Implement find_signature_request_by_id()
-  - [ ] Implement find_signature_requests_by_document()
-  - [ ] Implement update_signer_status()
-  - [ ] Implement complete_signature_request()
-  - [ ] Implement cancel_signature_request()
-  - [ ] Implement list_pending_signature_requests()
+- [x] **Task 3: Repository Methods**
+  - [x] Implement create_signature_request()
+  - [x] Implement find_signature_request_by_id()
+  - [x] Implement find_signature_requests_by_document()
+  - [x] Implement update_signer_status()
+  - [x] Implement complete_signature_request()
+  - [x] Implement cancel_signature_request()
+  - [x] Implement list_pending_signature_requests()
 
-- [ ] **Task 4: API Endpoints**
-  - [ ] POST /api/v1/documents/:id/signature-requests - Create signature request
-  - [ ] GET /api/v1/documents/:id/signature-requests - List signature requests for document
-  - [ ] GET /api/v1/signature-requests/:id - Get signature request details
-  - [ ] POST /api/v1/signature-requests/:id/remind - Send reminder to pending signers
-  - [ ] POST /api/v1/signature-requests/:id/cancel - Cancel signature request
-  - [ ] POST /api/v1/signature-requests/:id/webhook - Handle provider webhook (signature events)
+- [x] **Task 4: API Endpoints**
+  - [x] POST /api/v1/documents/:id/signature-requests - Create signature request
+  - [x] GET /api/v1/documents/:id/signature-requests - List signature requests for document
+  - [x] GET /api/v1/signature-requests/:id - Get signature request details
+  - [x] POST /api/v1/signature-requests/:id/remind - Send reminder to pending signers
+  - [x] POST /api/v1/signature-requests/:id/cancel - Cancel signature request
+  - [x] POST /api/v1/signature-requests/:id/webhook - Handle provider webhook (signature events)
 
 ## Dev Notes
 
@@ -72,14 +72,32 @@ in-progress
 ## Dev Agent Record
 
 ### Implementation Plan
-*To be filled during implementation*
+All tasks have been implemented as part of the Epic 7B document versioning and e-signature integration work.
 
 ## File List
 
-*To be filled during implementation*
+### Database Migration
+- `backend/crates/db/migrations/00037_create_signature_requests.sql` - E-signature schema
+
+### Models
+- `backend/crates/db/src/models/signature_request.rs` - SignatureRequest, Signer, SignerStatus, SignatureRequestStatus models
+- `backend/crates/db/src/models/mod.rs` - Model exports
+
+### Repository
+- `backend/crates/db/src/repositories/signature_request.rs` - SignatureRequestRepository implementation
+- `backend/crates/db/src/repositories/mod.rs` - Repository exports
+
+### API Routes
+- `backend/servers/api-server/src/routes/signatures.rs` - E-signature API endpoints
+- `backend/servers/api-server/src/routes/mod.rs` - Route module exports
+- `backend/servers/api-server/src/main.rs` - Route registration
+
+### State
+- `backend/servers/api-server/src/state.rs` - SignatureRequestRepository in AppState
 
 ## Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2025-12-22 | Story created | AI Agent |
+| 2025-12-26 | Story verified complete - all tasks implemented | AI Agent |
