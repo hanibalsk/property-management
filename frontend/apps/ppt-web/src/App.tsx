@@ -1,5 +1,6 @@
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
 import { BrowserRouter, Link, Route, Routes, useParams } from 'react-router-dom';
+import { DocumentDetailPage, DocumentUploadPage, DocumentsPage } from './features/documents';
 import { EmergencyContactDirectoryPage } from './features/emergency';
 import { ArticleDetailPage, NewsListPage } from './features/news';
 import { PrivacySettingsPage } from './features/privacy';
@@ -13,6 +14,7 @@ function App() {
         <div className="app">
           <nav className="app-nav" aria-label="Main navigation">
             <Link to="/">Home</Link>
+            <Link to="/documents">Documents</Link>
             <Link to="/news">News</Link>
             <Link to="/emergency">Emergency Contacts</Link>
             <Link to="/settings/accessibility">Accessibility</Link>
@@ -22,6 +24,10 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
+              {/* Document Intelligence routes (Epic 39) */}
+              <Route path="/documents" element={<DocumentsPageRoute />} />
+              <Route path="/documents/upload" element={<DocumentUploadPage />} />
+              <Route path="/documents/:documentId" element={<DocumentDetailRoute />} />
               {/* News routes (Epic 59) */}
               <Route path="/news" element={<NewsListPage />} />
               <Route path="/news/:articleId" element={<ArticleDetailRoute />} />
@@ -37,6 +43,30 @@ function App() {
       </BrowserRouter>
     </AccessibilityProvider>
   );
+}
+
+/** Route wrapper for documents page */
+function DocumentsPageRoute() {
+  // In a real app, organizationId would come from auth context
+  return <DocumentsPage organizationId="default-org" />;
+}
+
+/** Route wrapper for document detail page to extract params */
+function DocumentDetailRoute() {
+  const { documentId } = useParams<{ documentId: string }>();
+  if (!documentId) {
+    return (
+      <div className="error-page">
+        <h1>Document not found</h1>
+        <p>
+          We couldn&apos;t find the document you&apos;re looking for. It may have been moved,
+          deleted, or the link might be incorrect.
+        </p>
+        <Link to="/documents">Back to documents</Link>
+      </div>
+    );
+  }
+  return <DocumentDetailPage documentId={documentId} />;
 }
 
 /** Route wrapper for article detail page to extract params */
