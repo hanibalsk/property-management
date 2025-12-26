@@ -7,3 +7,4 @@ export { DocumentSearchResult } from './DocumentSearchResult';
 export { OcrStatusBadge, OcrProcessingStatus } from './OcrStatusBadge';
 export { ClassificationBadge, ClassificationUI } from './ClassificationBadge';
 export { DocumentSummary } from './DocumentSummary';
+export { DocumentUpload } from './DocumentUpload';

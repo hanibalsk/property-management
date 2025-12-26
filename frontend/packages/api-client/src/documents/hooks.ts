@@ -164,3 +164,16 @@ export function usePreviewUrl(id: string) {
     staleTime: 4 * 60 * 1000,
   });
 }
+
+// Upload document (Story 39.2)
+export function useUploadDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: api.UploadDocumentParams) => api.uploadDocument(params),
+    onSuccess: () => {
+      // Invalidate document lists to show the new document
+      queryClient.invalidateQueries({ queryKey: documentKeys.lists() });
+    },
+  });
+}
