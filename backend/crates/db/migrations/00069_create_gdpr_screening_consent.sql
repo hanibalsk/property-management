@@ -82,7 +82,7 @@ CREATE TABLE screening_consents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     application_id UUID NOT NULL REFERENCES tenant_applications(id) ON DELETE CASCADE,
-    consent_request_id UUID NOT NULL REFERENCES screening_consent_requests(id) ON DELETE CASCADE,
+    consent_request_id UUID REFERENCES screening_consent_requests(id) ON DELETE SET NULL,
 
     -- Applicant info (denormalized for audit)
     applicant_name VARCHAR(255) NOT NULL,
@@ -130,6 +130,7 @@ CREATE TABLE screening_consents (
 -- Consent Audit Log (GDPR Article 30: Records of processing)
 CREATE TABLE screening_consent_audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE RESTRICT,
 
     -- Event details
@@ -254,6 +255,7 @@ CREATE INDEX idx_screening_consents_expires ON screening_consents(expires_at) WH
 CREATE INDEX idx_screening_consents_granted_at ON screening_consents(granted_at);
 
 -- Audit Log
+CREATE INDEX idx_screening_consent_audit_org ON screening_consent_audit_log(organization_id);
 CREATE INDEX idx_screening_consent_audit_consent ON screening_consent_audit_log(consent_id);
 CREATE INDEX idx_screening_consent_audit_type ON screening_consent_audit_log(event_type);
 CREATE INDEX idx_screening_consent_audit_timestamp ON screening_consent_audit_log(event_timestamp);
@@ -298,11 +300,13 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
         INSERT INTO screening_consent_audit_log (
+            organization_id,
             consent_id,
             event_type,
             event_data,
             actor_name
         ) VALUES (
+            NEW.organization_id,
             NEW.id,
             'granted',
             jsonb_build_object('scopes', NEW.granted_scopes),
@@ -310,11 +314,13 @@ BEGIN
         );
     ELSIF TG_OP = 'UPDATE' AND OLD.status != NEW.status THEN
         INSERT INTO screening_consent_audit_log (
+            organization_id,
             consent_id,
             event_type,
             event_data,
             actor_name
         ) VALUES (
+            NEW.organization_id,
             NEW.id,
             CASE
                 WHEN NEW.status = 'withdrawn' THEN 'withdrawn'
@@ -355,10 +361,7 @@ CREATE POLICY screening_consents_org_isolation ON screening_consents
     USING (organization_id = current_setting('app.current_org_id', true)::uuid);
 
 CREATE POLICY screening_audit_log_org_isolation ON screening_consent_audit_log
-    USING (consent_id IN (
-        SELECT id FROM screening_consents
-        WHERE organization_id = current_setting('app.current_org_id', true)::uuid
-    ));
+    USING (organization_id = current_setting('app.current_org_id', true)::uuid);
 
 CREATE POLICY screening_processing_org_isolation ON screening_data_processing_records
     USING (organization_id = current_setting('app.current_org_id', true)::uuid);
