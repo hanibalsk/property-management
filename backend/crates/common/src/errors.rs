@@ -41,6 +41,26 @@ impl ErrorResponse {
         self.details = Some(details);
         self
     }
+
+    /// Create a bad request (400) error response.
+    pub fn bad_request(message: &str) -> Self {
+        Self::new("BAD_REQUEST", message)
+    }
+
+    /// Create a forbidden (403) error response.
+    pub fn forbidden(message: &str) -> Self {
+        Self::new("FORBIDDEN", message)
+    }
+
+    /// Create a not found (404) error response.
+    pub fn not_found(message: &str) -> Self {
+        Self::new("NOT_FOUND", message)
+    }
+
+    /// Create an internal server error (500) response.
+    pub fn internal_error(message: &str) -> Self {
+        Self::new("INTERNAL_ERROR", message)
+    }
 }
 
 /// Validation error detail.

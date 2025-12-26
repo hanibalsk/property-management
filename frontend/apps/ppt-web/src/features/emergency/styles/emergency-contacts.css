@@ -1,0 +1,460 @@
+/**
+ * Emergency Contacts styles for Epic 62.
+ */
+
+/* ============================================
+ * Page Layout
+ * ============================================ */
+
+.emergency-contact-directory-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.emergency-contact-directory-header {
+  margin-bottom: 2rem;
+}
+
+.emergency-contact-directory-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: var(--font-size-3xl, 30px);
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-directory-header p {
+  margin: 0;
+  font-size: var(--font-size-base, 16px);
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* ============================================
+ * Controls
+ * ============================================ */
+
+.emergency-contact-directory-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background-color: var(--color-surface, #f9fafb);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+}
+
+.emergency-contact-directory-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  flex: 1;
+}
+
+.emergency-contact-directory-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.emergency-contact-directory-filter label {
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 600;
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-directory-search,
+.emergency-contact-directory-select {
+  padding: 0.5rem;
+  font-size: var(--font-size-base, 16px);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background-color: var(--color-background, #ffffff);
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-directory-search {
+  min-width: 250px;
+}
+
+.emergency-contact-directory-select {
+  min-width: 150px;
+}
+
+.emergency-contact-directory-filter.checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding-top: 1.5rem;
+}
+
+.emergency-contact-directory-filter.checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-weight: normal;
+}
+
+.emergency-contact-directory-add-button {
+  padding: 0.75rem 1.5rem;
+  font-size: var(--font-size-base, 16px);
+  font-weight: 600;
+  color: white;
+  background-color: var(--color-primary, #3b82f6);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.emergency-contact-directory-add-button:hover {
+  background-color: var(--color-primary-hover, #2563eb);
+}
+
+.emergency-contact-directory-add-button:focus {
+  outline: 2px solid var(--color-focus, #f59e0b);
+  outline-offset: 2px;
+}
+
+/* ============================================
+ * Messages
+ * ============================================ */
+
+.emergency-contact-directory-error {
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background-color: #fee;
+  border: 1px solid #f88;
+  border-radius: 4px;
+  color: #c00;
+}
+
+.emergency-contact-directory-loading {
+  padding: 3rem;
+  text-align: center;
+  font-size: var(--font-size-lg, 18px);
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.emergency-contacts-empty {
+  padding: 3rem;
+  text-align: center;
+  background-color: var(--color-surface, #f9fafb);
+  border: 2px dashed var(--color-border, #e5e7eb);
+  border-radius: 8px;
+}
+
+.emergency-contacts-empty p {
+  margin: 0.5rem 0;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* ============================================
+ * Contacts List
+ * ============================================ */
+
+.emergency-contacts-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.emergency-contacts-list.grouped .emergency-contacts-group {
+  margin-bottom: 2rem;
+}
+
+.emergency-contacts-group-title {
+  margin: 0 0 1rem 0;
+  font-size: var(--font-size-xl, 20px);
+  color: var(--color-text, #1f2937);
+  border-bottom: 2px solid var(--color-border, #e5e7eb);
+  padding-bottom: 0.5rem;
+}
+
+.emergency-contacts-group-count {
+  font-size: var(--font-size-base, 16px);
+  font-weight: normal;
+  color: var(--color-text-secondary, #6b7280);
+  margin-left: 0.5rem;
+}
+
+.emergency-contacts-group-items {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+}
+
+/* ============================================
+ * Contact Card
+ * ============================================ */
+
+.emergency-contact-card {
+  padding: 1.5rem;
+  background-color: var(--color-background, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.emergency-contact-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.emergency-contact-card-name {
+  margin: 0 0 0.25rem 0;
+  font-size: var(--font-size-lg, 18px);
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-card-type {
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-secondary, #6b7280);
+  font-weight: 600;
+}
+
+.emergency-contact-card-badge {
+  padding: 0.25rem 0.75rem;
+  background-color: #fef3c7;
+  color: #92400e;
+  border-radius: 12px;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 600;
+}
+
+.emergency-contact-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.emergency-contact-card-field {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.5rem;
+  font-size: var(--font-size-base, 16px);
+}
+
+.emergency-contact-card-label {
+  font-weight: 600;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.emergency-contact-card-value {
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-card-value.link {
+  color: var(--color-primary, #3b82f6);
+  text-decoration: none;
+}
+
+.emergency-contact-card-value.link:hover {
+  text-decoration: underline;
+}
+
+.emergency-contact-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.emergency-contact-card-button {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  font-size: var(--font-size-base, 16px);
+  font-weight: 600;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: var(--color-background, #ffffff);
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-card-button:hover {
+  background-color: var(--color-surface-hover, #f3f4f6);
+}
+
+.emergency-contact-card-button:focus {
+  outline: 2px solid var(--color-focus, #f59e0b);
+  outline-offset: 2px;
+}
+
+.emergency-contact-card-button.delete {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.emergency-contact-card-button.delete:hover {
+  background-color: #fef2f2;
+}
+
+/* ============================================
+ * Contact Form
+ * ============================================ */
+
+.emergency-contact-directory-form-container {
+  background-color: var(--color-surface, #f9fafb);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+.emergency-contact-form h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: var(--font-size-2xl, 24px);
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-form-field {
+  margin-bottom: 1.5rem;
+}
+
+.emergency-contact-form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: var(--font-size-base, 16px);
+  font-weight: 600;
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-form-label.required::after {
+  content: " *";
+  color: #dc2626;
+}
+
+.emergency-contact-form-input,
+.emergency-contact-form-select,
+.emergency-contact-form-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: var(--font-size-base, 16px);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background-color: var(--color-background, #ffffff);
+  color: var(--color-text, #1f2937);
+}
+
+.emergency-contact-form-input:focus,
+.emergency-contact-form-select:focus,
+.emergency-contact-form-textarea:focus {
+  outline: 2px solid var(--color-focus, #f59e0b);
+  outline-offset: 2px;
+  border-color: var(--color-primary, #3b82f6);
+}
+
+.emergency-contact-form-input.error,
+.emergency-contact-form-select.error,
+.emergency-contact-form-textarea.error {
+  border-color: #dc2626;
+}
+
+.emergency-contact-form-textarea {
+  resize: vertical;
+}
+
+.emergency-contact-form-help {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.emergency-contact-form-error {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: var(--font-size-sm, 14px);
+  color: #dc2626;
+}
+
+.emergency-contact-form-error-banner {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  font-size: var(--font-size-sm, 14px);
+  color: #dc2626;
+}
+
+.emergency-contact-form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.emergency-contact-form-button {
+  padding: 0.75rem 2rem;
+  font-size: var(--font-size-base, 16px);
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.emergency-contact-form-button.cancel {
+  background-color: var(--color-surface, #f9fafb);
+  color: var(--color-text, #1f2937);
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.emergency-contact-form-button.cancel:hover {
+  background-color: var(--color-surface-hover, #f3f4f6);
+}
+
+.emergency-contact-form-button.submit {
+  background-color: var(--color-primary, #3b82f6);
+  color: white;
+}
+
+.emergency-contact-form-button.submit:hover {
+  background-color: var(--color-primary-hover, #2563eb);
+}
+
+.emergency-contact-form-button:focus {
+  outline: 2px solid var(--color-focus, #f59e0b);
+  outline-offset: 2px;
+}
+
+.emergency-contact-form-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================
+ * Responsive
+ * ============================================ */
+
+@media (max-width: 768px) {
+  .emergency-contact-directory-page {
+    padding: 1rem;
+  }
+
+  .emergency-contact-directory-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .emergency-contact-directory-filters {
+    flex-direction: column;
+  }
+
+  .emergency-contacts-group-items {
+    grid-template-columns: 1fr;
+  }
+
+  .emergency-contact-card-field {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
