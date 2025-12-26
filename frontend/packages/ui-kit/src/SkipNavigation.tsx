@@ -13,15 +13,14 @@ export interface SkipNavigationProps {
 
 export const SkipNavigation: React.FC<SkipNavigationProps> = ({
   mainContentId = 'main-content',
-  navigationId = 'main-navigation',
+  navigationId: _navigationId = 'main-navigation',
 }) => {
+  // Skip links allow keyboard users to bypass repetitive navigation content
+  // The primary purpose is to jump directly to main content
   return (
     <div className="skip-navigation">
       <a href={`#${mainContentId}`} className="skip-link">
         Skip to main content
-      </a>
-      <a href={`#${navigationId}`} className="skip-link">
-        Skip to navigation
       </a>
     </div>
   );

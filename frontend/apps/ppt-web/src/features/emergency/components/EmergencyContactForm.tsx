@@ -182,7 +182,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
       </div>
 
       {errors.contactMethod && (
-        <div className="emergency-contact-form-error-banner" role="alert">
+        <div id="contact-method-error" className="emergency-contact-form-error-banner" role="alert">
           {errors.contactMethod}
         </div>
       )}
@@ -200,6 +200,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           className={`emergency-contact-form-input ${errors.contactMethod ? 'error' : ''}`}
           placeholder="+1 (555) 123-4567"
           aria-invalid={!!errors.contactMethod}
+          aria-describedby={errors.contactMethod ? 'contact-method-error' : undefined}
           disabled={isSubmitting}
         />
       </div>
@@ -233,6 +234,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           className={`emergency-contact-form-input ${errors.contactMethod ? 'error' : ''}`}
           placeholder="contact@example.com"
           aria-invalid={!!errors.contactMethod}
+          aria-describedby={errors.contactMethod ? 'contact-method-error' : undefined}
           disabled={isSubmitting}
         />
       </div>
