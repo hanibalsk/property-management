@@ -6,12 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useOrganization } from '../../../hooks';
 import { ArticleComments, ArticleReactions } from '../components';
-import type {
-  ArticleCommentWithAuthor,
-  NewsArticle,
-  ReactionCounts,
-  ReactionType,
-} from '../types';
+import type { ArticleCommentWithAuthor, NewsArticle, ReactionCounts, ReactionType } from '../types';
 
 interface ArticleDetailPageProps {
   articleId: string;
