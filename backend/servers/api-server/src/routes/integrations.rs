@@ -2621,12 +2621,15 @@ pub async fn test_webhook(
             }))
         }
         Err(e) => {
+            // Log detailed error for debugging but return sanitized message to client
+            tracing::warn!(error = ?e, "Webhook test request failed");
+
             let error_message = if e.is_timeout() {
                 "Request timed out after 30 seconds".to_string()
             } else if e.is_connect() {
-                format!("Failed to connect to webhook URL: {}", e)
+                "Failed to connect to webhook URL".to_string()
             } else {
-                format!("Request failed: {}", e)
+                "Request failed while testing webhook".to_string()
             };
 
             Ok(Json(TestWebhookResponse {

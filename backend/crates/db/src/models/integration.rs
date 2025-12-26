@@ -935,6 +935,20 @@ pub fn validate_webhook_url(url: &str, is_production: bool) -> WebhookUrlValidat
                         "Reserved addresses (0.x.x.x) are not allowed",
                     );
                 }
+
+                // 255.255.255.255 - Limited broadcast address
+                if octets == [255, 255, 255, 255] {
+                    return WebhookUrlValidation::invalid(
+                        "Broadcast address (255.255.255.255) is not allowed",
+                    );
+                }
+
+                // 224.0.0.0/4 - Multicast (224.x.x.x - 239.x.x.x)
+                if octets[0] >= 224 && octets[0] <= 239 {
+                    return WebhookUrlValidation::invalid(
+                        "Multicast addresses (224.0.0.0/4) are not allowed",
+                    );
+                }
             }
             url::Host::Ipv6(ip) => {
                 // Block IPv6 loopback and link-local

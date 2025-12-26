@@ -337,31 +337,46 @@ impl IntegrationRepository {
 
     /// Upsert a calendar event - insert if external_event_id doesn't exist, skip if it does.
     /// Returns true if a new event was created, false if skipped (duplicate).
+    ///
+    /// Uses atomic INSERT ... ON CONFLICT to avoid race conditions.
     pub async fn upsert_calendar_event(
         &self,
         data: CreateCalendarEvent,
     ) -> Result<bool, SqlxError> {
-        // If external_event_id is provided, check for existing event first
-        if let Some(ref external_id) = data.external_event_id {
-            let existing = sqlx::query_scalar::<_, i64>(
-                r#"
-                SELECT COUNT(*) FROM calendar_events
-                WHERE connection_id = $1 AND external_event_id = $2
-                "#,
-            )
-            .bind(data.connection_id)
-            .bind(external_id)
-            .fetch_one(&self.pool)
-            .await?;
-
-            if existing > 0 {
-                return Ok(false); // Event already exists, skip
-            }
+        // If no external_event_id provided, just do a regular insert
+        if data.external_event_id.is_none() {
+            self.create_calendar_event(data).await?;
+            return Ok(true);
         }
 
-        // Insert the new event
-        self.create_calendar_event(data).await?;
-        Ok(true)
+        // Perform an atomic insert that skips on conflict to avoid race conditions
+        let result = sqlx::query(
+            r#"
+            INSERT INTO calendar_events (
+                connection_id, external_event_id, source_type, source_id, title, description,
+                location, start_time, end_time, all_day, recurrence_rule, attendees
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, false), $11, $12)
+            ON CONFLICT (connection_id, external_event_id) DO NOTHING
+            "#,
+        )
+        .bind(data.connection_id)
+        .bind(&data.external_event_id)
+        .bind(&data.source_type)
+        .bind(data.source_id)
+        .bind(&data.title)
+        .bind(&data.description)
+        .bind(&data.location)
+        .bind(data.start_time)
+        .bind(data.end_time)
+        .bind(data.all_day)
+        .bind(&data.recurrence_rule)
+        .bind(&data.attendees)
+        .execute(&self.pool)
+        .await?;
+
+        // rows_affected() is 1 if a new event was created, 0 if it already existed
+        Ok(result.rows_affected() > 0)
     }
 
     /// List calendar events for a connection.
