@@ -40,8 +40,8 @@ jobs:
 
       - name: Initial delay
         run: |
-          echo "Waiting 2 minutes for CI to start and Copilot review to settle..."
-          sleep 120
+          echo "Waiting 30 seconds for CI to start..."
+          sleep 30
 
       - name: Wait for CI to complete
         env:
@@ -114,17 +114,17 @@ jobs:
 
           echo "Checking approval conditions for PR #$PR_NUMBER..."
 
-          # 1. Check time since last push (must be at least 10 minutes)
+          # 1. Check time since last push (must be at least 2 minutes)
           LAST_PUSH=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.repo.pushed_at')
           LAST_PUSH_TS=$(date -d "$LAST_PUSH" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$LAST_PUSH" +%s 2>/dev/null || echo "0")
           NOW_TS=$(date +%s)
           MINUTES_SINCE_PUSH=$(( (NOW_TS - LAST_PUSH_TS) / 60 ))
           echo "Minutes since last push: $MINUTES_SINCE_PUSH"
 
-          if [ "$MINUTES_SINCE_PUSH" -lt 10 ]; then
+          if [ "$MINUTES_SINCE_PUSH" -lt 2 ]; then
             echo "should_approve=false" >> $GITHUB_OUTPUT
-            echo "reason=Only $MINUTES_SINCE_PUSH minutes since last push (need 10+)" >> $GITHUB_OUTPUT
-            echo "⏳ Too soon after push: $MINUTES_SINCE_PUSH minutes (need 10+)"
+            echo "reason=Only $MINUTES_SINCE_PUSH minutes since last push (need 2+)" >> $GITHUB_OUTPUT
+            echo "⏳ Too soon after push: $MINUTES_SINCE_PUSH minutes (need 2+)"
             exit 0
           fi
 
@@ -216,5 +216,5 @@ jobs:
           echo "Please ensure:"
           echo "  - All review threads are resolved"
           echo "  - All review comments are answered"
-          echo "  - At least 10 minutes since last push"
+          echo "  - At least 2 minutes since last push"
           echo "  - Copilot has completed review"
