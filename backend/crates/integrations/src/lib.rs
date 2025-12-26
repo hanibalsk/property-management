@@ -7,6 +7,7 @@ pub mod portals;
 // Epic 61: External Integrations Suite
 pub mod accounting;
 pub mod calendar;
+pub mod crypto;
 
 // Re-exports
 pub use airbnb::AirbnbClient;
@@ -23,4 +24,9 @@ pub use calendar::{
 pub use accounting::{
     AccountingError, ExportInvoice, ExportPayment, InvoiceItem, MoneyS3Exporter, Partner,
     PaymentType, PohodaExporter, ValidationResult, VatRate,
+};
+
+// Encryption utilities for sensitive integration data
+pub use crypto::{
+    decrypt_if_available, encrypt_if_available, CryptoError, IntegrationCrypto, ENCRYPTION_KEY_ENV,
 };

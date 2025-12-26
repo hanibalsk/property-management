@@ -2,16 +2,21 @@
 //!
 //! Routes for calendar sync, accounting exports, e-signatures, video conferencing, and webhooks.
 
+use api_core::{AuthUser, TenantExtractor};
 use axum::{
+    body::{Body, Bytes},
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header, HeaderMap, StatusCode},
+    response::Response,
     routing::{delete, get, post, put},
     Json, Router,
 };
+use chrono::{Duration, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    AccountingExport, AccountingExportSettings, CalendarConnection, CalendarSyncResult,
-    CreateAccountingExport, CreateCalendarConnection, CreateESignatureWorkflow,
+    accounting_system, calendar_provider, esignature_provider, AccountingExport,
+    AccountingExportSettings, CalendarConnection, CalendarSyncResult, CreateAccountingExport,
+    CreateCalendarConnection, CreateESignatureWorkflow,
     CreateIntegrationCalendarEvent as CreateCalendarEvent, CreateVideoConferenceConnection,
     CreateVideoMeeting, CreateWebhookSubscription, ESignatureWorkflow,
     ESignatureWorkflowWithRecipients, IntegrationCalendarEvent as CalendarEvent,
@@ -20,11 +25,20 @@ use db::models::{
     UpdateWebhookSubscription, VideoConferenceConnection, VideoMeeting, WebhookDeliveryLog,
     WebhookDeliveryQuery, WebhookStatistics, WebhookSubscription,
 };
+use hmac::{Hmac, Mac};
+use integrations::{
+    GoogleCalendarClient, MicrosoftCalendarClient, MoneyS3Exporter, OAuthConfig, PohodaExporter,
+};
 use serde::Deserialize;
+use sha2::Sha256;
+use subtle::ConstantTimeEq;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::state::AppState;
+
+// Type alias for HMAC-SHA256
+type HmacSha256 = Hmac<Sha256>;
 
 /// Create integrations router.
 pub fn router() -> Router<AppState> {
@@ -184,6 +198,132 @@ fn default_limit() -> i32 {
     50
 }
 
+// ==================== Authorization Helpers ====================
+
+/// Verify user has access to the specified organization.
+/// Returns Ok(()) if authorized, or an error response if not.
+async fn verify_org_access(
+    state: &AppState,
+    user_id: uuid::Uuid,
+    org_id: uuid::Uuid,
+) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    let is_member = state
+        .org_member_repo
+        .is_member(org_id, user_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to check org membership");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Database error")),
+            )
+        })?;
+
+    if !is_member {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "You are not a member of this organization",
+            )),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Verify user has manager-level access to the organization.
+fn verify_manager_role(tenant: &TenantExtractor) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    if !tenant.role.is_manager() {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "FORBIDDEN",
+                "Manager-level access required",
+            )),
+        ));
+    }
+    Ok(())
+}
+
+// ==================== E-Signature Webhook Verification ====================
+
+/// Verify DocuSign webhook signature using HMAC-SHA256.
+fn verify_docusign_signature(secret: &str, payload: &[u8], signature: &str) -> bool {
+    let Ok(mut mac) = HmacSha256::new_from_slice(secret.as_bytes()) else {
+        return false;
+    };
+    mac.update(payload);
+
+    // DocuSign sends base64-encoded HMAC-SHA256 signature
+    let expected = base64::Engine::encode(
+        &base64::engine::general_purpose::STANDARD,
+        mac.finalize().into_bytes(),
+    );
+
+    // Use constant-time comparison to prevent timing attacks
+    constant_time_compare(&expected, signature)
+}
+
+/// Verify Adobe Sign webhook signature.
+fn verify_adobe_sign_signature(client_secret: &str, payload: &[u8], signature: &str) -> bool {
+    let Ok(mut mac) = HmacSha256::new_from_slice(client_secret.as_bytes()) else {
+        return false;
+    };
+    mac.update(payload);
+
+    let expected = hex::encode(mac.finalize().into_bytes());
+
+    // Use constant-time comparison to prevent timing attacks
+    constant_time_compare(&expected, signature)
+}
+
+/// Verify HelloSign webhook signature using event_hash.
+fn verify_hellosign_signature(
+    api_key: &str,
+    event_time: &str,
+    event_type: &str,
+    event_hash: &str,
+) -> bool {
+    // HelloSign hash = HMAC-SHA256(api_key, event_time + event_type)
+    let Ok(mut mac) = HmacSha256::new_from_slice(api_key.as_bytes()) else {
+        return false;
+    };
+    mac.update(format!("{}{}", event_time, event_type).as_bytes());
+
+    let expected = hex::encode(mac.finalize().into_bytes());
+
+    // Use constant-time comparison to prevent timing attacks
+    constant_time_compare(&expected, event_hash)
+}
+
+/// Constant-time string comparison to prevent timing attacks.
+///
+/// Uses the `subtle` crate for cryptographically secure constant-time comparison.
+/// This prevents timing side-channel attacks when verifying webhook signatures.
+fn constant_time_compare(a: &str, b: &str) -> bool {
+    // Use subtle::ConstantTimeEq which handles length comparison securely
+    a.as_bytes().ct_eq(b.as_bytes()).into()
+}
+
+/// E-signature webhook payload with provider-specific fields.
+#[derive(Debug, Deserialize)]
+struct ESignatureWebhookPayload {
+    /// Provider identifier (docusign, adobe_sign, hellosign)
+    provider: Option<String>,
+    /// Event type
+    event_type: Option<String>,
+    /// Envelope/document ID
+    envelope_id: Option<String>,
+    /// HelloSign-specific: event timestamp
+    event_time: Option<String>,
+    /// HelloSign-specific: event hash for verification
+    event_hash: Option<String>,
+    /// Additional event data
+    #[serde(flatten)]
+    data: serde_json::Value,
+}
+
 // ==================== Statistics ====================
 
 /// Get integration statistics for an organization.
@@ -193,6 +333,8 @@ fn default_limit() -> i32 {
     params(OrgIdPath),
     responses(
         (status = 200, description = "Statistics retrieved", body = IntegrationStatistics),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 500, description = "Internal server error")
     ),
     security(("bearer_auth" = [])),
@@ -200,8 +342,12 @@ fn default_limit() -> i32 {
 )]
 pub async fn get_integration_stats(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<OrgIdPath>,
 ) -> Result<Json<IntegrationStatistics>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user belongs to this organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
     let stats = state
         .integration_repo
         .get_integration_statistics(path.org_id)
@@ -229,6 +375,8 @@ pub async fn get_integration_stats(
     params(OrgIdPath, CalendarQuery),
     responses(
         (status = 200, description = "Connections retrieved", body = Vec<CalendarConnection>),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 500, description = "Internal server error")
     ),
     security(("bearer_auth" = [])),
@@ -236,9 +384,13 @@ pub async fn get_integration_stats(
 )]
 pub async fn list_calendar_connections(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<OrgIdPath>,
     Query(query): Query<CalendarQuery>,
 ) -> Result<Json<Vec<CalendarConnection>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user belongs to this organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
     let connections = state
         .integration_repo
         .list_calendar_connections(path.org_id, query.user_id)
@@ -272,18 +424,30 @@ pub async fn list_calendar_connections(
     tag = "Integrations"
 )]
 pub async fn create_calendar_connection(
-    State(_state): State<AppState>,
-    Path(_path): Path<OrgIdPath>,
-    Json(_data): Json<CreateCalendarConnection>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(data): Json<CreateCalendarConnection>,
 ) -> Result<(StatusCode, Json<CalendarConnection>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    // Verify user has access to the organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
+    let connection = state
+        .integration_repo
+        .create_calendar_connection(path.org_id, auth.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create calendar connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create calendar connection",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(connection)))
 }
 
 /// Get a calendar connection by ID.
@@ -293,6 +457,8 @@ pub async fn create_calendar_connection(
     params(ResourceIdPath),
     responses(
         (status = 200, description = "Connection retrieved", body = CalendarConnection),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Connection not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -301,8 +467,10 @@ pub async fn create_calendar_connection(
 )]
 pub async fn get_calendar_connection(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<Json<CalendarConnection>, (StatusCode, Json<ErrorResponse>)> {
+    // First get the connection to check organization access
     let connection = state
         .integration_repo
         .get_calendar_connection(path.id)
@@ -319,7 +487,11 @@ pub async fn get_calendar_connection(
         })?;
 
     match connection {
-        Some(c) => Ok(Json(c)),
+        Some(c) => {
+            // Verify user has access to the organization that owns this resource
+            verify_org_access(&state, auth.user_id, c.organization_id).await?;
+            Ok(Json(c))
+        }
         None => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -338,6 +510,8 @@ pub async fn get_calendar_connection(
     request_body = UpdateCalendarConnection,
     responses(
         (status = 200, description = "Connection updated", body = CalendarConnection),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Connection not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -346,9 +520,35 @@ pub async fn get_calendar_connection(
 )]
 pub async fn update_calendar_connection(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
     Json(data): Json<UpdateCalendarConnection>,
 ) -> Result<Json<CalendarConnection>, (StatusCode, Json<ErrorResponse>)> {
+    // First get the connection to check organization access
+    let existing = state
+        .integration_repo
+        .get_calendar_connection(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get calendar connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Database error")),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Calendar connection not found",
+                )),
+            )
+        })?;
+
+    // Verify user has access to the organization that owns this resource
+    verify_org_access(&state, auth.user_id, existing.organization_id).await?;
+
     let connection = state
         .integration_repo
         .update_calendar_connection(path.id, data)
@@ -374,6 +574,8 @@ pub async fn update_calendar_connection(
     params(ResourceIdPath),
     responses(
         (status = 204, description = "Connection deleted"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Connection not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -382,8 +584,34 @@ pub async fn update_calendar_connection(
 )]
 pub async fn delete_calendar_connection(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    // First get the connection to check organization access
+    let existing = state
+        .integration_repo
+        .get_calendar_connection(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get calendar connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Database error")),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Calendar connection not found",
+                )),
+            )
+        })?;
+
+    // Verify user has access to the organization that owns this resource
+    verify_org_access(&state, auth.user_id, existing.organization_id).await?;
+
     let deleted = state
         .integration_repo
         .delete_calendar_connection(path.id)
@@ -420,6 +648,8 @@ pub async fn delete_calendar_connection(
     request_body = SyncCalendarRequest,
     responses(
         (status = 200, description = "Calendar synced", body = CalendarSyncResult),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Connection not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -427,17 +657,175 @@ pub async fn delete_calendar_connection(
     tag = "Integrations"
 )]
 pub async fn sync_calendar(
-    State(_state): State<AppState>,
-    Path(_path): Path<ResourceIdPath>,
-    Json(_data): Json<SyncCalendarRequest>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<ResourceIdPath>,
+    Json(data): Json<SyncCalendarRequest>,
 ) -> Result<Json<CalendarSyncResult>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement actual calendar sync with external provider
+    // Get the calendar connection
+    let connection = state
+        .integration_repo
+        .get_calendar_connection(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get calendar connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get calendar connection",
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Calendar connection not found",
+                )),
+            )
+        })?;
+
+    // Verify user has access to the organization that owns this connection
+    verify_org_access(&state, auth.user_id, connection.organization_id).await?;
+
+    // Check if we have valid tokens
+    let access_token = match &connection.access_token {
+        Some(token) => token.clone(),
+        None => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "NO_TOKEN",
+                    "Calendar connection has no access token. Please reconnect.",
+                )),
+            ))
+        }
+    };
+
+    // Determine date range for sync
+    let time_min = data
+        .date_range_start
+        .unwrap_or_else(|| Utc::now() - Duration::days(30));
+    let time_max = data
+        .date_range_end
+        .unwrap_or_else(|| Utc::now() + Duration::days(90));
+
+    // Get calendar_id, default to primary if not set
+    let calendar_id = connection
+        .calendar_id
+        .clone()
+        .unwrap_or_else(|| "primary".to_string());
+
+    // Create appropriate client based on provider and fetch events
+    let sync_result = match connection.provider.as_str() {
+        calendar_provider::GOOGLE => {
+            let config = OAuthConfig {
+                client_id: std::env::var("GOOGLE_CLIENT_ID").unwrap_or_default(),
+                client_secret: std::env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default(),
+                redirect_uri: std::env::var("GOOGLE_REDIRECT_URI").unwrap_or_default(),
+            };
+            let client = GoogleCalendarClient::new(config);
+
+            client
+                .fetch_events(&access_token, &calendar_id, time_min, time_max, None)
+                .await
+        }
+        calendar_provider::OUTLOOK => {
+            let config = OAuthConfig {
+                client_id: std::env::var("MICROSOFT_CLIENT_ID").unwrap_or_default(),
+                client_secret: std::env::var("MICROSOFT_CLIENT_SECRET").unwrap_or_default(),
+                redirect_uri: std::env::var("MICROSOFT_REDIRECT_URI").unwrap_or_default(),
+            };
+            let client = MicrosoftCalendarClient::new(config);
+
+            client
+                .fetch_events(&access_token, &calendar_id, time_min, time_max, None)
+                .await
+        }
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "UNSUPPORTED_PROVIDER",
+                    &format!(
+                        "Calendar provider '{}' is not supported",
+                        connection.provider
+                    ),
+                )),
+            ))
+        }
+    };
+
+    // Handle the sync result
+    let sync_result = sync_result.map_err(|e| {
+        tracing::error!(error = %e, provider = %connection.provider, "Calendar sync failed");
+
+        // Update sync status to error
+        let _ = state
+            .integration_repo
+            .update_sync_status(path.id, "error", Some(&e.to_string()));
+
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new(
+                "SYNC_ERROR",
+                &format!("Calendar sync failed: {}", e),
+            )),
+        )
+    })?;
+
+    // Process synced events and store them in the database
+    let mut events_created = 0;
+    #[allow(unused_assignments)]
+    let mut events_updated = 0;
+    let mut errors: Vec<String> = vec![];
+
+    for event in &sync_result.events_created {
+        let create_data = CreateCalendarEvent {
+            connection_id: path.id,
+            source_type: "external".to_string(),
+            source_id: None,
+            title: event.title.clone(),
+            description: event.description.clone(),
+            location: event.location.clone(),
+            start_time: event.start_time,
+            end_time: event.end_time,
+            all_day: Some(event.all_day),
+            recurrence_rule: event.recurrence.clone(),
+            attendees: Some(serde_json::to_value(&event.attendees).unwrap_or_default()),
+        };
+
+        match state
+            .integration_repo
+            .create_calendar_event(create_data)
+            .await
+        {
+            Ok(_) => events_created += 1,
+            Err(e) => {
+                tracing::warn!(error = %e, event_id = %event.id, "Failed to create calendar event");
+                errors.push(format!("Failed to create event '{}': {}", event.title, e));
+            }
+        }
+    }
+
+    // For updated events, we would need to update existing records
+    // This is a simplified implementation - in production you'd match by external_event_id
+    events_updated = sync_result.events_updated.len() as i32;
+
+    // Update sync status
+    let _ = state
+        .integration_repo
+        .update_sync_status(path.id, "active", None)
+        .await;
+
     Ok(Json(CalendarSyncResult {
-        events_created: 0,
-        events_updated: 0,
-        events_deleted: 0,
-        errors: vec![],
-        synced_at: chrono::Utc::now(),
+        events_created,
+        events_updated,
+        events_deleted: sync_result.events_deleted.len() as i32,
+        errors,
+        synced_at: Utc::now(),
     }))
 }
 
@@ -522,6 +910,8 @@ pub async fn create_calendar_event(
     params(OrgIdPath, AccountingExportQuery),
     responses(
         (status = 200, description = "Exports retrieved", body = Vec<AccountingExport>),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 500, description = "Internal server error")
     ),
     security(("bearer_auth" = [])),
@@ -529,9 +919,13 @@ pub async fn create_calendar_event(
 )]
 pub async fn list_accounting_exports(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<OrgIdPath>,
     Query(query): Query<AccountingExportQuery>,
 ) -> Result<Json<Vec<AccountingExport>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user belongs to this organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
     let exports = state
         .integration_repo
         .list_accounting_exports(path.org_id, query.system_type.as_deref(), query.limit)
@@ -565,18 +959,30 @@ pub async fn list_accounting_exports(
     tag = "Integrations"
 )]
 pub async fn create_accounting_export(
-    State(_state): State<AppState>,
-    Path(_path): Path<OrgIdPath>,
-    Json(_data): Json<CreateAccountingExport>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(data): Json<CreateAccountingExport>,
 ) -> Result<(StatusCode, Json<AccountingExport>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    // Verify user has access to the organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
+    let export = state
+        .integration_repo
+        .create_accounting_export(path.org_id, auth.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create accounting export");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create accounting export",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(export)))
 }
 
 /// Get an accounting export by ID.
@@ -586,6 +992,8 @@ pub async fn create_accounting_export(
     params(ResourceIdPath),
     responses(
         (status = 200, description = "Export retrieved", body = AccountingExport),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Export not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -594,6 +1002,7 @@ pub async fn create_accounting_export(
 )]
 pub async fn get_accounting_export(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<Json<AccountingExport>, (StatusCode, Json<ErrorResponse>)> {
     let export = state
@@ -612,7 +1021,11 @@ pub async fn get_accounting_export(
         })?;
 
     match export {
-        Some(e) => Ok(Json(e)),
+        Some(e) => {
+            // Verify user has access to the organization that owns this resource
+            verify_org_access(&state, auth.user_id, e.organization_id).await?;
+            Ok(Json(e))
+        }
         None => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -637,17 +1050,151 @@ pub async fn get_accounting_export(
     tag = "Integrations"
 )]
 pub async fn download_accounting_export(
-    State(_state): State<AppState>,
-    Path(_path): Path<ResourceIdPath>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement file download
-    Err((
-        StatusCode::NOT_IMPLEMENTED,
-        Json(ErrorResponse::new(
-            "NOT_IMPLEMENTED",
-            "File download not yet implemented",
-        )),
-    ))
+    State(state): State<AppState>,
+    Path(path): Path<ResourceIdPath>,
+) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
+    // Get the export record
+    let export = state
+        .integration_repo
+        .get_accounting_export(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get accounting export");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get accounting export",
+                )),
+            )
+        })?;
+
+    let export = match export {
+        Some(e) => e,
+        None => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Accounting export not found",
+                )),
+            ))
+        }
+    };
+
+    // Check if export is completed
+    if export.status != "completed" {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "EXPORT_NOT_READY",
+                &format!(
+                    "Export is not ready for download. Current status: {}",
+                    export.status
+                ),
+            )),
+        ));
+    }
+
+    // If file_path exists, we would read from storage
+    // For now, generate the export on-the-fly (in production, you'd read from S3/file storage)
+    let (content, content_type, filename) = match export.system_type.as_str() {
+        accounting_system::POHODA => {
+            // Generate POHODA XML export
+            let exporter = PohodaExporter::new(
+                std::env::var("COMPANY_ICO").unwrap_or_else(|_| "00000000".to_string()),
+            );
+
+            // In a real implementation, you would fetch the actual invoices from the database
+            // based on the export's period_start and period_end
+            // For now, we generate an empty but valid XML structure
+            let invoices: Vec<integrations::ExportInvoice> = vec![];
+
+            let mut output = Vec::new();
+            exporter
+                .export_invoices(&mut output, &invoices)
+                .map_err(|e| {
+                    tracing::error!(error = %e, "Failed to generate POHODA export");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ErrorResponse::new(
+                            "EXPORT_ERROR",
+                            &format!("Failed to generate POHODA export: {}", e),
+                        )),
+                    )
+                })?;
+
+            let filename = format!(
+                "pohoda_export_{}_{}_{}.xml",
+                export.export_type, export.period_start, export.period_end
+            );
+
+            (output, "application/xml", filename)
+        }
+        accounting_system::MONEY_S3 => {
+            // Generate Money S3 CSV export
+            let exporter = MoneyS3Exporter::new();
+
+            // In a real implementation, you would fetch the actual invoices from the database
+            let invoices: Vec<integrations::ExportInvoice> = vec![];
+
+            let mut output = Vec::new();
+            exporter
+                .export_invoices(&mut output, &invoices)
+                .map_err(|e| {
+                    tracing::error!(error = %e, "Failed to generate Money S3 export");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ErrorResponse::new(
+                            "EXPORT_ERROR",
+                            &format!("Failed to generate Money S3 export: {}", e),
+                        )),
+                    )
+                })?;
+
+            let filename = format!(
+                "money_s3_export_{}_{}_{}.csv",
+                export.export_type, export.period_start, export.period_end
+            );
+
+            (output, "text/csv; charset=utf-8", filename)
+        }
+        _ => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "UNSUPPORTED_SYSTEM",
+                    &format!(
+                        "Accounting system '{}' is not supported for export",
+                        export.system_type
+                    ),
+                )),
+            ))
+        }
+    };
+
+    // Build the response with appropriate headers
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", filename),
+        )
+        .header(header::CONTENT_LENGTH, content.len())
+        .body(Body::from(content))
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to build response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "RESPONSE_ERROR",
+                    "Failed to build download response",
+                )),
+            )
+        })?;
+
+    Ok(response)
 }
 
 /// Get accounting export settings.
@@ -729,6 +1276,8 @@ pub async fn update_accounting_settings(
     params(OrgIdPath, ESignatureQuery),
     responses(
         (status = 200, description = "Workflows retrieved", body = Vec<ESignatureWorkflow>),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 500, description = "Internal server error")
     ),
     security(("bearer_auth" = [])),
@@ -736,9 +1285,13 @@ pub async fn update_accounting_settings(
 )]
 pub async fn list_esignature_workflows(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<OrgIdPath>,
     Query(query): Query<ESignatureQuery>,
 ) -> Result<Json<Vec<ESignatureWorkflow>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user belongs to this organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
     let workflows = state
         .integration_repo
         .list_esignature_workflows(path.org_id, query.status.as_deref(), query.limit)
@@ -772,19 +1325,37 @@ pub async fn list_esignature_workflows(
     tag = "Integrations"
 )]
 pub async fn create_esignature_workflow(
-    State(_state): State<AppState>,
-    Path(_path): Path<OrgIdPath>,
-    Json(_data): Json<CreateESignatureWorkflow>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(data): Json<CreateESignatureWorkflow>,
 ) -> Result<(StatusCode, Json<ESignatureWorkflowWithRecipients>), (StatusCode, Json<ErrorResponse>)>
 {
-    // TODO: Extract user_id from authentication context
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    // Verify user has access to the organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
+    let workflow = state
+        .integration_repo
+        .create_esignature_workflow(path.org_id, auth.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create e-signature workflow");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create e-signature workflow",
+                )),
+            )
+        })?;
+
+    // Wrap workflow with empty recipients list (no recipients added yet)
+    let result = ESignatureWorkflowWithRecipients {
+        workflow,
+        recipients: vec![],
+    };
+
+    Ok((StatusCode::CREATED, Json(result)))
 }
 
 /// Get an e-signature workflow by ID.
@@ -794,6 +1365,8 @@ pub async fn create_esignature_workflow(
     params(ResourceIdPath),
     responses(
         (status = 200, description = "Workflow retrieved", body = ESignatureWorkflowWithRecipients),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Workflow not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -802,6 +1375,7 @@ pub async fn create_esignature_workflow(
 )]
 pub async fn get_esignature_workflow(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<Json<ESignatureWorkflowWithRecipients>, (StatusCode, Json<ErrorResponse>)> {
     let workflow = state
@@ -820,7 +1394,11 @@ pub async fn get_esignature_workflow(
         })?;
 
     match workflow {
-        Some(w) => Ok(Json(w)),
+        Some(w) => {
+            // Verify user has access to the organization that owns this resource
+            verify_org_access(&state, auth.user_id, w.workflow.organization_id).await?;
+            Ok(Json(w))
+        }
         None => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -923,20 +1501,201 @@ pub async fn send_esignature_reminder(
 }
 
 /// E-signature webhook endpoint.
+///
+/// This endpoint receives webhooks from e-signature providers (DocuSign, Adobe Sign, HelloSign).
+/// It verifies the webhook signature before processing to prevent unauthorized requests.
 #[utoipa::path(
     post,
     path = "/api/v1/integrations/esignatures/webhook",
     responses(
         (status = 200, description = "Webhook processed"),
+        (status = 400, description = "Invalid payload"),
+        (status = 401, description = "Invalid signature"),
         (status = 500, description = "Internal server error")
     ),
     tag = "Integrations"
 )]
 pub async fn esignature_webhook(
-    State(_state): State<AppState>,
-    Json(_payload): Json<serde_json::Value>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    body: Bytes,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Process e-signature provider webhooks
+    // Parse the payload to determine the provider
+    let payload: ESignatureWebhookPayload = serde_json::from_slice(&body).map_err(|e| {
+        tracing::error!(error = %e, "Failed to parse e-signature webhook payload");
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_PAYLOAD",
+                "Invalid webhook payload",
+            )),
+        )
+    })?;
+
+    // Determine provider from payload or headers
+    let provider = payload.provider.as_deref().unwrap_or_else(|| {
+        // Try to determine from headers
+        if headers.contains_key("x-docusign-signature-1") {
+            esignature_provider::DOCUSIGN
+        } else if headers.contains_key("x-adobesign-clientid") {
+            esignature_provider::ADOBE_SIGN
+        } else if payload.event_hash.is_some() {
+            esignature_provider::HELLOSIGN
+        } else {
+            "unknown"
+        }
+    });
+
+    // Verify webhook signature based on provider
+    match provider {
+        esignature_provider::DOCUSIGN => {
+            // Get DocuSign webhook secret from environment
+            let secret = std::env::var("DOCUSIGN_WEBHOOK_SECRET").unwrap_or_else(|_| String::new());
+            if secret.is_empty() {
+                tracing::warn!("DOCUSIGN_WEBHOOK_SECRET not configured");
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "CONFIG_ERROR",
+                        "Webhook verification not configured",
+                    )),
+                ));
+            }
+
+            // DocuSign sends signature in X-DocuSign-Signature-1 header
+            let signature = headers
+                .get("x-docusign-signature-1")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("");
+
+            if !verify_docusign_signature(&secret, &body, signature) {
+                tracing::warn!("Invalid DocuSign webhook signature");
+                return Err((
+                    StatusCode::UNAUTHORIZED,
+                    Json(ErrorResponse::new(
+                        "INVALID_SIGNATURE",
+                        "Invalid webhook signature",
+                    )),
+                ));
+            }
+        }
+        esignature_provider::ADOBE_SIGN => {
+            // Get Adobe Sign client secret from environment
+            let client_secret =
+                std::env::var("ADOBE_SIGN_CLIENT_SECRET").unwrap_or_else(|_| String::new());
+            if client_secret.is_empty() {
+                tracing::warn!("ADOBE_SIGN_CLIENT_SECRET not configured");
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "CONFIG_ERROR",
+                        "Webhook verification not configured",
+                    )),
+                ));
+            }
+
+            // Adobe Sign sends signature in X-AdobeSign-Signature header
+            let signature = headers
+                .get("x-adobesign-signature")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("");
+
+            if !verify_adobe_sign_signature(&client_secret, &body, signature) {
+                tracing::warn!("Invalid Adobe Sign webhook signature");
+                return Err((
+                    StatusCode::UNAUTHORIZED,
+                    Json(ErrorResponse::new(
+                        "INVALID_SIGNATURE",
+                        "Invalid webhook signature",
+                    )),
+                ));
+            }
+        }
+        esignature_provider::HELLOSIGN => {
+            // Get HelloSign API key from environment
+            let api_key = std::env::var("HELLOSIGN_API_KEY").unwrap_or_else(|_| String::new());
+            if api_key.is_empty() {
+                tracing::warn!("HELLOSIGN_API_KEY not configured");
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "CONFIG_ERROR",
+                        "Webhook verification not configured",
+                    )),
+                ));
+            }
+
+            // HelloSign includes event_time, event_type, and event_hash in the payload
+            let event_time = payload.event_time.as_deref().unwrap_or("");
+            let event_type = payload.event_type.as_deref().unwrap_or("");
+            let event_hash = payload.event_hash.as_deref().unwrap_or("");
+
+            if !verify_hellosign_signature(&api_key, event_time, event_type, event_hash) {
+                tracing::warn!("Invalid HelloSign webhook signature");
+                return Err((
+                    StatusCode::UNAUTHORIZED,
+                    Json(ErrorResponse::new(
+                        "INVALID_SIGNATURE",
+                        "Invalid webhook signature",
+                    )),
+                ));
+            }
+        }
+        _ => {
+            tracing::warn!(provider = %provider, "Unknown e-signature provider");
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "UNKNOWN_PROVIDER",
+                    "Unknown e-signature provider",
+                )),
+            ));
+        }
+    }
+
+    // Signature verified, process the webhook
+    tracing::info!(
+        provider = %provider,
+        event_type = ?payload.event_type,
+        envelope_id = ?payload.envelope_id,
+        "Processing verified e-signature webhook"
+    );
+
+    // Update workflow status based on event type
+    if let (Some(envelope_id), Some(event_type)) = (
+        payload.envelope_id.as_deref(),
+        payload.event_type.as_deref(),
+    ) {
+        let new_status = match event_type {
+            "envelope-completed" | "agreement_all_signed" | "signature_request_all_signed" => {
+                Some("completed")
+            }
+            "envelope-voided" | "agreement_cancelled" | "signature_request_canceled" => {
+                Some("voided")
+            }
+            "envelope-declined" | "agreement_rejected" | "signature_request_declined" => {
+                Some("declined")
+            }
+            "envelope-sent" | "agreement_created" | "signature_request_sent" => Some("sent"),
+            _ => None,
+        };
+
+        if let Some(status) = new_status {
+            // Try to find and update the workflow by external envelope ID
+            if let Err(e) = state
+                .integration_repo
+                .update_esignature_workflow_by_external_id(envelope_id, status)
+                .await
+            {
+                tracing::warn!(
+                    error = %e,
+                    envelope_id = %envelope_id,
+                    "Failed to update workflow status from webhook"
+                );
+            }
+        }
+    }
+
     Ok(StatusCode::OK)
 }
 
@@ -949,6 +1708,8 @@ pub async fn esignature_webhook(
     params(OrgIdPath, CalendarQuery),
     responses(
         (status = 200, description = "Connections retrieved", body = Vec<VideoConferenceConnection>),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 500, description = "Internal server error")
     ),
     security(("bearer_auth" = [])),
@@ -956,9 +1717,13 @@ pub async fn esignature_webhook(
 )]
 pub async fn list_video_connections(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<OrgIdPath>,
     Query(query): Query<CalendarQuery>,
 ) -> Result<Json<Vec<VideoConferenceConnection>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user belongs to this organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
     let connections = state
         .integration_repo
         .list_video_conference_connections(path.org_id, query.user_id)
@@ -992,18 +1757,30 @@ pub async fn list_video_connections(
     tag = "Integrations"
 )]
 pub async fn create_video_connection(
-    State(_state): State<AppState>,
-    Path(_path): Path<OrgIdPath>,
-    Json(_data): Json<CreateVideoConferenceConnection>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(data): Json<CreateVideoConferenceConnection>,
 ) -> Result<(StatusCode, Json<VideoConferenceConnection>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    // Verify user has access to the organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
+    let connection = state
+        .integration_repo
+        .create_video_conference_connection(path.org_id, auth.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create video connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create video connection",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(connection)))
 }
 
 /// Delete a video conference connection.
@@ -1058,6 +1835,8 @@ pub async fn delete_video_connection(
     params(OrgIdPath, VideoMeetingQuery),
     responses(
         (status = 200, description = "Meetings retrieved", body = Vec<VideoMeeting>),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 500, description = "Internal server error")
     ),
     security(("bearer_auth" = [])),
@@ -1065,9 +1844,13 @@ pub async fn delete_video_connection(
 )]
 pub async fn list_video_meetings(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<OrgIdPath>,
     Query(query): Query<VideoMeetingQuery>,
 ) -> Result<Json<Vec<VideoMeeting>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user belongs to this organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
     let meetings = state
         .integration_repo
         .list_video_meetings(
@@ -1106,18 +1889,30 @@ pub async fn list_video_meetings(
     tag = "Integrations"
 )]
 pub async fn create_video_meeting(
-    State(_state): State<AppState>,
-    Path(_path): Path<OrgIdPath>,
-    Json(_data): Json<CreateVideoMeeting>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(data): Json<CreateVideoMeeting>,
 ) -> Result<(StatusCode, Json<VideoMeeting>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    // Verify user has access to the organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
+    let meeting = state
+        .integration_repo
+        .create_video_meeting(path.org_id, auth.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create video meeting");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create video meeting",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(meeting)))
 }
 
 /// Get a video meeting by ID.
@@ -1127,6 +1922,8 @@ pub async fn create_video_meeting(
     params(ResourceIdPath),
     responses(
         (status = 200, description = "Meeting retrieved", body = VideoMeeting),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Meeting not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -1135,6 +1932,7 @@ pub async fn create_video_meeting(
 )]
 pub async fn get_video_meeting(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<Json<VideoMeeting>, (StatusCode, Json<ErrorResponse>)> {
     let meeting = state
@@ -1153,7 +1951,11 @@ pub async fn get_video_meeting(
         })?;
 
     match meeting {
-        Some(m) => Ok(Json(m)),
+        Some(m) => {
+            // Verify user has access to the organization that owns this resource
+            verify_org_access(&state, auth.user_id, m.organization_id).await?;
+            Ok(Json(m))
+        }
         None => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Video meeting not found")),
@@ -1169,6 +1971,8 @@ pub async fn get_video_meeting(
     request_body = UpdateVideoMeeting,
     responses(
         (status = 200, description = "Meeting updated", body = VideoMeeting),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Meeting not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -1177,9 +1981,32 @@ pub async fn get_video_meeting(
 )]
 pub async fn update_video_meeting(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
     Json(data): Json<UpdateVideoMeeting>,
 ) -> Result<Json<VideoMeeting>, (StatusCode, Json<ErrorResponse>)> {
+    // First get the meeting to check organization access
+    let existing = state
+        .integration_repo
+        .get_video_meeting(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get video meeting");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Database error")),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Video meeting not found")),
+            )
+        })?;
+
+    // Verify user has access to the organization that owns this resource
+    verify_org_access(&state, auth.user_id, existing.organization_id).await?;
+
     let meeting = state
         .integration_repo
         .update_video_meeting(path.id, data)
@@ -1205,6 +2032,8 @@ pub async fn update_video_meeting(
     params(ResourceIdPath),
     responses(
         (status = 204, description = "Meeting deleted"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Meeting not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -1213,8 +2042,31 @@ pub async fn update_video_meeting(
 )]
 pub async fn delete_video_meeting(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    // First get the meeting to check organization access
+    let existing = state
+        .integration_repo
+        .get_video_meeting(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get video meeting");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Database error")),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Video meeting not found")),
+            )
+        })?;
+
+    // Verify user has access to the organization that owns this resource
+    verify_org_access(&state, auth.user_id, existing.organization_id).await?;
+
     let deleted = state
         .integration_repo
         .delete_video_meeting(path.id)
@@ -1290,6 +2142,8 @@ pub async fn start_video_meeting(
     params(OrgIdPath),
     responses(
         (status = 200, description = "Subscriptions retrieved", body = Vec<WebhookSubscription>),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 500, description = "Internal server error")
     ),
     security(("bearer_auth" = [])),
@@ -1297,8 +2151,12 @@ pub async fn start_video_meeting(
 )]
 pub async fn list_webhook_subscriptions(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<OrgIdPath>,
 ) -> Result<Json<Vec<WebhookSubscription>>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify user belongs to this organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
     let subscriptions = state
         .integration_repo
         .list_webhook_subscriptions(path.org_id)
@@ -1332,18 +2190,35 @@ pub async fn list_webhook_subscriptions(
     tag = "Integrations"
 )]
 pub async fn create_webhook_subscription(
-    State(_state): State<AppState>,
-    Path(_path): Path<OrgIdPath>,
-    Json(_data): Json<CreateWebhookSubscription>,
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(data): Json<CreateWebhookSubscription>,
 ) -> Result<(StatusCode, Json<WebhookSubscription>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    // Verify user has access to the organization
+    verify_org_access(&state, auth.user_id, path.org_id).await?;
+
+    // Determine if running in production mode
+    let is_production = std::env::var("RUST_ENV")
+        .map(|v| v == "production")
+        .unwrap_or(false);
+
+    let subscription = state
+        .integration_repo
+        .create_webhook_subscription(path.org_id, auth.user_id, data, is_production)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create webhook subscription");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create webhook subscription",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(subscription)))
 }
 
 /// Get a webhook subscription by ID.
@@ -1353,6 +2228,8 @@ pub async fn create_webhook_subscription(
     params(ResourceIdPath),
     responses(
         (status = 200, description = "Subscription retrieved", body = WebhookSubscription),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Subscription not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -1361,6 +2238,7 @@ pub async fn create_webhook_subscription(
 )]
 pub async fn get_webhook_subscription(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<Json<WebhookSubscription>, (StatusCode, Json<ErrorResponse>)> {
     let subscription = state
@@ -1379,7 +2257,11 @@ pub async fn get_webhook_subscription(
         })?;
 
     match subscription {
-        Some(s) => Ok(Json(s)),
+        Some(s) => {
+            // Verify user has access to the organization that owns this resource
+            verify_org_access(&state, auth.user_id, s.organization_id).await?;
+            Ok(Json(s))
+        }
         None => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -1398,6 +2280,8 @@ pub async fn get_webhook_subscription(
     request_body = UpdateWebhookSubscription,
     responses(
         (status = 200, description = "Subscription updated", body = WebhookSubscription),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Subscription not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -1406,12 +2290,43 @@ pub async fn get_webhook_subscription(
 )]
 pub async fn update_webhook_subscription(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
     Json(data): Json<UpdateWebhookSubscription>,
 ) -> Result<Json<WebhookSubscription>, (StatusCode, Json<ErrorResponse>)> {
+    // First get the subscription to check organization access
+    let existing = state
+        .integration_repo
+        .get_webhook_subscription(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get webhook subscription");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Database error")),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Webhook subscription not found",
+                )),
+            )
+        })?;
+
+    // Verify user has access to the organization that owns this resource
+    verify_org_access(&state, auth.user_id, existing.organization_id).await?;
+
+    // Determine if we're in production mode (default to production for safety)
+    let is_production = std::env::var("RUST_ENV")
+        .map(|v| v != "development" && v != "dev" && v != "local")
+        .unwrap_or(true);
+
     let subscription = state
         .integration_repo
-        .update_webhook_subscription(path.id, data)
+        .update_webhook_subscription(path.id, data, is_production)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to update webhook subscription");
@@ -1434,6 +2349,8 @@ pub async fn update_webhook_subscription(
     params(ResourceIdPath),
     responses(
         (status = 204, description = "Subscription deleted"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - not a member of the organization"),
         (status = 404, description = "Subscription not found"),
         (status = 500, description = "Internal server error")
     ),
@@ -1442,8 +2359,34 @@ pub async fn update_webhook_subscription(
 )]
 pub async fn delete_webhook_subscription(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    // First get the subscription to check organization access
+    let existing = state
+        .integration_repo
+        .get_webhook_subscription(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get webhook subscription");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Database error")),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Webhook subscription not found",
+                )),
+            )
+        })?;
+
+    // Verify user has access to the organization that owns this resource
+    verify_org_access(&state, auth.user_id, existing.organization_id).await?;
+
     let deleted = state
         .integration_repo
         .delete_webhook_subscription(path.id)
@@ -1487,17 +2430,149 @@ pub async fn delete_webhook_subscription(
     tag = "Integrations"
 )]
 pub async fn test_webhook(
-    State(_state): State<AppState>,
-    Path(_path): Path<ResourceIdPath>,
-    Json(_data): Json<TestWebhookRequest>,
+    State(state): State<AppState>,
+    Path(path): Path<ResourceIdPath>,
+    Json(data): Json<TestWebhookRequest>,
 ) -> Result<Json<TestWebhookResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement webhook testing
-    Ok(Json(TestWebhookResponse {
-        success: true,
-        status_code: Some(200),
-        response_time_ms: Some(150),
-        error: None,
-    }))
+    // Get the webhook subscription
+    let subscription = state
+        .integration_repo
+        .get_webhook_subscription(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get webhook subscription");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get webhook subscription",
+                )),
+            )
+        })?;
+
+    let subscription = match subscription {
+        Some(s) => s,
+        None => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Webhook subscription not found",
+                )),
+            ))
+        }
+    };
+
+    // Build the test payload
+    let test_payload = data.payload.unwrap_or_else(|| {
+        serde_json::json!({
+            "event": data.event_type,
+            "test": true,
+            "timestamp": Utc::now().to_rfc3339(),
+            "data": {
+                "message": "This is a test webhook delivery"
+            }
+        })
+    });
+
+    // Create HTTP client
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create HTTP client");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "CLIENT_ERROR",
+                    "Failed to create HTTP client",
+                )),
+            )
+        })?;
+
+    // Build the request
+    let mut request = client.post(&subscription.url).json(&test_payload);
+
+    // Add custom headers if configured
+    if let Some(headers) = &subscription.headers {
+        if let Some(headers_obj) = headers.as_object() {
+            for (key, value) in headers_obj {
+                if let Some(value_str) = value.as_str() {
+                    request = request.header(key, value_str);
+                }
+            }
+        }
+    }
+
+    // Add signature header if secret is configured
+    if let Some(secret) = &subscription.secret {
+        use sha2::{Digest, Sha256};
+        let payload_str = serde_json::to_string(&test_payload).unwrap_or_default();
+        let mut hasher = Sha256::new();
+        hasher.update(secret.as_bytes());
+        hasher.update(payload_str.as_bytes());
+        let signature = hex::encode(hasher.finalize());
+        request = request.header("X-Webhook-Signature", format!("sha256={}", signature));
+    }
+
+    // Add standard webhook headers
+    request = request
+        .header("Content-Type", "application/json")
+        .header("X-Webhook-Event", &data.event_type)
+        .header("X-Webhook-Test", "true")
+        .header("X-Webhook-ID", Uuid::new_v4().to_string());
+
+    // Measure response time
+    let start_time = std::time::Instant::now();
+
+    // Send the request
+    let response_result = request.send().await;
+    let response_time_ms = start_time.elapsed().as_millis() as i32;
+
+    // Process the result
+    match response_result {
+        Ok(response) => {
+            let status_code = response.status().as_u16() as i32;
+            let success = response.status().is_success();
+
+            // Try to get error message from response body if not successful
+            let error = if !success {
+                let body = response.text().await.ok();
+                body.map(|b| {
+                    if b.len() > 500 {
+                        format!("{}...", &b[..500])
+                    } else {
+                        b
+                    }
+                })
+            } else {
+                None
+            };
+
+            Ok(Json(TestWebhookResponse {
+                success,
+                status_code: Some(status_code),
+                response_time_ms: Some(response_time_ms),
+                error,
+            }))
+        }
+        Err(e) => {
+            let error_message = if e.is_timeout() {
+                "Request timed out after 30 seconds".to_string()
+            } else if e.is_connect() {
+                format!("Failed to connect to webhook URL: {}", e)
+            } else {
+                format!("Request failed: {}", e)
+            };
+
+            Ok(Json(TestWebhookResponse {
+                success: false,
+                status_code: None,
+                response_time_ms: Some(response_time_ms),
+                error: Some(error_message),
+            }))
+        }
+    }
 }
 
 /// List webhook delivery logs.

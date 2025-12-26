@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 common = { workspace = true }
+integrations = { workspace = true }
 sqlx = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
@@ -19,6 +20,7 @@ hex = { workspace = true }
 sha2 = "0.10"
 argon2 = "0.5"
 password-hash = "0.5"
+url = "2.5"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
