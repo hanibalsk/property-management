@@ -12,17 +12,13 @@ import {
   useWebhookSubscriptions,
 } from '@ppt/api-client';
 import { useState } from 'react';
+import { ConfirmationDialog, useToast } from '../../../components';
+import { getStatusColor, webhookStatusColors } from '../utils/statusColors';
 
 interface WebhookSubscriptionsListProps {
   organizationId: string;
   onCreate?: () => void;
 }
-
-const statusColors: Record<string, string> = {
-  active: 'bg-green-100 text-green-800',
-  paused: 'bg-yellow-100 text-yellow-800',
-  disabled: 'bg-gray-100 text-gray-800',
-};
 
 export function WebhookSubscriptionsList({
   organizationId,
@@ -32,26 +28,50 @@ export function WebhookSubscriptionsList({
   const deleteSubscription = useDeleteWebhookSubscription(organizationId);
   const testWebhook = useTestWebhook();
   const [selectedWebhook, setSelectedWebhook] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [webhookToDelete, setWebhookToDelete] = useState<WebhookSubscription | null>(null);
+  const { showToast } = useToast();
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this webhook?')) {
-      await deleteSubscription.mutateAsync(id);
+  const handleDeleteRequest = (webhook: WebhookSubscription) => {
+    setWebhookToDelete(webhook);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setWebhookToDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!webhookToDelete) return;
+    try {
+      await deleteSubscription.mutateAsync(webhookToDelete.id);
+      showToast('Webhook deleted successfully', 'success');
+    } catch {
+      showToast('Failed to delete webhook', 'error');
+    } finally {
+      setDeleteDialogOpen(false);
+      setWebhookToDelete(null);
     }
   };
 
   const handleTest = async (id: string) => {
-    const result = await testWebhook.mutateAsync({
-      id,
-      data: {
-        eventType: 'fault.created',
-        payload: { test: true },
-      },
-    });
-    alert(
-      result.success
-        ? `Test successful! Response time: ${result.responseTimeMs}ms`
-        : `Test failed: ${result.error}`
-    );
+    try {
+      const result = await testWebhook.mutateAsync({
+        id,
+        data: {
+          eventType: 'fault.created',
+          payload: { test: true },
+        },
+      });
+      if (result.success) {
+        showToast(`Test successful! Response time: ${result.responseTimeMs}ms`, 'success');
+      } else {
+        showToast(`Test failed: ${result.error}`, 'error');
+      }
+    } catch {
+      showToast('Failed to test webhook', 'error');
+    }
   };
 
   if (isLoading) {
@@ -127,7 +147,7 @@ export function WebhookSubscriptionsList({
                   </td>
                   <td className="py-3 px-4">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusColors[webhook.status]}`}
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(webhook.status, webhookStatusColors)}`}
                     >
                       {webhook.status}
                     </span>
@@ -150,7 +170,7 @@ export function WebhookSubscriptionsList({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(webhook.id)}
+                        onClick={() => handleDeleteRequest(webhook)}
                         className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded-md hover:bg-red-50"
                       >
                         Delete
@@ -167,6 +187,22 @@ export function WebhookSubscriptionsList({
       {selectedWebhook && (
         <WebhookStatsDialog webhookId={selectedWebhook} onClose={() => setSelectedWebhook(null)} />
       )}
+
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        title="Delete Webhook"
+        message={
+          webhookToDelete
+            ? `Are you sure you want to delete the webhook "${webhookToDelete.name}"? This action cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        isLoading={deleteSubscription.isPending}
+      />
     </div>
   );
 }

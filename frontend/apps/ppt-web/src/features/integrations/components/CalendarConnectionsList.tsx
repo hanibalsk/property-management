@@ -11,47 +11,58 @@ import {
   useSyncCalendar,
 } from '@ppt/api-client';
 import { useState } from 'react';
+import { ConfirmationDialog, useToast } from '../../../components';
+import {
+  calendarProviderColors,
+  calendarProviderIcons,
+  connectionStatusColors,
+  getStatusColor,
+} from '../utils/statusColors';
 import { CalendarConnectDialog } from './CalendarConnectDialog';
 
 interface CalendarConnectionsListProps {
   organizationId: string;
 }
 
-const statusColors: Record<string, string> = {
-  active: 'bg-green-100 text-green-800',
-  paused: 'bg-yellow-100 text-yellow-800',
-  error: 'bg-red-100 text-red-800',
-  disconnected: 'bg-gray-100 text-gray-800',
-};
-
-const providerIcons: Record<CalendarProvider, string> = {
-  google: 'G',
-  outlook: 'O',
-  apple: 'A',
-  caldav: 'C',
-};
-
-const providerColors: Record<CalendarProvider, string> = {
-  google: 'bg-red-100 text-red-600',
-  outlook: 'bg-blue-100 text-blue-600',
-  apple: 'bg-gray-100 text-gray-600',
-  caldav: 'bg-purple-100 text-purple-600',
-};
-
 export function CalendarConnectionsList({ organizationId }: CalendarConnectionsListProps) {
   const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [connectionToDelete, setConnectionToDelete] = useState<CalendarConnection | null>(null);
+  const { showToast } = useToast();
 
   const { data: connections, isLoading } = useCalendarConnections(organizationId);
   const deleteConnection = useDeleteCalendarConnection(organizationId);
   const syncCalendar = useSyncCalendar(organizationId);
 
   const handleSync = async (id: string) => {
-    await syncCalendar.mutateAsync({ id });
+    try {
+      await syncCalendar.mutateAsync({ id });
+      showToast('Calendar synced successfully', 'success');
+    } catch {
+      showToast('Failed to sync calendar', 'error');
+    }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to disconnect this calendar?')) {
-      await deleteConnection.mutateAsync(id);
+  const handleDeleteRequest = (connection: CalendarConnection) => {
+    setConnectionToDelete(connection);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setConnectionToDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!connectionToDelete) return;
+    try {
+      await deleteConnection.mutateAsync(connectionToDelete.id);
+      showToast('Calendar disconnected successfully', 'success');
+    } catch {
+      showToast('Failed to disconnect calendar', 'error');
+    } finally {
+      setDeleteDialogOpen(false);
+      setConnectionToDelete(null);
     }
   };
 
@@ -112,18 +123,21 @@ export function CalendarConnectionsList({ organizationId }: CalendarConnectionsL
                   <div className="flex items-center gap-4">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        providerColors[provider] || 'bg-muted'
+                        calendarProviderColors[provider] || 'bg-muted'
                       }`}
                     >
-                      <span className="font-semibold">{providerIcons[provider] || 'C'}</span>
+                      <span className="font-semibold">
+                        {calendarProviderIcons[provider] || 'C'}
+                      </span>
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium capitalize">{connection.provider}</span>
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            statusColors[connection.syncStatus]
-                          }`}
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(
+                            connection.syncStatus,
+                            connectionStatusColors
+                          )}`}
                         >
                           {connection.syncStatus}
                         </span>
@@ -155,7 +169,7 @@ export function CalendarConnectionsList({ organizationId }: CalendarConnectionsL
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDelete(connection.id)}
+                      onClick={() => handleDeleteRequest(connection)}
                       disabled={deleteConnection.isPending}
                       className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded-md hover:bg-red-50 disabled:opacity-50"
                     >
@@ -173,6 +187,22 @@ export function CalendarConnectionsList({ organizationId }: CalendarConnectionsL
         organizationId={organizationId}
         isOpen={showConnectDialog}
         onClose={() => setShowConnectDialog(false)}
+      />
+
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        title="Disconnect Calendar"
+        message={
+          connectionToDelete
+            ? `Are you sure you want to disconnect "${connectionToDelete.calendarName ?? connectionToDelete.provider}"? This will stop syncing events.`
+            : ''
+        }
+        confirmLabel="Disconnect"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        isLoading={deleteConnection.isPending}
       />
     </>
   );

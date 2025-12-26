@@ -5,14 +5,200 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use std::fmt;
+use std::str::FromStr;
 use utoipa::ToSchema;
 use uuid::Uuid;
+
+// ============================================
+// Provider Enums with Validation
+// ============================================
+
+/// Calendar provider enum with validation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CalendarProvider {
+    Google,
+    Outlook,
+    Apple,
+    Caldav,
+}
+
+impl fmt::Display for CalendarProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CalendarProvider::Google => write!(f, "google"),
+            CalendarProvider::Outlook => write!(f, "outlook"),
+            CalendarProvider::Apple => write!(f, "apple"),
+            CalendarProvider::Caldav => write!(f, "caldav"),
+        }
+    }
+}
+
+impl FromStr for CalendarProvider {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "google" => Ok(CalendarProvider::Google),
+            "outlook" => Ok(CalendarProvider::Outlook),
+            "apple" => Ok(CalendarProvider::Apple),
+            "caldav" => Ok(CalendarProvider::Caldav),
+            _ => Err(format!(
+                "Invalid calendar provider '{}'. Valid values: google, outlook, apple, caldav",
+                s
+            )),
+        }
+    }
+}
+
+impl CalendarProvider {
+    /// Get all valid calendar provider values.
+    pub fn all_values() -> &'static [&'static str] {
+        &["google", "outlook", "apple", "caldav"]
+    }
+}
+
+/// Accounting system enum with validation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AccountingSystem {
+    Pohoda,
+    MoneyS3,
+    Quickbooks,
+    Xero,
+}
+
+impl fmt::Display for AccountingSystem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AccountingSystem::Pohoda => write!(f, "pohoda"),
+            AccountingSystem::MoneyS3 => write!(f, "money_s3"),
+            AccountingSystem::Quickbooks => write!(f, "quickbooks"),
+            AccountingSystem::Xero => write!(f, "xero"),
+        }
+    }
+}
+
+impl FromStr for AccountingSystem {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "pohoda" => Ok(AccountingSystem::Pohoda),
+            "money_s3" => Ok(AccountingSystem::MoneyS3),
+            "quickbooks" => Ok(AccountingSystem::Quickbooks),
+            "xero" => Ok(AccountingSystem::Xero),
+            _ => Err(format!(
+                "Invalid accounting system '{}'. Valid values: pohoda, money_s3, quickbooks, xero",
+                s
+            )),
+        }
+    }
+}
+
+impl AccountingSystem {
+    /// Get all valid accounting system values.
+    pub fn all_values() -> &'static [&'static str] {
+        &["pohoda", "money_s3", "quickbooks", "xero"]
+    }
+}
+
+/// E-signature provider enum with validation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ESignatureProvider {
+    Docusign,
+    AdobeSign,
+    Hellosign,
+    Internal,
+}
+
+impl fmt::Display for ESignatureProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ESignatureProvider::Docusign => write!(f, "docusign"),
+            ESignatureProvider::AdobeSign => write!(f, "adobe_sign"),
+            ESignatureProvider::Hellosign => write!(f, "hellosign"),
+            ESignatureProvider::Internal => write!(f, "internal"),
+        }
+    }
+}
+
+impl FromStr for ESignatureProvider {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "docusign" => Ok(ESignatureProvider::Docusign),
+            "adobe_sign" => Ok(ESignatureProvider::AdobeSign),
+            "hellosign" => Ok(ESignatureProvider::Hellosign),
+            "internal" => Ok(ESignatureProvider::Internal),
+            _ => Err(format!(
+                "Invalid e-signature provider '{}'. Valid values: docusign, adobe_sign, hellosign, internal",
+                s
+            )),
+        }
+    }
+}
+
+impl ESignatureProvider {
+    /// Get all valid e-signature provider values.
+    pub fn all_values() -> &'static [&'static str] {
+        &["docusign", "adobe_sign", "hellosign", "internal"]
+    }
+}
+
+/// Video conferencing provider enum with validation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum VideoProvider {
+    Zoom,
+    Teams,
+    GoogleMeet,
+    Webex,
+}
+
+impl fmt::Display for VideoProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            VideoProvider::Zoom => write!(f, "zoom"),
+            VideoProvider::Teams => write!(f, "teams"),
+            VideoProvider::GoogleMeet => write!(f, "google_meet"),
+            VideoProvider::Webex => write!(f, "webex"),
+        }
+    }
+}
+
+impl FromStr for VideoProvider {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "zoom" => Ok(VideoProvider::Zoom),
+            "teams" => Ok(VideoProvider::Teams),
+            "google_meet" => Ok(VideoProvider::GoogleMeet),
+            "webex" => Ok(VideoProvider::Webex),
+            _ => Err(format!(
+                "Invalid video provider '{}'. Valid values: zoom, teams, google_meet, webex",
+                s
+            )),
+        }
+    }
+}
+
+impl VideoProvider {
+    /// Get all valid video provider values.
+    pub fn all_values() -> &'static [&'static str] {
+        &["zoom", "teams", "google_meet", "webex"]
+    }
+}
 
 // ============================================
 // Story 61.1: Calendar Integration
 // ============================================
 
-/// Calendar provider type.
+/// Calendar provider type constants (deprecated, use CalendarProvider enum).
 pub mod calendar_provider {
     pub const GOOGLE: &str = "google";
     pub const OUTLOOK: &str = "outlook";
@@ -91,6 +277,7 @@ pub struct CalendarEvent {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CreateCalendarEvent {
     pub connection_id: Uuid,
+    pub external_event_id: Option<String>,
     pub source_type: String,
     pub source_id: Option<Uuid>,
     pub title: String,
@@ -125,7 +312,7 @@ pub struct CalendarSyncResult {
 // Story 61.2: Accounting System Export
 // ============================================
 
-/// Accounting system type.
+/// Accounting system type constants (deprecated, use AccountingSystem enum).
 pub mod accounting_system {
     pub const POHODA: &str = "pohoda";
     pub const MONEY_S3: &str = "money_s3";
@@ -241,7 +428,7 @@ pub struct PohodaPayment {
 // Story 61.3: E-Signature Integration
 // ============================================
 
-/// E-signature provider type.
+/// E-signature provider type constants (deprecated, use ESignatureProvider enum).
 pub mod esignature_provider {
     pub const DOCUSIGN: &str = "docusign";
     pub const ADOBE_SIGN: &str = "adobe_sign";
@@ -343,7 +530,7 @@ pub struct ESignatureEvent {
 // Story 61.4: Video Conferencing
 // ============================================
 
-/// Video conferencing provider type.
+/// Video conferencing provider type constants (deprecated, use VideoProvider enum).
 pub mod video_provider {
     pub const ZOOM: &str = "zoom";
     pub const TEAMS: &str = "teams";
@@ -629,4 +816,229 @@ pub struct IntegrationStatistics {
     pub webhook_subscriptions: i32,
     pub webhook_deliveries_today: i64,
     pub webhook_success_rate: f64,
+}
+
+// ============================================
+// URL Validation for Webhooks
+// ============================================
+
+/// Webhook URL validation result.
+#[derive(Debug, Clone)]
+pub struct WebhookUrlValidation {
+    pub is_valid: bool,
+    pub error: Option<String>,
+}
+
+impl WebhookUrlValidation {
+    pub fn valid() -> Self {
+        Self {
+            is_valid: true,
+            error: None,
+        }
+    }
+
+    pub fn invalid(error: impl Into<String>) -> Self {
+        Self {
+            is_valid: false,
+            error: Some(error.into()),
+        }
+    }
+}
+
+/// Validates a webhook URL for security requirements.
+///
+/// Requirements:
+/// - Must be a valid URL format
+/// - Must use HTTPS (HTTP allowed only for localhost in development)
+/// - Must not target private IP ranges (10.x, 172.16-31.x, 192.168.x, 127.x)
+/// - Must not target localhost in production
+pub fn validate_webhook_url(url: &str, is_production: bool) -> WebhookUrlValidation {
+    // Parse URL
+    let parsed = match url::Url::parse(url) {
+        Ok(u) => u,
+        Err(e) => {
+            return WebhookUrlValidation::invalid(format!("Invalid URL format: {}", e));
+        }
+    };
+
+    // Check scheme
+    let scheme = parsed.scheme();
+    let host = match parsed.host_str() {
+        Some(h) => h,
+        None => {
+            return WebhookUrlValidation::invalid("URL must have a host");
+        }
+    };
+
+    let is_localhost = host == "localhost" || host == "127.0.0.1" || host == "::1";
+
+    // Require HTTPS except for localhost in development
+    if scheme != "https" {
+        if scheme == "http" && is_localhost && !is_production {
+            // Allow HTTP for localhost in development
+        } else {
+            return WebhookUrlValidation::invalid(
+                "Webhook URL must use HTTPS (HTTP only allowed for localhost in development)",
+            );
+        }
+    }
+
+    // Block localhost in production
+    if is_production && is_localhost {
+        return WebhookUrlValidation::invalid("Localhost URLs not allowed in production");
+    }
+
+    // Check for private IP ranges
+    if let Some(host) = parsed.host() {
+        match host {
+            url::Host::Ipv4(ip) => {
+                let octets = ip.octets();
+
+                // 10.0.0.0/8 - Private
+                if octets[0] == 10 {
+                    return WebhookUrlValidation::invalid(
+                        "Private IP addresses (10.x.x.x) are not allowed",
+                    );
+                }
+
+                // 172.16.0.0/12 - Private (172.16.x.x - 172.31.x.x)
+                if octets[0] == 172 && (octets[1] >= 16 && octets[1] <= 31) {
+                    return WebhookUrlValidation::invalid(
+                        "Private IP addresses (172.16-31.x.x) are not allowed",
+                    );
+                }
+
+                // 192.168.0.0/16 - Private
+                if octets[0] == 192 && octets[1] == 168 {
+                    return WebhookUrlValidation::invalid(
+                        "Private IP addresses (192.168.x.x) are not allowed",
+                    );
+                }
+
+                // 127.0.0.0/8 - Loopback (except in dev for localhost)
+                if octets[0] == 127 && (is_production || !is_localhost) {
+                    return WebhookUrlValidation::invalid(
+                        "Loopback addresses (127.x.x.x) are not allowed",
+                    );
+                }
+
+                // 169.254.0.0/16 - Link-local
+                if octets[0] == 169 && octets[1] == 254 {
+                    return WebhookUrlValidation::invalid(
+                        "Link-local addresses (169.254.x.x) are not allowed",
+                    );
+                }
+
+                // 0.0.0.0/8 - Reserved
+                if octets[0] == 0 {
+                    return WebhookUrlValidation::invalid(
+                        "Reserved addresses (0.x.x.x) are not allowed",
+                    );
+                }
+
+                // 255.255.255.255 - Limited broadcast address
+                if octets == [255, 255, 255, 255] {
+                    return WebhookUrlValidation::invalid(
+                        "Broadcast address (255.255.255.255) is not allowed",
+                    );
+                }
+
+                // 224.0.0.0/4 - Multicast (224.x.x.x - 239.x.x.x)
+                if octets[0] >= 224 && octets[0] <= 239 {
+                    return WebhookUrlValidation::invalid(
+                        "Multicast addresses (224.0.0.0/4) are not allowed",
+                    );
+                }
+            }
+            url::Host::Ipv6(ip) => {
+                // Block IPv6 loopback and link-local
+                if ip.is_loopback() && (is_production || !is_localhost) {
+                    return WebhookUrlValidation::invalid(
+                        "IPv6 loopback address (::1) is not allowed",
+                    );
+                }
+                // Note: IPv6 unique local (fc00::/7) and link-local (fe80::/10) should also be blocked
+                let segments = ip.segments();
+                if (segments[0] & 0xfe00) == 0xfc00 {
+                    return WebhookUrlValidation::invalid(
+                        "IPv6 unique local addresses are not allowed",
+                    );
+                }
+                if (segments[0] & 0xffc0) == 0xfe80 {
+                    return WebhookUrlValidation::invalid(
+                        "IPv6 link-local addresses are not allowed",
+                    );
+                }
+            }
+            url::Host::Domain(_) => {
+                // Domain names are allowed (DNS resolution will happen at request time)
+                // Note: DNS rebinding attacks are possible but mitigated by:
+                // 1. Not following redirects in webhook requests
+                // 2. Using short timeouts
+                // For production systems, consider implementing domain allowlisting
+                // or DNS resolution validation at request time
+            }
+        }
+    }
+
+    WebhookUrlValidation::valid()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_https_url() {
+        let result = validate_webhook_url("https://example.com/webhook", true);
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_http_url_rejected_in_production() {
+        let result = validate_webhook_url("http://example.com/webhook", true);
+        assert!(!result.is_valid);
+        assert!(result.error.unwrap().contains("HTTPS"));
+    }
+
+    #[test]
+    fn test_localhost_rejected_in_production() {
+        let result = validate_webhook_url("https://localhost/webhook", true);
+        assert!(!result.is_valid);
+        assert!(result.error.unwrap().contains("Localhost"));
+    }
+
+    #[test]
+    fn test_localhost_allowed_in_development() {
+        let result = validate_webhook_url("http://localhost:3000/webhook", false);
+        assert!(result.is_valid);
+    }
+
+    #[test]
+    fn test_private_ip_10_rejected() {
+        let result = validate_webhook_url("https://10.0.0.1/webhook", true);
+        assert!(!result.is_valid);
+        assert!(result.error.unwrap().contains("10.x"));
+    }
+
+    #[test]
+    fn test_private_ip_172_rejected() {
+        let result = validate_webhook_url("https://172.16.0.1/webhook", true);
+        assert!(!result.is_valid);
+        assert!(result.error.unwrap().contains("172.16"));
+    }
+
+    #[test]
+    fn test_private_ip_192_rejected() {
+        let result = validate_webhook_url("https://192.168.1.1/webhook", true);
+        assert!(!result.is_valid);
+        assert!(result.error.unwrap().contains("192.168"));
+    }
+
+    #[test]
+    fn test_invalid_url_format() {
+        let result = validate_webhook_url("not-a-url", true);
+        assert!(!result.is_valid);
+        assert!(result.error.unwrap().contains("Invalid URL"));
+    }
 }

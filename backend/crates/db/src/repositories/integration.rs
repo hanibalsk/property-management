@@ -1,23 +1,116 @@
 //! External Integrations repository (Epic 61).
 //!
 //! Repository for calendar sync, accounting exports, e-signatures, video conferencing, and webhooks.
+//!
+//! # Security
+//! This repository supports encryption of sensitive data (OAuth tokens, webhook secrets)
+//! using AES-256-GCM. Enable encryption by setting the INTEGRATION_ENCRYPTION_KEY
+//! environment variable to a 64-character hex string (32 bytes).
+//!
+//! Generate a key with: `openssl rand -hex 32`
 
 use crate::models::integration::*;
 use crate::DbPool;
 use chrono::{Duration, Utc};
+use integrations::{decrypt_if_available, encrypt_if_available, IntegrationCrypto};
 use sqlx::Error as SqlxError;
+use std::str::FromStr;
 use uuid::Uuid;
 
+/// Integration error types.
+#[derive(Debug, thiserror::Error)]
+pub enum IntegrationError {
+    #[error("Database error: {0}")]
+    Database(#[from] SqlxError),
+
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    #[error("Invalid provider: {0}")]
+    InvalidProvider(String),
+
+    #[error("Invalid webhook URL: {0}")]
+    InvalidWebhookUrl(String),
+}
+
 /// Repository for external integration operations.
+///
+/// Supports optional encryption for sensitive data like OAuth tokens and webhook secrets.
+/// If INTEGRATION_ENCRYPTION_KEY is not set, data will be stored unencrypted (dev mode).
 #[derive(Clone)]
 pub struct IntegrationRepository {
     pool: DbPool,
+    /// Optional crypto service for encrypting/decrypting sensitive data.
+    crypto: Option<IntegrationCrypto>,
 }
 
 impl IntegrationRepository {
     /// Create a new IntegrationRepository.
+    ///
+    /// Automatically attempts to initialize encryption from environment.
+    ///
+    /// # Security Warning
+    /// If `INTEGRATION_ENCRYPTION_KEY` is not set, OAuth tokens and webhook secrets
+    /// will be stored in plaintext. This is acceptable for development but should
+    /// be configured in production environments.
     pub fn new(pool: DbPool) -> Self {
-        Self { pool }
+        let crypto = IntegrationCrypto::try_from_env();
+        if crypto.is_none() {
+            // Log at warn level - operators should configure encryption for production
+            tracing::warn!(
+                "INTEGRATION_ENCRYPTION_KEY not set - OAuth tokens and webhook secrets \
+                 will be stored in plaintext. Configure this for production deployments."
+            );
+        }
+        Self { pool, crypto }
+    }
+
+    /// Create a new IntegrationRepository with explicit crypto configuration.
+    pub fn with_crypto(pool: DbPool, crypto: Option<IntegrationCrypto>) -> Self {
+        Self { pool, crypto }
+    }
+
+    /// Encrypt a value using the configured crypto, or return plaintext if not configured.
+    fn encrypt(&self, value: &str) -> String {
+        encrypt_if_available(self.crypto.as_ref(), value)
+    }
+
+    /// Decrypt a value using the configured crypto, or return as-is if not configured.
+    fn decrypt(&self, value: &str) -> String {
+        decrypt_if_available(self.crypto.as_ref(), value)
+    }
+
+    /// Encrypt an optional value.
+    fn encrypt_optional(&self, value: Option<&str>) -> Option<String> {
+        value.map(|v| self.encrypt(v))
+    }
+
+    /// Decrypt an optional value from an Option<String>.
+    fn decrypt_optional_owned(&self, value: Option<String>) -> Option<String> {
+        value.map(|v| self.decrypt(&v))
+    }
+
+    /// Decrypt sensitive fields in a CalendarConnection.
+    fn decrypt_calendar_connection(&self, mut conn: CalendarConnection) -> CalendarConnection {
+        conn.access_token = self.decrypt_optional_owned(conn.access_token);
+        conn.refresh_token = self.decrypt_optional_owned(conn.refresh_token);
+        conn
+    }
+
+    /// Decrypt sensitive fields in a VideoConferenceConnection.
+    fn decrypt_video_connection(
+        &self,
+        mut conn: VideoConferenceConnection,
+    ) -> VideoConferenceConnection {
+        conn.access_token = self.decrypt_optional_owned(conn.access_token);
+        conn.refresh_token = self.decrypt_optional_owned(conn.refresh_token);
+        conn
+    }
+
+    /// Decrypt sensitive fields in a WebhookSubscription.
+    fn decrypt_webhook_subscription(&self, mut sub: WebhookSubscription) -> WebhookSubscription {
+        sub.secret = self.decrypt_optional_owned(sub.secret);
+        sub
     }
 
     // ========================================================================
@@ -25,12 +118,17 @@ impl IntegrationRepository {
     // ========================================================================
 
     /// Create a calendar connection.
+    ///
+    /// Validates that the provider is a valid calendar provider type.
     pub async fn create_calendar_connection(
         &self,
         organization_id: Uuid,
         user_id: Uuid,
         data: CreateCalendarConnection,
-    ) -> Result<CalendarConnection, SqlxError> {
+    ) -> Result<CalendarConnection, IntegrationError> {
+        // Validate provider
+        CalendarProvider::from_str(&data.provider).map_err(IntegrationError::InvalidProvider)?;
+
         sqlx::query_as::<_, CalendarConnection>(
             r#"
             INSERT INTO calendar_connections (
@@ -47,26 +145,35 @@ impl IntegrationRepository {
         .bind(&data.sync_direction)
         .fetch_one(&self.pool)
         .await
+        .map_err(IntegrationError::Database)
     }
 
     /// Get calendar connection by ID.
+    ///
+    /// Returns the connection with decrypted access_token and refresh_token.
     pub async fn get_calendar_connection(
         &self,
         id: Uuid,
     ) -> Result<Option<CalendarConnection>, SqlxError> {
-        sqlx::query_as::<_, CalendarConnection>("SELECT * FROM calendar_connections WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await
+        let conn = sqlx::query_as::<_, CalendarConnection>(
+            "SELECT * FROM calendar_connections WHERE id = $1",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(conn.map(|c| self.decrypt_calendar_connection(c)))
     }
 
     /// List calendar connections for a user.
+    ///
+    /// Returns connections with decrypted access_token and refresh_token.
     pub async fn list_calendar_connections(
         &self,
         organization_id: Uuid,
         user_id: Option<Uuid>,
     ) -> Result<Vec<CalendarConnection>, SqlxError> {
-        if let Some(uid) = user_id {
+        let connections = if let Some(uid) = user_id {
             sqlx::query_as::<_, CalendarConnection>(
                 r#"
                 SELECT * FROM calendar_connections
@@ -77,7 +184,7 @@ impl IntegrationRepository {
             .bind(organization_id)
             .bind(uid)
             .fetch_all(&self.pool)
-            .await
+            .await?
         } else {
             sqlx::query_as::<_, CalendarConnection>(
                 r#"
@@ -88,17 +195,24 @@ impl IntegrationRepository {
             )
             .bind(organization_id)
             .fetch_all(&self.pool)
-            .await
-        }
+            .await?
+        };
+
+        Ok(connections
+            .into_iter()
+            .map(|c| self.decrypt_calendar_connection(c))
+            .collect())
     }
 
     /// Update calendar connection.
+    ///
+    /// Returns connection with decrypted tokens.
     pub async fn update_calendar_connection(
         &self,
         id: Uuid,
         data: UpdateCalendarConnection,
     ) -> Result<CalendarConnection, SqlxError> {
-        sqlx::query_as::<_, CalendarConnection>(
+        let conn = sqlx::query_as::<_, CalendarConnection>(
             r#"
             UPDATE calendar_connections SET
                 calendar_id = COALESCE($2, calendar_id),
@@ -114,7 +228,9 @@ impl IntegrationRepository {
         .bind(&data.sync_direction)
         .bind(&data.sync_status)
         .fetch_one(&self.pool)
-        .await
+        .await?;
+
+        Ok(self.decrypt_calendar_connection(conn))
     }
 
     /// Delete calendar connection.
@@ -127,6 +243,8 @@ impl IntegrationRepository {
     }
 
     /// Update calendar connection tokens.
+    ///
+    /// Encrypts access_token and refresh_token before storage.
     pub async fn update_calendar_tokens(
         &self,
         id: Uuid,
@@ -134,6 +252,10 @@ impl IntegrationRepository {
         refresh_token: Option<&str>,
         expires_at: Option<chrono::DateTime<Utc>>,
     ) -> Result<(), SqlxError> {
+        // Encrypt tokens before storage
+        let encrypted_access = self.encrypt(access_token);
+        let encrypted_refresh = self.encrypt_optional(refresh_token);
+
         sqlx::query(
             r#"
             UPDATE calendar_connections SET
@@ -145,8 +267,8 @@ impl IntegrationRepository {
             "#,
         )
         .bind(id)
-        .bind(access_token)
-        .bind(refresh_token)
+        .bind(&encrypted_access)
+        .bind(&encrypted_refresh)
         .bind(expires_at)
         .execute(&self.pool)
         .await?;
@@ -190,14 +312,15 @@ impl IntegrationRepository {
         sqlx::query_as::<_, CalendarEvent>(
             r#"
             INSERT INTO calendar_events (
-                connection_id, source_type, source_id, title, description, location,
-                start_time, end_time, all_day, recurrence_rule, attendees
+                connection_id, external_event_id, source_type, source_id, title, description,
+                location, start_time, end_time, all_day, recurrence_rule, attendees
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, false), $10, $11)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, false), $11, $12)
             RETURNING *
             "#,
         )
         .bind(data.connection_id)
+        .bind(&data.external_event_id)
         .bind(&data.source_type)
         .bind(data.source_id)
         .bind(&data.title)
@@ -210,6 +333,50 @@ impl IntegrationRepository {
         .bind(&data.attendees)
         .fetch_one(&self.pool)
         .await
+    }
+
+    /// Upsert a calendar event - insert if external_event_id doesn't exist, skip if it does.
+    /// Returns true if a new event was created, false if skipped (duplicate).
+    ///
+    /// Uses atomic INSERT ... ON CONFLICT to avoid race conditions.
+    pub async fn upsert_calendar_event(
+        &self,
+        data: CreateCalendarEvent,
+    ) -> Result<bool, SqlxError> {
+        // If no external_event_id provided, just do a regular insert
+        if data.external_event_id.is_none() {
+            self.create_calendar_event(data).await?;
+            return Ok(true);
+        }
+
+        // Perform an atomic insert that skips on conflict to avoid race conditions
+        let result = sqlx::query(
+            r#"
+            INSERT INTO calendar_events (
+                connection_id, external_event_id, source_type, source_id, title, description,
+                location, start_time, end_time, all_day, recurrence_rule, attendees
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, false), $11, $12)
+            ON CONFLICT (connection_id, external_event_id) DO NOTHING
+            "#,
+        )
+        .bind(data.connection_id)
+        .bind(&data.external_event_id)
+        .bind(&data.source_type)
+        .bind(data.source_id)
+        .bind(&data.title)
+        .bind(&data.description)
+        .bind(&data.location)
+        .bind(data.start_time)
+        .bind(data.end_time)
+        .bind(data.all_day)
+        .bind(&data.recurrence_rule)
+        .bind(&data.attendees)
+        .execute(&self.pool)
+        .await?;
+
+        // rows_affected() is 1 if a new event was created, 0 if it already existed
+        Ok(result.rows_affected() > 0)
     }
 
     /// List calendar events for a connection.
@@ -243,12 +410,17 @@ impl IntegrationRepository {
     // ========================================================================
 
     /// Create an accounting export.
+    ///
+    /// Validates that the system_type is a valid accounting system.
     pub async fn create_accounting_export(
         &self,
         organization_id: Uuid,
         exported_by: Uuid,
         data: CreateAccountingExport,
-    ) -> Result<AccountingExport, SqlxError> {
+    ) -> Result<AccountingExport, IntegrationError> {
+        // Validate accounting system type
+        AccountingSystem::from_str(&data.system_type).map_err(IntegrationError::InvalidProvider)?;
+
         sqlx::query_as::<_, AccountingExport>(
             r#"
             INSERT INTO accounting_exports (
@@ -267,6 +439,7 @@ impl IntegrationRepository {
         .bind(exported_by)
         .fetch_one(&self.pool)
         .await
+        .map_err(IntegrationError::Database)
     }
 
     /// Get accounting export by ID.
@@ -419,12 +592,19 @@ impl IntegrationRepository {
     // ========================================================================
 
     /// Create an e-signature workflow.
+    ///
+    /// Validates that the provider (if specified) is a valid e-signature provider.
     pub async fn create_esignature_workflow(
         &self,
         organization_id: Uuid,
         created_by: Uuid,
         data: CreateESignatureWorkflow,
-    ) -> Result<ESignatureWorkflow, SqlxError> {
+    ) -> Result<ESignatureWorkflow, IntegrationError> {
+        // Validate provider if specified
+        if let Some(ref provider) = data.provider {
+            ESignatureProvider::from_str(provider).map_err(IntegrationError::InvalidProvider)?;
+        }
+
         let expires_at = data
             .expires_in_days
             .map(|days| Utc::now() + Duration::days(days as i64));
@@ -450,6 +630,7 @@ impl IntegrationRepository {
         .bind(created_by)
         .fetch_one(&self.pool)
         .await
+        .map_err(IntegrationError::Database)
     }
 
     /// Add recipient to e-signature workflow.
@@ -602,17 +783,46 @@ impl IntegrationRepository {
         .await
     }
 
+    /// Update e-signature workflow status by external envelope ID.
+    ///
+    /// Used by webhook handlers to update workflow status based on external provider events.
+    pub async fn update_esignature_workflow_by_external_id(
+        &self,
+        external_envelope_id: &str,
+        status: &str,
+    ) -> Result<Option<ESignatureWorkflow>, SqlxError> {
+        sqlx::query_as::<_, ESignatureWorkflow>(
+            r#"
+            UPDATE esignature_workflows SET
+                status = $2,
+                completed_at = CASE WHEN $2 IN ('completed', 'voided', 'expired', 'declined') THEN NOW() ELSE completed_at END,
+                updated_at = NOW()
+            WHERE external_envelope_id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(external_envelope_id)
+        .bind(status)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
     // ========================================================================
     // Video Conference Connections (Story 61.4)
     // ========================================================================
 
     /// Create a video conference connection.
+    ///
+    /// Validates that the provider is a valid video conferencing provider.
     pub async fn create_video_conference_connection(
         &self,
         organization_id: Uuid,
         user_id: Uuid,
         data: CreateVideoConferenceConnection,
-    ) -> Result<VideoConferenceConnection, SqlxError> {
+    ) -> Result<VideoConferenceConnection, IntegrationError> {
+        // Validate provider
+        VideoProvider::from_str(&data.provider).map_err(IntegrationError::InvalidProvider)?;
+
         sqlx::query_as::<_, VideoConferenceConnection>(
             r#"
             INSERT INTO video_conference_connections (
@@ -627,28 +837,35 @@ impl IntegrationRepository {
         .bind(&data.provider)
         .fetch_one(&self.pool)
         .await
+        .map_err(IntegrationError::Database)
     }
 
     /// Get video conference connection by ID.
+    ///
+    /// Returns connection with decrypted access_token and refresh_token.
     pub async fn get_video_conference_connection(
         &self,
         id: Uuid,
     ) -> Result<Option<VideoConferenceConnection>, SqlxError> {
-        sqlx::query_as::<_, VideoConferenceConnection>(
+        let conn = sqlx::query_as::<_, VideoConferenceConnection>(
             "SELECT * FROM video_conference_connections WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
-        .await
+        .await?;
+
+        Ok(conn.map(|c| self.decrypt_video_connection(c)))
     }
 
     /// List video conference connections for a user.
+    ///
+    /// Returns connections with decrypted access_token and refresh_token.
     pub async fn list_video_conference_connections(
         &self,
         organization_id: Uuid,
         user_id: Option<Uuid>,
     ) -> Result<Vec<VideoConferenceConnection>, SqlxError> {
-        if let Some(uid) = user_id {
+        let connections = if let Some(uid) = user_id {
             sqlx::query_as::<_, VideoConferenceConnection>(
                 r#"
                 SELECT * FROM video_conference_connections
@@ -659,7 +876,7 @@ impl IntegrationRepository {
             .bind(organization_id)
             .bind(uid)
             .fetch_all(&self.pool)
-            .await
+            .await?
         } else {
             sqlx::query_as::<_, VideoConferenceConnection>(
                 r#"
@@ -670,8 +887,46 @@ impl IntegrationRepository {
             )
             .bind(organization_id)
             .fetch_all(&self.pool)
-            .await
-        }
+            .await?
+        };
+
+        Ok(connections
+            .into_iter()
+            .map(|c| self.decrypt_video_connection(c))
+            .collect())
+    }
+
+    /// Update video conference connection tokens.
+    ///
+    /// Encrypts access_token and refresh_token before storage.
+    pub async fn update_video_connection_tokens(
+        &self,
+        id: Uuid,
+        access_token: &str,
+        refresh_token: Option<&str>,
+        expires_at: Option<chrono::DateTime<Utc>>,
+    ) -> Result<(), SqlxError> {
+        // Encrypt tokens before storage
+        let encrypted_access = self.encrypt(access_token);
+        let encrypted_refresh = self.encrypt_optional(refresh_token);
+
+        sqlx::query(
+            r#"
+            UPDATE video_conference_connections SET
+                access_token = $2,
+                refresh_token = COALESCE($3, refresh_token),
+                token_expires_at = $4,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(&encrypted_access)
+        .bind(&encrypted_refresh)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
     }
 
     /// Delete video conference connection.
@@ -843,13 +1098,34 @@ impl IntegrationRepository {
     // ========================================================================
 
     /// Create a webhook subscription.
+    ///
+    /// Validates the webhook URL for security:
+    /// - Must use HTTPS (HTTP only allowed for localhost in development)
+    /// - Must not target private IP ranges
+    /// - Must not target localhost in production
+    ///
+    /// Encrypts the webhook secret before storage.
     pub async fn create_webhook_subscription(
         &self,
         organization_id: Uuid,
         created_by: Uuid,
         data: CreateWebhookSubscription,
-    ) -> Result<WebhookSubscription, SqlxError> {
-        sqlx::query_as::<_, WebhookSubscription>(
+        is_production: bool,
+    ) -> Result<WebhookSubscription, IntegrationError> {
+        // Validate webhook URL
+        let validation = validate_webhook_url(&data.url, is_production);
+        if !validation.is_valid {
+            return Err(IntegrationError::InvalidWebhookUrl(
+                validation
+                    .error
+                    .unwrap_or_else(|| "Invalid URL".to_string()),
+            ));
+        }
+
+        // Encrypt the secret before storage
+        let encrypted_secret = self.encrypt_optional(data.secret.as_deref());
+
+        let sub = sqlx::query_as::<_, WebhookSubscription>(
             r#"
             INSERT INTO webhook_subscriptions (
                 organization_id, name, description, url, secret, events, status,
@@ -863,34 +1139,43 @@ impl IntegrationRepository {
         .bind(&data.name)
         .bind(&data.description)
         .bind(&data.url)
-        .bind(&data.secret)
+        .bind(&encrypted_secret)
         .bind(&data.events)
         .bind(&data.headers)
         .bind(serde_json::to_value(&data.retry_policy).ok())
         .bind(created_by)
         .fetch_one(&self.pool)
         .await
+        .map_err(IntegrationError::Database)?;
+
+        Ok(self.decrypt_webhook_subscription(sub))
     }
 
     /// Get webhook subscription by ID.
+    ///
+    /// Returns subscription with decrypted secret.
     pub async fn get_webhook_subscription(
         &self,
         id: Uuid,
     ) -> Result<Option<WebhookSubscription>, SqlxError> {
-        sqlx::query_as::<_, WebhookSubscription>(
+        let sub = sqlx::query_as::<_, WebhookSubscription>(
             "SELECT * FROM webhook_subscriptions WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
-        .await
+        .await?;
+
+        Ok(sub.map(|s| self.decrypt_webhook_subscription(s)))
     }
 
     /// List webhook subscriptions for an organization.
+    ///
+    /// Returns subscriptions with decrypted secrets.
     pub async fn list_webhook_subscriptions(
         &self,
         organization_id: Uuid,
     ) -> Result<Vec<WebhookSubscription>, SqlxError> {
-        sqlx::query_as::<_, WebhookSubscription>(
+        let subs = sqlx::query_as::<_, WebhookSubscription>(
             r#"
             SELECT * FROM webhook_subscriptions
             WHERE organization_id = $1
@@ -899,16 +1184,40 @@ impl IntegrationRepository {
         )
         .bind(organization_id)
         .fetch_all(&self.pool)
-        .await
+        .await?;
+
+        Ok(subs
+            .into_iter()
+            .map(|s| self.decrypt_webhook_subscription(s))
+            .collect())
     }
 
     /// Update webhook subscription.
+    ///
+    /// Validates the webhook URL if it's being updated.
+    /// Encrypts the secret if it's being updated.
     pub async fn update_webhook_subscription(
         &self,
         id: Uuid,
         data: UpdateWebhookSubscription,
-    ) -> Result<WebhookSubscription, SqlxError> {
-        sqlx::query_as::<_, WebhookSubscription>(
+        is_production: bool,
+    ) -> Result<WebhookSubscription, IntegrationError> {
+        // Validate new URL if provided
+        if let Some(ref url) = data.url {
+            let validation = validate_webhook_url(url, is_production);
+            if !validation.is_valid {
+                return Err(IntegrationError::InvalidWebhookUrl(
+                    validation
+                        .error
+                        .unwrap_or_else(|| "Invalid URL".to_string()),
+                ));
+            }
+        }
+
+        // Encrypt the new secret if provided
+        let encrypted_secret = self.encrypt_optional(data.secret.as_deref());
+
+        let sub = sqlx::query_as::<_, WebhookSubscription>(
             r#"
             UPDATE webhook_subscriptions SET
                 name = COALESCE($2, name),
@@ -929,12 +1238,15 @@ impl IntegrationRepository {
         .bind(&data.description)
         .bind(&data.url)
         .bind(&data.events)
-        .bind(&data.secret)
+        .bind(&encrypted_secret)
         .bind(&data.headers)
         .bind(&data.status)
         .bind(serde_json::to_value(&data.retry_policy).ok())
         .fetch_one(&self.pool)
         .await
+        .map_err(IntegrationError::Database)?;
+
+        Ok(self.decrypt_webhook_subscription(sub))
     }
 
     /// Delete webhook subscription.
@@ -947,12 +1259,14 @@ impl IntegrationRepository {
     }
 
     /// Get subscriptions for a specific event.
+    ///
+    /// Returns subscriptions with decrypted secrets.
     pub async fn get_subscriptions_for_event(
         &self,
         organization_id: Uuid,
         event_type: &str,
     ) -> Result<Vec<WebhookSubscription>, SqlxError> {
-        sqlx::query_as::<_, WebhookSubscription>(
+        let subs = sqlx::query_as::<_, WebhookSubscription>(
             r#"
             SELECT * FROM webhook_subscriptions
             WHERE organization_id = $1
@@ -963,7 +1277,12 @@ impl IntegrationRepository {
         .bind(organization_id)
         .bind(event_type)
         .fetch_all(&self.pool)
-        .await
+        .await?;
+
+        Ok(subs
+            .into_iter()
+            .map(|s| self.decrypt_webhook_subscription(s))
+            .collect())
     }
 
     // ========================================================================
@@ -1127,6 +1446,9 @@ impl IntegrationRepository {
     // ========================================================================
 
     /// Get integration statistics for an organization.
+    ///
+    /// Logs errors for individual statistics queries but continues collecting other stats.
+    /// This ensures partial data is returned even if some queries fail.
     pub async fn get_integration_statistics(
         &self,
         organization_id: Uuid,
@@ -1144,7 +1466,14 @@ impl IntegrationRepository {
         .bind(organization_id)
         .fetch_one(&self.pool)
         .await
-        .unwrap_or((0, 0));
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                error = %e,
+                org_id = %organization_id,
+                "Failed to fetch calendar connection stats, using defaults"
+            );
+            (0, 0)
+        });
 
         // Accounting exports this month
         let export_count = sqlx::query_scalar::<_, i64>(
@@ -1157,7 +1486,14 @@ impl IntegrationRepository {
         .bind(organization_id)
         .fetch_one(&self.pool)
         .await
-        .unwrap_or(0);
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                error = %e,
+                org_id = %organization_id,
+                "Failed to fetch accounting export stats, using defaults"
+            );
+            0
+        });
 
         // E-signature stats
         let esig_stats = sqlx::query_as::<_, (i64, i64)>(
@@ -1172,7 +1508,14 @@ impl IntegrationRepository {
         .bind(organization_id)
         .fetch_one(&self.pool)
         .await
-        .unwrap_or((0, 0));
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                error = %e,
+                org_id = %organization_id,
+                "Failed to fetch e-signature workflow stats, using defaults"
+            );
+            (0, 0)
+        });
 
         // Video meetings scheduled
         let meeting_count = sqlx::query_scalar::<_, i64>(
@@ -1186,7 +1529,14 @@ impl IntegrationRepository {
         .bind(organization_id)
         .fetch_one(&self.pool)
         .await
-        .unwrap_or(0);
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                error = %e,
+                org_id = %organization_id,
+                "Failed to fetch video meeting stats, using defaults"
+            );
+            0
+        });
 
         // Webhook stats
         let webhook_count = sqlx::query_scalar::<_, i64>(
@@ -1198,7 +1548,14 @@ impl IntegrationRepository {
         .bind(organization_id)
         .fetch_one(&self.pool)
         .await
-        .unwrap_or(0);
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                error = %e,
+                org_id = %organization_id,
+                "Failed to fetch webhook subscription stats, using defaults"
+            );
+            0
+        });
 
         let webhook_delivery_stats = sqlx::query_as::<_, (i64, i64)>(
             r#"
@@ -1214,7 +1571,14 @@ impl IntegrationRepository {
         .bind(organization_id)
         .fetch_one(&self.pool)
         .await
-        .unwrap_or((0, 0));
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                error = %e,
+                org_id = %organization_id,
+                "Failed to fetch webhook delivery stats, using defaults"
+            );
+            (0, 0)
+        });
 
         let success_rate = if webhook_delivery_stats.0 > 0 {
             (webhook_delivery_stats.1 as f64) / (webhook_delivery_stats.0 as f64) * 100.0

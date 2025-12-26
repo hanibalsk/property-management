@@ -6,32 +6,53 @@
 
 import type { VideoMeeting } from '@ppt/api-client';
 import { useDeleteVideoMeeting, useStartVideoMeeting, useVideoMeetings } from '@ppt/api-client';
+import { useState } from 'react';
+import { ConfirmationDialog, useToast } from '../../../components';
+import { getStatusColor, meetingStatusColors } from '../utils/statusColors';
 
 interface VideoMeetingsListProps {
   organizationId: string;
   onCreateMeeting?: () => void;
 }
 
-const statusColors: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-800',
-  started: 'bg-green-100 text-green-800',
-  ended: 'bg-gray-100 text-gray-800',
-  cancelled: 'bg-red-100 text-red-800',
-};
-
 export function VideoMeetingsList({ organizationId, onCreateMeeting }: VideoMeetingsListProps) {
   const { data: meetings, isLoading } = useVideoMeetings(organizationId);
   const deleteMeeting = useDeleteVideoMeeting(organizationId);
   const startMeeting = useStartVideoMeeting(organizationId);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [meetingToDelete, setMeetingToDelete] = useState<VideoMeeting | null>(null);
+  const { showToast } = useToast();
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to cancel this meeting?')) {
-      await deleteMeeting.mutateAsync(id);
+  const handleDeleteRequest = (meeting: VideoMeeting) => {
+    setMeetingToDelete(meeting);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setMeetingToDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!meetingToDelete) return;
+    try {
+      await deleteMeeting.mutateAsync(meetingToDelete.id);
+      showToast('Meeting cancelled successfully', 'success');
+    } catch {
+      showToast('Failed to cancel meeting', 'error');
+    } finally {
+      setDeleteDialogOpen(false);
+      setMeetingToDelete(null);
     }
   };
 
   const handleStart = async (id: string) => {
-    await startMeeting.mutateAsync(id);
+    try {
+      await startMeeting.mutateAsync(id);
+      showToast('Meeting started', 'success');
+    } catch {
+      showToast('Failed to start meeting', 'error');
+    }
   };
 
   const formatDateTime = (dateStr: string) => {
@@ -98,7 +119,7 @@ export function VideoMeetingsList({ organizationId, onCreateMeeting }: VideoMeet
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{meeting.title}</span>
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusColors[meeting.status]}`}
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(meeting.status, meetingStatusColors)}`}
                       >
                         {meeting.status}
                       </span>
@@ -143,7 +164,7 @@ export function VideoMeetingsList({ organizationId, onCreateMeeting }: VideoMeet
                   )}
                   <button
                     type="button"
-                    onClick={() => handleDelete(meeting.id)}
+                    onClick={() => handleDeleteRequest(meeting)}
                     className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded-md hover:bg-red-50"
                   >
                     Cancel
@@ -154,6 +175,22 @@ export function VideoMeetingsList({ organizationId, onCreateMeeting }: VideoMeet
           })}
         </div>
       )}
+
+      <ConfirmationDialog
+        isOpen={deleteDialogOpen}
+        title="Cancel Meeting"
+        message={
+          meetingToDelete
+            ? `Are you sure you want to cancel "${meetingToDelete.title}"? Participants will be notified.`
+            : ''
+        }
+        confirmLabel="Cancel Meeting"
+        cancelLabel="Keep Meeting"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        isLoading={deleteMeeting.isPending}
+      />
     </div>
   );
 }

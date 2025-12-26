@@ -13,3 +13,8 @@ tracing = { workspace = true }
 tokio = { workspace = true }
 chrono = { workspace = true }
 urlencoding = { workspace = true }
+# Encryption for sensitive integration data (tokens, secrets)
+aes-gcm = "0.10"
+base64 = { workspace = true }
+rand = { workspace = true }
+hex = { workspace = true }
