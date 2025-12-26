@@ -937,12 +937,10 @@ pub fn validate_webhook_url(url: &str, is_production: bool) -> WebhookUrlValidat
             }
             url::Host::Ipv6(ip) => {
                 // Block IPv6 loopback and link-local
-                if ip.is_loopback() {
-                    if is_production || !is_localhost {
-                        return WebhookUrlValidation::invalid(
-                            "IPv6 loopback address (::1) is not allowed",
-                        );
-                    }
+                if ip.is_loopback() && (is_production || !is_localhost) {
+                    return WebhookUrlValidation::invalid(
+                        "IPv6 loopback address (::1) is not allowed",
+                    );
                 }
                 // Note: IPv6 unique local (fc00::/7) and link-local (fe80::/10) should also be blocked
                 let segments = ip.segments();
