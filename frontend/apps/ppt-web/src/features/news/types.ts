@@ -44,7 +44,6 @@ export interface ArticleSummary {
   reactionCount: number;
   commentCount: number;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface ArticleMedia {
@@ -105,7 +104,7 @@ export interface ArticleCommentWithAuthor extends ArticleComment {
   replyCount: number;
 }
 
-// Alias for backwards compatibility
+// Alias for backend naming consistency
 export type CommentWithAuthor = ArticleCommentWithAuthor;
 
 export interface CreateArticleRequest {

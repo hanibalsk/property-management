@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS article_reactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     article_id UUID NOT NULL REFERENCES news_articles(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    reaction reaction_type NOT NULL DEFAULT 'like'::reaction_type,
+    reaction reaction_type NOT NULL DEFAULT 'like',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_article_reaction UNIQUE (article_id, user_id)
 );
@@ -178,16 +178,10 @@ CREATE TABLE IF NOT EXISTS article_views (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     duration_seconds INT,
-    ip_address INET,
     CONSTRAINT unique_article_view UNIQUE (article_id, user_id)
 );
 
 CREATE INDEX idx_article_views_article_id ON article_views(article_id);
-
--- Ensure anonymous views (user_id IS NULL) are deduplicated per article and IP
-CREATE UNIQUE INDEX idx_article_views_anon_unique
-    ON article_views(article_id, ip_address)
-    WHERE user_id IS NULL;
 
 ALTER TABLE article_views ENABLE ROW LEVEL SECURITY;
 
@@ -211,11 +205,13 @@ CREATE POLICY article_views_tenant_isolation ON article_views
     );
 
 -- Article Comment Reactions table
+-- TODO: Implement repository methods and API routes for comment reactions in a future story.
+-- This table is created now for schema completeness but the functionality is not yet exposed.
 CREATE TABLE IF NOT EXISTS article_comment_reactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     comment_id UUID NOT NULL REFERENCES article_comments(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    reaction reaction_type NOT NULL DEFAULT 'like'::reaction_type,
+    reaction reaction_type NOT NULL DEFAULT 'like',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT unique_comment_reaction UNIQUE (comment_id, user_id)
 );

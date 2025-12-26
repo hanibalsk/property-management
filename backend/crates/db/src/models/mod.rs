@@ -492,7 +492,7 @@ pub mod news_article;
 pub use news_article::{
     article_status, reaction_type, ArchiveArticle, ArticleComment, ArticleListQuery, ArticleMedia,
     ArticleReaction, ArticleStatistics, ArticleSummary, ArticleView, ArticleWithDetails,
-    CommentWithAuthor as ArticleCommentWithAuthor,
+    ArticleWithDetailsRow, CommentWithAuthor as ArticleCommentWithAuthor,
     CommentWithAuthorRow as ArticleCommentWithAuthorRow, CreateArticle, CreateArticleComment,
     CreateArticleMedia, ModerateComment, NewsArticle, PinArticle, PublishArticle, ReactionCounts,
     ToggleReaction, UpdateArticle, UpdateArticleComment,

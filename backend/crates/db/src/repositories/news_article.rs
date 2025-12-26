@@ -2,12 +2,13 @@
 
 use crate::models::news_article::{
     article_status, ArticleComment, ArticleListQuery, ArticleMedia, ArticleStatistics,
-    ArticleSummary, ArticleView, ArticleWithDetails, CommentWithAuthor, CreateArticle,
-    CreateArticleComment, CreateArticleMedia, NewsArticle, ReactionCounts, UpdateArticle,
+    ArticleSummary, ArticleView, ArticleWithDetails, ArticleWithDetailsRow, CommentWithAuthor,
+    CommentWithAuthorRow, CreateArticle, CreateArticleComment, CreateArticleMedia, NewsArticle,
+    ReactionCounts, UpdateArticle,
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
-use sqlx::{Error as SqlxError, FromRow};
+use sqlx::Error as SqlxError;
 use uuid::Uuid;
 
 /// Repository for news article operations.
@@ -66,53 +67,27 @@ impl NewsArticleRepository {
             .await
     }
 
+    /// Find an article by ID with full details including author information.
+    ///
+    /// This uses a JOIN query to fetch the article along with author name and avatar
+    /// from the users table.
     pub async fn find_by_id_with_details(
         &self,
         id: Uuid,
     ) -> Result<Option<ArticleWithDetails>, SqlxError> {
-        // Query article with author details joined from users table
-        #[derive(FromRow)]
-        struct ArticleWithAuthorRow {
-            // Article fields
-            id: Uuid,
-            organization_id: Uuid,
-            author_id: Uuid,
-            title: String,
-            content: String,
-            excerpt: Option<String>,
-            cover_image_url: Option<String>,
-            building_ids: serde_json::Value,
-            status: String,
-            published_at: Option<DateTime<Utc>>,
-            archived_at: Option<DateTime<Utc>>,
-            pinned: bool,
-            pinned_at: Option<DateTime<Utc>>,
-            pinned_by: Option<Uuid>,
-            comments_enabled: bool,
-            reactions_enabled: bool,
-            view_count: i32,
-            reaction_count: i32,
-            comment_count: i32,
-            share_count: i32,
-            created_at: DateTime<Utc>,
-            updated_at: DateTime<Utc>,
-            // Author fields
-            author_name: String,
-            author_avatar_url: Option<String>,
-        }
-
-        let row = sqlx::query_as::<_, ArticleWithAuthorRow>(
+        let row = sqlx::query_as::<_, ArticleWithDetailsRow>(
             r#"
             SELECT
-                a.id, a.organization_id, a.author_id, a.title, a.content, a.excerpt,
-                a.cover_image_url, a.building_ids, a.status, a.published_at, a.archived_at,
-                a.pinned, a.pinned_at, a.pinned_by, a.comments_enabled, a.reactions_enabled,
-                a.view_count, a.reaction_count, a.comment_count, a.share_count,
+                a.id, a.organization_id, a.author_id, a.title, a.content,
+                a.excerpt, a.cover_image_url, a.building_ids, a.status,
+                a.published_at, a.archived_at, a.pinned, a.pinned_at, a.pinned_by,
+                a.comments_enabled, a.reactions_enabled, a.view_count,
+                a.reaction_count, a.comment_count, a.share_count,
                 a.created_at, a.updated_at,
-                COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as author_name,
+                COALESCE(u.name, 'Unknown') as author_name,
                 u.avatar_url as author_avatar_url
             FROM news_articles a
-            LEFT JOIN users u ON u.id = a.author_id
+            LEFT JOIN users u ON a.author_id = u.id
             WHERE a.id = $1
             "#,
         )
@@ -120,206 +95,116 @@ impl NewsArticleRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| ArticleWithDetails {
-            article: NewsArticle {
-                id: r.id,
-                organization_id: r.organization_id,
-                author_id: r.author_id,
-                title: r.title,
-                content: r.content,
-                excerpt: r.excerpt,
-                cover_image_url: r.cover_image_url,
-                building_ids: r.building_ids,
-                status: r.status,
-                published_at: r.published_at,
-                archived_at: r.archived_at,
-                pinned: r.pinned,
-                pinned_at: r.pinned_at,
-                pinned_by: r.pinned_by,
-                comments_enabled: r.comments_enabled,
-                reactions_enabled: r.reactions_enabled,
-                view_count: r.view_count,
-                reaction_count: r.reaction_count,
-                comment_count: r.comment_count,
-                share_count: r.share_count,
-                created_at: r.created_at,
-                updated_at: r.updated_at,
-            },
-            author_name: r.author_name,
-            author_avatar_url: r.author_avatar_url,
-        }))
+        Ok(row.map(Into::into))
     }
 
+    /// List articles matching the query filters.
+    ///
+    /// Filters articles by organization_id for multi-tenant security.
+    /// Additional filters include status, building_id, and pagination.
     pub async fn list(
         &self,
         organization_id: Uuid,
         query: &ArticleListQuery,
     ) -> Result<Vec<ArticleSummary>, SqlxError> {
-        let mut sql = String::from(
+        let limit = query.limit.unwrap_or(20).min(100);
+        let offset = query.offset.unwrap_or(0);
+
+        let articles = sqlx::query_as::<_, ArticleSummary>(
             r#"
-            SELECT 
-                id, title, excerpt, cover_image_url, author_id, status,
-                published_at, pinned, view_count, reaction_count, comment_count,
-                created_at, updated_at
+            SELECT id, title, excerpt, cover_image_url, author_id, status,
+                   published_at, pinned, view_count, reaction_count, comment_count, created_at
             FROM news_articles
             WHERE organization_id = $1
+              AND ($2::text IS NULL OR status = $2)
+              AND ($3::uuid IS NULL OR building_ids @> to_jsonb($3::uuid))
+              AND ($4::bool IS NULL OR $4 = FALSE OR pinned = TRUE)
+            ORDER BY pinned DESC, published_at DESC NULLS LAST, created_at DESC
+            LIMIT $5 OFFSET $6
             "#,
-        );
+        )
+        .bind(organization_id)
+        .bind(query.status.as_deref())
+        .bind(query.building_id)
+        .bind(query.pinned_only)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
 
-        let mut param_count = 1;
-
-        // Apply status filter
-        if query.status.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" AND status = ${}", param_count));
-        }
-
-        // Apply building_id filter
-        if query.building_id.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" AND building_ids @> ${}", param_count));
-        }
-
-        // Apply pinned_only filter
-        if query.pinned_only == Some(true) {
-            sql.push_str(" AND pinned = true");
-        }
-
-        // Add ordering - pinned first, then by published_at desc
-        sql.push_str(" ORDER BY pinned DESC, published_at DESC NULLS LAST");
-
-        // Apply pagination
-        if query.limit.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" LIMIT ${}", param_count));
-        }
-
-        if query.offset.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" OFFSET ${}", param_count));
-        }
-
-        // Build and execute query
-        let mut query_builder = sqlx::query_as::<_, ArticleSummary>(&sql).bind(organization_id);
-
-        if let Some(ref status) = query.status {
-            query_builder = query_builder.bind(status);
-        }
-
-        if let Some(building_id) = query.building_id {
-            // Wrap UUID in an array for JSON containment check (@> checks if building_ids contains the array)
-            query_builder = query_builder.bind(serde_json::json!([building_id.to_string()]));
-        }
-
-        if let Some(limit) = query.limit {
-            query_builder = query_builder.bind(limit);
-        }
-
-        if let Some(offset) = query.offset {
-            query_builder = query_builder.bind(offset);
-        }
-
-        query_builder.fetch_all(&self.pool).await
+        Ok(articles)
     }
 
+    /// Count the total number of articles matching the query filters.
+    ///
+    /// This is used for accurate pagination totals, separate from the paginated list query.
+    /// Filters by organization_id for multi-tenant security.
     pub async fn count(
         &self,
         organization_id: Uuid,
         query: &ArticleListQuery,
     ) -> Result<i64, SqlxError> {
-        let mut sql =
-            String::from("SELECT COUNT(*) as count FROM news_articles WHERE organization_id = $1");
-
-        let mut param_count = 1;
-
-        // Apply status filter
-        if query.status.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" AND status = ${}", param_count));
-        }
-
-        // Apply building_id filter
-        if query.building_id.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" AND building_ids @> ${}", param_count));
-        }
-
-        // Apply pinned_only filter
-        if query.pinned_only == Some(true) {
-            sql.push_str(" AND pinned = true");
-        }
-
-        // Build and execute query
-        let mut query_builder = sqlx::query_scalar::<_, i64>(&sql).bind(organization_id);
-
-        if let Some(ref status) = query.status {
-            query_builder = query_builder.bind(status);
-        }
-
-        if let Some(building_id) = query.building_id {
-            // building_ids is stored as a JSONB array of UUID strings (e.g., ["uuid-1", "uuid-2"])
-            // Use @> containment check with a single-element array
-            query_builder = query_builder.bind(serde_json::json!([building_id.to_string()]));
-        }
-
-        query_builder.fetch_one(&self.pool).await
+        let result: (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*)
+            FROM news_articles
+            WHERE organization_id = $1
+              AND ($2::text IS NULL OR status = $2)
+              AND ($3::uuid IS NULL OR building_ids @> to_jsonb($3::uuid))
+              AND ($4::bool IS NULL OR $4 = FALSE OR pinned = TRUE)
+            "#,
+        )
+        .bind(organization_id)
+        .bind(query.status.as_deref())
+        .bind(query.building_id)
+        .bind(query.pinned_only)
+        .fetch_one(&self.pool)
+        .await?;
+        Ok(result.0)
     }
 
+    /// Update an article with the provided data.
+    ///
+    /// Uses COALESCE pattern for safe partial updates - only non-null parameters
+    /// update their corresponding fields while keeping existing values for nulls.
+    /// This approach is SQL-injection safe as all field names are static.
     pub async fn update(
         &self,
         id: Uuid,
         data: UpdateArticle,
     ) -> Result<Option<NewsArticle>, SqlxError> {
-        // First, fetch the existing article
-        let existing = self.find_by_id(id).await?;
-        if existing.is_none() {
-            return Ok(None);
-        }
-        let existing = existing.unwrap();
+        // Convert building_ids to JSON if present
+        let building_ids_json = data
+            .building_ids
+            .map(|ids| serde_json::to_value(&ids).unwrap_or_default());
 
-        // Merge updated fields with existing values
-        let title = data.title.as_ref().unwrap_or(&existing.title);
-        let content = data.content.as_ref().unwrap_or(&existing.content);
-        let excerpt = data.excerpt.clone().or(existing.excerpt.clone());
-        let cover_image_url = data
-            .cover_image_url
-            .clone()
-            .or(existing.cover_image_url.clone());
-        let building_ids_json = if let Some(ref ids) = data.building_ids {
-            serde_json::to_value(ids).unwrap_or_default()
-        } else {
-            existing.building_ids.clone()
-        };
-        let status = data.status.as_deref().unwrap_or(&existing.status);
-        let comments_enabled = data.comments_enabled.unwrap_or(existing.comments_enabled);
-        let reactions_enabled = data.reactions_enabled.unwrap_or(existing.reactions_enabled);
-
+        // Use COALESCE pattern - each field only updates if parameter is not null
+        // This is SQL-injection safe as all field names are compile-time constants
         sqlx::query_as::<_, NewsArticle>(
             r#"
-            UPDATE news_articles
-            SET
-                title = $2,
-                content = $3,
-                excerpt = $4,
-                cover_image_url = $5,
-                building_ids = $6,
-                status = $7,
-                comments_enabled = $8,
-                reactions_enabled = $9,
+            UPDATE news_articles SET
+                title = COALESCE($2, title),
+                content = COALESCE($3, content),
+                excerpt = COALESCE($4, excerpt),
+                cover_image_url = COALESCE($5, cover_image_url),
+                building_ids = COALESCE($6, building_ids),
+                status = COALESCE($7, status),
+                comments_enabled = COALESCE($8, comments_enabled),
+                reactions_enabled = COALESCE($9, reactions_enabled),
                 updated_at = NOW()
             WHERE id = $1
             RETURNING *
             "#,
         )
         .bind(id)
-        .bind(title)
-        .bind(content)
-        .bind(&excerpt)
-        .bind(&cover_image_url)
-        .bind(&building_ids_json)
-        .bind(status)
-        .bind(comments_enabled)
-        .bind(reactions_enabled)
+        .bind(data.title)
+        .bind(data.content)
+        .bind(data.excerpt)
+        .bind(data.cover_image_url)
+        .bind(building_ids_json)
+        .bind(data.status)
+        .bind(data.comments_enabled)
+        .bind(data.reactions_enabled)
         .fetch_optional(&self.pool)
         .await
     }
@@ -442,92 +327,98 @@ impl NewsArticleRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    /// Toggle a reaction on an article.
+    ///
+    /// Uses UPSERT pattern to handle race conditions:
+    /// - If user has no reaction, adds the new reaction
+    /// - If user has the same reaction, removes it (toggle off)
+    /// - If user has a different reaction, updates to the new reaction
     pub async fn toggle_reaction(
         &self,
         article_id: Uuid,
         user_id: Uuid,
         reaction: &str,
     ) -> Result<bool, SqlxError> {
-        // Use a single atomic query with INSERT ... ON CONFLICT ... DO UPDATE
-        // combined with a CTE to handle all cases atomically and avoid race conditions.
-        //
-        // This query:
-        // 1. Tries to insert a new reaction
-        // 2. On conflict, if the reaction type is the same, deletes it (toggle off)
-        // 3. On conflict, if the reaction type is different, updates it
-        //
-        // Returns the action taken: 'inserted', 'updated', or 'deleted'
-        let result: Option<(String,)> = sqlx::query_as(
-            r#"
-            WITH existing AS (
-                SELECT id, reaction FROM article_reactions
-                WHERE article_id = $1 AND user_id = $2
-                FOR UPDATE
-            ),
-            action AS (
-                SELECT CASE
-                    WHEN NOT EXISTS (SELECT 1 FROM existing) THEN 'insert'
-                    WHEN (SELECT reaction FROM existing) = $3 THEN 'delete'
-                    ELSE 'update'
-                END as op
-            ),
-            do_insert AS (
-                INSERT INTO article_reactions (article_id, user_id, reaction)
-                SELECT $1, $2, $3
-                WHERE (SELECT op FROM action) = 'insert'
-                RETURNING 'inserted' as result
-            ),
-            do_update AS (
-                UPDATE article_reactions
-                SET reaction = $3
-                WHERE article_id = $1 AND user_id = $2
-                  AND (SELECT op FROM action) = 'update'
-                RETURNING 'updated' as result
-            ),
-            do_delete AS (
-                DELETE FROM article_reactions
-                WHERE article_id = $1 AND user_id = $2
-                  AND (SELECT op FROM action) = 'delete'
-                RETURNING 'deleted' as result
-            )
-            SELECT result FROM do_insert
-            UNION ALL SELECT result FROM do_update
-            UNION ALL SELECT result FROM do_delete
-            "#,
+        // First, check if user already has a reaction on this article
+        let existing: Option<(String,)> = sqlx::query_as(
+            "SELECT reaction FROM article_reactions WHERE article_id = $1 AND user_id = $2",
         )
         .bind(article_id)
         .bind(user_id)
-        .bind(reaction)
         .fetch_optional(&self.pool)
         .await?;
 
-        // Return true if reaction was added/updated, false if removed
-        Ok(result.map(|(r,)| r != "deleted").unwrap_or(false))
+        match existing {
+            Some((existing_reaction,)) if existing_reaction == reaction => {
+                // Same reaction - toggle off (remove it)
+                sqlx::query("DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2")
+                    .bind(article_id)
+                    .bind(user_id)
+                    .execute(&self.pool)
+                    .await?;
+                Ok(false)
+            }
+            Some(_) => {
+                // Different reaction - update to new reaction
+                sqlx::query(
+                    "UPDATE article_reactions SET reaction = $3 WHERE article_id = $1 AND user_id = $2",
+                )
+                .bind(article_id)
+                .bind(user_id)
+                .bind(reaction)
+                .execute(&self.pool)
+                .await?;
+                Ok(true)
+            }
+            None => {
+                // No existing reaction - add new one
+                sqlx::query(
+                    "INSERT INTO article_reactions (article_id, user_id, reaction) VALUES ($1, $2, $3)",
+                )
+                .bind(article_id)
+                .bind(user_id)
+                .bind(reaction)
+                .execute(&self.pool)
+                .await?;
+                Ok(true)
+            }
+        }
     }
 
+    /// Get reaction counts for an article.
     pub async fn get_reaction_counts(&self, article_id: Uuid) -> Result<ReactionCounts, SqlxError> {
-        let rows: Vec<(String, i64)> = sqlx::query_as(
-            "SELECT reaction, COUNT(*) as count FROM article_reactions WHERE article_id = $1 GROUP BY reaction",
+        let counts = sqlx::query_as::<_, (String, i64)>(
+            r#"
+            SELECT reaction, COUNT(*) as count
+            FROM article_reactions
+            WHERE article_id = $1
+            GROUP BY reaction
+            "#,
         )
         .bind(article_id)
         .fetch_all(&self.pool)
         .await?;
 
-        let mut counts = ReactionCounts::default();
-        for (reaction, count) in rows {
-            let count_i32 = count as i32;
+        let mut reaction_counts = ReactionCounts::default();
+
+        for (reaction, count) in counts {
             match reaction.as_str() {
-                "like" => counts.like = count_i32,
-                "love" => counts.love = count_i32,
-                "surprised" => counts.surprised = count_i32,
-                "sad" => counts.sad = count_i32,
-                "angry" => counts.angry = count_i32,
-                _ => {} // Ignore unknown reaction types
+                "like" => reaction_counts.like = count as i32,
+                "love" => reaction_counts.love = count as i32,
+                "surprised" => reaction_counts.surprised = count as i32,
+                "sad" => reaction_counts.sad = count as i32,
+                "angry" => reaction_counts.angry = count as i32,
+                _ => {}
             }
         }
-        counts.total = counts.like + counts.love + counts.surprised + counts.sad + counts.angry;
 
-        Ok(counts)
+        reaction_counts.total = reaction_counts.like
+            + reaction_counts.love
+            + reaction_counts.surprised
+            + reaction_counts.sad
+            + reaction_counts.angry;
+
+        Ok(reaction_counts)
     }
 
     pub async fn get_user_reaction(
@@ -562,62 +453,33 @@ impl NewsArticleRepository {
         .await
     }
 
+    /// List comments for an article with author information.
     pub async fn list_comments(
         &self,
         article_id: Uuid,
         parent_id: Option<Uuid>,
     ) -> Result<Vec<CommentWithAuthor>, SqlxError> {
-        use crate::models::news_article::CommentWithAuthorRow;
+        let rows = sqlx::query_as::<_, CommentWithAuthorRow>(
+            r#"
+            SELECT
+                c.*,
+                u.name as author_name,
+                u.avatar_url as author_avatar_url,
+                (SELECT COUNT(*) FROM article_comments WHERE parent_id = c.id AND deleted_at IS NULL) as reply_count
+            FROM article_comments c
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.article_id = $1
+                AND c.parent_id IS NOT DISTINCT FROM $2
+                AND c.deleted_at IS NULL
+            ORDER BY c.created_at DESC
+            "#,
+        )
+        .bind(article_id)
+        .bind(parent_id)
+        .fetch_all(&self.pool)
+        .await?;
 
-        let rows: Vec<CommentWithAuthorRow> = match parent_id {
-            Some(parent) => {
-                sqlx::query_as::<_, CommentWithAuthorRow>(
-                    r#"
-                    SELECT
-                        c.id, c.article_id, c.user_id, c.parent_id, c.content,
-                        c.is_moderated, c.moderated_at, c.moderated_by, c.moderation_reason,
-                        c.deleted_at, c.deleted_by, c.like_count, c.created_at, c.updated_at,
-                        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as author_name,
-                        u.avatar_url as author_avatar_url,
-                        (SELECT COUNT(*) FROM article_comments r WHERE r.parent_id = c.id AND r.deleted_at IS NULL) as reply_count
-                    FROM article_comments c
-                    LEFT JOIN users u ON u.id = c.user_id
-                    WHERE c.article_id = $1
-                      AND c.parent_id = $2
-                      AND c.deleted_at IS NULL
-                    ORDER BY c.created_at ASC
-                    "#,
-                )
-                .bind(article_id)
-                .bind(parent)
-                .fetch_all(&self.pool)
-                .await?
-            }
-            None => {
-                sqlx::query_as::<_, CommentWithAuthorRow>(
-                    r#"
-                    SELECT
-                        c.id, c.article_id, c.user_id, c.parent_id, c.content,
-                        c.is_moderated, c.moderated_at, c.moderated_by, c.moderation_reason,
-                        c.deleted_at, c.deleted_by, c.like_count, c.created_at, c.updated_at,
-                        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as author_name,
-                        u.avatar_url as author_avatar_url,
-                        (SELECT COUNT(*) FROM article_comments r WHERE r.parent_id = c.id AND r.deleted_at IS NULL) as reply_count
-                    FROM article_comments c
-                    LEFT JOIN users u ON u.id = c.user_id
-                    WHERE c.article_id = $1
-                      AND c.parent_id IS NULL
-                      AND c.deleted_at IS NULL
-                    ORDER BY c.created_at ASC
-                    "#,
-                )
-                .bind(article_id)
-                .fetch_all(&self.pool)
-                .await?
-            }
-        };
-
-        Ok(rows.into_iter().map(CommentWithAuthor::from).collect())
+        Ok(rows.into_iter().map(Into::into).collect())
     }
 
     pub async fn update_comment(
@@ -636,9 +498,24 @@ impl NewsArticleRepository {
         .await
     }
 
+    /// Soft delete a comment. Only the comment owner can delete their own comments.
+    ///
+    /// # Arguments
+    ///
+    /// * `comment_id` - The ID of the comment to delete.
+    /// * `user_id` - The ID of the user requesting deletion. This serves dual purposes:
+    ///   - Ownership verification: the WHERE clause ensures only the comment owner can delete
+    ///   - Audit trail: recorded in the `deleted_by` field for accountability
+    ///
+    /// # Returns
+    ///
+    /// `true` if the comment was deleted, `false` if no matching comment was found
+    /// (either doesn't exist or user is not the owner).
     pub async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid) -> Result<bool, SqlxError> {
         let result = sqlx::query(
-            "UPDATE article_comments SET deleted_at = NOW(), deleted_by = $2 WHERE id = $1 AND user_id = $2",
+            "UPDATE article_comments
+             SET deleted_at = NOW(), deleted_by = $2
+             WHERE id = $1 AND user_id = $2",
         )
         .bind(comment_id)
         .bind(user_id)
@@ -656,7 +533,7 @@ impl NewsArticleRepository {
     ) -> Result<Option<ArticleComment>, SqlxError> {
         if delete {
             sqlx::query_as::<_, ArticleComment>(
-                "UPDATE article_comments SET is_moderated = TRUE, moderated_at = NOW(), moderated_by = $2, moderation_reason = $3, deleted_at = NOW() WHERE id = $1 RETURNING *",
+                "UPDATE article_comments SET is_moderated = TRUE, moderated_by = $2, moderation_reason = $3, deleted_at = NOW() WHERE id = $1 RETURNING *",
             )
             .bind(comment_id)
             .bind(moderator_id)
@@ -665,7 +542,7 @@ impl NewsArticleRepository {
             .await
         } else {
             sqlx::query_as::<_, ArticleComment>(
-                "UPDATE article_comments SET is_moderated = TRUE, moderated_at = NOW(), moderated_by = $2, moderation_reason = $3 WHERE id = $1 RETURNING *",
+                "UPDATE article_comments SET is_moderated = TRUE, moderated_by = $2, moderation_reason = $3 WHERE id = $1 RETURNING *",
             )
             .bind(comment_id)
             .bind(moderator_id)
@@ -681,36 +558,14 @@ impl NewsArticleRepository {
         user_id: Option<Uuid>,
         duration_seconds: Option<i32>,
     ) -> Result<ArticleView, SqlxError> {
-        match user_id {
-            Some(uid) => {
-                // For authenticated users, upsert on (article_id, user_id)
-                sqlx::query_as::<_, ArticleView>(
-                    "INSERT INTO article_views (article_id, user_id, duration_seconds) \
-                     VALUES ($1, $2, $3) \
-                     ON CONFLICT (article_id, user_id) \
-                     DO UPDATE SET viewed_at = NOW(), duration_seconds = $3 \
-                     RETURNING *",
-                )
-                .bind(article_id)
-                .bind(uid)
-                .bind(duration_seconds)
-                .fetch_one(&self.pool)
-                .await
-            }
-            None => {
-                // For anonymous views, always insert a new row since NULL values
-                // don't participate in unique constraints
-                sqlx::query_as::<_, ArticleView>(
-                    "INSERT INTO article_views (article_id, user_id, duration_seconds) \
-                     VALUES ($1, NULL, $2) \
-                     RETURNING *",
-                )
-                .bind(article_id)
-                .bind(duration_seconds)
-                .fetch_one(&self.pool)
-                .await
-            }
-        }
+        sqlx::query_as::<_, ArticleView>(
+            "INSERT INTO article_views (article_id, user_id, duration_seconds) VALUES ($1, $2, $3) ON CONFLICT (article_id, user_id) DO UPDATE SET viewed_at = NOW(), duration_seconds = $3 RETURNING *",
+        )
+        .bind(article_id)
+        .bind(user_id)
+        .bind(duration_seconds)
+        .fetch_one(&self.pool)
+        .await
     }
 
     pub async fn get_statistics(&self) -> Result<ArticleStatistics, SqlxError> {

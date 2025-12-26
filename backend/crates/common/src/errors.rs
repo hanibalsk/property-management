@@ -47,42 +47,24 @@ impl ErrorResponse {
         self
     }
 
-    // Helper methods for common errors
-    pub fn bad_request(message: impl Into<String>) -> Self {
+    /// Create a bad request (400) error response.
+    pub fn bad_request(message: &str) -> Self {
         Self::new("BAD_REQUEST", message)
     }
 
-    pub fn not_found(message: impl Into<String>) -> Self {
+    /// Create a forbidden (403) error response.
+    pub fn forbidden(message: &str) -> Self {
+        Self::new("FORBIDDEN", message)
+    }
+
+    /// Create a not found (404) error response.
+    pub fn not_found(message: &str) -> Self {
         Self::new("NOT_FOUND", message)
     }
 
-    pub fn internal_error(message: impl Into<String>) -> Self {
+    /// Create an internal server error (500) response.
+    pub fn internal_error(message: &str) -> Self {
         Self::new("INTERNAL_ERROR", message)
-    }
-
-    pub fn unauthorized(message: impl Into<String>) -> Self {
-        Self::new("UNAUTHORIZED", message)
-    }
-
-    pub fn forbidden(message: impl Into<String>) -> Self {
-        Self::new("FORBIDDEN", message)
-    }
-}
-
-impl IntoResponse for ErrorResponse {
-    fn into_response(self) -> Response {
-        let status = match self.code.as_str() {
-            "BAD_REQUEST" => StatusCode::BAD_REQUEST,
-            "UNAUTHORIZED" => StatusCode::UNAUTHORIZED,
-            "FORBIDDEN" => StatusCode::FORBIDDEN,
-            "NOT_FOUND" => StatusCode::NOT_FOUND,
-            "CONFLICT" => StatusCode::CONFLICT,
-            "UNPROCESSABLE_ENTITY" => StatusCode::UNPROCESSABLE_ENTITY,
-            "RATE_LIMIT_EXCEEDED" => StatusCode::TOO_MANY_REQUESTS,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
-        };
-
-        (status, Json(self)).into_response()
     }
 }
 
