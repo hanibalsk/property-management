@@ -265,12 +265,12 @@ async fn list_articles(
     let articles = repo
         .list(tenant.tenant_id, &query)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list articles: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to list articles: {}", e)))?;
 
     let total = repo
         .count(tenant.tenant_id, &query)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to count articles: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to count articles: {}", e)))?;
 
     Ok(Json(ArticleListResponse {
         count: articles.len(),
@@ -304,23 +304,23 @@ async fn get_article(
     let article = repo
         .find_by_id_with_details(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to get article: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to get article: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
 
     let media = repo
         .list_media(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to get media: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to get media: {}", e)))?;
 
     let user_reaction = repo
         .get_user_reaction(id, user.user_id)
         .await
         .map_err(|e| {
-            ErrorResponse::internal_error(&format!("Failed to get user reaction: {}", e))
+            ErrorResponse::internal_error(format!("Failed to get user reaction: {}", e))
         })?;
 
     let reaction_counts = repo.get_reaction_counts(id).await.map_err(|e| {
-        ErrorResponse::internal_error(&format!("Failed to get reaction counts: {}", e))
+        ErrorResponse::internal_error(format!("Failed to get reaction counts: {}", e))
     })?;
 
     Ok(Json(ArticleDetailResponse {
@@ -362,14 +362,14 @@ async fn create_article(
 
     // Validate input
     if req.title.is_empty() || req.title.len() > MAX_TITLE_LENGTH {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(ErrorResponse::bad_request(format!(
             "Title must be between 1 and {} characters",
             MAX_TITLE_LENGTH
         )));
     }
 
     if req.content.is_empty() || req.content.len() > MAX_CONTENT_LENGTH {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(ErrorResponse::bad_request(format!(
             "Content must be between 1 and {} characters",
             MAX_CONTENT_LENGTH
         )));
@@ -378,7 +378,7 @@ async fn create_article(
     // Validate status if provided
     if let Some(ref status) = req.status {
         if !article_status::ALL.contains(&status.as_str()) {
-            return Err(ErrorResponse::bad_request(&format!(
+            return Err(ErrorResponse::bad_request(format!(
                 "Invalid status. Must be one of: {:?}",
                 article_status::ALL
             )));
@@ -402,7 +402,7 @@ async fn create_article(
     let article = repo
         .create(tenant.tenant_id, user.user_id, data)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to create article: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to create article: {}", e)))?;
 
     Ok((
         StatusCode::CREATED,
@@ -446,7 +446,7 @@ async fn update_article(
     let existing = repo
         .find_by_id(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to get article: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to get article: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
 
     if existing.author_id != user.user_id && !tenant.role.is_manager() {
@@ -458,7 +458,7 @@ async fn update_article(
     // Validate input
     if let Some(ref title) = req.title {
         if title.is_empty() || title.len() > MAX_TITLE_LENGTH {
-            return Err(ErrorResponse::bad_request(&format!(
+            return Err(ErrorResponse::bad_request(format!(
                 "Title must be between 1 and {} characters",
                 MAX_TITLE_LENGTH
             )));
@@ -467,7 +467,7 @@ async fn update_article(
 
     if let Some(ref content) = req.content {
         if content.is_empty() || content.len() > MAX_CONTENT_LENGTH {
-            return Err(ErrorResponse::bad_request(&format!(
+            return Err(ErrorResponse::bad_request(format!(
                 "Content must be between 1 and {} characters",
                 MAX_CONTENT_LENGTH
             )));
@@ -488,7 +488,7 @@ async fn update_article(
     let article = repo
         .update(id, data)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to update article: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to update article: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
 
     Ok(Json(ArticleActionResponse {
@@ -524,7 +524,7 @@ async fn publish_article(
     let article = repo
         .publish(id, req.published_at)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to publish article: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to publish article: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Cannot publish article"))?;
 
     Ok(Json(ArticleActionResponse {
@@ -558,7 +558,7 @@ async fn archive_article(
     let article = repo
         .archive(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to archive article: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to archive article: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
 
     Ok(Json(ArticleActionResponse {
@@ -592,7 +592,7 @@ async fn restore_article(
     let article = repo
         .restore(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to restore article: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to restore article: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Cannot restore article"))?;
 
     Ok(Json(ArticleActionResponse {
@@ -626,7 +626,7 @@ async fn delete_article(
     let deleted = repo
         .delete(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to delete article: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to delete article: {}", e)))?;
 
     if !deleted {
         return Err(ErrorResponse::not_found("Article not found"));
@@ -662,7 +662,7 @@ async fn pin_article(
     let article = repo
         .set_pinned(id, req.pinned, Some(user.user_id))
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to pin article: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to pin article: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
 
     let message = if req.pinned {
@@ -693,7 +693,7 @@ async fn list_media(
     let media = repo
         .list_media(id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list media: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to list media: {}", e)))?;
 
     Ok(Json(MediaResponse { media }))
 }
@@ -726,7 +726,7 @@ async fn add_media(
     let media = repo
         .add_media(id, data)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to add media: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to add media: {}", e)))?;
 
     Ok((StatusCode::CREATED, Json(media)))
 }
@@ -743,7 +743,7 @@ async fn delete_media(
     let deleted = repo
         .delete_media(media_id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to delete media: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to delete media: {}", e)))?;
 
     if !deleted {
         return Err(ErrorResponse::not_found("Media not found"));
@@ -766,7 +766,7 @@ async fn toggle_reaction(
 ) -> Result<Json<ReactionResponse>, ErrorResponse> {
     // Validate reaction type
     if !VALID_REACTIONS.contains(&req.reaction.as_str()) {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(ErrorResponse::bad_request(format!(
             "Invalid reaction type. Must be one of: {:?}",
             VALID_REACTIONS
         )));
@@ -777,10 +777,10 @@ async fn toggle_reaction(
     let added = repo
         .toggle_reaction(id, user.user_id, &req.reaction)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to toggle reaction: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to toggle reaction: {}", e)))?;
 
     let reaction_counts = repo.get_reaction_counts(id).await.map_err(|e| {
-        ErrorResponse::internal_error(&format!("Failed to get reaction counts: {}", e))
+        ErrorResponse::internal_error(format!("Failed to get reaction counts: {}", e))
     })?;
 
     Ok(Json(ReactionResponse {
@@ -799,7 +799,7 @@ async fn get_reaction_counts(
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let counts = repo.get_reaction_counts(id).await.map_err(|e| {
-        ErrorResponse::internal_error(&format!("Failed to get reaction counts: {}", e))
+        ErrorResponse::internal_error(format!("Failed to get reaction counts: {}", e))
     })?;
 
     Ok(Json(counts))
@@ -821,7 +821,7 @@ async fn list_comments(
     let comments = repo
         .list_comments(id, None)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to list comments: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to list comments: {}", e)))?;
 
     Ok(Json(CommentsResponse {
         count: comments.len(),
@@ -842,7 +842,7 @@ async fn list_comment_replies(
         .list_comments(id, Some(comment_id))
         .await
         .map_err(|e| {
-            ErrorResponse::internal_error(&format!("Failed to list comment replies: {}", e))
+            ErrorResponse::internal_error(format!("Failed to list comment replies: {}", e))
         })?;
 
     Ok(Json(CommentsResponse {
@@ -861,7 +861,7 @@ async fn create_comment(
 ) -> Result<(StatusCode, Json<ArticleComment>), ErrorResponse> {
     // Validate input
     if req.content.is_empty() || req.content.len() > MAX_COMMENT_LENGTH {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(ErrorResponse::bad_request(format!(
             "Comment must be between 1 and {} characters",
             MAX_COMMENT_LENGTH
         )));
@@ -877,7 +877,7 @@ async fn create_comment(
     let comment = repo
         .add_comment(id, user.user_id, data)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to create comment: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to create comment: {}", e)))?;
 
     Ok((StatusCode::CREATED, Json(comment)))
 }
@@ -892,7 +892,7 @@ async fn update_comment(
 ) -> Result<Json<ArticleComment>, ErrorResponse> {
     // Validate input
     if req.content.is_empty() || req.content.len() > MAX_COMMENT_LENGTH {
-        return Err(ErrorResponse::bad_request(&format!(
+        return Err(ErrorResponse::bad_request(format!(
             "Comment must be between 1 and {} characters",
             MAX_COMMENT_LENGTH
         )));
@@ -903,7 +903,7 @@ async fn update_comment(
     let comment = repo
         .update_comment(comment_id, user.user_id, &req.content)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to update comment: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to update comment: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Comment not found"))?;
 
     Ok(Json(comment))
@@ -921,7 +921,7 @@ async fn delete_comment(
     let deleted = repo
         .delete_comment(comment_id, user.user_id)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to delete comment: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to delete comment: {}", e)))?;
 
     if !deleted {
         return Err(ErrorResponse::not_found("Comment not found"));
@@ -950,7 +950,7 @@ async fn moderate_comment(
     let comment = repo
         .moderate_comment(comment_id, user.user_id, req.delete, req.reason)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to moderate comment: {}", e)))?
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to moderate comment: {}", e)))?
         .ok_or_else(|| ErrorResponse::not_found("Comment not found"))?;
 
     Ok(Json(comment))
@@ -972,7 +972,7 @@ async fn record_view(
 
     repo.record_view(id, Some(user.user_id), req.duration_seconds)
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to record view: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to record view: {}", e)))?;
 
     Ok(StatusCode::OK)
 }
@@ -988,7 +988,7 @@ async fn get_statistics(
     let statistics = repo
         .get_statistics()
         .await
-        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to get statistics: {}", e)))?;
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to get statistics: {}", e)))?;
 
     Ok(Json(StatisticsResponse { statistics }))
 }
