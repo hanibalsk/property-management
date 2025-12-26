@@ -8,7 +8,7 @@ So that **I can quickly generate standardized documents with placeholder data**.
 
 ## Status
 
-in-progress
+done
 
 ## Acceptance Criteria
 
@@ -29,32 +29,32 @@ in-progress
 
 ## Tasks/Subtasks
 
-- [ ] **Task 1: Database Schema for Templates**
-  - [ ] Create migration 00036 for document_templates table
-  - [ ] Add template_content (markdown/HTML storage)
-  - [ ] Add placeholders JSONB column for placeholder definitions
-  - [ ] Add template_type enum (lease, notice, invoice, report, custom)
-  - [ ] Add generated_documents tracking
+- [x] **Task 1: Database Schema for Templates**
+  - [x] Create migration 00036 for document_templates table
+  - [x] Add template_content (markdown/HTML storage)
+  - [x] Add placeholders JSONB column for placeholder definitions
+  - [x] Add template_type enum (lease, notice, invoice, report, custom)
+  - [x] Add generated_documents tracking
 
-- [ ] **Task 2: Update Models**
-  - [ ] Create DocumentTemplate model
-  - [ ] Create TemplatePlaceholder struct for placeholder metadata
-  - [ ] Create GenerateDocumentRequest for document generation
-  - [ ] Create template response types
+- [x] **Task 2: Update Models**
+  - [x] Create DocumentTemplate model
+  - [x] Create TemplatePlaceholder struct for placeholder metadata
+  - [x] Create GenerateDocumentRequest for document generation
+  - [x] Create template response types
 
-- [ ] **Task 3: Repository Methods**
-  - [ ] Implement create_template()
-  - [ ] Implement find_template_by_id()
-  - [ ] Implement list_templates()
-  - [ ] Implement generate_document() - replace placeholders and create doc
+- [x] **Task 3: Repository Methods**
+  - [x] Implement create_template()
+  - [x] Implement find_template_by_id()
+  - [x] Implement list_templates()
+  - [x] Implement generate_document() - replace placeholders and create doc
 
-- [ ] **Task 4: API Endpoints**
-  - [ ] POST /api/v1/templates - Create template
-  - [ ] GET /api/v1/templates - List templates
-  - [ ] GET /api/v1/templates/:id - Get template details
-  - [ ] PUT /api/v1/templates/:id - Update template
-  - [ ] DELETE /api/v1/templates/:id - Delete template
-  - [ ] POST /api/v1/templates/:id/generate - Generate document from template
+- [x] **Task 4: API Endpoints**
+  - [x] POST /api/v1/templates - Create template
+  - [x] GET /api/v1/templates - List templates
+  - [x] GET /api/v1/templates/:id - Get template details
+  - [x] PUT /api/v1/templates/:id - Update template
+  - [x] DELETE /api/v1/templates/:id - Delete template
+  - [x] POST /api/v1/templates/:id/generate - Generate document from template
 
 ## Dev Notes
 
@@ -67,14 +67,31 @@ in-progress
 ## Dev Agent Record
 
 ### Implementation Plan
-*To be filled during implementation*
+All tasks have been implemented as part of the Epic 7B document templates work.
 
 ## File List
 
-*To be filled during implementation*
+### Database Migration
+- `backend/crates/db/migrations/00036_add_document_templates.sql` - Template schema
+
+### Models
+- `backend/crates/db/src/models/document_template.rs` - DocumentTemplate, TemplatePlaceholder types
+- `backend/crates/db/src/models/mod.rs` - Model exports
+
+### Repository
+- `backend/crates/db/src/repositories/document_template.rs` - Template repository
+
+### API Routes
+- `backend/servers/api-server/src/routes/templates.rs` - Template API endpoints
+- `backend/servers/api-server/src/routes/mod.rs` - Route exports
+- `backend/servers/api-server/src/main.rs` - Route registration
+
+### State
+- `backend/servers/api-server/src/state.rs` - DocumentTemplateRepository in AppState
 
 ## Change Log
 
 | Date | Change | Author |
 |------|--------|--------|
 | 2025-12-22 | Story created | AI Agent |
+| 2025-12-26 | Story verified complete - all tasks implemented | AI Agent |
