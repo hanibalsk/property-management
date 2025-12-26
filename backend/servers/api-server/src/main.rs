@@ -372,6 +372,8 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/visitors",
             routes::package_visitor::visitors_router(),
         )
+        // News routes (Epic 59)
+        .nest("/api/v1/news", routes::news_articles::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware

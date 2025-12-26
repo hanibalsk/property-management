@@ -50,23 +50,11 @@ const STORAGE_KEY = 'ppt-accessibility-settings';
 const EXPLICIT_SETTINGS_KEY = 'ppt-accessibility-explicit-settings';
 
 /**
- * Interface to track which settings were explicitly set by the user
- * vs derived from system preferences.
+ * Tracks which settings have been explicitly set by the user (vs. system defaults).
+ * Keys must match AccessibilitySettings interface properties.
  */
-interface ExplicitSettings {
-  colorScheme: boolean;
-  textSize: boolean;
-  reduceMotion: boolean;
-  screenReaderEnabled: boolean;
-  keyboardNavigationEnabled: boolean;
-}
-
-const DEFAULT_EXPLICIT_SETTINGS: ExplicitSettings = {
-  colorScheme: false,
-  textSize: false,
-  reduceMotion: false,
-  screenReaderEnabled: false,
-  keyboardNavigationEnabled: false,
+type ExplicitSettings = {
+  [K in keyof AccessibilitySettings]?: boolean;
 };
 
 function loadSettings(): AccessibilitySettings {
@@ -90,6 +78,21 @@ function loadSettings(): AccessibilitySettings {
   };
 }
 
+function loadExplicitSettings(): ExplicitSettings {
+  if (typeof window === 'undefined') return {};
+
+  try {
+    const stored = localStorage.getItem(EXPLICIT_SETTINGS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error('Failed to load explicit settings:', error);
+  }
+
+  return {};
+}
+
 function saveSettings(settings: AccessibilitySettings): void {
   if (typeof window === 'undefined') return;
 
@@ -100,27 +103,11 @@ function saveSettings(settings: AccessibilitySettings): void {
   }
 }
 
-function loadExplicitSettings(): ExplicitSettings {
-  if (typeof window === 'undefined') return DEFAULT_EXPLICIT_SETTINGS;
-
-  try {
-    const stored = localStorage.getItem(EXPLICIT_SETTINGS_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return { ...DEFAULT_EXPLICIT_SETTINGS, ...parsed };
-    }
-  } catch (error) {
-    console.error('Failed to load explicit settings:', error);
-  }
-
-  return DEFAULT_EXPLICIT_SETTINGS;
-}
-
-function saveExplicitSettings(explicitSettings: ExplicitSettings): void {
+function saveExplicitSettings(explicit: ExplicitSettings): void {
   if (typeof window === 'undefined') return;
 
   try {
-    localStorage.setItem(EXPLICIT_SETTINGS_KEY, JSON.stringify(explicitSettings));
+    localStorage.setItem(EXPLICIT_SETTINGS_KEY, JSON.stringify(explicit));
   } catch (error) {
     console.error('Failed to save explicit settings:', error);
   }
@@ -193,7 +180,13 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     saveSettings(settings);
   }, [settings]);
 
+  // Save explicit settings when they change
+  useEffect(() => {
+    saveExplicitSettings(explicitSettings);
+  }, [explicitSettings]);
+
   // Listen for system preference changes
+  // Only apply system changes if user hasn't explicitly set the preference
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -201,7 +194,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     const handleDarkModeChange = (e: MediaQueryListEvent) => {
-      // Only apply system preference if user hasn't explicitly set a preference
+      // Only apply system preference if user hasn't explicitly set color scheme
       if (!explicitSettings.colorScheme) {
         setSettings((prev: AccessibilitySettings) => ({
           ...prev,
@@ -211,7 +204,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     };
 
     const handleReducedMotionChange = (e: MediaQueryListEvent) => {
-      // Only apply system preference if user hasn't explicitly set a preference
+      // Only apply system preference if user hasn't explicitly set reduced motion
       if (!explicitSettings.reduceMotion) {
         setSettings((prev: AccessibilitySettings) => ({
           ...prev,
@@ -232,21 +225,16 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
   const updateSettings = (updates: Partial<AccessibilitySettings>) => {
     setSettings((prev: AccessibilitySettings) => ({ ...prev, ...updates }));
 
-    // Mark any user-changed settings as explicit
-    const newExplicitSettings: Partial<ExplicitSettings> = {};
+    // Mark updated settings as explicitly set by the user
+    // Use type-safe iteration over the keys that were actually provided
+    const newExplicitSettings: ExplicitSettings = {};
     for (const key of Object.keys(updates)) {
-      if (key in DEFAULT_EXPLICIT_SETTINGS) {
-        newExplicitSettings[key as keyof ExplicitSettings] = true;
+      if (key in DEFAULT_ACCESSIBILITY_SETTINGS) {
+        const validKey = key as keyof AccessibilitySettings;
+        newExplicitSettings[validKey] = true;
       }
     }
-
-    if (Object.keys(newExplicitSettings).length > 0) {
-      setExplicitSettings((prev: ExplicitSettings) => {
-        const updated = { ...prev, ...newExplicitSettings };
-        saveExplicitSettings(updated);
-        return updated;
-      });
-    }
+    setExplicitSettings((prev) => ({ ...prev, ...newExplicitSettings }));
   };
 
   const value: AccessibilityContextValue = {

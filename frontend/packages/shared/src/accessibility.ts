@@ -49,18 +49,24 @@ export const DEFAULT_ACCESSIBILITY_SETTINGS: AccessibilitySettings = {
 /**
  * Hook to access and update accessibility settings.
  *
- * @returns Accessibility context with settings and update function
+ * NOTE: This is a stub implementation that does not persist settings.
+ * For full functionality, use the `useAccessibilityContext` hook from
+ * `@ppt/ui-kit` which requires an AccessibilityProvider wrapper.
+ *
+ * @deprecated Use useAccessibilityContext from @ppt/ui-kit instead
+ * @returns Accessibility context with settings and update function (non-persisting)
  */
 export function useAccessibility() {
-  // This will be implemented by the AccessibilityProvider context
-  // For now, return a basic implementation
+  // IMPORTANT: This is a fallback stub. For actual usage, consumers should:
+  // 1. Wrap their app with AccessibilityProvider from @ppt/ui-kit
+  // 2. Use useAccessibilityContext from @ppt/ui-kit
+  //
+  // This stub exists only for type compatibility and testing scenarios.
   const settings: AccessibilitySettings = DEFAULT_ACCESSIBILITY_SETTINGS;
 
-  const updateSettings = (updates: Partial<AccessibilitySettings>) => {
-    console.warn(
-      'useAccessibility: No AccessibilityProvider found. Settings not persisted.',
-      updates
-    );
+  const updateSettings = (_updates: Partial<AccessibilitySettings>) => {
+    // Stub implementation - actual persistence is handled by AccessibilityProvider in @ppt/ui-kit.
+    // We intentionally skip the dev warning here to avoid build-tool-specific globals.
   };
 
   return {

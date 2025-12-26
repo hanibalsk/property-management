@@ -26,6 +26,7 @@ export * from './reports';
 export * from './facilities';
 export * from './registry';
 export * from './packages';
+export * from './emergency';
 
 // API client configuration
 export interface ApiConfig {
