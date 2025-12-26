@@ -379,8 +379,8 @@ async fn create_article(
     if let Some(ref status) = req.status {
         if !article_status::ALL.contains(&status.as_str()) {
             return Err(ErrorResponse::bad_request(format!(
-                "Invalid status. Must be one of: {:?}",
-                article_status::ALL
+                "Invalid status. Must be one of: {}",
+                article_status::ALL.join(", ")
             )));
         }
     }
@@ -514,11 +514,18 @@ async fn update_article(
 )]
 async fn publish_article(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     _user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<PublishArticleRequest>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+    // Authorization: Only managers can publish articles
+    if !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only managers can publish articles",
+        ));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
@@ -549,10 +556,17 @@ async fn publish_article(
 )]
 async fn archive_article(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+    // Authorization: Only managers can archive articles
+    if !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only managers can archive articles",
+        ));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
@@ -583,10 +597,17 @@ async fn archive_article(
 )]
 async fn restore_article(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+    // Authorization: Only managers can restore archived articles
+    if !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only managers can restore articles",
+        ));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
@@ -617,10 +638,17 @@ async fn restore_article(
 )]
 async fn delete_article(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
+    // Authorization: Only managers can delete articles
+    if !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only managers can delete articles",
+        ));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let deleted = repo
@@ -652,11 +680,18 @@ async fn delete_article(
 )]
 async fn pin_article(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<PinArticleRequest>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+    // Authorization: Only managers can pin/unpin articles
+    if !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only managers can pin or unpin articles",
+        ));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let article = repo
@@ -701,12 +736,25 @@ async fn list_media(
 /// Add media to an article.
 async fn add_media(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
-    _user: AuthUser,
+    TenantExtractor(tenant): TenantExtractor,
+    user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<AddMediaRequest>,
 ) -> Result<(StatusCode, Json<ArticleMedia>), ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
+
+    // Authorization: Only the author or managers can add media to articles
+    let article = repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to get article: {}", e)))?
+        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+
+    if article.author_id != user.user_id && !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only the author or managers can add media to articles",
+        ));
+    }
 
     let data = CreateArticleMedia {
         media_type: req.media_type,
@@ -734,11 +782,24 @@ async fn add_media(
 /// Delete media from an article.
 async fn delete_media(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
-    _user: AuthUser,
-    Path((_id, media_id)): Path<(Uuid, Uuid)>,
+    TenantExtractor(tenant): TenantExtractor,
+    user: AuthUser,
+    Path((id, media_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
+
+    // Authorization: Only the author or managers can delete media from articles
+    let article = repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to get article: {}", e)))?
+        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+
+    if article.author_id != user.user_id && !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only the author or managers can delete media from articles",
+        ));
+    }
 
     let deleted = repo
         .delete_media(media_id)
@@ -773,6 +834,19 @@ async fn toggle_reaction(
     }
 
     let repo = NewsArticleRepository::new(state.db.clone());
+
+    // Check if reactions are enabled for this article
+    let article = repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to get article: {}", e)))?
+        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+
+    if !article.reactions_enabled {
+        return Err(ErrorResponse::bad_request(
+            "Reactions are disabled for this article",
+        ));
+    }
 
     let added = repo
         .toggle_reaction(id, user.user_id, &req.reaction)
@@ -868,6 +942,19 @@ async fn create_comment(
     }
 
     let repo = NewsArticleRepository::new(state.db.clone());
+
+    // Check if comments are enabled for this article
+    let article = repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| ErrorResponse::internal_error(format!("Failed to get article: {}", e)))?
+        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+
+    if !article.comments_enabled {
+        return Err(ErrorResponse::bad_request(
+            "Comments are disabled for this article",
+        ));
+    }
 
     let data = CreateArticleComment {
         content: req.content,

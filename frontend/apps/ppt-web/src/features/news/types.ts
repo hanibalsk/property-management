@@ -44,6 +44,7 @@ export interface ArticleSummary {
   reactionCount: number;
   commentCount: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface ArticleMedia {

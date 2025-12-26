@@ -207,7 +207,8 @@ impl NewsArticleRepository {
         }
 
         if let Some(building_id) = query.building_id {
-            query_builder = query_builder.bind(serde_json::json!([building_id]));
+            // Wrap UUID in an array for JSON containment check (@> checks if building_ids contains the array)
+            query_builder = query_builder.bind(serde_json::json!([building_id.to_string()]));
         }
 
         if let Some(limit) = query.limit {
@@ -256,7 +257,9 @@ impl NewsArticleRepository {
         }
 
         if let Some(building_id) = query.building_id {
-            query_builder = query_builder.bind(serde_json::json!([building_id]));
+            // building_ids is stored as a JSONB array of UUID strings (e.g., ["uuid-1", "uuid-2"])
+            // Use @> containment check with a single-element array
+            query_builder = query_builder.bind(serde_json::json!([building_id.to_string()]));
         }
 
         query_builder.fetch_one(&self.pool).await
@@ -445,50 +448,61 @@ impl NewsArticleRepository {
         user_id: Uuid,
         reaction: &str,
     ) -> Result<bool, SqlxError> {
-        // First, try to insert the reaction. If a reaction already exists for this
-        // (article_id, user_id) pair, ON CONFLICT DO NOTHING will cause the insert
-        // to be skipped (rows_affected will be 0).
-        let insert_result = sqlx::query(
-            "INSERT INTO article_reactions (article_id, user_id, reaction) \
-             VALUES ($1, $2, $3) \
-             ON CONFLICT (article_id, user_id) DO NOTHING",
+        // Use a single atomic query with INSERT ... ON CONFLICT ... DO UPDATE
+        // combined with a CTE to handle all cases atomically and avoid race conditions.
+        //
+        // This query:
+        // 1. Tries to insert a new reaction
+        // 2. On conflict, if the reaction type is the same, deletes it (toggle off)
+        // 3. On conflict, if the reaction type is different, updates it
+        //
+        // Returns the action taken: 'inserted', 'updated', or 'deleted'
+        let result: Option<(String,)> = sqlx::query_as(
+            r#"
+            WITH existing AS (
+                SELECT id, reaction FROM article_reactions
+                WHERE article_id = $1 AND user_id = $2
+                FOR UPDATE
+            ),
+            action AS (
+                SELECT CASE
+                    WHEN NOT EXISTS (SELECT 1 FROM existing) THEN 'insert'
+                    WHEN (SELECT reaction FROM existing) = $3 THEN 'delete'
+                    ELSE 'update'
+                END as op
+            ),
+            do_insert AS (
+                INSERT INTO article_reactions (article_id, user_id, reaction)
+                SELECT $1, $2, $3
+                WHERE (SELECT op FROM action) = 'insert'
+                RETURNING 'inserted' as result
+            ),
+            do_update AS (
+                UPDATE article_reactions
+                SET reaction = $3
+                WHERE article_id = $1 AND user_id = $2
+                  AND (SELECT op FROM action) = 'update'
+                RETURNING 'updated' as result
+            ),
+            do_delete AS (
+                DELETE FROM article_reactions
+                WHERE article_id = $1 AND user_id = $2
+                  AND (SELECT op FROM action) = 'delete'
+                RETURNING 'deleted' as result
+            )
+            SELECT result FROM do_insert
+            UNION ALL SELECT result FROM do_update
+            UNION ALL SELECT result FROM do_delete
+            "#,
         )
         .bind(article_id)
         .bind(user_id)
         .bind(reaction)
-        .execute(&self.pool)
+        .fetch_optional(&self.pool)
         .await?;
 
-        if insert_result.rows_affected() == 1 {
-            // A new reaction was inserted (toggled on).
-            Ok(true)
-        } else {
-            // A reaction already exists. Check if it's the same type.
-            // If it's the same, delete it (toggle off). If different, update it.
-            let update_result = sqlx::query(
-                "UPDATE article_reactions \
-                 SET reaction = $3 \
-                 WHERE article_id = $1 AND user_id = $2 AND reaction != $3",
-            )
-            .bind(article_id)
-            .bind(user_id)
-            .bind(reaction)
-            .execute(&self.pool)
-            .await?;
-
-            if update_result.rows_affected() == 1 {
-                // Updated to a different reaction type.
-                Ok(true)
-            } else {
-                // Same reaction type, so toggle it off by deleting.
-                sqlx::query("DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2")
-                    .bind(article_id)
-                    .bind(user_id)
-                    .execute(&self.pool)
-                    .await?;
-                Ok(false)
-            }
-        }
+        // Return true if reaction was added/updated, false if removed
+        Ok(result.map(|(r,)| r != "deleted").unwrap_or(false))
     }
 
     pub async fn get_reaction_counts(&self, article_id: Uuid) -> Result<ReactionCounts, SqlxError> {
@@ -642,7 +656,7 @@ impl NewsArticleRepository {
     ) -> Result<Option<ArticleComment>, SqlxError> {
         if delete {
             sqlx::query_as::<_, ArticleComment>(
-                "UPDATE article_comments SET is_moderated = TRUE, moderated_by = $2, moderation_reason = $3, deleted_at = NOW() WHERE id = $1 RETURNING *",
+                "UPDATE article_comments SET is_moderated = TRUE, moderated_at = NOW(), moderated_by = $2, moderation_reason = $3, deleted_at = NOW() WHERE id = $1 RETURNING *",
             )
             .bind(comment_id)
             .bind(moderator_id)
@@ -651,7 +665,7 @@ impl NewsArticleRepository {
             .await
         } else {
             sqlx::query_as::<_, ArticleComment>(
-                "UPDATE article_comments SET is_moderated = TRUE, moderated_by = $2, moderation_reason = $3 WHERE id = $1 RETURNING *",
+                "UPDATE article_comments SET is_moderated = TRUE, moderated_at = NOW(), moderated_by = $2, moderation_reason = $3 WHERE id = $1 RETURNING *",
             )
             .bind(comment_id)
             .bind(moderator_id)
