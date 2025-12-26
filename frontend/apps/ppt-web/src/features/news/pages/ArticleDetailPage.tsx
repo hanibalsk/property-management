@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useOrganization } from '../../../hooks';
 import { ArticleComments, ArticleReactions } from '../components';
 import type { ArticleCommentWithAuthor, NewsArticle, ReactionCounts, ReactionType } from '../types';
@@ -289,9 +290,9 @@ export function ArticleDetailPage({ articleId }: ArticleDetailPageProps) {
   return (
     <article className="article-detail-page">
       <header className="article-header">
-        <a href="/news" className="back-link">
+        <Link to="/news" className="back-link">
           &larr; Back to News
-        </a>
+        </Link>
 
         {article.pinned && <span className="pinned-badge">Pinned</span>}
 
@@ -300,7 +301,11 @@ export function ArticleDetailPage({ articleId }: ArticleDetailPageProps) {
         <div className="article-meta">
           <span className="author">
             {article.authorAvatarUrl && (
-              <img src={article.authorAvatarUrl} alt="" className="author-avatar" />
+              <img
+                src={article.authorAvatarUrl}
+                alt={article.authorName}
+                className="author-avatar"
+              />
             )}
             {article.authorName}
           </span>
@@ -314,7 +319,7 @@ export function ArticleDetailPage({ articleId }: ArticleDetailPageProps) {
       </header>
 
       {article.coverImageUrl && (
-        <img src={article.coverImageUrl} alt="" className="article-cover-image" />
+        <img src={article.coverImageUrl} alt={article.title} className="article-cover-image" />
       )}
 
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: Article content is sanitized on the backend */}

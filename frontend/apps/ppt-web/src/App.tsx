@@ -1,5 +1,5 @@
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
-import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes, useParams } from 'react-router-dom';
 import { EmergencyContactDirectoryPage } from './features/emergency';
 import { ArticleDetailPage, NewsListPage } from './features/news';
 import { PrivacySettingsPage } from './features/privacy';
@@ -12,11 +12,11 @@ function App() {
         <SkipNavigation mainContentId="main-content" />
         <div className="app">
           <nav className="app-nav" aria-label="Main navigation">
-            <a href="/">Home</a>
-            <a href="/news">News</a>
-            <a href="/emergency">Emergency Contacts</a>
-            <a href="/settings/accessibility">Accessibility</a>
-            <a href="/settings/privacy">Privacy</a>
+            <Link to="/">Home</Link>
+            <Link to="/news">News</Link>
+            <Link to="/emergency">Emergency Contacts</Link>
+            <Link to="/settings/accessibility">Accessibility</Link>
+            <Link to="/settings/privacy">Privacy</Link>
           </nav>
           <main id="main-content">
             <Routes>

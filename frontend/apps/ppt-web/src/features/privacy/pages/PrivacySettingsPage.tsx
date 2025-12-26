@@ -38,12 +38,15 @@ export function PrivacySettingsPage() {
         fetch('/api/v1/gdpr/export/history'),
       ]);
 
-      if (settingsRes.ok) {
-        setSettings(await settingsRes.json());
+      if (!settingsRes.ok) {
+        throw new Error(`Failed to load privacy settings (status ${settingsRes.status})`);
       }
-      if (historyRes.ok) {
-        setExportRequests(await historyRes.json());
+      if (!historyRes.ok) {
+        throw new Error(`Failed to load export history (status ${historyRes.status})`);
       }
+
+      setSettings(await settingsRes.json());
+      setExportRequests(await historyRes.json());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load privacy settings');
     } finally {

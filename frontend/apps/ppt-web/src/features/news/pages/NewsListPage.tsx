@@ -4,12 +4,14 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../../hooks';
 import { NewsArticleCard } from '../components';
 import type { ArticleStatus, ArticleSummary } from '../types';
 
 export function NewsListPage() {
   const { organizationId } = useOrganization();
+  const navigate = useNavigate();
   const [articles, setArticles] = useState<ArticleSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -182,9 +184,9 @@ export function NewsListPage() {
     <div className="news-list-page">
       <header className="news-header">
         <h1>News & Announcements</h1>
-        <a href="/news/new" className="btn btn-primary">
+        <Link to="/news/new" className="btn btn-primary">
           Create Article
-        </a>
+        </Link>
       </header>
 
       {error && (
@@ -243,10 +245,10 @@ export function NewsListPage() {
               key={article.id}
               article={article}
               onView={(id) => {
-                window.location.href = `/news/${id}`;
+                navigate(`/news/${id}`);
               }}
               onEdit={(id) => {
-                window.location.href = `/news/${id}/edit`;
+                navigate(`/news/${id}/edit`);
               }}
               onPublish={handlePublish}
               onArchive={handleArchive}
