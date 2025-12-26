@@ -769,7 +769,11 @@ pub async fn sync_calendar(
         tracing::error!(error = %e, provider = %connection.provider, "Calendar sync failed");
 
         // Update sync status to error (intentionally not awaited - fire and forget)
-        drop(state.integration_repo.update_sync_status(path.id, "error", Some(&e.to_string())));
+        drop(
+            state
+                .integration_repo
+                .update_sync_status(path.id, "error", Some(&e.to_string())),
+        );
 
         (
             StatusCode::INTERNAL_SERVER_ERROR,
