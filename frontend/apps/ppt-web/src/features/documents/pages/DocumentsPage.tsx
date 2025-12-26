@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { DocumentSearch } from '../components/DocumentSearch';
 import { DocumentDetail } from './DocumentDetail';
 
@@ -21,12 +22,8 @@ export function DocumentsPage({ organizationId, buildingId }: DocumentsPageProps
     <div className="documents-page">
       <div className="page-header">
         <h1 className="page-title">Documents</h1>
-        <div className="view-toggle">
-          <button
-            type="button"
-            onClick={() => setViewMode('search')}
-            className={`toggle-btn ${viewMode === 'search' ? 'active' : ''}`}
-          >
+        <div className="header-actions">
+          <Link to="/documents/upload" className="upload-link">
             <svg
               width="16"
               height="16"
@@ -36,29 +33,51 @@ export function DocumentsPage({ organizationId, buildingId }: DocumentsPageProps
               strokeWidth="2"
               aria-hidden="true"
             >
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            Search
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('browse')}
-            className={`toggle-btn ${viewMode === 'browse' ? 'active' : ''}`}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
+            Upload
+          </Link>
+          <div className="view-toggle">
+            <button
+              type="button"
+              onClick={() => setViewMode('search')}
+              className={`toggle-btn ${viewMode === 'search' ? 'active' : ''}`}
             >
-              <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-            </svg>
-            Browse
-          </button>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('browse')}
+              className={`toggle-btn ${viewMode === 'browse' ? 'active' : ''}`}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+              </svg>
+              Browse
+            </button>
+          </div>
         </div>
       </div>
 
@@ -114,6 +133,30 @@ export function DocumentsPage({ organizationId, buildingId }: DocumentsPageProps
           font-size: 1.5rem;
           font-weight: 600;
           color: #1e293b;
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .upload-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-decoration: none;
+          background: #3b82f6;
+          color: white;
+          border-radius: 0.375rem;
+          transition: background 0.15s;
+        }
+
+        .upload-link:hover {
+          background: #2563eb;
         }
 
         .view-toggle {

@@ -155,3 +155,68 @@ export async function getIntelligenceStats(): Promise<{
 }> {
   return fetchApi(`${API_BASE}/intelligence/stats`);
 }
+
+// Upload document with file (Story 39.2)
+export interface UploadDocumentParams {
+  file: File;
+  title: string;
+  description?: string;
+  category: string;
+  organizationId: string;
+  buildingId?: string;
+  folderId?: string;
+  onProgress?: (progress: number) => void;
+}
+
+export async function uploadDocument(
+  params: UploadDocumentParams
+): Promise<{ id: string; message: string }> {
+  const formData = new FormData();
+  formData.append('file', params.file);
+  formData.append('title', params.title);
+  if (params.description) formData.append('description', params.description);
+  formData.append('category', params.category);
+  formData.append('organization_id', params.organizationId);
+  if (params.buildingId) formData.append('building_id', params.buildingId);
+  if (params.folderId) formData.append('folder_id', params.folderId);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && params.onProgress) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        params.onProgress(progress);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch {
+          reject(new Error('Invalid response format'));
+        }
+      } else {
+        try {
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error.message || `HTTP ${xhr.status}`));
+        } catch {
+          reject(new Error(`HTTP ${xhr.status}`));
+        }
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Network error'));
+    });
+
+    xhr.addEventListener('abort', () => {
+      reject(new Error('Upload cancelled'));
+    });
+
+    xhr.open('POST', `${API_BASE}/upload`);
+    xhr.send(formData);
+  });
+}

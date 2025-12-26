@@ -1,0 +1,827 @@
+/**
+ * Document Upload Component (Story 39.2).
+ *
+ * Upload documents with OCR processing support.
+ */
+
+import { DOCUMENT_CATEGORIES, type DocumentCategory, useUploadDocument } from '@ppt/api-client';
+import { useCallback, useState, type DragEvent, type ChangeEvent } from 'react';
+
+interface DocumentUploadProps {
+  organizationId: string;
+  buildingId?: string;
+  folderId?: string;
+  onUploadComplete?: (documentId: string) => void;
+  onCancel?: () => void;
+}
+
+interface UploadFile {
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'processing' | 'completed' | 'error';
+  error?: string;
+  documentId?: string;
+}
+
+const SUPPORTED_MIME_TYPES = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/tiff',
+  'image/webp',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+];
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+export function DocumentUpload({
+  organizationId,
+  buildingId,
+  folderId,
+  onUploadComplete,
+  onCancel,
+}: DocumentUploadProps) {
+  const [files, setFiles] = useState<UploadFile[]>([]);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<DocumentCategory>('other');
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const uploadDocument = useUploadDocument();
+
+  const validateFile = useCallback((file: File): string | null => {
+    if (!SUPPORTED_MIME_TYPES.includes(file.type)) {
+      return `Unsupported file type: ${file.type || 'unknown'}`;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      return `File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 50MB)`;
+    }
+    return null;
+  }, []);
+
+  const handleFiles = useCallback(
+    (fileList: FileList) => {
+      const newFiles: UploadFile[] = Array.from(fileList).map((file) => ({
+        file,
+        progress: 0,
+        status: 'pending' as const,
+        error: validateFile(file) || undefined,
+      }));
+
+      // Mark files with validation errors
+      for (const f of newFiles) {
+        if (f.error) {
+          f.status = 'error';
+        }
+      }
+
+      setFiles((prev) => [...prev, ...newFiles]);
+
+      // Auto-set title from first file if not set
+      if (!title && newFiles.length > 0 && !newFiles[0].error) {
+        const fileName = newFiles[0].file.name;
+        const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+        setTitle(nameWithoutExt);
+      }
+    },
+    [validateFile, title]
+  );
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      if (e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+      }
+    },
+    [handleFiles]
+  );
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleFileInput = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleFiles(e.target.files);
+      }
+    },
+    [handleFiles]
+  );
+
+  const removeFile = useCallback((index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleUpload = useCallback(async () => {
+    const validFiles = files.filter((f) => f.status === 'pending' && !f.error);
+    if (validFiles.length === 0) return;
+
+    for (let i = 0; i < validFiles.length; i++) {
+      const uploadFile = validFiles[i];
+      const fileIndex = files.indexOf(uploadFile);
+
+      // Update status to uploading
+      setFiles((prev) =>
+        prev.map((f, idx) => (idx === fileIndex ? { ...f, status: 'uploading' as const } : f))
+      );
+
+      try {
+        const result = await uploadDocument.mutateAsync({
+          file: uploadFile.file,
+          title: validFiles.length === 1 ? title : `${title} - ${uploadFile.file.name}`,
+          description,
+          category,
+          organizationId,
+          buildingId,
+          folderId,
+          onProgress: (progress) => {
+            setFiles((prev) =>
+              prev.map((f, idx) =>
+                idx === fileIndex
+                  ? {
+                      ...f,
+                      progress,
+                      status: progress < 100 ? 'uploading' : ('processing' as const),
+                    }
+                  : f
+              )
+            );
+          },
+        });
+
+        // Update status to completed
+        setFiles((prev) =>
+          prev.map((f, idx) =>
+            idx === fileIndex
+              ? { ...f, status: 'completed' as const, documentId: result.id, progress: 100 }
+              : f
+          )
+        );
+
+        onUploadComplete?.(result.id);
+      } catch (error) {
+        // Update status to error
+        setFiles((prev) =>
+          prev.map((f, idx) =>
+            idx === fileIndex
+              ? {
+                  ...f,
+                  status: 'error' as const,
+                  error: error instanceof Error ? error.message : 'Upload failed',
+                }
+              : f
+          )
+        );
+      }
+    }
+  }, [
+    files,
+    title,
+    description,
+    category,
+    organizationId,
+    buildingId,
+    folderId,
+    uploadDocument,
+    onUploadComplete,
+  ]);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getFileTypeIcon = (mimeType: string): string => {
+    if (mimeType === 'application/pdf') return 'PDF';
+    if (mimeType.startsWith('image/')) return 'IMG';
+    if (mimeType.includes('word')) return 'DOC';
+    if (mimeType === 'text/plain') return 'TXT';
+    return 'FILE';
+  };
+
+  const canUpload =
+    files.some((f) => f.status === 'pending' && !f.error) && title.trim().length > 0;
+  const isUploading = files.some((f) => f.status === 'uploading' || f.status === 'processing');
+
+  return (
+    <div className="document-upload">
+      <div className="upload-header">
+        <h2 className="upload-title">Upload Document</h2>
+        <p className="upload-subtitle">
+          Upload documents for automatic text extraction (OCR) and AI analysis
+        </p>
+      </div>
+
+      {/* Drop Zone */}
+      <div
+        className={`drop-zone ${isDragOver ? 'drag-over' : ''}`}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+      >
+        <div className="drop-zone-content">
+          <svg
+            className="drop-icon"
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <p className="drop-text">
+            <span className="drop-primary">Drop files here</span>
+            <span className="drop-secondary"> or click to browse</span>
+          </p>
+          <p className="drop-hint">Supports PDF, images, Word documents, and text files (max 50MB)</p>
+          <input
+            type="file"
+            className="file-input"
+            onChange={handleFileInput}
+            multiple
+            accept={SUPPORTED_MIME_TYPES.join(',')}
+            aria-label="Select files to upload"
+          />
+        </div>
+      </div>
+
+      {/* File List */}
+      {files.length > 0 && (
+        <div className="file-list">
+          <h3 className="file-list-title">Selected Files ({files.length})</h3>
+          <ul className="files">
+            {files.map((uploadFile, index) => (
+              <li key={`${uploadFile.file.name}-${index}`} className={`file-item ${uploadFile.status}`}>
+                <div className="file-icon">{getFileTypeIcon(uploadFile.file.type)}</div>
+                <div className="file-info">
+                  <span className="file-name">{uploadFile.file.name}</span>
+                  <span className="file-size">{formatFileSize(uploadFile.file.size)}</span>
+                  {uploadFile.error && <span className="file-error">{uploadFile.error}</span>}
+                  {uploadFile.status === 'uploading' && (
+                    <div className="progress-bar">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${uploadFile.progress}%` }}
+                      />
+                    </div>
+                  )}
+                  {uploadFile.status === 'processing' && (
+                    <span className="processing-text">Processing OCR...</span>
+                  )}
+                  {uploadFile.status === 'completed' && (
+                    <span className="completed-text">Uploaded successfully</span>
+                  )}
+                </div>
+                <div className="file-actions">
+                  {uploadFile.status === 'pending' && (
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="remove-btn"
+                      aria-label={`Remove ${uploadFile.file.name}`}
+                    >
+                      x
+                    </button>
+                  )}
+                  {uploadFile.status === 'completed' && (
+                    <span className="success-icon" aria-label="Upload completed">
+                      OK
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Document Metadata */}
+      {files.some((f) => f.status === 'pending' && !f.error) && (
+        <div className="metadata-form">
+          <h3 className="form-title">Document Details</h3>
+
+          <div className="form-field">
+            <label htmlFor="doc-title" className="field-label">
+              Title <span className="required">*</span>
+            </label>
+            <input
+              id="doc-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter document title"
+              className="text-input"
+              required
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="doc-description" className="field-label">
+              Description
+            </label>
+            <textarea
+              id="doc-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional description"
+              className="textarea-input"
+              rows={3}
+            />
+          </div>
+
+          <div className="form-field">
+            <label htmlFor="doc-category" className="field-label">
+              Category
+            </label>
+            <select
+              id="doc-category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as DocumentCategory)}
+              className="select-input"
+            >
+              {DOCUMENT_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </option>
+              ))}
+            </select>
+            <p className="field-hint">AI will suggest a category after analysis</p>
+          </div>
+        </div>
+      )}
+
+      {/* OCR Info */}
+      <div className="ocr-info">
+        <div className="info-icon">
+          <span className="ai-badge">AI</span>
+        </div>
+        <div className="info-content">
+          <h4 className="info-title">Automatic Text Extraction</h4>
+          <p className="info-text">
+            After upload, OCR will automatically extract text from your documents. This enables
+            full-text search, AI classification, and summarization.
+          </p>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="upload-actions">
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="btn btn-secondary" disabled={isUploading}>
+            Cancel
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleUpload}
+          disabled={!canUpload || isUploading}
+          className="btn btn-primary"
+        >
+          {isUploading ? (
+            <>
+              <span className="spinner" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Upload & Process
+            </>
+          )}
+        </button>
+      </div>
+
+      <style>{`
+        .document-upload {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          max-width: 600px;
+          margin: 0 auto;
+        }
+
+        .upload-header {
+          text-align: center;
+        }
+
+        .upload-title {
+          margin: 0 0 0.5rem;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .upload-subtitle {
+          margin: 0;
+          color: #64748b;
+        }
+
+        .drop-zone {
+          position: relative;
+          padding: 2rem;
+          border: 2px dashed #cbd5e1;
+          border-radius: 0.75rem;
+          background: #f8fafc;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .drop-zone:hover,
+        .drop-zone:focus-within {
+          border-color: #3b82f6;
+          background: #eff6ff;
+        }
+
+        .drop-zone.drag-over {
+          border-color: #3b82f6;
+          background: #dbeafe;
+          transform: scale(1.02);
+        }
+
+        .drop-zone-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .drop-icon {
+          color: #94a3b8;
+        }
+
+        .drop-zone:hover .drop-icon,
+        .drop-zone.drag-over .drop-icon {
+          color: #3b82f6;
+        }
+
+        .drop-text {
+          margin: 0;
+          font-size: 1rem;
+        }
+
+        .drop-primary {
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .drop-secondary {
+          color: #64748b;
+        }
+
+        .drop-hint {
+          margin: 0;
+          font-size: 0.875rem;
+          color: #94a3b8;
+        }
+
+        .file-input {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          opacity: 0;
+          cursor: pointer;
+        }
+
+        .file-list {
+          border: 1px solid #e2e8f0;
+          border-radius: 0.5rem;
+          overflow: hidden;
+        }
+
+        .file-list-title {
+          margin: 0;
+          padding: 0.75rem 1rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          background: #f8fafc;
+          color: #1e293b;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .files {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+
+        .file-item {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .file-item:last-child {
+          border-bottom: none;
+        }
+
+        .file-item.error {
+          background: #fef2f2;
+        }
+
+        .file-item.completed {
+          background: #f0fdf4;
+        }
+
+        .file-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          font-size: 0.625rem;
+          font-weight: 700;
+          background: #e2e8f0;
+          color: #475569;
+          border-radius: 0.375rem;
+        }
+
+        .file-info {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .file-name {
+          display: block;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #1e293b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .file-size {
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+
+        .file-error {
+          display: block;
+          font-size: 0.75rem;
+          color: #dc2626;
+        }
+
+        .progress-bar {
+          margin-top: 0.5rem;
+          height: 4px;
+          background: #e2e8f0;
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .progress-fill {
+          height: 100%;
+          background: #3b82f6;
+          transition: width 0.3s;
+        }
+
+        .processing-text {
+          display: block;
+          font-size: 0.75rem;
+          color: #2563eb;
+        }
+
+        .completed-text {
+          display: block;
+          font-size: 0.75rem;
+          color: #16a34a;
+        }
+
+        .file-actions {
+          flex-shrink: 0;
+        }
+
+        .remove-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          font-size: 1rem;
+          background: transparent;
+          border: 1px solid #e2e8f0;
+          border-radius: 0.25rem;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .remove-btn:hover {
+          background: #fee2e2;
+          border-color: #fecaca;
+          color: #dc2626;
+        }
+
+        .success-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          font-size: 0.625rem;
+          font-weight: 700;
+          background: #dcfce7;
+          color: #16a34a;
+          border-radius: 0.25rem;
+        }
+
+        .metadata-form {
+          padding: 1.5rem;
+          background: #f8fafc;
+          border-radius: 0.5rem;
+        }
+
+        .form-title {
+          margin: 0 0 1rem;
+          font-size: 1rem;
+          font-weight: 600;
+          color: #1e293b;
+        }
+
+        .form-field {
+          margin-bottom: 1rem;
+        }
+
+        .form-field:last-child {
+          margin-bottom: 0;
+        }
+
+        .field-label {
+          display: block;
+          margin-bottom: 0.375rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #475569;
+        }
+
+        .required {
+          color: #dc2626;
+        }
+
+        .text-input,
+        .textarea-input,
+        .select-input {
+          width: 100%;
+          padding: 0.5rem 0.75rem;
+          font-size: 0.875rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 0.375rem;
+          background: white;
+          transition: border-color 0.15s;
+        }
+
+        .text-input:focus,
+        .textarea-input:focus,
+        .select-input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .textarea-input {
+          resize: vertical;
+          min-height: 80px;
+        }
+
+        .field-hint {
+          margin: 0.375rem 0 0;
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+
+        .ocr-info {
+          display: flex;
+          gap: 1rem;
+          padding: 1rem;
+          background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+          border: 1px solid #c4b5fd;
+          border-radius: 0.5rem;
+        }
+
+        .info-icon {
+          flex-shrink: 0;
+        }
+
+        .ai-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.25rem 0.5rem;
+          font-size: 0.625rem;
+          font-weight: 700;
+          background: #7c3aed;
+          color: white;
+          border-radius: 0.25rem;
+        }
+
+        .info-content {
+          flex: 1;
+        }
+
+        .info-title {
+          margin: 0 0 0.25rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #5b21b6;
+        }
+
+        .info-text {
+          margin: 0;
+          font-size: 0.875rem;
+          color: #6d28d9;
+          line-height: 1.5;
+        }
+
+        .upload-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.75rem;
+          padding-top: 0.5rem;
+        }
+
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.625rem 1.25rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          border: none;
+          border-radius: 0.375rem;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .btn-primary {
+          background: #3b82f6;
+          color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+          background: #2563eb;
+        }
+
+        .btn-secondary {
+          background: #e2e8f0;
+          color: #475569;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+          background: #cbd5e1;
+        }
+
+        .spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
