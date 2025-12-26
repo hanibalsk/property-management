@@ -98,11 +98,14 @@ export interface ArticleComment {
   updatedAt: string;
 }
 
-export interface CommentWithAuthor extends ArticleComment {
+export interface ArticleCommentWithAuthor extends ArticleComment {
   authorName: string;
   authorAvatarUrl: string | null;
   replyCount: number;
 }
+
+// Alias for backwards compatibility
+export type CommentWithAuthor = ArticleCommentWithAuthor;
 
 export interface CreateArticleRequest {
   title: string;

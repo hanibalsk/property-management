@@ -70,8 +70,84 @@ impl NewsArticleRepository {
         &self,
         id: Uuid,
     ) -> Result<Option<ArticleWithDetails>, SqlxError> {
-        // Simplified version - to be fully implemented
-        Ok(None)
+        // Query article with author details joined from users table
+        #[derive(FromRow)]
+        struct ArticleWithAuthorRow {
+            // Article fields
+            id: Uuid,
+            organization_id: Uuid,
+            author_id: Uuid,
+            title: String,
+            content: String,
+            excerpt: Option<String>,
+            cover_image_url: Option<String>,
+            building_ids: serde_json::Value,
+            status: String,
+            published_at: Option<DateTime<Utc>>,
+            archived_at: Option<DateTime<Utc>>,
+            pinned: bool,
+            pinned_at: Option<DateTime<Utc>>,
+            pinned_by: Option<Uuid>,
+            comments_enabled: bool,
+            reactions_enabled: bool,
+            view_count: i32,
+            reaction_count: i32,
+            comment_count: i32,
+            share_count: i32,
+            created_at: DateTime<Utc>,
+            updated_at: DateTime<Utc>,
+            // Author fields
+            author_name: String,
+            author_avatar_url: Option<String>,
+        }
+
+        let row = sqlx::query_as::<_, ArticleWithAuthorRow>(
+            r#"
+            SELECT
+                a.id, a.organization_id, a.author_id, a.title, a.content, a.excerpt,
+                a.cover_image_url, a.building_ids, a.status, a.published_at, a.archived_at,
+                a.pinned, a.pinned_at, a.pinned_by, a.comments_enabled, a.reactions_enabled,
+                a.view_count, a.reaction_count, a.comment_count, a.share_count,
+                a.created_at, a.updated_at,
+                COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as author_name,
+                u.avatar_url as author_avatar_url
+            FROM news_articles a
+            LEFT JOIN users u ON u.id = a.author_id
+            WHERE a.id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| ArticleWithDetails {
+            article: NewsArticle {
+                id: r.id,
+                organization_id: r.organization_id,
+                author_id: r.author_id,
+                title: r.title,
+                content: r.content,
+                excerpt: r.excerpt,
+                cover_image_url: r.cover_image_url,
+                building_ids: r.building_ids,
+                status: r.status,
+                published_at: r.published_at,
+                archived_at: r.archived_at,
+                pinned: r.pinned,
+                pinned_at: r.pinned_at,
+                pinned_by: r.pinned_by,
+                comments_enabled: r.comments_enabled,
+                reactions_enabled: r.reactions_enabled,
+                view_count: r.view_count,
+                reaction_count: r.reaction_count,
+                comment_count: r.comment_count,
+                share_count: r.share_count,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            },
+            author_name: r.author_name,
+            author_avatar_url: r.author_avatar_url,
+        }))
     }
 
     pub async fn list(
@@ -113,12 +189,12 @@ impl NewsArticleRepository {
         sql.push_str(" ORDER BY pinned DESC, published_at DESC NULLS LAST");
 
         // Apply pagination
-        if let Some(limit) = query.limit {
+        if query.limit.is_some() {
             param_count += 1;
             sql.push_str(&format!(" LIMIT ${}", param_count));
         }
 
-        if let Some(offset) = query.offset {
+        if query.offset.is_some() {
             param_count += 1;
             sql.push_str(&format!(" OFFSET ${}", param_count));
         }
@@ -189,9 +265,60 @@ impl NewsArticleRepository {
     pub async fn update(
         &self,
         id: Uuid,
-        _data: UpdateArticle,
+        data: UpdateArticle,
     ) -> Result<Option<NewsArticle>, SqlxError> {
-        self.find_by_id(id).await
+        // First, fetch the existing article
+        let existing = self.find_by_id(id).await?;
+        if existing.is_none() {
+            return Ok(None);
+        }
+        let existing = existing.unwrap();
+
+        // Merge updated fields with existing values
+        let title = data.title.as_ref().unwrap_or(&existing.title);
+        let content = data.content.as_ref().unwrap_or(&existing.content);
+        let excerpt = data.excerpt.clone().or(existing.excerpt.clone());
+        let cover_image_url = data
+            .cover_image_url
+            .clone()
+            .or(existing.cover_image_url.clone());
+        let building_ids_json = if let Some(ref ids) = data.building_ids {
+            serde_json::to_value(ids).unwrap_or_default()
+        } else {
+            existing.building_ids.clone()
+        };
+        let status = data.status.as_deref().unwrap_or(&existing.status);
+        let comments_enabled = data.comments_enabled.unwrap_or(existing.comments_enabled);
+        let reactions_enabled = data.reactions_enabled.unwrap_or(existing.reactions_enabled);
+
+        sqlx::query_as::<_, NewsArticle>(
+            r#"
+            UPDATE news_articles
+            SET
+                title = $2,
+                content = $3,
+                excerpt = $4,
+                cover_image_url = $5,
+                building_ids = $6,
+                status = $7,
+                comments_enabled = $8,
+                reactions_enabled = $9,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(title)
+        .bind(content)
+        .bind(&excerpt)
+        .bind(&cover_image_url)
+        .bind(&building_ids_json)
+        .bind(status)
+        .bind(comments_enabled)
+        .bind(reactions_enabled)
+        .fetch_optional(&self.pool)
+        .await
     }
 
     pub async fn publish(
@@ -365,7 +492,28 @@ impl NewsArticleRepository {
     }
 
     pub async fn get_reaction_counts(&self, article_id: Uuid) -> Result<ReactionCounts, SqlxError> {
-        Ok(ReactionCounts::default())
+        let rows: Vec<(String, i64)> = sqlx::query_as(
+            "SELECT reaction, COUNT(*) as count FROM article_reactions WHERE article_id = $1 GROUP BY reaction",
+        )
+        .bind(article_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut counts = ReactionCounts::default();
+        for (reaction, count) in rows {
+            let count_i32 = count as i32;
+            match reaction.as_str() {
+                "like" => counts.like = count_i32,
+                "love" => counts.love = count_i32,
+                "surprised" => counts.surprised = count_i32,
+                "sad" => counts.sad = count_i32,
+                "angry" => counts.angry = count_i32,
+                _ => {} // Ignore unknown reaction types
+            }
+        }
+        counts.total = counts.like + counts.love + counts.surprised + counts.sad + counts.angry;
+
+        Ok(counts)
     }
 
     pub async fn get_user_reaction(
@@ -405,8 +553,57 @@ impl NewsArticleRepository {
         article_id: Uuid,
         parent_id: Option<Uuid>,
     ) -> Result<Vec<CommentWithAuthor>, SqlxError> {
-        // Simplified - returns empty for now
-        Ok(vec![])
+        use crate::models::news_article::CommentWithAuthorRow;
+
+        let rows: Vec<CommentWithAuthorRow> = match parent_id {
+            Some(parent) => {
+                sqlx::query_as::<_, CommentWithAuthorRow>(
+                    r#"
+                    SELECT
+                        c.id, c.article_id, c.user_id, c.parent_id, c.content,
+                        c.is_moderated, c.moderated_at, c.moderated_by, c.moderation_reason,
+                        c.deleted_at, c.deleted_by, c.like_count, c.created_at, c.updated_at,
+                        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as author_name,
+                        u.avatar_url as author_avatar_url,
+                        (SELECT COUNT(*) FROM article_comments r WHERE r.parent_id = c.id AND r.deleted_at IS NULL) as reply_count
+                    FROM article_comments c
+                    LEFT JOIN users u ON u.id = c.user_id
+                    WHERE c.article_id = $1
+                      AND c.parent_id = $2
+                      AND c.deleted_at IS NULL
+                    ORDER BY c.created_at ASC
+                    "#,
+                )
+                .bind(article_id)
+                .bind(parent)
+                .fetch_all(&self.pool)
+                .await?
+            }
+            None => {
+                sqlx::query_as::<_, CommentWithAuthorRow>(
+                    r#"
+                    SELECT
+                        c.id, c.article_id, c.user_id, c.parent_id, c.content,
+                        c.is_moderated, c.moderated_at, c.moderated_by, c.moderation_reason,
+                        c.deleted_at, c.deleted_by, c.like_count, c.created_at, c.updated_at,
+                        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown') as author_name,
+                        u.avatar_url as author_avatar_url,
+                        (SELECT COUNT(*) FROM article_comments r WHERE r.parent_id = c.id AND r.deleted_at IS NULL) as reply_count
+                    FROM article_comments c
+                    LEFT JOIN users u ON u.id = c.user_id
+                    WHERE c.article_id = $1
+                      AND c.parent_id IS NULL
+                      AND c.deleted_at IS NULL
+                    ORDER BY c.created_at ASC
+                    "#,
+                )
+                .bind(article_id)
+                .fetch_all(&self.pool)
+                .await?
+            }
+        };
+
+        Ok(rows.into_iter().map(CommentWithAuthor::from).collect())
     }
 
     pub async fn update_comment(
@@ -470,14 +667,36 @@ impl NewsArticleRepository {
         user_id: Option<Uuid>,
         duration_seconds: Option<i32>,
     ) -> Result<ArticleView, SqlxError> {
-        sqlx::query_as::<_, ArticleView>(
-            "INSERT INTO article_views (article_id, user_id, duration_seconds) VALUES ($1, $2, $3) ON CONFLICT (article_id, user_id) DO UPDATE SET viewed_at = NOW(), duration_seconds = $3 RETURNING *",
-        )
-        .bind(article_id)
-        .bind(user_id)
-        .bind(duration_seconds)
-        .fetch_one(&self.pool)
-        .await
+        match user_id {
+            Some(uid) => {
+                // For authenticated users, upsert on (article_id, user_id)
+                sqlx::query_as::<_, ArticleView>(
+                    "INSERT INTO article_views (article_id, user_id, duration_seconds) \
+                     VALUES ($1, $2, $3) \
+                     ON CONFLICT (article_id, user_id) \
+                     DO UPDATE SET viewed_at = NOW(), duration_seconds = $3 \
+                     RETURNING *",
+                )
+                .bind(article_id)
+                .bind(uid)
+                .bind(duration_seconds)
+                .fetch_one(&self.pool)
+                .await
+            }
+            None => {
+                // For anonymous views, always insert a new row since NULL values
+                // don't participate in unique constraints
+                sqlx::query_as::<_, ArticleView>(
+                    "INSERT INTO article_views (article_id, user_id, duration_seconds) \
+                     VALUES ($1, NULL, $2) \
+                     RETURNING *",
+                )
+                .bind(article_id)
+                .bind(duration_seconds)
+                .fetch_one(&self.pool)
+                .await
+            }
+        }
     }
 
     pub async fn get_statistics(&self) -> Result<ArticleStatistics, SqlxError> {

@@ -17,7 +17,6 @@ use db::models::{
 };
 use db::repositories::NewsArticleRepository;
 use serde::{Deserialize, Serialize};
-use sqlx::Error as SqlxError;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -33,6 +32,9 @@ const MAX_CONTENT_LENGTH: usize = 100_000; // Rich text can be larger
 
 /// Maximum allowed comment length (characters).
 const MAX_COMMENT_LENGTH: usize = 2000;
+
+/// Valid reaction types.
+const VALID_REACTIONS: &[&str] = &["like", "love", "surprised", "sad", "angry"];
 
 // ============================================================================
 // Response Types
@@ -293,7 +295,7 @@ async fn list_articles(
 )]
 async fn get_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ArticleDetailResponse>, ErrorResponse> {
@@ -351,6 +353,13 @@ async fn create_article(
     user: AuthUser,
     Json(req): Json<CreateArticleRequest>,
 ) -> Result<(StatusCode, Json<CreateArticleResponse>), ErrorResponse> {
+    // Authorization: Only managers can create articles
+    if !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only managers can create articles",
+        ));
+    }
+
     // Validate input
     if req.title.is_empty() || req.title.len() > MAX_TITLE_LENGTH {
         return Err(ErrorResponse::bad_request(&format!(
@@ -431,6 +440,21 @@ async fn update_article(
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateArticleRequest>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
+    let repo = NewsArticleRepository::new(state.db.clone());
+
+    // Authorization: Only the author or managers can update articles
+    let existing = repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| ErrorResponse::internal_error(&format!("Failed to get article: {}", e)))?
+        .ok_or_else(|| ErrorResponse::not_found("Article not found"))?;
+
+    if existing.author_id != user.user_id && !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only the author or managers can update articles",
+        ));
+    }
+
     // Validate input
     if let Some(ref title) = req.title {
         if title.is_empty() || title.len() > MAX_TITLE_LENGTH {
@@ -449,8 +473,6 @@ async fn update_article(
             )));
         }
     }
-
-    let repo = NewsArticleRepository::new(state.db.clone());
 
     let data = UpdateArticle {
         title: req.title,
@@ -492,8 +514,8 @@ async fn update_article(
 )]
 async fn publish_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<PublishArticleRequest>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
@@ -503,7 +525,7 @@ async fn publish_article(
         .publish(id, req.published_at)
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to publish article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Article not found or already published"))?;
+        .ok_or_else(|| ErrorResponse::not_found("Cannot publish article"))?;
 
     Ok(Json(ArticleActionResponse {
         message: "Article published successfully".to_string(),
@@ -527,8 +549,8 @@ async fn publish_article(
 )]
 async fn archive_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
@@ -561,8 +583,8 @@ async fn archive_article(
 )]
 async fn restore_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ArticleActionResponse>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
@@ -571,7 +593,7 @@ async fn restore_article(
         .restore(id)
         .await
         .map_err(|e| ErrorResponse::internal_error(&format!("Failed to restore article: {}", e)))?
-        .ok_or_else(|| ErrorResponse::not_found("Article not found or not archived"))?;
+        .ok_or_else(|| ErrorResponse::not_found("Cannot restore article"))?;
 
     Ok(Json(ArticleActionResponse {
         message: "Article restored successfully".to_string(),
@@ -595,8 +617,8 @@ async fn restore_article(
 )]
 async fn delete_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
@@ -630,7 +652,7 @@ async fn delete_article(
 )]
 async fn pin_article(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<PinArticleRequest>,
@@ -662,8 +684,8 @@ async fn pin_article(
 /// List media for an article.
 async fn list_media(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<MediaResponse>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
@@ -679,8 +701,8 @@ async fn list_media(
 /// Add media to an article.
 async fn add_media(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<AddMediaRequest>,
 ) -> Result<(StatusCode, Json<ArticleMedia>), ErrorResponse> {
@@ -712,9 +734,9 @@ async fn add_media(
 /// Delete media from an article.
 async fn delete_media(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
-    Path((id, media_id)): Path<(Uuid, Uuid)>,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
+    Path((_id, media_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
@@ -737,11 +759,19 @@ async fn delete_media(
 /// Toggle reaction on an article.
 async fn toggle_reaction(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<ToggleReactionRequest>,
 ) -> Result<Json<ReactionResponse>, ErrorResponse> {
+    // Validate reaction type
+    if !VALID_REACTIONS.contains(&req.reaction.as_str()) {
+        return Err(ErrorResponse::bad_request(&format!(
+            "Invalid reaction type. Must be one of: {:?}",
+            VALID_REACTIONS
+        )));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let added = repo
@@ -762,8 +792,8 @@ async fn toggle_reaction(
 /// Get reaction counts for an article.
 async fn get_reaction_counts(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ReactionCounts>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
@@ -782,8 +812,8 @@ async fn get_reaction_counts(
 /// List top-level comments for an article.
 async fn list_comments(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<CommentsResponse>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
@@ -802,8 +832,8 @@ async fn list_comments(
 /// List replies to a specific comment.
 async fn list_comment_replies(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
     Path((id, comment_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<CommentsResponse>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
@@ -824,7 +854,7 @@ async fn list_comment_replies(
 /// Create a comment on an article.
 async fn create_comment(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<CreateCommentRequest>,
@@ -855,9 +885,9 @@ async fn create_comment(
 /// Update a comment.
 async fn update_comment(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
-    Path((id, comment_id)): Path<(Uuid, Uuid)>,
+    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<UpdateCommentRequest>,
 ) -> Result<Json<ArticleComment>, ErrorResponse> {
     // Validate input
@@ -882,9 +912,9 @@ async fn update_comment(
 /// Delete a comment (soft delete).
 async fn delete_comment(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
-    Path((id, comment_id)): Path<(Uuid, Uuid)>,
+    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
 
@@ -905,9 +935,16 @@ async fn moderate_comment(
     State(state): State<AppState>,
     TenantExtractor(tenant): TenantExtractor,
     user: AuthUser,
-    Path((id, comment_id)): Path<(Uuid, Uuid)>,
+    Path((_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<ModerateCommentRequest>,
 ) -> Result<Json<ArticleComment>, ErrorResponse> {
+    // Authorization: Only managers can moderate comments
+    if !tenant.role.is_manager() {
+        return Err(ErrorResponse::forbidden(
+            "Only managers can moderate comments",
+        ));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let comment = repo
@@ -926,7 +963,7 @@ async fn moderate_comment(
 /// Record a view on an article.
 async fn record_view(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<RecordViewRequest>,
@@ -943,8 +980,8 @@ async fn record_view(
 /// Get article statistics.
 async fn get_statistics(
     State(state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
-    user: AuthUser,
+    TenantExtractor(_tenant): TenantExtractor,
+    _user: AuthUser,
 ) -> Result<Json<StatisticsResponse>, ErrorResponse> {
     let repo = NewsArticleRepository::new(state.db.clone());
 

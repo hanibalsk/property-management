@@ -99,6 +99,7 @@ pub struct ArticleSummary {
     pub reaction_count: i32,
     pub comment_count: i32,
     pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Article with author details.
@@ -149,7 +150,7 @@ pub struct ArticleReaction {
 }
 
 /// Reaction counts by type.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
 pub struct ReactionCounts {
     pub like: i32,
     pub love: i32,
@@ -157,19 +158,6 @@ pub struct ReactionCounts {
     pub sad: i32,
     pub angry: i32,
     pub total: i32,
-}
-
-impl Default for ReactionCounts {
-    fn default() -> Self {
-        Self {
-            like: 0,
-            love: 0,
-            surprised: 0,
-            sad: 0,
-            angry: 0,
-            total: 0,
-        }
-    }
 }
 
 // ============================================================================
