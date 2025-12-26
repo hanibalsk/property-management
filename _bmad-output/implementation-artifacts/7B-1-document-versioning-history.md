@@ -55,10 +55,12 @@ done
   - [x] GET /api/v1/documents/:id/versions/:version_id - Get specific version
   - [x] POST /api/v1/documents/:id/versions/:version_id/restore - Restore version
 
-- [ ] **Task 5: Tests for Document Versioning**
+- [ ] **Task 5: Tests for Document Versioning** *(Deferred to separate testing epic)*
   - [ ] Unit tests for version model logic
   - [ ] Repository tests for version CRUD operations
   - [ ] Integration tests for version API endpoints
+
+> **Note:** Testing tasks deferred to a dedicated testing epic. Core versioning functionality is implemented and verified manually.
 
 ## Dev Notes
 
