@@ -957,6 +957,11 @@ pub fn validate_webhook_url(url: &str, is_production: bool) -> WebhookUrlValidat
             }
             url::Host::Domain(_) => {
                 // Domain names are allowed (DNS resolution will happen at request time)
+                // Note: DNS rebinding attacks are possible but mitigated by:
+                // 1. Not following redirects in webhook requests
+                // 2. Using short timeouts
+                // For production systems, consider implementing domain allowlisting
+                // or DNS resolution validation at request time
             }
         }
     }

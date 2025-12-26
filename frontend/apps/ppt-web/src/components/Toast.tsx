@@ -6,7 +6,7 @@
  */
 
 import type React from 'react';
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import './Toast.css';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -45,6 +45,18 @@ interface ToastProviderProps {
  */
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Track timeout IDs for cleanup on unmount
+  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Clean up all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      for (const timeout of timeoutRefs.current.values()) {
+        clearTimeout(timeout);
+      }
+      timeoutRefs.current.clear();
+    };
+  }, []);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -52,13 +64,21 @@ export function ToastProvider({ children }: ToastProviderProps) {
 
     setToasts((prev) => [...prev, toast]);
 
-    // Auto-dismiss after 4 seconds
-    setTimeout(() => {
+    // Auto-dismiss after 4 seconds, with proper cleanup tracking
+    const timeoutId = setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
+      timeoutRefs.current.delete(id);
     }, 4000);
+    timeoutRefs.current.set(id, timeoutId);
   }, []);
 
   const removeToast = useCallback((id: string) => {
+    // Clear the timeout when manually dismissed
+    const timeoutId = timeoutRefs.current.get(id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutRefs.current.delete(id);
+    }
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 

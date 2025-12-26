@@ -206,21 +206,27 @@ pub fn encrypt_if_available(crypto: Option<&IntegrationCrypto>, plaintext: &str)
 ///
 /// Only attempts decryption if value has "enc:" prefix. Plaintext values are returned as-is.
 /// This allows safe handling of mixed encrypted/plaintext data during migration.
+///
+/// # Security
+/// On decryption failure, returns a placeholder string instead of the encrypted value
+/// to prevent leaking encryption format details.
 pub fn decrypt_if_available(crypto: Option<&IntegrationCrypto>, value: &str) -> String {
     // Check for encrypted prefix
     if let Some(encrypted_data) = value.strip_prefix(ENCRYPTED_PREFIX) {
         match crypto {
             Some(c) => c.decrypt(encrypted_data).unwrap_or_else(|e| {
-                tracing::warn!("Decryption failed: {}. Value may be corrupted.", e);
-                value.to_string() // Return original value on error
+                tracing::error!("Decryption failed: {}. Value may be corrupted.", e);
+                // Return placeholder to avoid exposing encrypted data format
+                "[DECRYPTION_FAILED]".to_string()
             }),
             None => {
-                tracing::warn!(
+                tracing::error!(
                     "Encrypted value found but crypto not configured. \
                      Set {} to decrypt.",
                     ENCRYPTION_KEY_ENV
                 );
-                value.to_string() // Return original (still encrypted) value
+                // Return placeholder to avoid exposing encrypted data
+                "[ENCRYPTION_KEY_REQUIRED]".to_string()
             }
         }
     } else {
