@@ -1,6 +1,6 @@
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
 import { BrowserRouter, Link, Route, Routes, useParams } from 'react-router-dom';
-import { DocumentDetailPage, DocumentsPage, DocumentUploadPage } from './features/documents';
+import { DocumentDetailPage, DocumentUploadPage, DocumentsPage } from './features/documents';
 import { EmergencyContactDirectoryPage } from './features/emergency';
 import { ArticleDetailPage, NewsListPage } from './features/news';
 import { PrivacySettingsPage } from './features/privacy';
@@ -54,7 +54,18 @@ function DocumentsPageRoute() {
 /** Route wrapper for document detail page to extract params */
 function DocumentDetailRoute() {
   const { documentId } = useParams<{ documentId: string }>();
-  if (!documentId) return <div>Document not found</div>;
+  if (!documentId) {
+    return (
+      <div className="error-page">
+        <h1>Document not found</h1>
+        <p>
+          We couldn&apos;t find the document you&apos;re looking for. It may have been moved,
+          deleted, or the link might be incorrect.
+        </p>
+        <Link to="/documents">Back to documents</Link>
+      </div>
+    );
+  }
   return <DocumentDetailPage documentId={documentId} />;
 }
 

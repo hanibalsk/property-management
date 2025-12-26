@@ -194,7 +194,16 @@ export async function uploadDocument(
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const response = JSON.parse(xhr.responseText);
-          resolve(response);
+          // Validate response structure
+          if (
+            !response ||
+            typeof response !== 'object' ||
+            typeof (response as { id?: unknown }).id !== 'string' ||
+            typeof (response as { message?: unknown }).message !== 'string'
+          ) {
+            throw new Error('Invalid response structure');
+          }
+          resolve(response as { id: string; message: string });
         } catch {
           reject(new Error('Invalid response format'));
         }
@@ -209,14 +218,30 @@ export async function uploadDocument(
     });
 
     xhr.addEventListener('error', () => {
-      reject(new Error('Network error'));
+      reject(
+        new Error('Network connection lost. Please check your internet connection and try again.')
+      );
     });
 
     xhr.addEventListener('abort', () => {
-      reject(new Error('Upload cancelled'));
+      reject(new Error('Upload was cancelled.'));
     });
 
     xhr.open('POST', `${API_BASE}/upload`);
+
+    // Attach Authorization header if an access token is available
+    try {
+      const token =
+        typeof window !== 'undefined' && window.localStorage
+          ? window.localStorage.getItem('token')
+          : null;
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+    } catch {
+      // If accessing storage fails, proceed without auth header
+    }
+
     xhr.send(formData);
   });
 }

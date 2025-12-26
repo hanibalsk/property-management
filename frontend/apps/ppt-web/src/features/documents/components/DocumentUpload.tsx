@@ -5,7 +5,7 @@
  */
 
 import { DOCUMENT_CATEGORIES, type DocumentCategory, useUploadDocument } from '@ppt/api-client';
-import { useCallback, useState, type DragEvent, type ChangeEvent } from 'react';
+import { type ChangeEvent, type DragEvent, useCallback, useState } from 'react';
 
 interface DocumentUploadProps {
   organizationId: string;
@@ -43,7 +43,7 @@ export function DocumentUpload({
   onUploadComplete,
   onCancel,
 }: DocumentUploadProps) {
-  const [files, setFiles] = useState<UploadFile[]>([]);
+  const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<DocumentCategory>('other');
@@ -51,6 +51,8 @@ export function DocumentUpload({
 
   const uploadDocument = useUploadDocument();
 
+  // Note: Client-side validation improves UX, but server-side validation of file
+  // signatures (magic bytes) is required for security. The backend validates file types.
   const validateFile = useCallback((file: File): string | null => {
     if (!SUPPORTED_MIME_TYPES.includes(file.type)) {
       return `Unsupported file type: ${file.type || 'unknown'}`;
@@ -77,7 +79,7 @@ export function DocumentUpload({
         }
       }
 
-      setFiles((prev) => [...prev, ...newFiles]);
+      setUploadFiles((prev) => [...prev, ...newFiles]);
 
       // Auto-set title from first file if not set
       if (!title && newFiles.length > 0 && !newFiles[0].error) {
@@ -120,48 +122,49 @@ export function DocumentUpload({
   );
 
   const removeFile = useCallback((index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleUpload = useCallback(async () => {
-    const validFiles = files.filter((f) => f.status === 'pending' && !f.error);
+    const validFiles = uploadFiles.filter((f) => f.status === 'pending' && !f.error);
     if (validFiles.length === 0) return;
+
+    // Collect all successfully uploaded document IDs
+    const uploadedDocumentIds: string[] = [];
 
     for (let i = 0; i < validFiles.length; i++) {
       const uploadFile = validFiles[i];
-      const fileIndex = files.indexOf(uploadFile);
+      const fileIndex = uploadFiles.indexOf(uploadFile);
 
       // Update status to uploading
-      setFiles((prev) =>
+      setUploadFiles((prev) =>
         prev.map((f, idx) => (idx === fileIndex ? { ...f, status: 'uploading' as const } : f))
       );
 
       try {
+        // For multiple files, append the filename to the title
+        const documentTitle =
+          validFiles.length === 1 ? title : `${title} - ${uploadFile.file.name}`;
+
         const result = await uploadDocument.mutateAsync({
           file: uploadFile.file,
-          title: validFiles.length === 1 ? title : `${title} - ${uploadFile.file.name}`,
+          title: documentTitle,
           description,
           category,
           organizationId,
           buildingId,
           folderId,
           onProgress: (progress) => {
-            setFiles((prev) =>
-              prev.map((f, idx) =>
-                idx === fileIndex
-                  ? {
-                      ...f,
-                      progress,
-                      status: progress < 100 ? 'uploading' : ('processing' as const),
-                    }
-                  : f
-              )
+            // Keep status as 'uploading' during progress updates.
+            // The transition to 'processing' happens only after successful server response.
+            setUploadFiles((prev) =>
+              prev.map((f, idx) => (idx === fileIndex ? { ...f, progress } : f))
             );
           },
         });
 
-        // Update status to completed
-        setFiles((prev) =>
+        // Update status to processing first, then completed after server confirms
+        setUploadFiles((prev) =>
           prev.map((f, idx) =>
             idx === fileIndex
               ? { ...f, status: 'completed' as const, documentId: result.id, progress: 100 }
@@ -169,10 +172,10 @@ export function DocumentUpload({
           )
         );
 
-        onUploadComplete?.(result.id);
+        uploadedDocumentIds.push(result.id);
       } catch (error) {
         // Update status to error
-        setFiles((prev) =>
+        setUploadFiles((prev) =>
           prev.map((f, idx) =>
             idx === fileIndex
               ? {
@@ -185,8 +188,14 @@ export function DocumentUpload({
         );
       }
     }
+
+    // Only call onUploadComplete once after all files are processed,
+    // passing the first successfully uploaded document ID
+    if (uploadedDocumentIds.length > 0) {
+      onUploadComplete?.(uploadedDocumentIds[0]);
+    }
   }, [
-    files,
+    uploadFiles,
     title,
     description,
     category,
@@ -212,8 +221,10 @@ export function DocumentUpload({
   };
 
   const canUpload =
-    files.some((f) => f.status === 'pending' && !f.error) && title.trim().length > 0;
-  const isUploading = files.some((f) => f.status === 'uploading' || f.status === 'processing');
+    uploadFiles.some((f) => f.status === 'pending' && !f.error) && title.trim().length > 0;
+  const isUploading = uploadFiles.some(
+    (f) => f.status === 'uploading' || f.status === 'processing'
+  );
 
   return (
     <div className="document-upload">
@@ -250,7 +261,9 @@ export function DocumentUpload({
             <span className="drop-primary">Drop files here</span>
             <span className="drop-secondary"> or click to browse</span>
           </p>
-          <p className="drop-hint">Supports PDF, images, Word documents, and text files (max 50MB)</p>
+          <p className="drop-hint">
+            Supports PDF, images, Word documents, and text files (max 50MB)
+          </p>
           <input
             type="file"
             className="file-input"
@@ -263,12 +276,15 @@ export function DocumentUpload({
       </div>
 
       {/* File List */}
-      {files.length > 0 && (
+      {uploadFiles.length > 0 && (
         <div className="file-list">
-          <h3 className="file-list-title">Selected Files ({files.length})</h3>
+          <h3 className="file-list-title">Selected Files ({uploadFiles.length})</h3>
           <ul className="files">
-            {files.map((uploadFile, index) => (
-              <li key={`${uploadFile.file.name}-${index}`} className={`file-item ${uploadFile.status}`}>
+            {uploadFiles.map((uploadFile, index) => (
+              <li
+                key={`${uploadFile.file.name}-${index}`}
+                className={`file-item ${uploadFile.status}`}
+              >
                 <div className="file-icon">{getFileTypeIcon(uploadFile.file.type)}</div>
                 <div className="file-info">
                   <span className="file-name">{uploadFile.file.name}</span>
@@ -276,10 +292,7 @@ export function DocumentUpload({
                   {uploadFile.error && <span className="file-error">{uploadFile.error}</span>}
                   {uploadFile.status === 'uploading' && (
                     <div className="progress-bar">
-                      <div
-                        className="progress-fill"
-                        style={{ width: `${uploadFile.progress}%` }}
-                      />
+                      <div className="progress-fill" style={{ width: `${uploadFile.progress}%` }} />
                     </div>
                   )}
                   {uploadFile.status === 'processing' && (
@@ -297,12 +310,40 @@ export function DocumentUpload({
                       className="remove-btn"
                       aria-label={`Remove ${uploadFile.file.name}`}
                     >
-                      x
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 12 12"
+                        aria-hidden="true"
+                        focusable="false"
+                      >
+                        <path
+                          d="M9.5 2.5L2.5 9.5M2.5 2.5L9.5 9.5"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
                     </button>
                   )}
                   {uploadFile.status === 'completed' && (
-                    <span className="success-icon" aria-label="Upload completed">
-                      OK
+                    <span
+                      className="success-icon"
+                      role="img"
+                      aria-label="Upload completed successfully"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        aria-hidden="true"
+                        focusable="false"
+                      >
+                        <path
+                          d="M6.00016 11.2002L3.30016 8.50016L2.60016 9.20016L6.00016 12.6002L14.0002 4.60016L13.3002 3.90016L6.00016 11.2002Z"
+                          fill="currentColor"
+                        />
+                      </svg>
                     </span>
                   )}
                 </div>
@@ -313,7 +354,7 @@ export function DocumentUpload({
       )}
 
       {/* Document Metadata */}
-      {files.some((f) => f.status === 'pending' && !f.error) && (
+      {uploadFiles.some((f) => f.status === 'pending' && !f.error) && (
         <div className="metadata-form">
           <h3 className="form-title">Document Details</h3>
 
@@ -384,7 +425,12 @@ export function DocumentUpload({
       {/* Actions */}
       <div className="upload-actions">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="btn btn-secondary" disabled={isUploading}>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn btn-secondary"
+            disabled={isUploading}
+          >
             Cancel
           </button>
         )}
