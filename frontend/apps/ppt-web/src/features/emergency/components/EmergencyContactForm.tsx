@@ -68,10 +68,10 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
       newErrors.contact_type = 'Contact type is required';
     }
 
-    // Validate at least one contact method
+    // Validate at least one contact method - only set error on the first empty field
+    // to avoid confusing UX with duplicate error messages
     if (!formData.phone && !formData.email) {
-      newErrors.phone = 'At least one contact method (phone or email) is required';
-      newErrors.email = 'At least one contact method (phone or email) is required';
+      newErrors.contactMethod = 'At least one contact method (phone or email) is required';
     }
 
     setErrors(newErrors);
@@ -181,6 +181,12 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
         )}
       </div>
 
+      {errors.contactMethod && (
+        <div className="emergency-contact-form-error-banner" role="alert">
+          {errors.contactMethod}
+        </div>
+      )}
+
       <div className="emergency-contact-form-field">
         <label htmlFor="phone" className="emergency-contact-form-label">
           Phone
@@ -191,17 +197,11 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           name="phone"
           value={formData.phone}
           onChange={handleChange}
-          className={`emergency-contact-form-input ${errors.phone ? 'error' : ''}`}
+          className={`emergency-contact-form-input ${errors.contactMethod ? 'error' : ''}`}
           placeholder="+1 (555) 123-4567"
-          aria-invalid={!!errors.phone}
-          aria-describedby={errors.phone ? 'phone-error' : undefined}
+          aria-invalid={!!errors.contactMethod}
           disabled={isSubmitting}
         />
-        {errors.phone && (
-          <span id="phone-error" className="emergency-contact-form-error">
-            {errors.phone}
-          </span>
-        )}
       </div>
 
       <div className="emergency-contact-form-field">
@@ -230,17 +230,11 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           name="email"
           value={formData.email}
           onChange={handleChange}
-          className={`emergency-contact-form-input ${errors.email ? 'error' : ''}`}
+          className={`emergency-contact-form-input ${errors.contactMethod ? 'error' : ''}`}
           placeholder="contact@example.com"
-          aria-invalid={!!errors.email}
-          aria-describedby={errors.email ? 'email-error' : undefined}
+          aria-invalid={!!errors.contactMethod}
           disabled={isSubmitting}
         />
-        {errors.email && (
-          <span id="email-error" className="emergency-contact-form-error">
-            {errors.email}
-          </span>
-        )}
       </div>
 
       <div className="emergency-contact-form-field">

@@ -61,6 +61,13 @@ fn internal_error(message: &str) -> ApiError {
     )
 }
 
+fn forbidden(message: &str) -> ApiError {
+    (
+        StatusCode::FORBIDDEN,
+        Json(ErrorResponse::forbidden(message)),
+    )
+}
+
 // ============================================================================
 // Response Types
 // ============================================================================
@@ -899,7 +906,7 @@ async fn update_comment(
     Path((_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<UpdateCommentRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // TODO: Verify comment ownership matches user_id
+    // Ownership is verified in the repository query (WHERE user_id = $2)
     // Validate input
     if req.content.is_empty() || req.content.len() > MAX_COMMENT_LENGTH {
         return Err(bad_request(&format!(
@@ -948,7 +955,11 @@ async fn moderate_comment(
     Path((_id, comment_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<ModerateCommentRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // TODO: Add authorization check - only managers can moderate
+    // Only managers can moderate comments
+    if !user.is_manager() {
+        return Err(forbidden("Only managers can moderate comments"));
+    }
+
     let repo = NewsArticleRepository::new(state.db.clone());
 
     let comment = repo
