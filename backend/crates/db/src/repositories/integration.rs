@@ -996,6 +996,7 @@ impl IntegrationRepository {
     }
 
     /// Update webhook delivery status.
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_webhook_delivery_status(
         &self,
         id: Uuid,

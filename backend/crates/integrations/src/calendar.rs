@@ -809,6 +809,7 @@ impl MicrosoftCalendarClient {
         #[serde(rename_all = "camelCase")]
         struct OutlookDateTime {
             date_time: String,
+            #[allow(dead_code)]
             time_zone: String,
         }
 
