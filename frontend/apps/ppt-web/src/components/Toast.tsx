@@ -59,7 +59,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
   }, []);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     const toast: Toast = { id, message, type };
 
     setToasts((prev) => [...prev, toast]);

@@ -48,13 +48,18 @@ impl IntegrationRepository {
     /// Create a new IntegrationRepository.
     ///
     /// Automatically attempts to initialize encryption from environment.
-    /// If INTEGRATION_ENCRYPTION_KEY is not set, data will be stored unencrypted.
+    ///
+    /// # Security Warning
+    /// If `INTEGRATION_ENCRYPTION_KEY` is not set, OAuth tokens and webhook secrets
+    /// will be stored in plaintext. This is acceptable for development but should
+    /// be configured in production environments.
     pub fn new(pool: DbPool) -> Self {
         let crypto = IntegrationCrypto::try_from_env();
         if crypto.is_none() {
+            // Log at warn level - operators should configure encryption for production
             tracing::warn!(
                 "INTEGRATION_ENCRYPTION_KEY not set - OAuth tokens and webhook secrets \
-                 will be stored in plaintext. Set this variable in production!"
+                 will be stored in plaintext. Configure this for production deployments."
             );
         }
         Self { pool, crypto }

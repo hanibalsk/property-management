@@ -31,7 +31,6 @@ use integrations::{
 };
 use serde::Deserialize;
 use sha2::Sha256;
-use subtle::ConstantTimeEq;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
@@ -791,7 +790,7 @@ pub async fn sync_calendar(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "SYNC_ERROR",
-                format!("Calendar sync failed: {}", e),
+                "Calendar sync failed. Please try again later.",
             )),
         )
     })?;
