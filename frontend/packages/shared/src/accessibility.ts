@@ -65,12 +65,8 @@ export function useAccessibility() {
   const settings: AccessibilitySettings = DEFAULT_ACCESSIBILITY_SETTINGS;
 
   const updateSettings = (_updates: Partial<AccessibilitySettings>) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        'useAccessibility: This is a stub implementation. ' +
-          'Use useAccessibilityContext from @ppt/ui-kit with AccessibilityProvider for persistence.'
-      );
-    }
+    // Intentionally silent in production - this stub exists for compatibility only.
+    // Use useAccessibilityContext from @ppt/ui-kit for actual persistence.
   };
 
   return {
