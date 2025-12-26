@@ -231,7 +231,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
 
   const updateSettings = (updates: Partial<AccessibilitySettings>) => {
     setSettings((prev: AccessibilitySettings) => ({ ...prev, ...updates }));
-    
+
     // Mark any user-changed settings as explicit
     const newExplicitSettings: Partial<ExplicitSettings> = {};
     for (const key of Object.keys(updates)) {
@@ -239,7 +239,7 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
         newExplicitSettings[key as keyof ExplicitSettings] = true;
       }
     }
-    
+
     if (Object.keys(newExplicitSettings).length > 0) {
       setExplicitSettings((prev: ExplicitSettings) => {
         const updated = { ...prev, ...newExplicitSettings };
