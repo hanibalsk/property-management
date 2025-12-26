@@ -256,13 +256,13 @@ fn verify_docusign_signature(secret: &str, payload: &[u8], signature: &str) -> b
     mac.update(payload);
 
     // DocuSign sends base64-encoded HMAC-SHA256 signature
-    let expected = base64::Engine::encode(
-        &base64::engine::general_purpose::STANDARD,
-        mac.finalize().into_bytes(),
-    );
+    use base64::Engine as _;
+    let Ok(signature_bytes) = base64::engine::general_purpose::STANDARD.decode(signature) else {
+        return false;
+    };
 
-    // Use constant-time comparison to prevent timing attacks
-    constant_time_compare(&expected, signature)
+    // Use HMAC's verify_slice for constant-time comparison
+    mac.verify_slice(&signature_bytes).is_ok()
 }
 
 /// Verify Adobe Sign webhook signature.
@@ -272,10 +272,13 @@ fn verify_adobe_sign_signature(client_secret: &str, payload: &[u8], signature: &
     };
     mac.update(payload);
 
-    let expected = hex::encode(mac.finalize().into_bytes());
+    // Adobe Sign sends hex-encoded HMAC-SHA256 signature
+    let Ok(signature_bytes) = hex::decode(signature) else {
+        return false;
+    };
 
-    // Use constant-time comparison to prevent timing attacks
-    constant_time_compare(&expected, signature)
+    // Use HMAC's verify_slice for constant-time comparison
+    mac.verify_slice(&signature_bytes).is_ok()
 }
 
 /// Verify HelloSign webhook signature using event_hash.
@@ -291,10 +294,13 @@ fn verify_hellosign_signature(
     };
     mac.update(format!("{}{}", event_time, event_type).as_bytes());
 
-    let expected = hex::encode(mac.finalize().into_bytes());
+    // HelloSign sends hex-encoded HMAC-SHA256 signature
+    let Ok(signature_bytes) = hex::decode(event_hash) else {
+        return false;
+    };
 
-    // Use constant-time comparison to prevent timing attacks
-    constant_time_compare(&expected, event_hash)
+    // Use HMAC's verify_slice for constant-time comparison
+    mac.verify_slice(&signature_bytes).is_ok()
 }
 
 /// Constant-time string comparison to prevent timing attacks.
@@ -778,8 +784,6 @@ pub async fn sync_calendar(
 
     // Process synced events and store them in the database
     let mut events_created = 0;
-    #[allow(unused_assignments)]
-    let mut events_updated = 0;
     let mut errors: Vec<String> = vec![];
 
     for event in &sync_result.events_created {
@@ -812,7 +816,7 @@ pub async fn sync_calendar(
 
     // For updated events, we would need to update existing records
     // This is a simplified implementation - in production you'd match by external_event_id
-    events_updated = sync_result.events_updated.len() as i32;
+    let events_updated = sync_result.events_updated.len() as i32;
 
     // Update sync status
     let _ = state
@@ -1051,6 +1055,7 @@ pub async fn get_accounting_export(
 )]
 pub async fn download_accounting_export(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
 ) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
     // Get the export record
@@ -1081,6 +1086,9 @@ pub async fn download_accounting_export(
             ))
         }
     };
+
+    // Verify user has access to the organization that owns this export
+    verify_org_access(&state, auth.user_id, export.organization_id).await?;
 
     // Check if export is completed
     if export.status != "completed" {
@@ -2319,10 +2327,10 @@ pub async fn update_webhook_subscription(
     // Verify user has access to the organization that owns this resource
     verify_org_access(&state, auth.user_id, existing.organization_id).await?;
 
-    // Determine if we're in production mode (default to production for safety)
+    // Determine if running in production mode, consistent with creation logic
     let is_production = std::env::var("RUST_ENV")
-        .map(|v| v != "development" && v != "dev" && v != "local")
-        .unwrap_or(true);
+        .map(|v| v == "production")
+        .unwrap_or(false);
 
     let subscription = state
         .integration_repo
@@ -2431,6 +2439,7 @@ pub async fn delete_webhook_subscription(
 )]
 pub async fn test_webhook(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<ResourceIdPath>,
     Json(data): Json<TestWebhookRequest>,
 ) -> Result<Json<TestWebhookResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -2462,6 +2471,9 @@ pub async fn test_webhook(
             ))
         }
     };
+
+    // Verify user has access to the organization that owns this webhook
+    verify_org_access(&state, auth.user_id, subscription.organization_id).await?;
 
     // Build the test payload
     let test_payload = data.payload.unwrap_or_else(|| {
@@ -2504,14 +2516,21 @@ pub async fn test_webhook(
         }
     }
 
-    // Add signature header if secret is configured
+    // Add signature header if secret is configured (using HMAC-SHA256 for security)
     if let Some(secret) = &subscription.secret {
-        use sha2::{Digest, Sha256};
         let payload_str = serde_json::to_string(&test_payload).unwrap_or_default();
-        let mut hasher = Sha256::new();
-        hasher.update(secret.as_bytes());
-        hasher.update(payload_str.as_bytes());
-        let signature = hex::encode(hasher.finalize());
+        let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).map_err(|e| {
+            tracing::error!(error = ?e, "Failed to create HMAC for webhook test signature");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "CRYPTO_ERROR",
+                    "Failed to compute webhook signature",
+                )),
+            )
+        })?;
+        mac.update(payload_str.as_bytes());
+        let signature = hex::encode(mac.finalize().into_bytes());
         request = request.header("X-Webhook-Signature", format!("sha256={}", signature));
     }
 
