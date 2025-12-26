@@ -70,14 +70,15 @@ impl NewsArticleRepository {
     /// Find an article by ID with full details.
     ///
     /// TODO: Implement full query with JOIN to include author details and related data.
-    /// For now, returns explicit error instead of misleading empty result.
+    /// For now, returns `Ok(None)` to behave like a standard "not found" lookup until
+    /// the detailed implementation with JOINs is ready.
     pub async fn find_by_id_with_details(
         &self,
         _id: Uuid,
     ) -> Result<Option<ArticleWithDetails>, SqlxError> {
-        // TODO: Implement proper query with JOINs for author details
-        // Returning error is more honest than returning None which implies "not found"
-        Err(SqlxError::RowNotFound)
+        // TODO: Implement proper query with JOINs for author details and related data.
+        // Placeholder implementation: indicate "no result" instead of an unconditional error.
+        Ok(None)
     }
 
     /// List articles matching the query filters.
