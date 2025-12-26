@@ -31,10 +31,36 @@ const MAX_TITLE_LENGTH: usize = 255;
 /// Maximum allowed content length (characters).
 const MAX_CONTENT_LENGTH: usize = 100_000; // Rich text can be larger
 
-/// Maximum allowed comment length (characters).
-/// NOTE: This constant is duplicated in frontend validation. If changed here,
-/// update the frontend textarea maxLength and validation messages accordingly.
+/// This value is the single source of truth for comment length validation.
+/// Frontend clients should obtain this value via the API / OpenAPI schema
+/// instead of duplicating it as a hard-coded constant.
 const MAX_COMMENT_LENGTH: usize = 2000;
+
+/// Validation rules for news article comments.
+///
+/// This struct is intended to be exposed via the API (and OpenAPI schema)
+/// so that frontend clients can derive their validation rules from the
+/// backend configuration rather than duplicating constants.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct CommentValidationRules {
+    /// Maximum length in characters allowed for a comment.
+    pub max_length: usize,
+}
+
+impl CommentValidationRules {
+    /// Build validation rules from the backend defaults defined in this module.
+    pub fn from_defaults() -> Self {
+        Self {
+            max_length: MAX_COMMENT_LENGTH,
+        }
+    }
+}
+
+/// Helper to obtain the current comment validation rules.
+/// This can be used by route handlers to expose validation limits to clients.
+pub fn comment_validation_rules() -> CommentValidationRules {
+    CommentValidationRules::from_defaults()
+}
 
 // ============================================================================
 // Error Helpers

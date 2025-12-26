@@ -499,11 +499,23 @@ impl NewsArticleRepository {
     }
 
     /// Soft delete a comment. Only the comment owner can delete their own comments.
-    /// The `user_id` is used for both ownership verification (WHERE clause) and
-    /// recording who deleted the comment (deleted_by field).
+    ///
+    /// # Arguments
+    ///
+    /// * `comment_id` - The ID of the comment to delete.
+    /// * `user_id` - The ID of the user requesting deletion. This serves dual purposes:
+    ///   - Ownership verification: the WHERE clause ensures only the comment owner can delete
+    ///   - Audit trail: recorded in the `deleted_by` field for accountability
+    ///
+    /// # Returns
+    ///
+    /// `true` if the comment was deleted, `false` if no matching comment was found
+    /// (either doesn't exist or user is not the owner).
     pub async fn delete_comment(&self, comment_id: Uuid, user_id: Uuid) -> Result<bool, SqlxError> {
         let result = sqlx::query(
-            "UPDATE article_comments SET deleted_at = NOW(), deleted_by = $2 WHERE id = $1 AND user_id = $2",
+            "UPDATE article_comments
+             SET deleted_at = NOW(), deleted_by = $2
+             WHERE id = $1 AND user_id = $2",
         )
         .bind(comment_id)
         .bind(user_id)
