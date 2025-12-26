@@ -62,7 +62,7 @@ export function NewsArticleCard({
           {article.coverImageUrl && (
             <img
               src={article.coverImageUrl}
-              alt={`Cover image for: ${article.title}`}
+              alt={`Cover for: ${article.title}`}
               className="mt-3 w-full h-48 object-cover rounded"
             />
           )}
