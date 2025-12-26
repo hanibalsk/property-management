@@ -45,8 +45,8 @@ interface ToastProviderProps {
  */
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  // Track timeout IDs for cleanup on unmount
-  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  // Track timeout IDs for cleanup on unmount (using ReturnType for browser compatibility)
+  const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Clean up all timeouts on unmount
   useEffect(() => {

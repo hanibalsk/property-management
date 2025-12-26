@@ -724,13 +724,31 @@ pub async fn sync_calendar(
         .clone()
         .unwrap_or_else(|| "primary".to_string());
 
+    // Helper macro to get required env var or return config error
+    macro_rules! require_env {
+        ($name:expr, $provider:expr) => {
+            std::env::var($name).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "CONFIG_ERROR",
+                        format!(
+                            "{} calendar integration not configured. {} is required.",
+                            $provider, $name
+                        ),
+                    )),
+                )
+            })?
+        };
+    }
+
     // Create appropriate client based on provider and fetch events
     let sync_result = match connection.provider.as_str() {
         calendar_provider::GOOGLE => {
             let config = OAuthConfig {
-                client_id: std::env::var("GOOGLE_CLIENT_ID").unwrap_or_default(),
-                client_secret: std::env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default(),
-                redirect_uri: std::env::var("GOOGLE_REDIRECT_URI").unwrap_or_default(),
+                client_id: require_env!("GOOGLE_CLIENT_ID", "Google"),
+                client_secret: require_env!("GOOGLE_CLIENT_SECRET", "Google"),
+                redirect_uri: require_env!("GOOGLE_REDIRECT_URI", "Google"),
             };
             let client = GoogleCalendarClient::new(config);
 
@@ -740,9 +758,9 @@ pub async fn sync_calendar(
         }
         calendar_provider::OUTLOOK => {
             let config = OAuthConfig {
-                client_id: std::env::var("MICROSOFT_CLIENT_ID").unwrap_or_default(),
-                client_secret: std::env::var("MICROSOFT_CLIENT_SECRET").unwrap_or_default(),
-                redirect_uri: std::env::var("MICROSOFT_REDIRECT_URI").unwrap_or_default(),
+                client_id: require_env!("MICROSOFT_CLIENT_ID", "Microsoft"),
+                client_secret: require_env!("MICROSOFT_CLIENT_SECRET", "Microsoft"),
+                redirect_uri: require_env!("MICROSOFT_REDIRECT_URI", "Microsoft"),
             };
             let client = MicrosoftCalendarClient::new(config);
 
@@ -768,12 +786,15 @@ pub async fn sync_calendar(
     let sync_result = sync_result.map_err(|e| {
         tracing::error!(error = %e, provider = %connection.provider, "Calendar sync failed");
 
-        // Update sync status to error (intentionally not awaited - fire and forget)
-        drop(
-            state
-                .integration_repo
-                .update_sync_status(path.id, "error", Some(&e.to_string())),
-        );
+        // Update sync status to error in the background (fire and forget)
+        let repo = state.integration_repo.clone();
+        let connection_id = path.id;
+        let error_msg = e.to_string();
+        tokio::spawn(async move {
+            let _ = repo
+                .update_sync_status(connection_id, "error", Some(&error_msg))
+                .await;
+        });
 
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -789,10 +810,11 @@ pub async fn sync_calendar(
     let mut errors: Vec<String> = vec![];
 
     for event in &sync_result.events_created {
+        // Use external event ID for deduplication
         let create_data = CreateCalendarEvent {
             connection_id: path.id,
             source_type: "external".to_string(),
-            source_id: None,
+            source_id: Some(event.id.clone()), // Store external ID to prevent duplicates
             title: event.title.clone(),
             description: event.description.clone(),
             location: event.location.clone(),
@@ -803,12 +825,17 @@ pub async fn sync_calendar(
             attendees: Some(serde_json::to_value(&event.attendees).unwrap_or_default()),
         };
 
+        // Use upsert to handle duplicates - if event with same source_id exists, skip
         match state
             .integration_repo
-            .create_calendar_event(create_data)
+            .upsert_calendar_event(create_data)
             .await
         {
-            Ok(_) => events_created += 1,
+            Ok(created) => {
+                if created {
+                    events_created += 1;
+                }
+            }
             Err(e) => {
                 tracing::warn!(error = %e, event_id = %event.id, "Failed to create calendar event");
                 errors.push(format!("Failed to create event '{}': {}", event.title, e));
@@ -2489,9 +2516,15 @@ pub async fn test_webhook(
         })
     });
 
-    // Create HTTP client
+    // Create HTTP client with security safeguards:
+    // - No redirect following to prevent open redirects/SSRF
+    // - Identifies the service in logs
+    // - Limits connection pooling
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
+        .redirect(reqwest::redirect::Policy::none())
+        .user_agent("PropertyManagement-Webhook-Test/1.0")
+        .pool_max_idle_per_host(0)
         .build()
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to create HTTP client");
@@ -2507,10 +2540,26 @@ pub async fn test_webhook(
     // Build the request
     let mut request = client.post(&subscription.url).json(&test_payload);
 
-    // Add custom headers if configured
+    // Add custom headers if configured, with security blocklist
+    // These headers could be used for SSRF or security bypass
+    const BLOCKED_HEADERS: &[&str] = &[
+        "host",
+        "authorization",
+        "cookie",
+        "x-forwarded-for",
+        "x-real-ip",
+        "x-forwarded-host",
+        "x-forwarded-proto",
+    ];
+
     if let Some(headers) = &subscription.headers {
         if let Some(headers_obj) = headers.as_object() {
             for (key, value) in headers_obj {
+                // Skip blocked headers that could be used for security bypass
+                if BLOCKED_HEADERS.contains(&key.to_lowercase().as_str()) {
+                    tracing::warn!(header = %key, "Blocked webhook header injection attempt");
+                    continue;
+                }
                 if let Some(value_str) = value.as_str() {
                     request = request.header(key, value_str);
                 }
@@ -2557,13 +2606,20 @@ pub async fn test_webhook(
             let success = response.status().is_success();
 
             // Try to get error message from response body if not successful
+            // Sanitize to prevent leaking sensitive information from the target endpoint
             let error = if !success {
                 let body = response.text().await.ok();
                 body.map(|b| {
-                    if b.len() > 500 {
-                        format!("{}...", &b[..500])
+                    // Sanitize and truncate: only keep first few lines and cap length
+                    let sanitized = b
+                        .lines()
+                        .take(5)
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    if sanitized.len() > 500 {
+                        format!("{}...", &sanitized[..500])
                     } else {
-                        b
+                        sanitized
                     }
                 })
             } else {
