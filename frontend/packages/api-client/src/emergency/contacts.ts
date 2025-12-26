@@ -29,7 +29,7 @@ export async function listEmergencyContacts(
   const response = await fetch(`${API_BASE}/contacts?${params.toString()}`);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch emergency contacts: ${response.statusText}`);
+    throw new Error('Unable to load emergency contacts. Please try again later.');
   }
 
   return response.json();
@@ -51,7 +51,7 @@ export async function getEmergencyContact(
     if (response.status === 404) {
       throw new Error('Emergency contact not found');
     }
-    throw new Error(`Failed to fetch emergency contact: ${response.statusText}`);
+    throw new Error('Unable to load emergency contact. Please try again later.');
   }
 
   return response.json();
@@ -76,7 +76,7 @@ export async function createEmergencyContact(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create emergency contact: ${response.statusText}`);
+    throw new Error('Unable to create emergency contact. Please check your input and try again.');
   }
 
   return response.json();
@@ -105,7 +105,7 @@ export async function updateEmergencyContact(
     if (response.status === 404) {
       throw new Error('Emergency contact not found');
     }
-    throw new Error(`Failed to update emergency contact: ${response.statusText}`);
+    throw new Error('Unable to update emergency contact. Please check your input and try again.');
   }
 
   return response.json();
@@ -126,6 +126,6 @@ export async function deleteEmergencyContact(id: string, organizationId: string)
     if (response.status === 404) {
       throw new Error('Emergency contact not found');
     }
-    throw new Error(`Failed to delete emergency contact: ${response.statusText}`);
+    throw new Error('Unable to delete emergency contact. Please try again later.');
   }
 }
