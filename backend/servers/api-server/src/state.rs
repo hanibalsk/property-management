@@ -9,15 +9,15 @@ use db::{
         DocumentRepository, DocumentTemplateRepository, EmergencyRepository, EquipmentRepository,
         FacilityRepository, FaultRepository, FeatureFlagRepository, FinancialRepository,
         FormRepository, GovernmentPortalRepository, GranularNotificationRepository,
-        HealthMonitoringRepository, HelpRepository, InsuranceRepository, LeaseRepository,
-        LegalRepository, ListingRepository, MeterRepository, NotificationPreferenceRepository,
-        OAuthRepository, OnboardingRepository, OrganizationMemberRepository,
-        OrganizationRepository, PackageVisitorRepository, PasswordResetRepository,
-        PersonMonthRepository, PlatformAdminRepository, RentalRepository, RoleRepository,
-        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
-        SubscriptionRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
-        UnitRepository, UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
-        WorkOrderRepository, WorkflowRepository,
+        HealthMonitoringRepository, HelpRepository, InsuranceRepository, IntegrationRepository,
+        LeaseRepository, LegalRepository, ListingRepository, MeterRepository,
+        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        OrganizationMemberRepository, OrganizationRepository, PackageVisitorRepository,
+        PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository, RentalRepository,
+        RoleRepository, SensorRepository, SentimentRepository, SessionRepository,
+        SignatureRequestRepository, SubscriptionRepository, SystemAnnouncementRepository,
+        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
+        VendorRepository, VoteRepository, WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -98,6 +98,8 @@ pub struct AppState {
     pub form_repo: FormRepository,
     // Epic 58: Package & Visitor Management
     pub package_visitor_repo: PackageVisitorRepository,
+    // Epic 61: External Integrations Suite
+    pub integration_repo: IntegrationRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -180,6 +182,8 @@ impl AppState {
         let form_repo = FormRepository::new(db.clone());
         // Epic 58: Package & Visitor Management
         let package_visitor_repo = PackageVisitorRepository::new(db.clone());
+        // Epic 61: External Integrations Suite
+        let integration_repo = IntegrationRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -240,6 +244,7 @@ impl AppState {
             automation_repo,
             form_repo,
             package_visitor_repo,
+            integration_repo,
             auth_service,
             email_service,
             jwt_service,

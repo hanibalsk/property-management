@@ -445,7 +445,24 @@ pub mod form;
 pub mod package_visitor;
 
 // Epic 61: External Integrations Suite
-// pub mod integration;
+pub mod integration;
+
+pub use integration::{
+    accounting_system, calendar_provider, calendar_sync_status,
+    delivery_status as webhook_delivery_status, esignature_provider, esignature_status,
+    export_status, meeting_status, video_provider, webhook_event, webhook_status, AccountingExport,
+    AccountingExportSettings, CalendarConnection, CalendarEvent as IntegrationCalendarEvent,
+    CalendarSyncResult, CreateAccountingExport, CreateCalendarConnection,
+    CreateCalendarEvent as CreateIntegrationCalendarEvent, CreateESignatureRecipient,
+    CreateESignatureWorkflow, CreateVideoConferenceConnection, CreateVideoMeeting,
+    CreateWebhookSubscription, ESignatureEvent, ESignatureRecipient, ESignatureWorkflow,
+    ESignatureWorkflowWithRecipients, IntegrationStatistics, MeetingParticipant, MeetingSettings,
+    PohodaExportData, PohodaInvoice, PohodaInvoiceItem, PohodaPayment, SyncCalendarRequest,
+    TestWebhookRequest, TestWebhookResponse, UpdateAccountingExportSettings,
+    UpdateCalendarConnection, UpdateVideoMeeting, UpdateWebhookSubscription,
+    VideoConferenceConnection, VideoMeeting, WebhookDeliveryLog, WebhookDeliveryQuery,
+    WebhookRetryPolicy, WebhookStatistics, WebhookSubscription,
+};
 
 pub use automation::{
     AutomationAction, AutomationLogSummary, AutomationRuleWithStats, CallWebhookConfig,

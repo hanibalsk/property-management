@@ -11,3 +11,5 @@ reqwest = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
+chrono = { workspace = true }
+urlencoding = { workspace = true }
