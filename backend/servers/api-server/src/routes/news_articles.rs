@@ -956,7 +956,8 @@ async fn moderate_comment(
     Json(req): Json<ModerateCommentRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     // Only managers can moderate comments
-    if !user.is_manager() {
+    let is_manager = user.role.as_ref().map(|r| r.is_manager()).unwrap_or(false);
+    if !is_manager {
         return Err(forbidden("Only managers can moderate comments"));
     }
 
