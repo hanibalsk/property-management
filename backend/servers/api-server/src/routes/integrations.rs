@@ -2611,11 +2611,7 @@ pub async fn test_webhook(
                 let body = response.text().await.ok();
                 body.map(|b| {
                     // Sanitize and truncate: only keep first few lines and cap length
-                    let sanitized = b
-                        .lines()
-                        .take(5)
-                        .collect::<Vec<_>>()
-                        .join("\n");
+                    let sanitized = b.lines().take(5).collect::<Vec<_>>().join("\n");
                     if sanitized.len() > 500 {
                         format!("{}...", &sanitized[..500])
                     } else {
