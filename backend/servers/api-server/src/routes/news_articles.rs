@@ -32,6 +32,8 @@ const MAX_TITLE_LENGTH: usize = 255;
 const MAX_CONTENT_LENGTH: usize = 100_000; // Rich text can be larger
 
 /// Maximum allowed comment length (characters).
+/// NOTE: This constant is duplicated in frontend validation. If changed here,
+/// update the frontend textarea maxLength and validation messages accordingly.
 const MAX_COMMENT_LENGTH: usize = 2000;
 
 // ============================================================================
@@ -386,7 +388,12 @@ async fn create_article(
     user: AuthUser,
     Json(req): Json<CreateArticleRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // TODO: Add authorization check - only managers can create articles
+    // Authorization check - only managers can create articles
+    let is_manager = user.role.as_ref().map(|r| r.is_manager()).unwrap_or(false);
+    if !is_manager {
+        return Err(forbidden("Only managers can create articles"));
+    }
+
     // Validate input
     if req.title.is_empty() || req.title.len() > MAX_TITLE_LENGTH {
         return Err(bad_request(&format!(
@@ -463,11 +470,25 @@ async fn create_article(
 async fn update_article(
     State(state): State<AppState>,
     TenantExtractor(_tenant): TenantExtractor,
-    _user: AuthUser,
+    user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateArticleRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // TODO: Add authorization check - only author or managers can update
+    let repo = NewsArticleRepository::new(state.db.clone());
+
+    // Authorization check - only author or managers can update
+    let article = repo
+        .find_by_id(id)
+        .await
+        .map_err(|e| internal_error(&format!("Failed to get article: {}", e)))?
+        .ok_or_else(|| not_found("Article not found"))?;
+
+    let is_manager = user.role.as_ref().map(|r| r.is_manager()).unwrap_or(false);
+    let is_author = article.author_id == user.user_id;
+    if !is_manager && !is_author {
+        return Err(forbidden("Only the author or managers can update this article"));
+    }
+
     // Validate input
     if let Some(ref title) = req.title {
         if title.is_empty() || title.len() > MAX_TITLE_LENGTH {
@@ -486,8 +507,6 @@ async fn update_article(
             )));
         }
     }
-
-    let repo = NewsArticleRepository::new(state.db.clone());
 
     let data = UpdateArticle {
         title: req.title,

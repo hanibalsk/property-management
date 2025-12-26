@@ -165,96 +165,48 @@ impl NewsArticleRepository {
 
     /// Update an article with the provided data.
     ///
-    /// # Safety
-    /// This function uses dynamic SQL query construction but is safe from SQL injection
-    /// because:
-    /// 1. Field names are hardcoded string literals (not user input)
-    /// 2. All user-provided values are bound as parameterized query parameters ($1, $2, etc.)
-    /// 3. The UpdateArticle struct only contains known, validated field names
+    /// Uses COALESCE pattern for safe partial updates - only non-null parameters
+    /// update their corresponding fields while keeping existing values for nulls.
+    /// This approach is SQL-injection safe as all field names are static.
     pub async fn update(
         &self,
         id: Uuid,
         data: UpdateArticle,
     ) -> Result<Option<NewsArticle>, SqlxError> {
-        // Build dynamic UPDATE query based on which fields are provided
-        // NOTE: Field names are compile-time constants, not user input - safe from injection
-        let mut query = String::from("UPDATE news_articles SET ");
-        let mut updates = Vec::new();
-        let mut param_count = 1;
+        // Convert building_ids to JSON if present
+        let building_ids_json = data
+            .building_ids
+            .map(|ids| serde_json::to_value(&ids).unwrap_or_default());
 
-        if data.title.is_some() {
-            updates.push(format!("title = ${}", param_count));
-            param_count += 1;
-        }
-        if data.content.is_some() {
-            updates.push(format!("content = ${}", param_count));
-            param_count += 1;
-        }
-        if data.excerpt.is_some() {
-            updates.push(format!("excerpt = ${}", param_count));
-            param_count += 1;
-        }
-        if data.cover_image_url.is_some() {
-            updates.push(format!("cover_image_url = ${}", param_count));
-            param_count += 1;
-        }
-        if data.building_ids.is_some() {
-            updates.push(format!("building_ids = ${}", param_count));
-            param_count += 1;
-        }
-        if data.status.is_some() {
-            updates.push(format!("status = ${}", param_count));
-            param_count += 1;
-        }
-        if data.comments_enabled.is_some() {
-            updates.push(format!("comments_enabled = ${}", param_count));
-            param_count += 1;
-        }
-        if data.reactions_enabled.is_some() {
-            updates.push(format!("reactions_enabled = ${}", param_count));
-            param_count += 1;
-        }
-
-        // If no fields to update, just return the existing article
-        if updates.is_empty() {
-            return self.find_by_id(id).await;
-        }
-
-        updates.push("updated_at = NOW()".to_string());
-        query.push_str(&updates.join(", "));
-        query.push_str(&format!(" WHERE id = ${} RETURNING *", param_count));
-
-        let mut q = sqlx::query_as::<_, NewsArticle>(&query);
-
-        // Bind parameters in the same order as updates vector
-        if let Some(title) = data.title {
-            q = q.bind(title);
-        }
-        if let Some(content) = data.content {
-            q = q.bind(content);
-        }
-        if let Some(excerpt) = data.excerpt {
-            q = q.bind(excerpt);
-        }
-        if let Some(cover_image_url) = data.cover_image_url {
-            q = q.bind(cover_image_url);
-        }
-        if let Some(building_ids) = data.building_ids {
-            let building_ids_json = serde_json::to_value(&building_ids).unwrap_or_default();
-            q = q.bind(building_ids_json);
-        }
-        if let Some(status) = data.status {
-            q = q.bind(status);
-        }
-        if let Some(comments_enabled) = data.comments_enabled {
-            q = q.bind(comments_enabled);
-        }
-        if let Some(reactions_enabled) = data.reactions_enabled {
-            q = q.bind(reactions_enabled);
-        }
-        q = q.bind(id);
-
-        q.fetch_optional(&self.pool).await
+        // Use COALESCE pattern - each field only updates if parameter is not null
+        // This is SQL-injection safe as all field names are compile-time constants
+        sqlx::query_as::<_, NewsArticle>(
+            r#"
+            UPDATE news_articles SET
+                title = COALESCE($2, title),
+                content = COALESCE($3, content),
+                excerpt = COALESCE($4, excerpt),
+                cover_image_url = COALESCE($5, cover_image_url),
+                building_ids = COALESCE($6, building_ids),
+                status = COALESCE($7, status),
+                comments_enabled = COALESCE($8, comments_enabled),
+                reactions_enabled = COALESCE($9, reactions_enabled),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(data.title)
+        .bind(data.content)
+        .bind(data.excerpt)
+        .bind(data.cover_image_url)
+        .bind(building_ids_json)
+        .bind(data.status)
+        .bind(data.comments_enabled)
+        .bind(data.reactions_enabled)
+        .fetch_optional(&self.pool)
+        .await
     }
 
     pub async fn publish(

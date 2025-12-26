@@ -374,6 +374,16 @@
   color: #dc2626;
 }
 
+.emergency-contact-form-error-banner {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  font-size: var(--font-size-sm, 14px);
+  color: #dc2626;
+}
+
 .emergency-contact-form-actions {
   display: flex;
   gap: 1rem;

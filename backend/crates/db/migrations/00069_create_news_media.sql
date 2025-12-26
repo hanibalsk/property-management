@@ -205,6 +205,8 @@ CREATE POLICY article_views_tenant_isolation ON article_views
     );
 
 -- Article Comment Reactions table
+-- TODO: Implement repository methods and API routes for comment reactions in a future story.
+-- This table is created now for schema completeness but the functionality is not yet exposed.
 CREATE TABLE IF NOT EXISTS article_comment_reactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     comment_id UUID NOT NULL REFERENCES article_comments(id) ON DELETE CASCADE,
