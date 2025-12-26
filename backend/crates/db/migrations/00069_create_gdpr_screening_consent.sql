@@ -14,6 +14,57 @@ CREATE TYPE screening_consent_status AS ENUM (
     'expired'
 );
 
+-- Consent method - how consent was provided
+CREATE TYPE screening_consent_method AS ENUM (
+    'web',
+    'mobile',
+    'email',
+    'sms'
+);
+
+-- Audit event types
+CREATE TYPE screening_consent_event_type AS ENUM (
+    'granted',
+    'denied',
+    'withdrawn',
+    'expired',
+    'accessed',
+    'shared',
+    'deleted',
+    'status_changed'
+);
+
+-- Data access request type
+CREATE TYPE screening_access_request_type AS ENUM (
+    'access',
+    'portability',
+    'rectification',
+    'erasure'
+);
+
+-- Data access request status
+CREATE TYPE screening_access_request_status AS ENUM (
+    'pending',
+    'verified',
+    'processing',
+    'completed',
+    'rejected'
+);
+
+-- Verification method
+CREATE TYPE screening_verification_method AS ENUM (
+    'email',
+    'id_document',
+    'video_call'
+);
+
+-- Response method
+CREATE TYPE screening_response_method AS ENUM (
+    'email',
+    'download',
+    'mail'
+);
+
 -- Consent scope - granular consent options
 CREATE TYPE screening_consent_scope AS ENUM (
     'credit_check',
@@ -104,11 +155,11 @@ CREATE TABLE screening_consents (
     -- Technical details for proof
     ip_address INET NOT NULL,
     user_agent TEXT,
-    consent_method VARCHAR(50) NOT NULL, -- 'web', 'mobile', 'email', 'sms'
+    consent_method screening_consent_method NOT NULL,
 
     -- Consent form version (for tracking)
     consent_form_version VARCHAR(50) NOT NULL,
-    consent_text_hash VARCHAR(64) NOT NULL, -- SHA-256 of consent text shown
+    consent_text_hash VARCHAR(64) NOT NULL, -- hex-encoded SHA-256 (64 chars) of consent text shown
 
     -- Digital signature/proof
     signature_data JSONB, -- {type: 'checkbox'|'signature', data: '...'}
@@ -124,17 +175,23 @@ CREATE TABLE screening_consents (
     -- Metadata
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Ensure status and withdrawn_at are synchronized
+    CONSTRAINT chk_consent_withdrawn_consistency CHECK (
+        (status = 'withdrawn' AND withdrawn_at IS NOT NULL) OR
+        (status != 'withdrawn' AND withdrawn_at IS NULL)
+    )
 );
 
 -- Consent Audit Log (GDPR Article 30: Records of processing)
 CREATE TABLE screening_consent_audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE RESTRICT,
+    consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE CASCADE,
 
     -- Event details
-    event_type VARCHAR(50) NOT NULL, -- 'granted', 'withdrawn', 'accessed', 'shared', 'deleted'
+    event_type screening_consent_event_type NOT NULL,
     event_timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     -- Actor
@@ -160,7 +217,7 @@ CREATE TABLE screening_data_processing_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     application_id UUID NOT NULL REFERENCES tenant_applications(id) ON DELETE CASCADE,
-    consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE RESTRICT,
+    consent_id UUID NOT NULL REFERENCES screening_consents(id) ON DELETE CASCADE,
 
     -- Processing details
     processing_purpose VARCHAR(255) NOT NULL,
@@ -204,7 +261,7 @@ CREATE TABLE screening_data_access_requests (
     requester_user_id UUID REFERENCES users(id),
 
     -- Request details
-    request_type VARCHAR(50) NOT NULL, -- 'access', 'portability', 'rectification', 'erasure'
+    request_type screening_access_request_type NOT NULL,
     request_description TEXT,
 
     -- Related applications/consents
@@ -212,16 +269,16 @@ CREATE TABLE screening_data_access_requests (
     related_consent_ids UUID[],
 
     -- Status
-    status VARCHAR(50) NOT NULL DEFAULT 'pending', -- 'pending', 'verified', 'processing', 'completed', 'rejected'
+    status screening_access_request_status NOT NULL DEFAULT 'pending',
 
     -- Identity verification
     identity_verified_at TIMESTAMPTZ,
-    verification_method VARCHAR(50), -- 'email', 'id_document', 'video_call'
+    verification_method screening_verification_method,
     verified_by UUID REFERENCES users(id),
 
     -- Response
     response_delivered_at TIMESTAMPTZ,
-    response_method VARCHAR(50), -- 'email', 'download', 'mail'
+    response_method screening_response_method,
     response_data_url VARCHAR(500),
     rejection_reason TEXT,
 
@@ -241,6 +298,7 @@ CREATE TABLE screening_data_access_requests (
 -- Consent Requests
 CREATE INDEX idx_screening_consent_requests_org ON screening_consent_requests(organization_id);
 CREATE INDEX idx_screening_consent_requests_application ON screening_consent_requests(application_id);
+CREATE INDEX idx_screening_consent_requests_screening ON screening_consent_requests(screening_id);
 CREATE INDEX idx_screening_consent_requests_status ON screening_consent_requests(status);
 CREATE INDEX idx_screening_consent_requests_expires ON screening_consent_requests(expires_at) WHERE status = 'pending';
 CREATE INDEX idx_screening_consent_requests_requested_by ON screening_consent_requests(requested_by);
@@ -308,7 +366,11 @@ BEGIN
         ) VALUES (
             NEW.organization_id,
             NEW.id,
-            'granted',
+            CASE
+                WHEN NEW.status = 'granted' THEN 'granted'::screening_consent_event_type
+                WHEN NEW.status = 'denied' THEN 'denied'::screening_consent_event_type
+                ELSE 'status_changed'::screening_consent_event_type
+            END,
             jsonb_build_object('scopes', NEW.granted_scopes),
             NEW.applicant_name
         );
@@ -323,9 +385,11 @@ BEGIN
             NEW.organization_id,
             NEW.id,
             CASE
-                WHEN NEW.status = 'withdrawn' THEN 'withdrawn'
-                WHEN NEW.status = 'expired' THEN 'expired'
-                ELSE 'status_changed'
+                WHEN NEW.status = 'withdrawn' THEN 'withdrawn'::screening_consent_event_type
+                WHEN NEW.status = 'expired' THEN 'expired'::screening_consent_event_type
+                WHEN NEW.status = 'denied' THEN 'denied'::screening_consent_event_type
+                WHEN NEW.status = 'granted' THEN 'granted'::screening_consent_event_type
+                ELSE 'status_changed'::screening_consent_event_type
             END,
             jsonb_build_object(
                 'old_status', OLD.status,
@@ -374,6 +438,8 @@ CREATE POLICY screening_access_requests_org_isolation ON screening_data_access_r
 -- =============================================================================
 
 -- Function to check if consent is still valid
+-- Note: Status field is the single source of truth for consent state.
+-- withdrawn_at is only for timestamp tracking, status determines validity.
 CREATE OR REPLACE FUNCTION is_screening_consent_valid(consent_uuid UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -386,8 +452,7 @@ BEGIN
     END IF;
 
     RETURN consent_record.status = 'granted'
-        AND consent_record.expires_at > NOW()
-        AND consent_record.withdrawn_at IS NULL;
+        AND consent_record.expires_at > NOW();
 END;
 $$ LANGUAGE plpgsql;
 
