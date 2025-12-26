@@ -198,3 +198,8 @@ pub use package_visitor::PackageVisitorRepository;
 pub mod news_article;
 
 pub use news_article::NewsArticleRepository;
+
+// Epic 61: External Integrations Suite
+pub mod integration;
+
+pub use integration::IntegrationRepository;
