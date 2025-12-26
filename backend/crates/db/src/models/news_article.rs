@@ -110,6 +110,70 @@ pub struct ArticleWithDetails {
     pub author_avatar_url: Option<String>,
 }
 
+/// Row type for querying article with author details (for FromRow derivation).
+#[derive(Debug, Clone, FromRow)]
+pub struct ArticleWithDetailsRow {
+    // Article fields
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub author_id: Uuid,
+    pub title: String,
+    pub content: String,
+    pub excerpt: Option<String>,
+    pub cover_image_url: Option<String>,
+    pub building_ids: serde_json::Value,
+    pub status: String,
+    pub published_at: Option<DateTime<Utc>>,
+    pub archived_at: Option<DateTime<Utc>>,
+    pub pinned: bool,
+    pub pinned_at: Option<DateTime<Utc>>,
+    pub pinned_by: Option<Uuid>,
+    pub comments_enabled: bool,
+    pub reactions_enabled: bool,
+    pub view_count: i32,
+    pub reaction_count: i32,
+    pub comment_count: i32,
+    pub share_count: i32,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    // Author fields from JOIN
+    pub author_name: String,
+    pub author_avatar_url: Option<String>,
+}
+
+impl From<ArticleWithDetailsRow> for ArticleWithDetails {
+    fn from(row: ArticleWithDetailsRow) -> Self {
+        ArticleWithDetails {
+            article: NewsArticle {
+                id: row.id,
+                organization_id: row.organization_id,
+                author_id: row.author_id,
+                title: row.title,
+                content: row.content,
+                excerpt: row.excerpt,
+                cover_image_url: row.cover_image_url,
+                building_ids: row.building_ids,
+                status: row.status,
+                published_at: row.published_at,
+                archived_at: row.archived_at,
+                pinned: row.pinned,
+                pinned_at: row.pinned_at,
+                pinned_by: row.pinned_by,
+                comments_enabled: row.comments_enabled,
+                reactions_enabled: row.reactions_enabled,
+                view_count: row.view_count,
+                reaction_count: row.reaction_count,
+                comment_count: row.comment_count,
+                share_count: row.share_count,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+            },
+            author_name: row.author_name,
+            author_avatar_url: row.author_avatar_url,
+        }
+    }
+}
+
 // ============================================================================
 // Article Media
 // ============================================================================

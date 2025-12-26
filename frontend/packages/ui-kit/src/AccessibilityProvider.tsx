@@ -49,13 +49,13 @@ export function useAccessibilityContext(): AccessibilityContextValue {
 const STORAGE_KEY = 'ppt-accessibility-settings';
 const EXPLICIT_SETTINGS_KEY = 'ppt-accessibility-explicit-settings';
 
-interface ExplicitSettings {
-  colorScheme?: boolean;
-  textSize?: boolean;
-  reduceMotion?: boolean;
-  screenReaderEnabled?: boolean;
-  keyboardNavigationEnabled?: boolean;
-}
+/**
+ * Tracks which settings have been explicitly set by the user (vs. system defaults).
+ * Keys must match AccessibilitySettings interface properties.
+ */
+type ExplicitSettings = {
+  [K in keyof AccessibilitySettings]?: boolean;
+};
 
 function loadSettings(): AccessibilitySettings {
   if (typeof window === 'undefined') return DEFAULT_ACCESSIBILITY_SETTINGS;
@@ -226,9 +226,13 @@ export const AccessibilityProvider: React.FC<AccessibilityProviderProps> = ({
     setSettings((prev: AccessibilitySettings) => ({ ...prev, ...updates }));
 
     // Mark updated settings as explicitly set by the user
+    // Use type-safe iteration over the keys that were actually provided
     const newExplicitSettings: ExplicitSettings = {};
-    for (const key of Object.keys(updates) as Array<keyof AccessibilitySettings>) {
-      newExplicitSettings[key] = true;
+    for (const key of Object.keys(updates)) {
+      if (key in DEFAULT_ACCESSIBILITY_SETTINGS) {
+        const validKey = key as keyof AccessibilitySettings;
+        newExplicitSettings[validKey] = true;
+      }
     }
     setExplicitSettings((prev) => ({ ...prev, ...newExplicitSettings }));
   };

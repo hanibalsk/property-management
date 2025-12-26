@@ -2,9 +2,9 @@
 
 use crate::models::news_article::{
     article_status, ArticleComment, ArticleListQuery, ArticleMedia, ArticleStatistics,
-    ArticleSummary, ArticleView, ArticleWithDetails, CommentWithAuthor, CommentWithAuthorRow,
-    CreateArticle, CreateArticleComment, CreateArticleMedia, NewsArticle, ReactionCounts,
-    UpdateArticle,
+    ArticleSummary, ArticleView, ArticleWithDetails, ArticleWithDetailsRow, CommentWithAuthor,
+    CommentWithAuthorRow, CreateArticle, CreateArticleComment, CreateArticleMedia, NewsArticle,
+    ReactionCounts, UpdateArticle,
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
@@ -67,18 +67,35 @@ impl NewsArticleRepository {
             .await
     }
 
-    /// Find an article by ID with full details.
+    /// Find an article by ID with full details including author information.
     ///
-    /// TODO: Implement full query with JOIN to include author details and related data.
-    /// For now, returns `Ok(None)` to behave like a standard "not found" lookup until
-    /// the detailed implementation with JOINs is ready.
+    /// This uses a JOIN query to fetch the article along with author name and avatar
+    /// from the users table.
     pub async fn find_by_id_with_details(
         &self,
-        _id: Uuid,
+        id: Uuid,
     ) -> Result<Option<ArticleWithDetails>, SqlxError> {
-        // TODO: Implement proper query with JOINs for author details and related data.
-        // Placeholder implementation: indicate "no result" instead of an unconditional error.
-        Ok(None)
+        let row = sqlx::query_as::<_, ArticleWithDetailsRow>(
+            r#"
+            SELECT
+                a.id, a.organization_id, a.author_id, a.title, a.content,
+                a.excerpt, a.cover_image_url, a.building_ids, a.status,
+                a.published_at, a.archived_at, a.pinned, a.pinned_at, a.pinned_by,
+                a.comments_enabled, a.reactions_enabled, a.view_count,
+                a.reaction_count, a.comment_count, a.share_count,
+                a.created_at, a.updated_at,
+                COALESCE(u.name, 'Unknown') as author_name,
+                u.avatar_url as author_avatar_url
+            FROM news_articles a
+            LEFT JOIN users u ON a.author_id = u.id
+            WHERE a.id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(Into::into))
     }
 
     /// List articles matching the query filters.
@@ -147,12 +164,20 @@ impl NewsArticleRepository {
     }
 
     /// Update an article with the provided data.
+    ///
+    /// # Safety
+    /// This function uses dynamic SQL query construction but is safe from SQL injection
+    /// because:
+    /// 1. Field names are hardcoded string literals (not user input)
+    /// 2. All user-provided values are bound as parameterized query parameters ($1, $2, etc.)
+    /// 3. The UpdateArticle struct only contains known, validated field names
     pub async fn update(
         &self,
         id: Uuid,
         data: UpdateArticle,
     ) -> Result<Option<NewsArticle>, SqlxError> {
         // Build dynamic UPDATE query based on which fields are provided
+        // NOTE: Field names are compile-time constants, not user input - safe from injection
         let mut query = String::from("UPDATE news_articles SET ");
         let mut updates = Vec::new();
         let mut param_count = 1;
