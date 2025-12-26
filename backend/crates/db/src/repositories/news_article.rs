@@ -352,35 +352,59 @@ impl NewsArticleRepository {
 
     /// Toggle a reaction on an article.
     ///
-    /// Fixed race condition by using INSERT...DO NOTHING pattern, then checking
-    /// rows_affected to determine if we should DELETE instead.
+    /// Uses UPSERT pattern to handle race conditions:
+    /// - If user has no reaction, adds the new reaction
+    /// - If user has the same reaction, removes it (toggle off)
+    /// - If user has a different reaction, updates to the new reaction
     pub async fn toggle_reaction(
         &self,
         article_id: Uuid,
         user_id: Uuid,
         reaction: &str,
     ) -> Result<bool, SqlxError> {
-        // Try to INSERT with DO NOTHING on conflict
-        let insert_result = sqlx::query(
-            "INSERT INTO article_reactions (article_id, user_id, reaction) VALUES ($1, $2, $3) ON CONFLICT (article_id, user_id) DO NOTHING",
+        // First, check if user already has a reaction on this article
+        let existing: Option<(String,)> = sqlx::query_as(
+            "SELECT reaction FROM article_reactions WHERE article_id = $1 AND user_id = $2",
         )
         .bind(article_id)
         .bind(user_id)
-        .bind(reaction)
-        .execute(&self.pool)
+        .fetch_optional(&self.pool)
         .await?;
 
-        // If rows_affected > 0, we successfully inserted (reaction was added)
-        if insert_result.rows_affected() > 0 {
-            Ok(true)
-        } else {
-            // If rows_affected == 0, there was a conflict (reaction exists), so delete it
-            sqlx::query("DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2")
+        match existing {
+            Some((existing_reaction,)) if existing_reaction == reaction => {
+                // Same reaction - toggle off (remove it)
+                sqlx::query("DELETE FROM article_reactions WHERE article_id = $1 AND user_id = $2")
+                    .bind(article_id)
+                    .bind(user_id)
+                    .execute(&self.pool)
+                    .await?;
+                Ok(false)
+            }
+            Some(_) => {
+                // Different reaction - update to new reaction
+                sqlx::query(
+                    "UPDATE article_reactions SET reaction = $3 WHERE article_id = $1 AND user_id = $2",
+                )
                 .bind(article_id)
                 .bind(user_id)
+                .bind(reaction)
                 .execute(&self.pool)
                 .await?;
-            Ok(false)
+                Ok(true)
+            }
+            None => {
+                // No existing reaction - add new one
+                sqlx::query(
+                    "INSERT INTO article_reactions (article_id, user_id, reaction) VALUES ($1, $2, $3)",
+                )
+                .bind(article_id)
+                .bind(user_id)
+                .bind(reaction)
+                .execute(&self.pool)
+                .await?;
+                Ok(true)
+            }
         }
     }
 
