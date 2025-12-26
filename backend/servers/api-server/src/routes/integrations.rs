@@ -303,15 +303,6 @@ fn verify_hellosign_signature(
     mac.verify_slice(&signature_bytes).is_ok()
 }
 
-/// Constant-time string comparison to prevent timing attacks.
-///
-/// Uses the `subtle` crate for cryptographically secure constant-time comparison.
-/// This prevents timing side-channel attacks when verifying webhook signatures.
-fn constant_time_compare(a: &str, b: &str) -> bool {
-    // Use subtle::ConstantTimeEq which handles length comparison securely
-    a.as_bytes().ct_eq(b.as_bytes()).into()
-}
-
 /// E-signature webhook payload with provider-specific fields.
 #[derive(Debug, Deserialize)]
 struct ESignatureWebhookPayload {
@@ -813,8 +804,9 @@ pub async fn sync_calendar(
         // Use external event ID for deduplication
         let create_data = CreateCalendarEvent {
             connection_id: path.id,
+            external_event_id: Some(event.id.clone()), // Store external ID to prevent duplicates
             source_type: "external".to_string(),
-            source_id: Some(event.id.clone()), // Store external ID to prevent duplicates
+            source_id: None,
             title: event.title.clone(),
             description: event.description.clone(),
             location: event.location.clone(),

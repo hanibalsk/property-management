@@ -277,6 +277,7 @@ pub struct CalendarEvent {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CreateCalendarEvent {
     pub connection_id: Uuid,
+    pub external_event_id: Option<String>,
     pub source_type: String,
     pub source_id: Option<Uuid>,
     pub title: String,
