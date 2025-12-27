@@ -13,19 +13,14 @@ use uuid::Uuid;
 // ============================================================================
 
 /// AML risk level classification.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, Default)]
 #[sqlx(type_name = "aml_risk_level", rename_all = "snake_case")]
 pub enum AmlRiskLevel {
+    #[default]
     Low,
     Medium,
     High,
     Critical,
-}
-
-impl Default for AmlRiskLevel {
-    fn default() -> Self {
-        Self::Low
-    }
 }
 
 /// AML assessment status.

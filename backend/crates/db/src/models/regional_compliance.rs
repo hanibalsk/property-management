@@ -17,18 +17,15 @@ use uuid::Uuid;
 // Jurisdiction Enum
 // ============================================================================
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema, Default,
+)]
 #[sqlx(type_name = "jurisdiction", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum Jurisdiction {
+    #[default]
     Slovakia,
     Czechia,
-}
-
-impl Default for Jurisdiction {
-    fn default() -> Self {
-        Jurisdiction::Slovakia
-    }
 }
 
 // ============================================================================

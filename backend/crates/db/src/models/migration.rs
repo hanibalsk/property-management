@@ -60,40 +60,33 @@ pub enum FieldDataType {
 }
 
 /// Validation rule for a field.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub struct FieldValidation {
     /// Field is required
+    #[serde(default)]
     pub required: bool,
     /// Minimum length (for strings)
+    #[serde(default)]
     pub min_length: Option<usize>,
     /// Maximum length (for strings)
+    #[serde(default)]
     pub max_length: Option<usize>,
     /// Minimum value (for numbers)
+    #[serde(default)]
     pub min_value: Option<f64>,
     /// Maximum value (for numbers)
+    #[serde(default)]
     pub max_value: Option<f64>,
     /// Regex pattern to match
+    #[serde(default)]
     pub pattern: Option<String>,
     /// Allowed values for enum type
+    #[serde(default)]
     pub allowed_values: Option<Vec<String>>,
     /// Custom validation message
+    #[serde(default)]
     pub message: Option<String>,
-}
-
-impl Default for FieldValidation {
-    fn default() -> Self {
-        Self {
-            required: false,
-            min_length: None,
-            max_length: None,
-            min_value: None,
-            max_value: None,
-            pattern: None,
-            allowed_values: None,
-            message: None,
-        }
-    }
 }
 
 /// A field mapping in an import template.
@@ -207,17 +200,12 @@ pub struct ImportTemplateSummary {
 }
 
 /// Template download format.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum TemplateFormat {
+    #[default]
     Csv,
     Xlsx,
-}
-
-impl Default for TemplateFormat {
-    fn default() -> Self {
-        Self::Csv
-    }
 }
 
 // ============================================================================
