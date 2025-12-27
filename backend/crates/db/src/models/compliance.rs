@@ -24,21 +24,16 @@ pub enum AmlRiskLevel {
 }
 
 /// AML assessment status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, Default)]
 #[sqlx(type_name = "aml_assessment_status", rename_all = "snake_case")]
 pub enum AmlAssessmentStatus {
+    #[default]
     Pending,
     InProgress,
     Completed,
     RequiresReview,
     Approved,
     Rejected,
-}
-
-impl Default for AmlAssessmentStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 /// Country risk rating for AML purposes.
@@ -187,9 +182,10 @@ pub struct CountryRisk {
 // ============================================================================
 
 /// EDD status tracking.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, Default)]
 #[sqlx(type_name = "edd_status", rename_all = "snake_case")]
 pub enum EddStatus {
+    #[default]
     NotRequired,
     Required,
     InProgress,
@@ -197,12 +193,6 @@ pub enum EddStatus {
     UnderReview,
     Completed,
     Expired,
-}
-
-impl Default for EddStatus {
-    fn default() -> Self {
-        Self::NotRequired
-    }
 }
 
 /// Document verification status.
@@ -497,9 +487,10 @@ pub struct ViolationTypeCount {
 // ============================================================================
 
 /// Content moderation status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, Default)]
 #[sqlx(type_name = "moderation_status", rename_all = "snake_case")]
 pub enum ModerationStatus {
+    #[default]
     Pending,
     UnderReview,
     Approved,
@@ -509,12 +500,6 @@ pub enum ModerationStatus {
     Appealed,
     AppealApproved,
     AppealRejected,
-}
-
-impl Default for ModerationStatus {
-    fn default() -> Self {
-        Self::Pending
-    }
 }
 
 /// Content type being moderated.

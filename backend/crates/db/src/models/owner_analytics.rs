@@ -11,19 +11,22 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct PropertyValuation {
     pub id: Uuid,
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub valuation_date: NaiveDate,
+    pub value_low: Decimal,
+    pub value_high: Decimal,
     pub estimated_value: Decimal,
-    pub method: String,
+    pub valuation_method: String,
+    pub confidence_score: Decimal,
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct CreatePropertyValuation {
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub estimated_value: Decimal,
-    pub method: String,
+    pub valuation_method: String,
     pub notes: Option<String>,
 }
 
@@ -38,7 +41,12 @@ pub struct ComparableProperty {
     pub id: Uuid,
     pub valuation_id: Uuid,
     pub address: String,
-    pub price: Decimal,
+    pub sale_price: Decimal,
+    pub size_sqm: i32,
+    pub rooms: i32,
+    pub distance_km: Decimal,
+    pub similarity_score: Decimal,
+    pub source: String,
     pub sold_date: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,
 }
@@ -64,18 +72,32 @@ pub struct CalculateROIRequest {
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct PropertyROI {
-    pub property_id: Uuid,
-    pub roi_percent: Decimal,
-    pub total_income: Decimal,
-    pub total_expenses: Decimal,
-    pub net_income: Decimal,
+    pub unit_id: Uuid,
+    pub total_investment: Decimal,
+    pub total_returns: Decimal,
+    pub roi_percentage: Decimal,
+    pub annualized_roi: Decimal,
+    pub period_months: i32,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct ROIDashboard {
-    pub properties: Vec<PropertyROI>,
-    pub total_roi: Decimal,
-    pub total_net_income: Decimal,
+    pub property_roi: PropertyROI,
+    pub cash_flow: CashFlowSummary,
+    pub value_trend: ValueTrendSummary,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct CashFlowSummary {
+    pub total_income: Decimal,
+    pub total_expenses: Decimal,
+    pub net_cash_flow: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct ValueTrendSummary {
+    pub current_value: Decimal,
+    pub trend_percentage: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
