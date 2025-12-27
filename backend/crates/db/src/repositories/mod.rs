@@ -213,3 +213,8 @@ pub use energy::EnergyRepository;
 pub mod llm_document;
 
 pub use llm_document::LlmDocumentRepository;
+
+// Epic 70: Competitive Feature Enhancements
+pub mod competitive;
+
+pub use competitive::CompetitiveRepository;

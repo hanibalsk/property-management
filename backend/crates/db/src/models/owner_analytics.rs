@@ -1,0 +1,257 @@
+//! Owner analytics models (Epic 74: Owner Investment Analytics).
+//! Stub file - full implementation pending.
+
+use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use utoipa::ToSchema;
+use uuid::Uuid;
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct PropertyValuation {
+    pub id: Uuid,
+    pub property_id: Uuid,
+    pub valuation_date: NaiveDate,
+    pub estimated_value: Decimal,
+    pub method: String,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct CreatePropertyValuation {
+    pub property_id: Uuid,
+    pub estimated_value: Decimal,
+    pub method: String,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PropertyValuationWithComparables {
+    pub valuation: PropertyValuation,
+    pub comparables: Vec<ComparableProperty>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct ComparableProperty {
+    pub id: Uuid,
+    pub valuation_id: Uuid,
+    pub address: String,
+    pub price: Decimal,
+    pub sold_date: Option<NaiveDate>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct AddComparableProperty {
+    pub address: String,
+    pub price: Decimal,
+    pub sold_date: Option<NaiveDate>,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct CalculateROIRequest {
+    pub property_id: Uuid,
+    pub purchase_price: Decimal,
+    pub purchase_date: NaiveDate,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PropertyROI {
+    pub property_id: Uuid,
+    pub roi_percent: Decimal,
+    pub total_income: Decimal,
+    pub total_expenses: Decimal,
+    pub net_income: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct ROIDashboard {
+    pub properties: Vec<PropertyROI>,
+    pub total_roi: Decimal,
+    pub total_net_income: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct CashFlowBreakdown {
+    pub property_id: Uuid,
+    pub period: String,
+    pub income: CashFlowIncome,
+    pub expenses: CashFlowExpenses,
+    pub net: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct CashFlowIncome {
+    pub rent: Decimal,
+    pub other: Decimal,
+    pub total: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct CashFlowExpenses {
+    pub maintenance: Decimal,
+    pub utilities: Decimal,
+    pub insurance: Decimal,
+    pub taxes: Decimal,
+    pub other: Decimal,
+    pub total: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct MonthlyCashFlow {
+    pub month: String,
+    pub income: Decimal,
+    pub expenses: Decimal,
+    pub net: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct ExpenseAutoApprovalRule {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub category: String,
+    pub max_amount: Decimal,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct CreateAutoApprovalRule {
+    pub category: String,
+    pub max_amount: Decimal,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct UpdateAutoApprovalRule {
+    pub category: Option<String>,
+    pub max_amount: Option<Decimal>,
+    pub is_active: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct ExpenseApprovalRequest {
+    pub id: Uuid,
+    pub property_id: Uuid,
+    pub amount: Decimal,
+    pub category: String,
+    pub description: String,
+    pub status: String,
+    pub submitted_by: Uuid,
+    pub reviewed_by: Option<Uuid>,
+    pub submitted_at: DateTime<Utc>,
+    pub reviewed_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct SubmitExpenseForApproval {
+    pub property_id: Uuid,
+    pub amount: Decimal,
+    pub category: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct ReviewExpenseRequest {
+    pub approved: bool,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct ExpenseApprovalResponse {
+    pub request: ExpenseApprovalRequest,
+    pub auto_approved: bool,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct ExpenseApprovalStatus {
+    pub pending: i64,
+    pub approved: i64,
+    pub rejected: i64,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct ExpenseRequestsQuery {
+    pub property_id: Option<Uuid>,
+    pub status: Option<String>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct ListExpenseRequestsResponse {
+    pub items: Vec<ExpenseApprovalRequest>,
+    pub total: i64,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PortfolioProperty {
+    pub property_id: Uuid,
+    pub address: String,
+    pub current_value: Decimal,
+    pub roi: Decimal,
+    pub net_income: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PortfolioSummary {
+    pub properties: Vec<PortfolioProperty>,
+    pub total_value: Decimal,
+    pub total_roi: Decimal,
+    pub total_net_income: Decimal,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct OwnerPropertiesQuery {
+    pub owner_id: Uuid,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct PortfolioComparisonRequest {
+    pub property_ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct PropertyComparison {
+    pub property_id: Uuid,
+    pub value: Decimal,
+    pub roi: Decimal,
+    pub net_income: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct ComparisonMetrics {
+    pub properties: Vec<PropertyComparison>,
+    pub best_roi_property: Uuid,
+    pub highest_value_property: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+pub struct PropertyValueHistory {
+    pub id: Uuid,
+    pub property_id: Uuid,
+    pub value: Decimal,
+    pub recorded_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct ValueHistoryQuery {
+    pub property_id: Uuid,
+    pub limit: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct ValueTrendAnalysis {
+    pub property_id: Uuid,
+    pub history: Vec<PropertyValueHistory>,
+    pub trend_percent: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct ValuationMethod {
+    pub code: String,
+    pub name: String,
+    pub description: String,
+}

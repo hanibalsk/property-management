@@ -77,3 +77,9 @@ pub mod news_articles;
 
 // Epic 65: Energy & Sustainability Tracking
 pub mod energy;
+
+// Epic 70: Competitive Feature Enhancements
+pub mod competitive;
+
+// Epic 78: Vendor Operations Portal
+pub mod vendor_portal;

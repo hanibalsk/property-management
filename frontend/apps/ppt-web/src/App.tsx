@@ -1,6 +1,7 @@
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
 import { BrowserRouter, Link, Route, Routes, useParams } from 'react-router-dom';
 import { ToastProvider } from './components';
+import { CreateDisputePage, DisputeDetailPage, DisputesPage } from './features/disputes';
 import { DocumentDetailPage, DocumentUploadPage, DocumentsPage } from './features/documents';
 import { EmergencyContactDirectoryPage } from './features/emergency';
 import { ArticleDetailPage, NewsListPage } from './features/news';
@@ -19,6 +20,7 @@ function App() {
               <Link to="/documents">Documents</Link>
               <Link to="/news">News</Link>
               <Link to="/emergency">Emergency Contacts</Link>
+              <Link to="/disputes">Disputes</Link>
               <Link to="/settings/accessibility">Accessibility</Link>
               <Link to="/settings/privacy">Privacy</Link>
             </nav>
@@ -39,6 +41,10 @@ function App() {
                 <Route path="/settings/accessibility" element={<AccessibilitySettingsPage />} />
                 {/* Privacy settings route (Epic 63) */}
                 <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
+                {/* Dispute Resolution routes (Epic 77) */}
+                <Route path="/disputes" element={<DisputesPage />} />
+                <Route path="/disputes/new" element={<CreateDisputePage />} />
+                <Route path="/disputes/:disputeId" element={<DisputeDetailRoute />} />
               </Routes>
             </main>
           </div>
@@ -77,6 +83,13 @@ function ArticleDetailRoute() {
   const { articleId } = useParams<{ articleId: string }>();
   if (!articleId) return <div>Article not found</div>;
   return <ArticleDetailPage articleId={articleId} />;
+}
+
+/** Route wrapper for dispute detail page to extract params (Epic 77) */
+function DisputeDetailRoute() {
+  const { disputeId } = useParams<{ disputeId: string }>();
+  if (!disputeId) return <div>Dispute not found</div>;
+  return <DisputeDetailPage disputeId={disputeId} />;
 }
 
 function Home() {

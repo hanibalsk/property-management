@@ -307,14 +307,19 @@ pub use work_order::{
 };
 
 // Epic 21: Supplier & Vendor Management
+// Epic 78: Vendor Operations Portal
 pub mod vendor;
 
 pub use vendor::{
-    contract_status, contract_type, invoice_status, service_type, vendor_status, ContractQuery,
+    access_method, contract_status, contract_type, invoice_status, service_type, vendor_badge,
+    vendor_status, AcceptJobRequest, AccessCodeResponse, ContractQuery, CreatePropertyAccess,
     CreateVendor, CreateVendorContact, CreateVendorContract, CreateVendorInvoice,
-    CreateVendorRating, ExpiringContract, InvoiceQuery, InvoiceSummary, ServiceCount, UpdateVendor,
-    UpdateVendorContract, UpdateVendorInvoice, Vendor, VendorContact, VendorContract,
-    VendorInvoice, VendorQuery, VendorRating, VendorStatistics, VendorWithDetails,
+    CreateVendorRating, DeclineJobRequest, ExpiringContract, GenerateAccessCode, InvoiceQuery,
+    InvoiceSummary, MaterialItem, PropertyAccessInfo, ProposeAlternativeTime, ServiceCount,
+    SubmitWorkCompletion, UpdateVendor, UpdateVendorContract, UpdateVendorInvoice, Vendor,
+    VendorContact, VendorContract, VendorDashboardStats, VendorEarningsSummary, VendorFeedback,
+    VendorInvoice, VendorInvoiceWithTracking, VendorJob, VendorJobQuery, VendorJobSummary,
+    VendorProfile, VendorQuery, VendorRating, VendorStatistics, VendorWithDetails, WorkCompletion,
 };
 
 // Epic 22: Insurance Management
@@ -546,4 +551,17 @@ pub use llm_document::{
     PhotoEnhancementResponse, ProviderStats, RagContextSource, RequestTypeStats,
     UpdateEscalationConfig, UpdatePromptTemplate, VoiceAssistantDevice, VoiceCommandHistory,
     VoiceCommandRequest, VoiceCommandResponse,
+};
+
+// Epic 70: Competitive Feature Enhancements
+pub mod competitive;
+
+pub use competitive::{
+    amenity_type, dynamic_pricing_status, price_change_type, tour_format, tour_status,
+    AreaStatistics, ComparableSale, CreateComparableSale, CreateDynamicPricingConfig,
+    CreateNearbyAmenity, CreateVirtualTour, DynamicPricingConfig, MarketTrend, MarketTrendQuery,
+    NearbyAmenity, NeighborhoodData, NeighborhoodDataWithAmenities, PriceHistoryEntry,
+    PriceHistoryQuery, PriceHistorySummary, PriceSuggestion, RecordPriceHistory,
+    RespondToSuggestion, TourViewAnalytics, UpdateDynamicPricingConfig, UpdateVirtualTour,
+    UpsertNeighborhoodData, VirtualTour, VirtualTourWithStats,
 };
