@@ -168,7 +168,8 @@ use state::AppState;
         (name = "Workflows", description = "Automated workflow management"),
         (name = "IoT Sensors", description = "IoT sensor registration and management"),
         (name = "Community", description = "Community & social features: groups, posts, events, marketplace"),
-        (name = "Automation", description = "Workflow automation rules, templates, and execution")
+        (name = "Automation", description = "Workflow automation rules, templates, and execution"),
+        (name = "energy", description = "Energy & sustainability: EPCs, carbon footprint, sustainability scores, benchmarking")
     )
 )]
 struct ApiDoc;
@@ -325,6 +326,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/ai/sentiment", routes::ai::sentiment_router())
         .nest("/api/v1/ai/equipment", routes::ai::equipment_router())
         .nest("/api/v1/ai/workflows", routes::ai::workflow_router())
+        // AI LLM routes (Epic 64)
+        .nest("/api/v1/ai/llm", routes::ai::llm_router())
         // IoT routes (Epic 14)
         .nest("/api/v1/iot/sensors", routes::iot::sensor_router())
         // Agency routes (Epic 17)
@@ -374,6 +377,8 @@ async fn main() -> anyhow::Result<()> {
         )
         // News routes (Epic 59)
         .nest("/api/v1/news", routes::news_articles::router())
+        // Energy routes (Epic 65)
+        .nest("/api/v1/energy", routes::energy::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware

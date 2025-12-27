@@ -447,6 +447,9 @@ pub mod package_visitor;
 // Epic 61: External Integrations Suite
 pub mod integration;
 
+// Epic 64: Advanced AI & LLM Capabilities
+pub mod llm_document;
+
 pub use integration::{
     accounting_system, calendar_provider, calendar_sync_status,
     delivery_status as webhook_delivery_status, esignature_provider, esignature_status,
@@ -506,6 +509,9 @@ pub use package_visitor::{
 // Epic 59: News & Media Management
 pub mod news_article;
 
+// Epic 65: Energy & Sustainability Tracking
+pub mod energy;
+
 pub use news_article::{
     article_status, reaction_type, ArchiveArticle, ArticleComment, ArticleListQuery, ArticleMedia,
     ArticleReaction, ArticleStatistics, ArticleSummary, ArticleView, ArticleWithDetails,
@@ -513,4 +519,31 @@ pub use news_article::{
     CommentWithAuthorRow as ArticleCommentWithAuthorRow, CreateArticle, CreateArticleComment,
     CreateArticleMedia, ModerateComment, NewsArticle, PinArticle, PublishArticle, ReactionCounts,
     ToggleReaction, UpdateArticle, UpdateArticleComment,
+};
+
+// Epic 65: Energy & Sustainability Tracking
+pub use energy::{
+    BenchmarkAlert, BenchmarkAlertSeverity, BenchmarkAlertsQuery, BenchmarkDashboard,
+    BenchmarkMetricType, BenchmarkQuery, BuildingBenchmark, CalculateBenchmark, CarbonDashboard,
+    CarbonEmission, CarbonExportRequest, CarbonTarget, CreateBenchmarkAlert, CreateCarbonEmission,
+    CreateCarbonTarget, CreateEnergyPerformanceCertificate, CreateSustainabilityScore,
+    EmissionSourceType, EnergyPerformanceCertificate, EnergyRating, EpcSummary, HeatingType,
+    InsulationRating, ListBenchmarkAlertsResponse, ListBenchmarksResponse, ListEmissionsResponse,
+    ListEpcsResponse, MonthlyEmission, RatingCount, SourceEmission, SustainabilityFilter,
+    SustainabilityScore, UpdateEnergyPerformanceCertificate, UpdateSustainabilityScore,
+};
+
+// Epic 64: Advanced AI & LLM Capabilities
+pub use llm_document::{
+    enhancement_status, enhancement_type, generation_status, llm_provider, supported_language,
+    voice_intent, voice_platform, AiEscalationConfig, AiUsageQuery, AiUsageStatistics,
+    BatchEnhancePhotosRequest, BatchEnhancePhotosResponse, CreatePromptTemplate, DescriptionStyle,
+    DocumentEmbedding, EnhancePhotoRequest, EnhancedChatRequest, EnhancedChatResponse,
+    EnhancementOptions, GenerateLeaseRequest, GenerateListingDescriptionRequest,
+    GeneratedListingDescription, GeneratedListingDescriptionResponse, LeaseClause,
+    LeaseGenerationInput, LeaseGenerationResult, LinkVoiceDeviceRequest, LinkVoiceDeviceResponse,
+    ListingLocation, LlmGenerationRequest, LlmPromptTemplate, PhotoEnhancement,
+    PhotoEnhancementResponse, ProviderStats, RagContextSource, RequestTypeStats,
+    UpdateEscalationConfig, UpdatePromptTemplate, VoiceAssistantDevice, VoiceCommandHistory,
+    VoiceCommandRequest, VoiceCommandResponse,
 };
