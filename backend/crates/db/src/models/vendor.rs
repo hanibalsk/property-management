@@ -501,3 +501,226 @@ pub struct ExpiringContract {
     pub contract_value: Option<Decimal>,
     pub auto_renew: Option<bool>,
 }
+
+// ==================== Epic 78: Vendor Operations Portal ====================
+
+/// Vendor dashboard statistics (Story 78.1).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VendorDashboardStats {
+    pub today_jobs: i32,
+    pub upcoming_jobs: i32,
+    pub pending_action_jobs: i32,
+    pub completed_this_month: i32,
+    pub total_earnings_this_month: Decimal,
+    pub average_rating: Option<Decimal>,
+}
+
+/// Vendor job summary for listing (Story 78.1).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VendorJobSummary {
+    pub id: Uuid,
+    pub work_order_id: Uuid,
+    pub title: String,
+    pub building_name: String,
+    pub unit_number: Option<String>,
+    pub scheduled_date: Option<NaiveDate>,
+    pub status: String,
+    pub priority: String,
+    pub service_type: String,
+}
+
+/// Vendor job query parameters.
+#[derive(Debug, Default, Deserialize, ToSchema)]
+pub struct VendorJobQuery {
+    pub status: Option<String>,
+    pub from_date: Option<NaiveDate>,
+    pub to_date: Option<NaiveDate>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+/// Full vendor job details (Story 78.1).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VendorJob {
+    pub id: Uuid,
+    pub work_order_id: Uuid,
+    pub vendor_id: Uuid,
+    pub building_id: Uuid,
+    pub unit_id: Option<Uuid>,
+    pub title: String,
+    pub description: Option<String>,
+    pub scheduled_date: Option<NaiveDate>,
+    pub scheduled_time: Option<String>,
+    pub estimated_duration_hours: Option<Decimal>,
+    pub status: String,
+    pub priority: String,
+    pub service_type: String,
+    pub building_name: String,
+    pub building_address: String,
+    pub unit_number: Option<String>,
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub special_instructions: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
+}
+
+/// Accept job request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct AcceptJobRequest {
+    pub confirmed_date: Option<NaiveDate>,
+    pub confirmed_time: Option<String>,
+    pub notes: Option<String>,
+}
+
+/// Decline job request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct DeclineJobRequest {
+    pub reason: String,
+    pub suggest_alternative: Option<bool>,
+}
+
+/// Propose alternative time request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ProposeAlternativeTime {
+    pub proposed_date: NaiveDate,
+    pub proposed_time: Option<String>,
+    pub reason: Option<String>,
+}
+
+// ==================== Property Access (Story 78.2) ====================
+
+/// Property access information for a job.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct PropertyAccessInfo {
+    pub job_id: Uuid,
+    pub building_id: Uuid,
+    pub unit_id: Option<Uuid>,
+    pub access_method: String,
+    pub access_code: Option<String>,
+    pub key_box_location: Option<String>,
+    pub smart_lock_info: Option<String>,
+    pub contact_name: Option<String>,
+    pub contact_phone: Option<String>,
+    pub special_instructions: Option<String>,
+    pub access_valid_from: Option<DateTime<Utc>>,
+    pub access_valid_until: Option<DateTime<Utc>>,
+}
+
+/// Generate access code request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct GenerateAccessCode {
+    pub valid_hours: i32,
+}
+
+/// Access code response.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AccessCodeResponse {
+    pub code: String,
+    pub valid_from: DateTime<Utc>,
+    pub valid_until: DateTime<Utc>,
+}
+
+// ==================== Work Completion (Story 78.3) ====================
+
+/// Material item used in work.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct MaterialItem {
+    pub name: String,
+    pub quantity: Decimal,
+    pub unit: Option<String>,
+    pub unit_cost: Decimal,
+    pub total_cost: Decimal,
+}
+
+/// Submit work completion request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct SubmitWorkCompletion {
+    pub before_photos: Vec<String>,
+    pub after_photos: Vec<String>,
+    pub time_spent_hours: Decimal,
+    pub materials_used: Vec<MaterialItem>,
+    pub notes: Option<String>,
+    pub labor_cost: Decimal,
+}
+
+/// Work completion details.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct WorkCompletion {
+    pub job_id: Uuid,
+    pub completed_at: DateTime<Utc>,
+    pub before_photos: Vec<String>,
+    pub after_photos: Vec<String>,
+    pub time_spent_hours: Decimal,
+    pub materials_used: Vec<MaterialItem>,
+    pub notes: Option<String>,
+    pub labor_cost: Decimal,
+    pub materials_cost: Decimal,
+    pub total_cost: Decimal,
+}
+
+/// Vendor invoice with payment tracking.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VendorInvoiceWithTracking {
+    pub id: Uuid,
+    pub invoice_number: String,
+    pub job_id: Option<Uuid>,
+    pub job_title: Option<String>,
+    pub invoice_date: NaiveDate,
+    pub due_date: Option<NaiveDate>,
+    pub total_amount: Decimal,
+    pub paid_amount: Decimal,
+    pub status: String,
+    pub payment_expected_date: Option<NaiveDate>,
+}
+
+// ==================== Profile & Feedback (Story 78.4) ====================
+
+/// Vendor profile view.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VendorProfile {
+    pub id: Uuid,
+    pub company_name: String,
+    pub contact_name: Option<String>,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub services: Vec<String>,
+    pub average_rating: Option<Decimal>,
+    pub quality_rating: Option<Decimal>,
+    pub timeliness_rating: Option<Decimal>,
+    pub communication_rating: Option<Decimal>,
+    pub total_jobs: i32,
+    pub completed_jobs: i32,
+    pub completion_rate: Option<Decimal>,
+    pub average_response_time_hours: Option<Decimal>,
+    pub badges: Vec<String>,
+    pub is_preferred: bool,
+    pub member_since: Option<DateTime<Utc>>,
+}
+
+/// Vendor feedback/review.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VendorFeedback {
+    pub id: Uuid,
+    pub job_id: Uuid,
+    pub job_title: String,
+    pub building_name: String,
+    pub rating: i32,
+    pub quality_rating: Option<i32>,
+    pub timeliness_rating: Option<i32>,
+    pub communication_rating: Option<i32>,
+    pub review_text: Option<String>,
+    pub reviewer_name: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Vendor earnings summary.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct VendorEarningsSummary {
+    pub period_start: NaiveDate,
+    pub period_end: NaiveDate,
+    pub total_jobs: i32,
+    pub total_earnings: Decimal,
+    pub paid_amount: Decimal,
+    pub pending_amount: Decimal,
+}

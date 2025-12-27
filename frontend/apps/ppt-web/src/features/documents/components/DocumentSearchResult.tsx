@@ -5,6 +5,7 @@
  */
 
 import type { SearchHighlight, DocumentSearchResult as SearchResult } from '@ppt/api-client';
+import DOMPurify from 'dompurify';
 import { ClassificationBadge } from './ClassificationBadge';
 import { OcrStatusBadge } from './OcrStatusBadge';
 
@@ -36,13 +37,17 @@ export function DocumentSearchResult({ result, onClick }: DocumentSearchResultPr
   // Render highlighted snippet
   const renderHighlight = (highlight: SearchHighlight) => {
     // The snippet contains <mark> tags for highlighting
+    // Sanitize with DOMPurify allowing only mark tags for defense-in-depth
+    const sanitizedHtml = DOMPurify.sanitize(highlight.snippet, {
+      ALLOWED_TAGS: ['mark'],
+      ALLOWED_ATTR: [],
+    });
     return (
       <div
         key={highlight.field}
         className="highlight-snippet"
-        // Safe because the backend controls the snippet content
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: Backend-controlled content
-        dangerouslySetInnerHTML={{ __html: highlight.snippet }}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: Content is sanitized with DOMPurify
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
     );
   };
