@@ -431,8 +431,9 @@ impl LlmDocumentRepository {
         .bind(document_id)
         .bind(chunk_index)
         .bind(chunk_text)
-        // TODO: For production, use pgvector extension for efficient vector storage and similarity search.
-        // Storing embeddings as JSONB is inefficient for vector operations.
+        // TODO: For production RAG systems, migrate to pgvector extension for efficient vector storage.
+        // Current JSONB approach is inefficient for vector similarity operations.
+        // See: https://github.com/pgvector/pgvector
         .bind(
             embedding
                 .as_ref()
@@ -466,7 +467,11 @@ impl LlmDocumentRepository {
     }
 
     /// Search documents by text (simple text search, not semantic/vector similarity).
-    /// For semantic search using embeddings, pgvector extension would be required.
+    ///
+    /// TODO: For production RAG capability, implement semantic similarity search using pgvector.
+    /// Current ILIKE text matching doesn't provide contextually relevant document retrieval.
+    /// Proper RAG requires cosine similarity search on embedding vectors.
+    /// See: https://github.com/pgvector/pgvector
     pub async fn search_documents_by_text(
         &self,
         organization_id: Uuid,

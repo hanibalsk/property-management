@@ -1645,9 +1645,14 @@ async fn link_voice_device(
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
     let tenant = extract_tenant_context(&headers)?;
 
-    // Generate a unique device ID using UUID to avoid collisions
+    // Generate a unique device ID: platform prefix + UUID for debugging and uniqueness.
+    // Format: "google_assistant_550e8400-e29b-41d4-a716-446655440000"
+    // While longer than a plain UUID, the platform prefix aids in debugging and log analysis.
     let device_id = format!("{}_{}", req.platform, Uuid::new_v4());
 
+    // TODO: Phase 2 - Implement OAuth token exchange using auth_code from request.
+    // Current implementation (Phase 1) stores device linkage but doesn't handle OAuth tokens.
+    // Future: Exchange auth_code for access_token/refresh_token from voice assistant platform.
     let device = state
         .llm_document_repo
         .create_voice_device(
@@ -1657,9 +1662,9 @@ async fn link_voice_device(
             &req.platform,
             &device_id,
             req.device_name.as_deref(),
-            None, // access_token - would be fetched via OAuth
-            None, // refresh_token
-            None, // token_expires_at
+            None, // access_token - TODO: fetch via OAuth in Phase 2
+            None, // refresh_token - TODO: fetch via OAuth in Phase 2
+            None, // token_expires_at - TODO: set from OAuth response in Phase 2
             serde_json::json!(["check_balance", "report_fault", "check_announcements"]),
         )
         .await
