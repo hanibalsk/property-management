@@ -6,8 +6,8 @@
 
 import { useCallback, useState } from 'react';
 import { FileUploader } from '../components/FileUploader';
+import { type ImportJobHistoryItem, ImportJobList } from '../components/ImportJobList';
 import { ImportJobProgress, type ImportJobStatusData } from '../components/ImportJobProgress';
-import { ImportJobList, type ImportJobHistoryItem } from '../components/ImportJobList';
 import { ImportPreview, type ImportPreviewData } from '../components/ImportPreview';
 import { ImportTemplateList, type ImportTemplateSummary } from '../components/ImportTemplateList';
 
@@ -143,12 +143,14 @@ export function ImportPage() {
   }, []);
 
   // Handle import approval
-  const handleApproveImport = useCallback((acknowledgeWarnings: boolean) => {
+  const handleApproveImport = useCallback((_acknowledgeWarnings: boolean) => {
+    // In real implementation, use acknowledgeWarnings to confirm import with warnings
     setStep('importing');
   }, []);
 
   // Handle import completion
-  const handleImportComplete = useCallback((status: ImportJobStatusData) => {
+  const handleImportComplete = useCallback((_status: ImportJobStatusData) => {
+    // In real implementation, use status to show import results
     setStep('complete');
   }, []);
 
@@ -172,10 +174,13 @@ export function ImportPage() {
   }, [step]);
 
   // Handle template download
-  const handleDownloadTemplate = useCallback((template: ImportTemplateSummary, format: 'csv' | 'xlsx') => {
-    console.log('Downloading template:', template.name, 'as', format);
-    // In real implementation, trigger download
-  }, []);
+  const handleDownloadTemplate = useCallback(
+    (template: ImportTemplateSummary, format: 'csv' | 'xlsx') => {
+      console.log('Downloading template:', template.name, 'as', format);
+      // In real implementation, trigger download
+    },
+    []
+  );
 
   return (
     <div className="space-y-6">
@@ -210,16 +215,28 @@ export function ImportPage() {
                 step === s.id
                   ? 'bg-blue-100 text-blue-800'
                   : ['select_template', 'upload', 'preview', 'importing'].indexOf(step) >
-                    ['select_template', 'upload', 'preview', 'importing'].indexOf(s.id as ImportStep)
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-600'
+                      ['select_template', 'upload', 'preview', 'importing'].indexOf(
+                        s.id as ImportStep
+                      )
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-600'
               }`}
             >
               <span>{s.label}</span>
             </div>
             {index < 3 && (
-              <svg className="mx-2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg
+                className="mx-2 h-4 w-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             )}
           </div>
@@ -273,14 +290,22 @@ export function ImportPage() {
         {step === 'complete' && (
           <div className="text-center py-12">
             <div className="mx-auto h-16 w-16 rounded-full bg-green-100 p-4">
-              <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="h-8 w-8 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
             <h2 className="mt-4 text-lg font-medium text-gray-900">Import Complete</h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Your data has been successfully imported.
-            </p>
+            <p className="mt-2 text-sm text-gray-500">Your data has been successfully imported.</p>
             <button
               type="button"
               onClick={handleStartNew}

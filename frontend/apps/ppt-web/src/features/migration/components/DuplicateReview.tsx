@@ -123,10 +123,7 @@ export function DuplicateReview({
           const resolution = resolutions.get(duplicate.importRow) ?? 'skip';
 
           return (
-            <div
-              key={duplicate.importRow}
-              className="rounded-lg border border-gray-200 bg-white"
-            >
+            <div key={duplicate.importRow} className="rounded-lg border border-gray-200 bg-white">
               {/* Summary Row */}
               <div className="flex items-center justify-between p-4">
                 <div className="flex items-center gap-4">
@@ -151,9 +148,7 @@ export function DuplicateReview({
                   </button>
 
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Row {duplicate.importRow}
-                    </p>
+                    <p className="text-sm font-medium text-gray-900">Row {duplicate.importRow}</p>
                     <p className="text-xs text-gray-500">
                       Matches: {duplicate.matchedFields.join(', ')}
                     </p>
@@ -171,7 +166,10 @@ export function DuplicateReview({
                   <select
                     value={resolution}
                     onChange={(e) =>
-                      handleResolutionChange(duplicate.importRow, e.target.value as DuplicateResolution)
+                      handleResolutionChange(
+                        duplicate.importRow,
+                        e.target.value as DuplicateResolution
+                      )
                     }
                     className="rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
@@ -207,9 +205,7 @@ export function DuplicateReview({
                       <tbody className="divide-y divide-gray-200">
                         {duplicate.matchedFields.map((field) => (
                           <tr key={field} className="bg-green-50">
-                            <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                              {field}
-                            </td>
+                            <td className="px-4 py-2 text-sm font-medium text-gray-900">{field}</td>
                             <td className="px-4 py-2 text-sm text-gray-600" colSpan={2}>
                               (Values match)
                             </td>
@@ -243,7 +239,8 @@ export function DuplicateReview({
                   </div>
 
                   <p className="mt-3 text-xs text-gray-500">
-                    Existing record ID: <code className="rounded bg-gray-200 px-1">{duplicate.existingId}</code>
+                    Existing record ID:{' '}
+                    <code className="rounded bg-gray-200 px-1">{duplicate.existingId}</code>
                   </p>
                 </div>
               )}

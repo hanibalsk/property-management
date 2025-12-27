@@ -157,7 +157,10 @@ export function RfqForm({
           </div>
 
           <div>
-            <label htmlFor="serviceCategory" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="serviceCategory"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Service Category *
             </label>
             <select
@@ -188,7 +191,9 @@ export function RfqForm({
                 errors.description ? 'border-red-500' : 'border-gray-300'
               }`}
             />
-            {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
+            {errors.description && (
+              <p className="mt-1 text-sm text-red-600">{errors.description}</p>
+            )}
           </div>
 
           <div>
@@ -211,7 +216,10 @@ export function RfqForm({
           <h3 className="text-lg font-medium text-gray-900 mb-4">Timeline</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="preferredStartDate" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="preferredStartDate"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Preferred Start Date
               </label>
               <input
@@ -224,7 +232,10 @@ export function RfqForm({
             </div>
 
             <div>
-              <label htmlFor="preferredEndDate" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="preferredEndDate"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Preferred End Date
               </label>
               <input
@@ -242,7 +253,10 @@ export function RfqForm({
             </div>
 
             <div>
-              <label htmlFor="quoteDeadline" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="quoteDeadline"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Quote Deadline
               </label>
               <input
@@ -252,7 +266,9 @@ export function RfqForm({
                 onChange={(e) => updateField('quoteDeadline', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               />
-              <p className="mt-1 text-xs text-gray-500">When should providers submit their quotes by?</p>
+              <p className="mt-1 text-xs text-gray-500">
+                When should providers submit their quotes by?
+              </p>
             </div>
 
             <div className="flex items-end">
@@ -336,14 +352,20 @@ export function RfqForm({
           <h3 className="text-lg font-medium text-gray-900 mb-4">Preferences</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="contactPreference" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="contactPreference"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Contact Preference
               </label>
               <select
                 id="contactPreference"
                 value={formData.contactPreference || 'any'}
                 onChange={(e) =>
-                  updateField('contactPreference', e.target.value as RfqFormData['contactPreference'])
+                  updateField(
+                    'contactPreference',
+                    e.target.value as RfqFormData['contactPreference']
+                  )
                 }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >

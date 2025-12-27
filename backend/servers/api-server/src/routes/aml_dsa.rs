@@ -36,7 +36,10 @@ pub fn router() -> Router<AppState> {
         .route("/edd", post(initiate_edd))
         .route("/edd/:id", get(get_edd_record))
         .route("/edd/:id/documents", post(upload_edd_document))
-        .route("/edd/:id/documents/:doc_id/verify", post(verify_edd_document))
+        .route(
+            "/edd/:id/documents/:doc_id/verify",
+            post(verify_edd_document),
+        )
         .route("/edd/:id/notes", post(add_edd_note))
         .route("/edd/:id/complete", post(complete_edd))
         .route("/edd/pending", get(list_pending_edd))
@@ -245,7 +248,8 @@ async fn create_aml_assessment(
     };
 
     // Determine if flagged for review
-    let flagged_for_review = risk_level == AmlRiskLevel::High || risk_level == AmlRiskLevel::Critical;
+    let flagged_for_review =
+        risk_level == AmlRiskLevel::High || risk_level == AmlRiskLevel::Critical;
 
     // Generate recommendations
     let mut recommendations = Vec::new();
@@ -563,7 +567,10 @@ async fn get_edd_record(
 ) -> Result<Json<EddRecordResponse>, (StatusCode, String)> {
     require_compliance_role(&user)?;
 
-    Err((StatusCode::NOT_FOUND, format!("EDD record {} not found", id)))
+    Err((
+        StatusCode::NOT_FOUND,
+        format!("EDD record {} not found", id),
+    ))
 }
 
 /// Upload EDD document request (metadata only, actual file via multipart).
@@ -584,7 +591,9 @@ async fn upload_edd_document(
     Path(edd_id): Path<Uuid>,
     Json(req): Json<UploadEddDocumentRequest>,
 ) -> Result<Json<EddDocumentResponse>, (StatusCode, String)> {
-    // Documents can be uploaded by authenticated users
+    // Require compliance role to upload EDD documents
+    require_compliance_role(&user)?;
+
     let doc_id = Uuid::new_v4();
     let now = Utc::now();
 
@@ -631,7 +640,10 @@ async fn verify_edd_document(
         "EDD document verification"
     );
 
-    Err((StatusCode::NOT_FOUND, format!("Document {} not found", doc_id)))
+    Err((
+        StatusCode::NOT_FOUND,
+        format!("Document {} not found", doc_id),
+    ))
 }
 
 /// Add compliance note request.
@@ -681,7 +693,10 @@ async fn complete_edd(
         "EDD completed"
     );
 
-    Err((StatusCode::NOT_FOUND, format!("EDD record {} not found", edd_id)))
+    Err((
+        StatusCode::NOT_FOUND,
+        format!("EDD record {} not found", edd_id),
+    ))
 }
 
 /// List pending EDD records.
@@ -1036,9 +1051,18 @@ async fn get_moderation_stats(
         pending_count: 0,
         under_review_count: 0,
         by_priority: vec![
-            PriorityCount { priority: 1, count: 0 },
-            PriorityCount { priority: 2, count: 0 },
-            PriorityCount { priority: 3, count: 0 },
+            PriorityCount {
+                priority: 1,
+                count: 0,
+            },
+            PriorityCount {
+                priority: 2,
+                count: 0,
+            },
+            PriorityCount {
+                priority: 3,
+                count: 0,
+            },
         ],
         by_violation_type: vec![],
         avg_resolution_time_hours: 0.0,

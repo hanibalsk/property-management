@@ -135,19 +135,13 @@ export function VirtualTourViewer({
   };
 
   return (
-    <div
-      className={`relative bg-gray-900 rounded-lg overflow-hidden ${className}`}
-    >
+    <div className={`relative bg-gray-900 rounded-lg overflow-hidden ${className}`}>
       {/* Tour header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/70 to-transparent p-4">
         <div className="flex items-center justify-between text-white">
           <div>
-            {tour.title && (
-              <h3 className="text-lg font-semibold">{tour.title}</h3>
-            )}
-            {tour.description && (
-              <p className="text-sm text-gray-300">{tour.description}</p>
-            )}
+            {tour.title && <h3 className="text-lg font-semibold">{tour.title}</h3>}
+            {tour.description && <p className="text-sm text-gray-300">{tour.description}</p>}
           </div>
           <div className="flex items-center gap-2">
             {tour.isFeatured && (
@@ -161,12 +155,7 @@ export function VirtualTourViewer({
               onClick={() => setIsFullscreen(!isFullscreen)}
               title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -191,13 +180,9 @@ export function VirtualTourViewer({
         <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg shadow-xl p-4 z-20">
           <div className="flex items-start justify-between">
             <div>
-              <h4 className="font-semibold text-gray-900">
-                {activeHotspot.label}
-              </h4>
+              <h4 className="font-semibold text-gray-900">{activeHotspot.label}</h4>
               {activeHotspot.description && (
-                <p className="text-sm text-gray-600 mt-1">
-                  {activeHotspot.description}
-                </p>
+                <p className="text-sm text-gray-600 mt-1">{activeHotspot.description}</p>
               )}
             </div>
             <button
@@ -205,12 +190,7 @@ export function VirtualTourViewer({
               className="text-gray-400 hover:text-gray-600"
               onClick={() => setActiveHotspot(null)}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

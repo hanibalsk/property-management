@@ -43,10 +43,7 @@ pub fn router() -> Router<AppState> {
             "/deployments/{id}/health-checks",
             get(list_deployment_health_checks),
         )
-        .route(
-            "/deployments/{id}/health-checks",
-            post(run_health_checks),
-        )
+        .route("/deployments/{id}/health-checks", post(run_health_checks))
         // Database Migration Safety (Story 73.2)
         .route("/migrations", get(list_migrations))
         .route("/migrations", post(create_migration))
@@ -76,9 +73,15 @@ pub fn router() -> Router<AppState> {
         .route("/costs/budgets/{id}", get(get_budget))
         .route("/costs/budgets/{id}", put(update_budget))
         .route("/costs/alerts", get(list_cost_alerts))
-        .route("/costs/alerts/{id}/acknowledge", post(acknowledge_cost_alert))
+        .route(
+            "/costs/alerts/{id}/acknowledge",
+            post(acknowledge_cost_alert),
+        )
         .route("/costs/utilization", get(list_resource_utilization))
-        .route("/costs/recommendations", get(list_optimization_recommendations))
+        .route(
+            "/costs/recommendations",
+            get(list_optimization_recommendations),
+        )
         .route(
             "/costs/recommendations/{id}/implement",
             post(mark_recommendation_implemented),
@@ -126,7 +129,9 @@ async fn list_deployments(
 ) -> ApiResult<Json<db::models::operations::ListDeploymentsResponse>> {
     // Only platform admins can access operations endpoints
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access operations"));
+        return Err(forbidden_error(
+            "Only platform administrators can access operations",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -159,7 +164,9 @@ async fn create_deployment(
     Json(payload): Json<CreateDeployment>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::Deployment>)> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can create deployments"));
+        return Err(forbidden_error(
+            "Only platform administrators can create deployments",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -188,7 +195,9 @@ async fn get_deployment_dashboard(
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::DeploymentDashboard>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access deployment dashboard"));
+        return Err(forbidden_error(
+            "Only platform administrators can access deployment dashboard",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -220,7 +229,9 @@ async fn get_deployment(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::Deployment>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access deployments"));
+        return Err(forbidden_error(
+            "Only platform administrators can access deployments",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -255,7 +266,9 @@ async fn update_deployment_status(
     Json(payload): Json<UpdateDeploymentStatus>,
 ) -> ApiResult<Json<db::models::operations::Deployment>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can update deployments"));
+        return Err(forbidden_error(
+            "Only platform administrators can update deployments",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -291,7 +304,9 @@ async fn switch_traffic(
     Json(payload): Json<SwitchTraffic>,
 ) -> ApiResult<Json<db::models::operations::Deployment>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can switch traffic"));
+        return Err(forbidden_error(
+            "Only platform administrators can switch traffic",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -324,7 +339,9 @@ async fn rollback_deployment(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::Deployment>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can rollback deployments"));
+        return Err(forbidden_error(
+            "Only platform administrators can rollback deployments",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -356,18 +373,17 @@ async fn list_deployment_health_checks(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<db::models::operations::DeploymentHealthCheck>>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can view health checks"));
+        return Err(forbidden_error(
+            "Only platform administrators can view health checks",
+        ));
     }
 
     let repo = &state.operations_repo;
 
-    repo.list_health_checks(id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to list health checks: {:?}", e);
-            internal_error("Failed to list health checks")
-        })
+    repo.list_health_checks(id).await.map(Json).map_err(|e| {
+        tracing::error!("Failed to list health checks: {:?}", e);
+        internal_error("Failed to list health checks")
+    })
 }
 
 /// Run health checks for deployment.
@@ -388,7 +404,9 @@ async fn run_health_checks(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<db::models::operations::DeploymentHealthCheck>>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can run health checks"));
+        return Err(forbidden_error(
+            "Only platform administrators can run health checks",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -422,7 +440,9 @@ async fn list_migrations(
     Query(query): Query<MigrationQuery>,
 ) -> ApiResult<Json<db::models::operations::ListMigrationsResponse>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access migrations"));
+        return Err(forbidden_error(
+            "Only platform administrators can access migrations",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -455,7 +475,9 @@ async fn create_migration(
     Json(payload): Json<CreateMigration>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::DatabaseMigration>)> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can create migrations"));
+        return Err(forbidden_error(
+            "Only platform administrators can create migrations",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -487,7 +509,9 @@ async fn get_migration(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::DatabaseMigration>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access migrations"));
+        return Err(forbidden_error(
+            "Only platform administrators can access migrations",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -522,7 +546,9 @@ async fn update_migration_progress(
     Json(payload): Json<UpdateMigrationProgress>,
 ) -> ApiResult<Json<db::models::operations::DatabaseMigration>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can update migrations"));
+        return Err(forbidden_error(
+            "Only platform administrators can update migrations",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -554,18 +580,17 @@ async fn list_migration_logs(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<db::models::operations::MigrationLog>>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can view migration logs"));
+        return Err(forbidden_error(
+            "Only platform administrators can view migration logs",
+        ));
     }
 
     let repo = &state.operations_repo;
 
-    repo.list_migration_logs(id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to list migration logs: {:?}", e);
-            internal_error("Failed to list migration logs")
-        })
+    repo.list_migration_logs(id).await.map(Json).map_err(|e| {
+        tracing::error!("Failed to list migration logs: {:?}", e);
+        internal_error("Failed to list migration logs")
+    })
 }
 
 /// Rollback migration.
@@ -587,7 +612,9 @@ async fn rollback_migration(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::DatabaseMigration>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can rollback migrations"));
+        return Err(forbidden_error(
+            "Only platform administrators can rollback migrations",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -620,7 +647,9 @@ async fn check_migration_safety(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::MigrationSafetyCheck>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can check migration safety"));
+        return Err(forbidden_error(
+            "Only platform administrators can check migration safety",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -650,18 +679,17 @@ async fn list_schema_versions(
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<db::models::operations::SchemaVersion>>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can view schema versions"));
+        return Err(forbidden_error(
+            "Only platform administrators can view schema versions",
+        ));
     }
 
     let repo = &state.operations_repo;
 
-    repo.list_schema_versions()
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to list schema versions: {:?}", e);
-            internal_error("Failed to list schema versions")
-        })
+    repo.list_schema_versions().await.map(Json).map_err(|e| {
+        tracing::error!("Failed to list schema versions: {:?}", e);
+        internal_error("Failed to list schema versions")
+    })
 }
 
 /// Get current schema version.
@@ -680,7 +708,9 @@ async fn get_current_schema_version(
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::SchemaVersion>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can view schema version"));
+        return Err(forbidden_error(
+            "Only platform administrators can view schema version",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -714,7 +744,9 @@ async fn list_backups(
     Query(query): Query<BackupQuery>,
 ) -> ApiResult<Json<db::models::operations::ListBackupsResponse>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access backups"));
+        return Err(forbidden_error(
+            "Only platform administrators can access backups",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -747,7 +779,9 @@ async fn create_backup(
     Json(payload): Json<CreateBackup>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::Backup>)> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can create backups"));
+        return Err(forbidden_error(
+            "Only platform administrators can create backups",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -776,18 +810,17 @@ async fn get_dr_dashboard(
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::DisasterRecoveryDashboard>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access DR dashboard"));
+        return Err(forbidden_error(
+            "Only platform administrators can access DR dashboard",
+        ));
     }
 
     let repo = &state.operations_repo;
 
-    repo.get_dr_dashboard()
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to get DR dashboard: {:?}", e);
-            internal_error("Failed to get DR dashboard")
-        })
+    repo.get_dr_dashboard().await.map(Json).map_err(|e| {
+        tracing::error!("Failed to get DR dashboard: {:?}", e);
+        internal_error("Failed to get DR dashboard")
+    })
 }
 
 /// Get backup by ID.
@@ -808,7 +841,9 @@ async fn get_backup(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::Backup>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access backups"));
+        return Err(forbidden_error(
+            "Only platform administrators can access backups",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -841,7 +876,9 @@ async fn verify_backup(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::Backup>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can verify backups"));
+        return Err(forbidden_error(
+            "Only platform administrators can verify backups",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -874,7 +911,9 @@ async fn initiate_recovery(
     Json(payload): Json<InitiateRecovery>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::RecoveryOperation>)> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can initiate recovery"));
+        return Err(forbidden_error(
+            "Only platform administrators can initiate recovery",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -906,7 +945,9 @@ async fn get_recovery_status(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::RecoveryOperation>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can view recovery status"));
+        return Err(forbidden_error(
+            "Only platform administrators can view recovery status",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -936,18 +977,17 @@ async fn list_dr_drills(
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<db::models::operations::DisasterRecoveryDrill>>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can view DR drills"));
+        return Err(forbidden_error(
+            "Only platform administrators can view DR drills",
+        ));
     }
 
     let repo = &state.operations_repo;
 
-    repo.list_dr_drills()
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to list DR drills: {:?}", e);
-            internal_error("Failed to list DR drills")
-        })
+    repo.list_dr_drills().await.map(Json).map_err(|e| {
+        tracing::error!("Failed to list DR drills: {:?}", e);
+        internal_error("Failed to list DR drills")
+    })
 }
 
 /// Record DR drill.
@@ -966,9 +1006,14 @@ async fn record_dr_drill(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(payload): Json<RecordDrDrill>,
-) -> ApiResult<(StatusCode, Json<db::models::operations::DisasterRecoveryDrill>)> {
+) -> ApiResult<(
+    StatusCode,
+    Json<db::models::operations::DisasterRecoveryDrill>,
+)> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can record DR drills"));
+        return Err(forbidden_error(
+            "Only platform administrators can record DR drills",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -1001,19 +1046,27 @@ async fn list_costs(
     Query(query): Query<CostQuery>,
 ) -> ApiResult<Json<db::models::operations::ListCostsResponse>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access cost data"));
+        return Err(forbidden_error(
+            "Only platform administrators can access cost data",
+        ));
     }
 
     let repo = &state.operations_repo;
     let limit = query.limit.min(MAX_LIST_LIMIT);
 
-    repo.list_costs(query.period_start, query.period_end, query.service_type, limit, query.offset)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to list costs: {:?}", e);
-            internal_error("Failed to list costs")
-        })
+    repo.list_costs(
+        query.period_start,
+        query.period_end,
+        query.service_type,
+        limit,
+        query.offset,
+    )
+    .await
+    .map(Json)
+    .map_err(|e| {
+        tracing::error!("Failed to list costs: {:?}", e);
+        internal_error("Failed to list costs")
+    })
 }
 
 /// Record infrastructure cost.
@@ -1034,7 +1087,9 @@ async fn record_cost(
     Json(payload): Json<RecordInfrastructureCost>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::InfrastructureCost>)> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can record costs"));
+        return Err(forbidden_error(
+            "Only platform administrators can record costs",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -1063,18 +1118,17 @@ async fn get_cost_dashboard(
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::CostDashboard>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access cost dashboard"));
+        return Err(forbidden_error(
+            "Only platform administrators can access cost dashboard",
+        ));
     }
 
     let repo = &state.operations_repo;
 
-    repo.get_cost_dashboard()
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to get cost dashboard: {:?}", e);
-            internal_error("Failed to get cost dashboard")
-        })
+    repo.get_cost_dashboard().await.map(Json).map_err(|e| {
+        tracing::error!("Failed to get cost dashboard: {:?}", e);
+        internal_error("Failed to get cost dashboard")
+    })
 }
 
 /// List cost budgets.
@@ -1092,18 +1146,17 @@ async fn list_budgets(
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::ListBudgetsResponse>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access budgets"));
+        return Err(forbidden_error(
+            "Only platform administrators can access budgets",
+        ));
     }
 
     let repo = &state.operations_repo;
 
-    repo.list_budgets()
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to list budgets: {:?}", e);
-            internal_error("Failed to list budgets")
-        })
+    repo.list_budgets().await.map(Json).map_err(|e| {
+        tracing::error!("Failed to list budgets: {:?}", e);
+        internal_error("Failed to list budgets")
+    })
 }
 
 /// Create cost budget.
@@ -1124,7 +1177,9 @@ async fn create_budget(
     Json(payload): Json<CreateCostBudget>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::CostBudget>)> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can create budgets"));
+        return Err(forbidden_error(
+            "Only platform administrators can create budgets",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -1156,7 +1211,9 @@ async fn get_budget(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::CostBudget>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access budgets"));
+        return Err(forbidden_error(
+            "Only platform administrators can access budgets",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -1191,7 +1248,9 @@ async fn update_budget(
     Json(payload): Json<CreateCostBudget>,
 ) -> ApiResult<Json<db::models::operations::CostBudget>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can update budgets"));
+        return Err(forbidden_error(
+            "Only platform administrators can update budgets",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -1223,19 +1282,26 @@ async fn list_cost_alerts(
     Query(query): Query<CostAlertQuery>,
 ) -> ApiResult<Json<db::models::operations::ListCostAlertsResponse>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access cost alerts"));
+        return Err(forbidden_error(
+            "Only platform administrators can access cost alerts",
+        ));
     }
 
     let repo = &state.operations_repo;
     let limit = query.limit.min(MAX_LIST_LIMIT);
 
-    repo.list_cost_alerts(query.unacknowledged_only, query.severity, limit, query.offset)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("Failed to list cost alerts: {:?}", e);
-            internal_error("Failed to list cost alerts")
-        })
+    repo.list_cost_alerts(
+        query.unacknowledged_only,
+        query.severity,
+        limit,
+        query.offset,
+    )
+    .await
+    .map(Json)
+    .map_err(|e| {
+        tracing::error!("Failed to list cost alerts: {:?}", e);
+        internal_error("Failed to list cost alerts")
+    })
 }
 
 /// Acknowledge cost alert.
@@ -1256,7 +1322,9 @@ async fn acknowledge_cost_alert(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::CostAlert>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can acknowledge cost alerts"));
+        return Err(forbidden_error(
+            "Only platform administrators can acknowledge cost alerts",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -1286,7 +1354,9 @@ async fn list_resource_utilization(
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::ListUtilizationResponse>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access utilization data"));
+        return Err(forbidden_error(
+            "Only platform administrators can access utilization data",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -1315,7 +1385,9 @@ async fn list_optimization_recommendations(
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::ListRecommendationsResponse>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can access recommendations"));
+        return Err(forbidden_error(
+            "Only platform administrators can access recommendations",
+        ));
     }
 
     let repo = &state.operations_repo;
@@ -1347,7 +1419,9 @@ async fn mark_recommendation_implemented(
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::CostOptimizationRecommendation>> {
     if !auth.is_platform_admin {
-        return Err(forbidden_error("Only platform administrators can update recommendations"));
+        return Err(forbidden_error(
+            "Only platform administrators can update recommendations",
+        ));
     }
 
     let repo = &state.operations_repo;

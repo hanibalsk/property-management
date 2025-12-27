@@ -36,7 +36,8 @@ const sessionTypeLabels: Record<SessionType, string> = {
   written: 'Written Exchange',
 };
 
-const sessionTypeIcons: Record<SessionType, string> = {
+// Icons for session types - exported for use in other components
+export const sessionTypeIcons: Record<SessionType, string> = {
   in_person: 'building-office',
   video_call: 'video-camera',
   phone: 'phone',
@@ -82,11 +83,8 @@ export function MediationSessionCard({
 }: MediationSessionCardProps) {
   const scheduledDate = new Date(session.scheduledAt);
   const isUpcoming = scheduledDate > new Date() && session.status === 'scheduled';
-  const isPast = scheduledDate < new Date();
   const canJoin =
-    session.status === 'scheduled' &&
-    session.sessionType === 'video_call' &&
-    session.meetingUrl;
+    session.status === 'scheduled' && session.sessionType === 'video_call' && session.meetingUrl;
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -105,16 +103,14 @@ export function MediationSessionCard({
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-lg font-medium">
-              {sessionTypeLabels[session.sessionType]}
-            </span>
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[session.status]}`}>
+            <span className="text-lg font-medium">{sessionTypeLabels[session.sessionType]}</span>
+            <span
+              className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[session.status]}`}
+            >
               {statusLabels[session.status]}
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            Mediator: {session.mediatorName}
-          </p>
+          <p className="text-sm text-gray-500 mt-1">Mediator: {session.mediatorName}</p>
         </div>
         <div className="text-right">
           <p className="text-sm font-medium">{formatDateTime(session.scheduledAt)}</p>
@@ -157,16 +153,12 @@ export function MediationSessionCard({
               <div
                 key={attendee.partyId}
                 className={`px-2 py-1 text-sm rounded-full ${
-                  attendee.confirmed
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-600'
+                  attendee.confirmed ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
                 }`}
               >
                 {attendee.partyName}
                 {attendee.attended !== undefined && (
-                  <span className="ml-1">
-                    {attendee.attended ? ' (attended)' : ' (absent)'}
-                  </span>
+                  <span className="ml-1">{attendee.attended ? ' (attended)' : ' (absent)'}</span>
                 )}
                 {!attendee.confirmed && isUpcoming && onConfirmAttendance && (
                   <button

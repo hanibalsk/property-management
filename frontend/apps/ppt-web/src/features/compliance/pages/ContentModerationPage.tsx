@@ -7,8 +7,8 @@
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { ModerationCaseCard } from '../components/ModerationCaseCard';
+import type { ModerationCase, ViolationType } from '../components/ModerationCaseCard';
 import { ModerationQueueStats } from '../components/ModerationQueueStats';
-import type { ModerationCase, ModerationStatus, ModeratedContentType, ViolationType } from '../components/ModerationCaseCard';
 import type { ModerationQueueStatsData } from '../components/ModerationQueueStats';
 
 interface ActionTemplate {

@@ -134,11 +134,15 @@ export const EddRecordCard: React.FC<EddRecordCardProps> = ({
       <div className="edd-record-header">
         <div className="edd-record-title">
           <h3>Enhanced Due Diligence</h3>
-          <span className={`edd-status-badge ${record.status}`}>{getStatusLabel(record.status)}</span>
+          <span className={`edd-status-badge ${record.status}`}>
+            {getStatusLabel(record.status)}
+          </span>
         </div>
         <div className="edd-record-meta">
           <span>Initiated: {formatDate(record.initiated_at)}</span>
-          {record.next_review_date && <span>Next Review: {formatDate(record.next_review_date)}</span>}
+          {record.next_review_date && (
+            <span>Next Review: {formatDate(record.next_review_date)}</span>
+          )}
         </div>
       </div>
 
@@ -169,13 +173,17 @@ export const EddRecordCard: React.FC<EddRecordCardProps> = ({
               {record.documents_received.map((doc) => (
                 <li key={doc.id} className={`edd-document-item ${doc.verification_status}`}>
                   <div className="edd-document-info">
-                    <span className="edd-document-type">{formatDocumentType(doc.document_type)}</span>
+                    <span className="edd-document-type">
+                      {formatDocumentType(doc.document_type)}
+                    </span>
                     <span className="edd-document-filename">{doc.original_filename}</span>
                     <span className={`edd-document-status ${doc.verification_status}`}>
                       {getDocStatusLabel(doc.verification_status)}
                     </span>
                     {doc.expiry_date && (
-                      <span className="edd-document-expiry">Expires: {formatDate(doc.expiry_date)}</span>
+                      <span className="edd-document-expiry">
+                        Expires: {formatDate(doc.expiry_date)}
+                      </span>
                     )}
                   </div>
                   {isManager && doc.verification_status === 'pending' && onVerifyDocument && (

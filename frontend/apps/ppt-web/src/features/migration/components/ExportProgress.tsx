@@ -7,13 +7,7 @@
 import { useEffect, useState } from 'react';
 import type { ExportDataCategory } from './ExportCategorySelector';
 
-export type ExportStatus =
-  | 'pending'
-  | 'processing'
-  | 'ready'
-  | 'downloaded'
-  | 'expired'
-  | 'failed';
+export type ExportStatus = 'pending' | 'processing' | 'ready' | 'downloaded' | 'expired' | 'failed';
 
 export interface ExportStatusData {
   exportId: string;
@@ -171,18 +165,14 @@ export function ExportProgress({
             isProcessing
               ? 'bg-blue-100 text-blue-800'
               : isReady
-              ? 'bg-green-100 text-green-800'
-              : isFailed
-              ? 'bg-red-100 text-red-800'
-              : 'bg-gray-100 text-gray-800'
+                ? 'bg-green-100 text-green-800'
+                : isFailed
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-gray-100 text-gray-800'
           }`}
         >
           {isProcessing && (
-            <svg
-              className="-ml-0.5 mr-1.5 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+            <svg className="-ml-0.5 mr-1.5 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -206,7 +196,12 @@ export function ExportProgress({
       {isProcessing && (
         <div className="rounded-lg bg-blue-50 p-6 text-center">
           <div className="mx-auto h-16 w-16 animate-pulse rounded-full bg-blue-100 p-4">
-            <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="h-8 w-8 text-blue-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -246,9 +241,7 @@ export function ExportProgress({
             <div className="flex-1">
               <h3 className="text-sm font-medium text-green-800">Export Ready for Download</h3>
               <div className="mt-2 flex flex-wrap gap-4 text-sm text-green-700">
-                {status.fileSizeBytes && (
-                  <span>Size: {formatFileSize(status.fileSizeBytes)}</span>
-                )}
+                {status.fileSizeBytes && <span>Size: {formatFileSize(status.fileSizeBytes)}</span>}
                 <span>Expires in: {formatExpirationTime(status.expiresAt)}</span>
               </div>
               <button
@@ -289,9 +282,7 @@ export function ExportProgress({
                 <span className="text-sm capitalize text-gray-600">
                   {category.replace('_', ' ')}
                 </span>
-                <span className="font-medium text-gray-900">
-                  {count.toLocaleString()}
-                </span>
+                <span className="font-medium text-gray-900">{count.toLocaleString()}</span>
               </div>
             ))}
           </div>

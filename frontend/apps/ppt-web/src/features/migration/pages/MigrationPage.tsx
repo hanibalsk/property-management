@@ -117,7 +117,10 @@ export function MigrationPage({ onNavigate }: MigrationPageProps) {
           {/* Quick Stats */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {QUICK_STATS.map((stat) => (
-              <div key={stat.label} className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200">
+              <div
+                key={stat.label}
+                className="rounded-lg bg-white p-4 shadow-sm ring-1 ring-gray-200"
+              >
                 <p className="text-sm text-gray-500">{stat.label}</p>
                 <p className="mt-1 text-2xl font-semibold text-gray-900">{stat.value}</p>
                 {stat.trendValue && (
@@ -126,8 +129,8 @@ export function MigrationPage({ onNavigate }: MigrationPageProps) {
                       stat.trend === 'up'
                         ? 'text-green-600'
                         : stat.trend === 'down'
-                        ? 'text-red-600'
-                        : 'text-gray-500'
+                          ? 'text-red-600'
+                          : 'text-gray-500'
                     }`}
                   >
                     {stat.trendValue}
@@ -272,15 +275,15 @@ export function MigrationPage({ onNavigate }: MigrationPageProps) {
                       activity.status === 'completed'
                         ? 'bg-green-100 text-green-800'
                         : activity.status === 'failed'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-blue-100 text-blue-800'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-blue-100 text-blue-800'
                     }`}
                   >
                     {activity.status === 'completed'
                       ? 'Completed'
                       : activity.status === 'failed'
-                      ? 'Failed'
-                      : 'In Progress'}
+                        ? 'Failed'
+                        : 'In Progress'}
                   </span>
                 </div>
               ))}
@@ -304,10 +307,12 @@ export function MigrationPage({ onNavigate }: MigrationPageProps) {
                 />
               </svg>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">Migrating from another system?</h3>
+                <h3 className="text-sm font-medium text-blue-800">
+                  Migrating from another system?
+                </h3>
                 <p className="mt-1 text-sm text-blue-700">
-                  Download our import templates, fill them with your data, and upload to import.
-                  Our validation will help identify any issues before importing.
+                  Download our import templates, fill them with your data, and upload to import. Our
+                  validation will help identify any issues before importing.
                 </p>
                 <button
                   type="button"

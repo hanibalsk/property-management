@@ -108,8 +108,8 @@ export function WebhookCreateDialog({
       name: name.trim(),
       endpointUrl: endpointUrl.trim(),
       eventTypes: selectedEvents,
-      retryCount: parseInt(retryCount, 10),
-      timeoutSeconds: parseInt(timeoutSeconds, 10),
+      retryCount: Number.parseInt(retryCount, 10),
+      timeoutSeconds: Number.parseInt(timeoutSeconds, 10),
     };
 
     try {
@@ -148,9 +148,7 @@ export function WebhookCreateDialog({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>
-          )}
+          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
 
           {/* Name */}
           <div>
@@ -203,12 +201,8 @@ export function WebhookCreateDialog({
             <div className="space-y-4 max-h-64 overflow-y-auto p-1">
               {CATEGORIES.map((category) => {
                 const categoryEvents = AVAILABLE_EVENTS.filter((e) => e.category === category);
-                const allSelected = categoryEvents.every((e) =>
-                  selectedEvents.includes(e.value)
-                );
-                const someSelected = categoryEvents.some((e) =>
-                  selectedEvents.includes(e.value)
-                );
+                const allSelected = categoryEvents.every((e) => selectedEvents.includes(e.value));
+                const someSelected = categoryEvents.some((e) => selectedEvents.includes(e.value));
 
                 return (
                   <div key={category} className="border rounded-md p-3">
@@ -266,12 +260,7 @@ export function WebhookCreateDialog({
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
             Advanced Options
           </button>

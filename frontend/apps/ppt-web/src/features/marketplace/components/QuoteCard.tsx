@@ -125,7 +125,12 @@ export function QuoteCard({
             />
           ) : (
             <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center">
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <title>Company placeholder</title>
                 <path
                   strokeLinecap="round"
@@ -174,9 +179,13 @@ export function QuoteCard({
 
       {/* Price */}
       <div className="mt-4 text-center py-4 bg-gray-50 rounded-lg">
-        <p className="text-3xl font-bold text-gray-900">{formatPrice(quote.price, quote.currency)}</p>
+        <p className="text-3xl font-bold text-gray-900">
+          {formatPrice(quote.price, quote.currency)}
+        </p>
         {quote.warrantyPeriodDays && (
-          <p className="text-sm text-gray-500 mt-1">{quote.warrantyPeriodDays} day warranty included</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {quote.warrantyPeriodDays} day warranty included
+          </p>
         )}
       </div>
 
@@ -211,9 +220,7 @@ export function QuoteCard({
         </div>
       )}
 
-      <p className="mt-2 text-xs text-gray-400">
-        Submitted: {formatDate(quote.submittedAt)}
-      </p>
+      <p className="mt-2 text-xs text-gray-400">Submitted: {formatDate(quote.submittedAt)}</p>
 
       {/* Actions */}
       <div className="mt-4 flex items-center gap-3 pt-4 border-t">

@@ -6,9 +6,9 @@
 
 import { useCallback, useState } from 'react';
 import {
-  ImportTemplateBuilder,
   type ImportDataType,
   type ImportFieldMapping,
+  ImportTemplateBuilder,
 } from '../components/ImportTemplateBuilder';
 import { ImportTemplateList, type ImportTemplateSummary } from '../components/ImportTemplateList';
 
@@ -230,8 +230,8 @@ export function TemplatesPage() {
           <div className="rounded-lg bg-green-50 p-4">
             <h3 className="text-sm font-medium text-green-800">Custom Templates</h3>
             <p className="mt-1 text-sm text-green-700">
-              Create your own templates with custom fields and validation rules to match your
-              data format.
+              Create your own templates with custom fields and validation rules to match your data
+              format.
             </p>
           </div>
         </div>

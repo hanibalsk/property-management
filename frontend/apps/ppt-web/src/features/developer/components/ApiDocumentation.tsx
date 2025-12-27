@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import type { ApiEndpointDoc, ApiChangelog } from '../types';
+import type { ApiChangelog, ApiEndpointDoc } from '../types';
 
 interface ApiDocumentationProps {
   endpoints: ApiEndpointDoc[];
@@ -13,7 +13,11 @@ interface ApiDocumentationProps {
   onTestEndpoint?: (endpoint: ApiEndpointDoc) => void;
 }
 
-export function ApiDocumentation({ endpoints, changelog, onTestEndpoint }: ApiDocumentationProps) {
+export function ApiDocumentation({
+  endpoints,
+  changelog: _changelog,
+  onTestEndpoint,
+}: ApiDocumentationProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [expandedEndpoint, setExpandedEndpoint] = useState<string | null>(null);

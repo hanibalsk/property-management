@@ -269,7 +269,13 @@ pub mod resolution_status {
     pub const PARTIALLY_ACCEPTED: &str = "partially_accepted";
     pub const IMPLEMENTED: &str = "implemented";
 
-    pub const ALL: &[&str] = &[PROPOSED, ACCEPTED, REJECTED, PARTIALLY_ACCEPTED, IMPLEMENTED];
+    pub const ALL: &[&str] = &[
+        PROPOSED,
+        ACCEPTED,
+        REJECTED,
+        PARTIALLY_ACCEPTED,
+        IMPLEMENTED,
+    ];
 }
 
 /// A proposed resolution for a dispute.

@@ -10,12 +10,7 @@ export type VerificationType =
   | 'license'
   | 'identity';
 
-export type VerificationStatus =
-  | 'pending'
-  | 'under_review'
-  | 'verified'
-  | 'rejected'
-  | 'expired';
+export type VerificationStatus = 'pending' | 'under_review' | 'verified' | 'rejected' | 'expired';
 
 export type BadgeType =
   | 'verified_business'
@@ -118,7 +113,11 @@ const sizeClasses = {
   lg: { badge: 'px-3 py-1.5 text-base', icon: 'w-5 h-5' },
 };
 
-export function VerificationBadge({ badge, size = 'md', showTooltip = true }: VerificationBadgeProps) {
+export function VerificationBadge({
+  badge,
+  size = 'md',
+  showTooltip = true,
+}: VerificationBadgeProps) {
   const config = badgeConfig[badge.type];
   const classes = sizeClasses[size];
 
@@ -146,7 +145,10 @@ export function VerificationBadge({ badge, size = 'md', showTooltip = true }: Ve
   );
 }
 
-export function VerificationStatusBadge({ verification, size = 'md' }: VerificationStatusBadgeProps) {
+export function VerificationStatusBadge({
+  verification,
+  size = 'md',
+}: VerificationStatusBadgeProps) {
   const config = verificationStatusConfig[verification.status];
   const classes = sizeClasses[size];
   const typeLabel = verificationTypeLabels[verification.type];

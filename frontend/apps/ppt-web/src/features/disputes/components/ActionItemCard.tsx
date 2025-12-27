@@ -73,7 +73,9 @@ export function ActionItemCard({
       return <span className="text-green-600">Completed</span>;
     }
     if (isOverdue) {
-      return <span className="text-red-600 font-medium">Overdue by {Math.abs(daysUntilDue)} days</span>;
+      return (
+        <span className="text-red-600 font-medium">Overdue by {Math.abs(daysUntilDue)} days</span>
+      );
     }
     if (daysUntilDue === 0) {
       return <span className="text-orange-600 font-medium">Due today</span>;
@@ -97,7 +99,9 @@ export function ActionItemCard({
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[action.status]}`}>
+            <span
+              className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[action.status]}`}
+            >
               {statusLabels[action.status]}
             </span>
             {getDueDateDisplay()}
@@ -121,9 +125,7 @@ export function ActionItemCard({
           <p className="text-sm text-green-800">
             <span className="font-medium">Completed:</span> {action.completionNotes}
           </p>
-          <p className="text-xs text-green-600 mt-1">
-            {formatDate(action.completedAt)}
-          </p>
+          <p className="text-xs text-green-600 mt-1">{formatDate(action.completedAt)}</p>
         </div>
       )}
 
@@ -134,9 +136,7 @@ export function ActionItemCard({
         </div>
       )}
       {action.escalatedAt && (
-        <div className="text-xs text-red-600 mb-2">
-          Escalated: {formatDate(action.escalatedAt)}
-        </div>
+        <div className="text-xs text-red-600 mb-2">Escalated: {formatDate(action.escalatedAt)}</div>
       )}
 
       {/* Actions */}
@@ -161,15 +161,17 @@ export function ActionItemCard({
             Start
           </button>
         )}
-        {isAssignee && ['pending', 'in_progress', 'overdue'].includes(action.status) && onComplete && (
-          <button
-            type="button"
-            onClick={() => onComplete(action.id)}
-            className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
-            Complete
-          </button>
-        )}
+        {isAssignee &&
+          ['pending', 'in_progress', 'overdue'].includes(action.status) &&
+          onComplete && (
+            <button
+              type="button"
+              onClick={() => onComplete(action.id)}
+              className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Complete
+            </button>
+          )}
 
         {/* Manager actions */}
         {isManager && ['pending', 'in_progress', 'overdue'].includes(action.status) && (

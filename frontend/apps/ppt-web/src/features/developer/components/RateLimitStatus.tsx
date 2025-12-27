@@ -4,7 +4,7 @@
  * Displays current rate limit status and tier information.
  */
 
-import type { RateLimitStatus as RateLimitStatusType, RateLimitConfig } from '../types';
+import type { RateLimitConfig, RateLimitStatus as RateLimitStatusType } from '../types';
 
 interface RateLimitStatusProps {
   status: RateLimitStatusType;
@@ -17,9 +17,7 @@ export function RateLimitStatus({ status, onUpgradeTier }: RateLimitStatusProps)
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Rate Limits</h2>
-          <p className="text-muted-foreground">
-            Monitor your API usage and rate limit status
-          </p>
+          <p className="text-muted-foreground">Monitor your API usage and rate limit status</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Current tier:</span>
@@ -77,26 +75,66 @@ export function RateLimitStatus({ status, onUpgradeTier }: RateLimitStatusProps)
         <h3 className="font-semibold mb-3">Rate Limiting Tips</h3>
         <ul className="space-y-2 text-sm text-muted-foreground">
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-5 h-5 text-green-500 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             Implement exponential backoff when receiving 429 responses
           </li>
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-5 h-5 text-green-500 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             Cache responses when possible to reduce API calls
           </li>
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-5 h-5 text-green-500 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             Use webhooks instead of polling for real-time updates
           </li>
           <li className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-5 h-5 text-green-500 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             Check the X-RateLimit-* headers in API responses
           </li>

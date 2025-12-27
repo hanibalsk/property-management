@@ -48,11 +48,7 @@ export function RatingStars({ rating, size = 'md', showValue = false }: RatingSt
           if (i === fullStars && hasHalfStar) {
             // Half star
             return (
-              <svg
-                key={`star-${i}`}
-                className={`${starSize} text-yellow-400`}
-                viewBox="0 0 20 20"
-              >
+              <svg key={`star-${i}`} className={`${starSize} text-yellow-400`} viewBox="0 0 20 20">
                 <title>Half-filled star</title>
                 <defs>
                   <linearGradient id={`half-gradient-${i}`}>
@@ -82,9 +78,7 @@ export function RatingStars({ rating, size = 'md', showValue = false }: RatingSt
         })}
       </div>
       {showValue && (
-        <span className={`${textSize} font-medium text-gray-700 ml-1`}>
-          {rating.toFixed(1)}
-        </span>
+        <span className={`${textSize} font-medium text-gray-700 ml-1`}>{rating.toFixed(1)}</span>
       )}
     </div>
   );
@@ -127,9 +121,7 @@ export function RatingInput({ value, onChange, size = 'md', disabled = false }: 
           </button>
         ))}
       </div>
-      {value > 0 && (
-        <span className="text-sm text-gray-600">{ratingLabels[value - 1]}</span>
-      )}
+      {value > 0 && <span className="text-sm text-gray-600">{ratingLabels[value - 1]}</span>}
     </div>
   );
 }

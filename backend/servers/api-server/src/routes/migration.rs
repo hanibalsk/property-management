@@ -5,18 +5,19 @@
 use crate::state::AppState;
 use api_core::extractors::AuthUser;
 use axum::{
-    extract::{Multipart, Path, Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     routing::{delete, get, post, put},
     Json, Router,
 };
+use axum_extra::extract::Multipart;
 use db::models::{
-    ApproveImportRequest, ApproveImportResponse, CreateImportJob, CreateImportTemplate,
-    CreateMigrationExport, ExportCategoriesResponse, ExportCategoryInfo, ExportDataCategory,
+    ApproveImportRequest, ApproveImportResponse, CreateImportTemplate, CreateMigrationExport,
+    CreateMigrationImportJob, ExportCategoriesResponse, ExportCategoryInfo, ExportDataCategory,
     ExportPrivacyOptions, FieldDataType, FieldValidation, ImportCategoriesResponse,
     ImportCategoryInfo, ImportDataType, ImportFieldMapping, ImportJobFilter, ImportJobHistory,
-    ImportJobStatus, ImportJobStatusResponse, ImportOptions, ImportPreviewResult,
-    ImportRowError, ImportTemplateSummary, MigrationExportResponse, MigrationExportStatus,
+    ImportJobStatus, ImportJobStatusResponse, ImportOptions, ImportPreviewResult, ImportRowError,
+    ImportTemplateSummary, MigrationExportResponse, MigrationExportStatus,
     MigrationExportStatusResponse, MigrationPagination, RecordTypeCounts, TemplateFormat,
     UpdateImportTemplate, ValidationIssue, ValidationSeverity,
 };
@@ -34,7 +35,10 @@ pub fn router() -> Router<AppState> {
         .route("/templates/:template_id", put(update_template))
         .route("/templates/:template_id", delete(delete_template))
         .route("/templates/:template_id/download", get(download_template))
-        .route("/templates/:template_id/duplicate", post(duplicate_template))
+        .route(
+            "/templates/:template_id/duplicate",
+            post(duplicate_template),
+        )
         .route("/categories/import", get(get_import_categories))
         // Story 66.2: Bulk Data Import
         .route("/import/upload", post(upload_import_file))
@@ -338,13 +342,18 @@ async fn download_template(
 
     let (filename, content_type) = match query.format {
         TemplateFormat::Csv => ("template.csv".to_string(), "text/csv"),
-        TemplateFormat::Xlsx => ("template.xlsx".to_string(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        TemplateFormat::Xlsx => (
+            "template.xlsx".to_string(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
     };
 
     // In a real implementation, generate the file and return a signed URL
     let download_url = format!(
         "/api/v1/migration/templates/{}/file?format={:?}&token={}",
-        template_id, query.format, Uuid::new_v4()
+        template_id,
+        query.format,
+        Uuid::new_v4()
     );
 
     Ok(Json(TemplateDownloadResponse {
@@ -483,10 +492,10 @@ async fn upload_import_file(
                     .text()
                     .await
                     .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-                template_id = Some(
-                    Uuid::parse_str(&value)
-                        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid template_id".to_string()))?,
-                );
+                template_id =
+                    Some(Uuid::parse_str(&value).map_err(|_| {
+                        (StatusCode::BAD_REQUEST, "Invalid template_id".to_string())
+                    })?);
             }
             "file" => {
                 filename = field.file_name().map(|s| s.to_string());
@@ -513,7 +522,10 @@ async fn upload_import_file(
     if file_size > MAX_IMPORT_SIZE {
         return Err((
             StatusCode::PAYLOAD_TOO_LARGE,
-            format!("File size exceeds maximum of {}MB", MAX_IMPORT_SIZE / 1024 / 1024),
+            format!(
+                "File size exceeds maximum of {}MB",
+                MAX_IMPORT_SIZE / 1024 / 1024
+            ),
         ));
     }
 
@@ -629,15 +641,13 @@ async fn get_import_job_status(
         successful_rows: 125,
         failed_rows: 5,
         skipped_rows: 0,
-        error_summary: Some(vec![
-            ImportRowError {
-                row_number: 45,
-                column: Some("email".to_string()),
-                message: "Invalid email format".to_string(),
-                error_code: "INVALID_EMAIL".to_string(),
-                original_value: Some("not-an-email".to_string()),
-            },
-        ]),
+        error_summary: Some(vec![ImportRowError {
+            row_number: 45,
+            column: Some("email".to_string()),
+            message: "Invalid email format".to_string(),
+            error_code: "INVALID_EMAIL".to_string(),
+            original_value: Some("not-an-email".to_string()),
+        }]),
         started_at: Some(chrono::Utc::now() - chrono::Duration::minutes(5)),
         completed_at: None,
         estimated_remaining_seconds: Some(120),
@@ -1081,7 +1091,7 @@ async fn get_import_preview(
                 severity: ValidationSeverity::Error,
                 code: "INVALID_EMAIL".to_string(),
                 message: "Invalid email format".to_string(),
-                original_value: Some("not.an" .to_string()),
+                original_value: Some("not.an".to_string()),
                 suggested_value: None,
             },
             ValidationIssue {

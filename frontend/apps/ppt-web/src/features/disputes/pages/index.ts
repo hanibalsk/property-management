@@ -3,6 +3,7 @@
  * Epic 77: Dispute Resolution
  */
 
+export { CreateDisputePage } from './CreateDisputePage';
 export { DisputesPage } from './DisputesPage';
 export { DisputeDetailPage } from './DisputeDetailPage';
 export { FileDisputePage } from './FileDisputePage';

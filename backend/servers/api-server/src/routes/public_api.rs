@@ -13,21 +13,34 @@ use axum::{
 use chrono::{DateTime, NaiveDate, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
+    public_api::{
+        webhook_delivery_status, webhook_event_type, CreateWebhookSubscription, RateLimitStatus,
+        TestWebhookRequest, TestWebhookResponse, UpdateWebhookSubscription, WebhookDelivery,
+        WebhookDeliveryQuery, WebhookSubscription, WebhookSubscriptionQuery,
+    },
     ApiChangelog, ApiEndpointDoc, ApiKey, ApiKeyDisplay, ApiKeyQuery, ApiKeyUsageStats,
-    ApiRequestLog, ApiRequestLogQuery, CreateApiKey, CreateApiKeyResponse,
-    CreateDeveloperAccount, CreateRateLimitConfig, CreateWebhookSubscription,
-    CreateWebhookResponse, DeveloperAccount, DeveloperPortalStats, DeveloperUsageSummary,
-    PaginatedResponse, RateLimitConfig, RateLimitStatus, RotateApiKeyResponse,
+    ApiRequestLog, ApiRequestLogQuery, CreateApiKey, CreateApiKeyResponse, CreateDeveloperAccount,
+    CreateRateLimitConfig, CreateWebhookResponse, DeveloperAccount, DeveloperPortalStats,
+    DeveloperUsageSummary, PaginatedResponse, RateLimitConfig, RotateApiKeyResponse,
     RotateWebhookSecretResponse, SandboxEnvironment, SandboxTestRequest, SandboxTestResponse,
-    SdkDownloadInfo, SdkLanguageInfo, SdkVersion, TestWebhookRequest, TestWebhookResponse,
-    UpdateApiKey, UpdateDeveloperAccount, UpdateRateLimitConfig, UpdateWebhookSubscription,
-    WebhookDelivery, WebhookDeliveryQuery, WebhookSubscription, WebhookSubscriptionQuery,
+    SdkDownloadInfo, SdkLanguageInfo, SdkVersion, UpdateApiKey, UpdateDeveloperAccount,
+    UpdateRateLimitConfig,
 };
+use rand::Rng;
 use serde::Deserialize;
 use utoipa::IntoParams;
 use uuid::Uuid;
 
 use crate::state::AppState;
+
+/// Generate a cryptographically secure random secret.
+/// Uses 32 bytes of random data encoded as hex (64 characters).
+fn generate_secure_secret(prefix: &str) -> String {
+    let mut rng = rand::rng();
+    let mut bytes = [0u8; 32];
+    rng.fill(&mut bytes);
+    format!("{}_{}", prefix, hex::encode(bytes))
+}
 
 /// Create public API / developer portal router.
 pub fn router() -> Router<AppState> {
@@ -172,7 +185,10 @@ async fn get_my_developer_account(
     // Implementation would fetch developer account
     Err((
         StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Developer account not found. Please create one first.")),
+        Json(ErrorResponse::new(
+            "NOT_FOUND",
+            "Developer account not found. Please create one first.",
+        )),
     ))
 }
 
@@ -184,7 +200,10 @@ async fn update_my_developer_account(
 ) -> Result<Json<DeveloperAccount>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Developer account not found")),
+        Json(ErrorResponse::new(
+            "NOT_FOUND",
+            "Developer account not found",
+        )),
     ))
 }
 
@@ -195,7 +214,10 @@ async fn get_my_usage_summary(
 ) -> Result<Json<DeveloperUsageSummary>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Developer account not found")),
+        Json(ErrorResponse::new(
+            "NOT_FOUND",
+            "Developer account not found",
+        )),
     ))
 }
 
@@ -223,14 +245,17 @@ async fn create_api_key(
         if !db::models::api_key_scope::ALL.contains(&scope.as_str()) {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("INVALID_SCOPE", &format!("Invalid scope: {}", scope))),
+                Json(ErrorResponse::new(
+                    "INVALID_SCOPE",
+                    &format!("Invalid scope: {}", scope),
+                )),
             ));
         }
     }
 
     // Generate API key with prefix for identification
     let key_prefix = format!("ppt_{}", &Uuid::new_v4().to_string()[..8]);
-    let secret = format!("{}_{}", key_prefix, Uuid::new_v4().to_string().replace("-", ""));
+    let secret = generate_secure_secret(&key_prefix);
 
     let response = CreateApiKeyResponse {
         id: Uuid::new_v4(),
@@ -517,16 +542,19 @@ async fn create_webhook(
 ) -> Result<(StatusCode, Json<CreateWebhookResponse>), (StatusCode, Json<ErrorResponse>)> {
     // Validate event types
     for event_type in &payload.event_types {
-        if !db::models::webhook_event_type::ALL.contains(&event_type.as_str()) {
+        if !webhook_event_type::ALL.contains(&event_type.as_str()) {
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("INVALID_EVENT_TYPE", &format!("Invalid event type: {}", event_type))),
+                Json(ErrorResponse::new(
+                    "INVALID_EVENT_TYPE",
+                    &format!("Invalid event type: {}", event_type),
+                )),
             ));
         }
     }
 
     // Generate webhook secret for HMAC signature verification
-    let secret = format!("whsec_{}", Uuid::new_v4().to_string().replace("-", ""));
+    let secret = generate_secure_secret("whsec");
 
     let response = CreateWebhookResponse {
         id: Uuid::new_v4(),
@@ -632,7 +660,7 @@ async fn rotate_webhook_secret(
     user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<RotateWebhookSecretResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let new_secret = format!("whsec_{}", Uuid::new_v4().to_string().replace("-", ""));
+    let new_secret = generate_secure_secret("whsec");
 
     let response = RotateWebhookSecretResponse {
         webhook_id: id,
@@ -665,7 +693,7 @@ async fn list_webhook_deliveries(
 async fn list_webhook_event_types(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<&'static str>>, (StatusCode, Json<ErrorResponse>)> {
-    Ok(Json(db::models::webhook_event_type::ALL.to_vec()))
+    Ok(Json(webhook_event_type::ALL.to_vec()))
 }
 
 // ==================== Rate Limiting Endpoints (Story 69.4) ====================
@@ -684,7 +712,7 @@ async fn get_rate_limit_status(
     State(state): State<AppState>,
     user: AuthUser,
 ) -> Result<Json<RateLimitStatus>, (StatusCode, Json<ErrorResponse>)> {
-    use db::models::{RateLimitWindow, RateLimitStatus};
+    use db::models::{RateLimitStatus, RateLimitWindow};
 
     let now = Utc::now();
     let status = RateLimitStatus {
@@ -832,7 +860,10 @@ async fn get_sdk_info(
         language: language.clone(),
         version: "1.0.0".to_string(),
         api_version: "v1".to_string(),
-        download_url: format!("https://downloads.ppt.example.com/sdks/{}/1.0.0.tar.gz", language),
+        download_url: format!(
+            "https://downloads.ppt.example.com/sdks/{}/1.0.0.tar.gz",
+            language
+        ),
         package_name: Some(format!("ppt-api-client-{}", language)),
         package_manager_url: Some(format!("https://www.npmjs.com/package/@ppt/api-client")),
         checksum_sha256: Some("abc123...".to_string()),
@@ -856,26 +887,27 @@ async fn list_sdk_versions(
     State(state): State<AppState>,
     Path(language): Path<String>,
 ) -> Result<Json<Vec<SdkVersion>>, (StatusCode, Json<ErrorResponse>)> {
-    let versions = vec![
-        SdkVersion {
-            id: Uuid::new_v4(),
-            language: language.clone(),
-            version: "1.0.0".to_string(),
-            api_version: "v1".to_string(),
-            download_url: Some(format!("https://downloads.ppt.example.com/sdks/{}/1.0.0.tar.gz", language)),
-            package_name: Some(format!("ppt-api-client-{}", language)),
-            package_manager_url: None,
-            build_status: "success".to_string(),
-            build_log: None,
-            checksum_sha256: Some("abc123...".to_string()),
-            download_count: Some(1500),
-            release_notes: Some("Initial release".to_string()),
-            is_latest: Some(true),
-            is_stable: Some(true),
-            created_at: Some(Utc::now()),
-            published_at: Some(Utc::now()),
-        },
-    ];
+    let versions = vec![SdkVersion {
+        id: Uuid::new_v4(),
+        language: language.clone(),
+        version: "1.0.0".to_string(),
+        api_version: "v1".to_string(),
+        download_url: Some(format!(
+            "https://downloads.ppt.example.com/sdks/{}/1.0.0.tar.gz",
+            language
+        )),
+        package_name: Some(format!("ppt-api-client-{}", language)),
+        package_manager_url: None,
+        build_status: "success".to_string(),
+        build_log: None,
+        checksum_sha256: Some("abc123...".to_string()),
+        download_count: Some(1500),
+        release_notes: Some("Initial release".to_string()),
+        is_latest: Some(true),
+        is_stable: Some(true),
+        created_at: Some(Utc::now()),
+        published_at: Some(Utc::now()),
+    }];
 
     Ok(Json(versions))
 }
@@ -981,7 +1013,10 @@ async fn update_rate_limit_config(
 ) -> Result<Json<RateLimitConfig>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Rate limit config not found")),
+        Json(ErrorResponse::new(
+            "NOT_FOUND",
+            "Rate limit config not found",
+        )),
     ))
 }
 

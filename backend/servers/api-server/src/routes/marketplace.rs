@@ -23,10 +23,10 @@ use db::models::{
     ModerateReviewRequest, PendingAction, ProviderBadge, ProviderDashboard,
     ProviderProfileComplete, ProviderQuote, ProviderReview, ProviderReviewResponse,
     ProviderReviewWithResponse, ProviderSearchResult, ProviderVerification, QuoteComparisonView,
-    QuoteWithProvider, RatingBreakdown, RatingDistribution, RequestForQuote,
-    ReviewVerificationRequest, RfqInvitation, RfqQuery, RfqSummary, ReviewQuery,
-    ReviewStatistics, ServiceProviderProfile, UpdateProviderQuote, UpdateProviderReview,
-    UpdateRequestForQuote, UpdateServiceProviderProfile, VerificationQuery, VerificationQueueItem,
+    QuoteWithProvider, RatingBreakdown, RatingDistribution, RequestForQuote, ReviewQuery,
+    ReviewStatistics, ReviewVerificationRequest, RfqInvitation, RfqQuery, RfqSummary,
+    ServiceProviderProfile, UpdateProviderQuote, UpdateProviderReview, UpdateRequestForQuote,
+    UpdateServiceProviderProfile, VerificationQuery, VerificationQueueItem,
 };
 use rust_decimal::Decimal;
 use serde::Deserialize;
@@ -311,7 +311,10 @@ async fn create_profile(
         coverage_postal_codes: payload.data.coverage_postal_codes,
         coverage_radius_km: payload.data.coverage_radius_km,
         coverage_regions: payload.data.coverage_regions,
-        pricing_type: payload.data.pricing_type.unwrap_or_else(|| "hourly".to_string()),
+        pricing_type: payload
+            .data
+            .pricing_type
+            .unwrap_or_else(|| "hourly".to_string()),
         hourly_rate_min: payload.data.hourly_rate_min,
         hourly_rate_max: payload.data.hourly_rate_max,
         currency: payload.data.currency,
@@ -376,7 +379,10 @@ async fn update_my_profile(
     // In production, this would call state.marketplace_repo.update_profile(user.user_id, data)
     Err((
         StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Provider profile not found")),
+        Json(ErrorResponse::new(
+            "NOT_FOUND",
+            "Provider profile not found",
+        )),
     ))
 }
 
@@ -388,7 +394,10 @@ async fn get_provider_dashboard(
     // In production, this would call state.marketplace_repo.get_provider_dashboard(user.user_id)
     Err((
         StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Provider profile not found")),
+        Json(ErrorResponse::new(
+            "NOT_FOUND",
+            "Provider profile not found",
+        )),
     ))
 }
 

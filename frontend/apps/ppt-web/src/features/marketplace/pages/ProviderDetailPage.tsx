@@ -4,12 +4,12 @@
  */
 
 import { useState } from 'react';
-import type { ProviderSummary, BadgeType } from '../components/ProviderCard';
+import type { ProviderSummary } from '../components/ProviderCard';
+import { RatingBreakdown, type RatingBreakdownData } from '../components/RatingBreakdown';
+import { RatingStars } from '../components/RatingStars';
+import { type ReviewData, ReviewList } from '../components/ReviewCard';
 import type { Badge, Verification } from '../components/VerificationBadge';
 import { BadgeList, VerificationList } from '../components/VerificationBadge';
-import { RatingBreakdown, type RatingBreakdownData } from '../components/RatingBreakdown';
-import { ReviewList, type ReviewData } from '../components/ReviewCard';
-import { RatingStars } from '../components/RatingStars';
 
 interface ProviderDetailPageProps {
   provider: ProviderSummary & {
@@ -107,7 +107,12 @@ export function ProviderDetailPage({
               />
             ) : (
               <div className="w-24 h-24 rounded-lg bg-gray-200 flex items-center justify-center">
-                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-12 h-12 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <title>Company placeholder</title>
                   <path
                     strokeLinecap="round"
@@ -149,9 +154,7 @@ export function ProviderDetailPage({
             {/* Rating */}
             <div className="mt-4 flex items-center gap-4">
               <RatingStars rating={provider.averageRating || 0} size="lg" showValue />
-              <span className="text-gray-500">
-                ({ratingBreakdown.totalReviews} reviews)
-              </span>
+              <span className="text-gray-500">({ratingBreakdown.totalReviews} reviews)</span>
               {provider.totalJobsCompleted && (
                 <span className="text-gray-500">
                   | {provider.totalJobsCompleted} jobs completed
@@ -167,9 +170,7 @@ export function ProviderDetailPage({
             )}
 
             {/* Description */}
-            {provider.description && (
-              <p className="mt-4 text-gray-600">{provider.description}</p>
-            )}
+            {provider.description && <p className="mt-4 text-gray-600">{provider.description}</p>}
           </div>
 
           {/* Actions */}
@@ -338,11 +339,7 @@ export function ProviderDetailPage({
         {activeTab === 'reviews' && (
           <div className="space-y-6">
             <RatingBreakdown data={ratingBreakdown} />
-            <ReviewList
-              reviews={reviews}
-              onMarkHelpful={onMarkHelpful}
-              onReport={onReportReview}
-            />
+            <ReviewList reviews={reviews} onMarkHelpful={onMarkHelpful} onReport={onReportReview} />
           </div>
         )}
 

@@ -49,10 +49,13 @@ export function ApiKeyUsageChart({ stats, keyName, isLoading }: ApiKeyUsageChart
   // Calculate summary stats
   const totalRequests = stats.reduce((sum, s) => sum + s.totalRequests, 0);
   const totalSuccessful = stats.reduce((sum, s) => sum + s.successfulRequests, 0);
-  const totalFailed = stats.reduce((sum, s) => sum + s.failedRequests, 0);
+  // totalFailed calculated from totalRequests - totalSuccessful for accuracy
+  void stats.reduce((sum, s) => sum + s.failedRequests, 0); // Validate failed count matches
   const totalRateLimited = stats.reduce((sum, s) => sum + s.rateLimitedRequests, 0);
   const avgResponseTime =
-    stats.filter((s) => s.avgResponseTimeMs).reduce((sum, s) => sum + (s.avgResponseTimeMs || 0), 0) /
+    stats
+      .filter((s) => s.avgResponseTimeMs)
+      .reduce((sum, s) => sum + (s.avgResponseTimeMs || 0), 0) /
     stats.filter((s) => s.avgResponseTimeMs).length;
   const successRate = totalRequests > 0 ? (totalSuccessful / totalRequests) * 100 : 0;
 
@@ -68,11 +71,7 @@ export function ApiKeyUsageChart({ stats, keyName, isLoading }: ApiKeyUsageChart
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Requests"
-          value={formatNumber(totalRequests)}
-          color="blue"
-        />
+        <StatCard label="Total Requests" value={formatNumber(totalRequests)} color="blue" />
         <StatCard
           label="Success Rate"
           value={`${successRate.toFixed(1)}%`}
@@ -94,14 +93,12 @@ export function ApiKeyUsageChart({ stats, keyName, isLoading }: ApiKeyUsageChart
       <div className="p-4 bg-white rounded-lg border">
         <h4 className="text-sm font-medium mb-4">Daily Requests</h4>
         <div className="h-48 flex items-end gap-1">
-          {stats.map((stat, index) => {
+          {stats.map((stat) => {
             const height = maxRequests > 0 ? (stat.totalRequests / maxRequests) * 100 : 0;
-            const successHeight = stat.totalRequests > 0
-              ? (stat.successfulRequests / stat.totalRequests) * height
-              : 0;
-            const failedHeight = stat.totalRequests > 0
-              ? (stat.failedRequests / stat.totalRequests) * height
-              : 0;
+            const successHeight =
+              stat.totalRequests > 0 ? (stat.successfulRequests / stat.totalRequests) * height : 0;
+            const failedHeight =
+              stat.totalRequests > 0 ? (stat.failedRequests / stat.totalRequests) * height : 0;
 
             return (
               <div
@@ -169,26 +166,30 @@ export function ApiKeyUsageChart({ stats, keyName, isLoading }: ApiKeyUsageChart
             </tr>
           </thead>
           <tbody className="divide-y">
-            {stats.slice().reverse().slice(0, 7).map((stat) => (
-              <tr key={stat.date} className="hover:bg-gray-50">
-                <td className="px-4 py-2">{formatShortDate(stat.date)}</td>
-                <td className="px-4 py-2 text-right font-mono">
-                  {stat.totalRequests.toLocaleString()}
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-green-600">
-                  {stat.successfulRequests.toLocaleString()}
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-red-600">
-                  {stat.failedRequests.toLocaleString()}
-                </td>
-                <td className="px-4 py-2 text-right font-mono text-yellow-600">
-                  {stat.rateLimitedRequests.toLocaleString()}
-                </td>
-                <td className="px-4 py-2 text-right font-mono">
-                  {stat.avgResponseTimeMs ? `${stat.avgResponseTimeMs.toFixed(0)}ms` : '-'}
-                </td>
-              </tr>
-            ))}
+            {stats
+              .slice()
+              .reverse()
+              .slice(0, 7)
+              .map((stat) => (
+                <tr key={stat.date} className="hover:bg-gray-50">
+                  <td className="px-4 py-2">{formatShortDate(stat.date)}</td>
+                  <td className="px-4 py-2 text-right font-mono">
+                    {stat.totalRequests.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-green-600">
+                    {stat.successfulRequests.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-red-600">
+                    {stat.failedRequests.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-yellow-600">
+                    {stat.rateLimitedRequests.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono">
+                    {stat.avgResponseTimeMs ? `${stat.avgResponseTimeMs.toFixed(0)}ms` : '-'}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

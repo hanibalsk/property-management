@@ -41,9 +41,7 @@ export function WebhookDeliveryLogs({
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold">Delivery Logs</h3>
-        <p className="text-sm text-muted-foreground">
-          Delivery history for {webhookName}
-        </p>
+        <p className="text-sm text-muted-foreground">Delivery history for {webhookName}</p>
       </div>
 
       {/* Filter */}
@@ -159,12 +157,22 @@ function DeliveryItem({ delivery, isExpanded, onToggle, onRetry }: DeliveryItemP
       case 'exhausted':
         return (
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         );
       case 'retrying':
         return (
-          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg
+            className="w-4 h-4 animate-spin"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -194,7 +202,9 @@ function DeliveryItem({ delivery, isExpanded, onToggle, onRetry }: DeliveryItemP
         onClick={onToggle}
         className="w-full px-4 py-3 flex items-center gap-4 text-left hover:bg-gray-50 transition-colors"
       >
-        <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded ${getStatusColor(delivery.status)}`}>
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded ${getStatusColor(delivery.status)}`}
+        >
           {getStatusIcon(delivery.status)}
           {delivery.status}
         </span>

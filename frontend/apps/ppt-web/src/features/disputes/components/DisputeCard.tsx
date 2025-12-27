@@ -122,10 +122,10 @@ export function DisputeCard({ dispute, onView, onManage }: DisputeCardProps) {
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-mono text-gray-500">
-              {dispute.referenceNumber}
-            </span>
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[dispute.status]}`}>
+            <span className="text-sm font-mono text-gray-500">{dispute.referenceNumber}</span>
+            <span
+              className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[dispute.status]}`}
+            >
               {statusLabels[dispute.status]}
             </span>
           </div>
@@ -150,9 +150,7 @@ export function DisputeCard({ dispute, onView, onManage }: DisputeCardProps) {
             {dispute.assignedToName && (
               <span className="ml-3">Assigned to {dispute.assignedToName}</span>
             )}
-            <span className="ml-3">
-              {daysAgo === 0 ? 'Today' : `${daysAgo} days ago`}
-            </span>
+            <span className="ml-3">{daysAgo === 0 ? 'Today' : `${daysAgo} days ago`}</span>
           </div>
         </div>
         <div className="flex gap-2">
@@ -163,15 +161,18 @@ export function DisputeCard({ dispute, onView, onManage }: DisputeCardProps) {
           >
             View
           </button>
-          {onManage && ['filed', 'under_review', 'mediation', 'awaiting_response'].includes(dispute.status) && (
-            <button
-              type="button"
-              onClick={() => onManage(dispute.id)}
-              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Manage
-            </button>
-          )}
+          {onManage &&
+            ['filed', 'under_review', 'mediation', 'awaiting_response'].includes(
+              dispute.status
+            ) && (
+              <button
+                type="button"
+                onClick={() => onManage(dispute.id)}
+                className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Manage
+              </button>
+            )}
         </div>
       </div>
     </div>

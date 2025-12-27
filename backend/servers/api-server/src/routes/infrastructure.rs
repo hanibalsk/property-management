@@ -11,13 +11,15 @@ use axum::{
 use chrono::Utc;
 use common::errors::ErrorResponse;
 use db::models::{
+    infrastructure::{
+        CreateFeatureFlag, FeatureFlag, FeatureFlagOverride, PaginatedResponse, UpdateFeatureFlag,
+    },
     AcknowledgeAlert, AlertSeverity, AlertStatus, BackgroundJob, BackgroundJobExecution,
     BackgroundJobQuery, BackgroundJobQueueStats, BackgroundJobStatus, BackgroundJobTypeStats,
-    CreateBackgroundJob, CreateFeatureFlag, DependencyHealth, EvaluateFeatureFlag, FeatureFlag,
-    FeatureFlagAuditLog, FeatureFlagEvaluation, FeatureFlagOverride, HealthAlert, HealthAlertRule,
-    HealthCheckConfig, HealthCheckResult, HealthStatus, InfrastructureDashboard,
-    PaginatedResponse, PrometheusMetric, ResolveAlert, RetryBackgroundJob, Span, SystemHealth,
-    SystemMetrics, Trace, TraceQuery, TraceWithSpans, UpdateFeatureFlag,
+    CreateBackgroundJob, DependencyHealth, EvaluateFeatureFlag, FeatureFlagAuditLog,
+    FeatureFlagEvaluation, HealthAlert, HealthAlertRule, HealthCheckConfig, HealthCheckResult,
+    HealthStatus, InfrastructureDashboard, PrometheusMetric, ResolveAlert, RetryBackgroundJob,
+    Span, SystemHealth, SystemMetrics, Trace, TraceQuery, TraceWithSpans,
 };
 use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};

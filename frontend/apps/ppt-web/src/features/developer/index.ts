@@ -12,8 +12,67 @@
 // Main page
 export { DeveloperPortalPage } from './pages/DeveloperPortalPage';
 
-// Components
-export * from './components';
+// Components - explicitly export to avoid naming conflicts with types
+export {
+  ApiKeysList,
+  ApiKeyCreateDialog,
+  ApiKeySecretDialog,
+  ApiKeyUsageChart,
+  ApiDocumentation,
+  WebhooksList,
+  WebhookCreateDialog,
+  WebhookSecretDialog,
+  WebhookDeliveryLogs,
+  RateLimitStatus,
+  SdkDownloadList,
+  DeveloperDashboard,
+  DeveloperAccountCard,
+} from './components';
 
-// Types
-export * from './types';
+// Types - rename conflicting export
+export type { RateLimitStatus as RateLimitStatusData } from './types';
+export type {
+  ApiKeyStatus,
+  ApiKeyScope,
+  DeveloperAccount,
+  CreateDeveloperAccount,
+  UpdateDeveloperAccount,
+  ApiKey,
+  CreateApiKey,
+  CreateApiKeyResponse,
+  UpdateApiKey,
+  ApiKeyUsageStats,
+  RotateApiKeyResponse,
+  WebhookEventType,
+  WebhookDeliveryStatus,
+  WebhookSubscription,
+  CreateWebhookSubscription,
+  CreateWebhookResponse,
+  UpdateWebhookSubscription,
+  WebhookDelivery,
+  TestWebhookRequest,
+  TestWebhookResponse,
+  RotateWebhookSecretResponse,
+  RateLimitTier,
+  RateLimitConfig,
+  RateLimitWindow,
+  ApiEndpointDoc,
+  ApiChangelog,
+  ChangelogEntry,
+  SdkLanguage,
+  SdkLanguageInfo,
+  SdkVersion,
+  SdkDownloadInfo,
+  SandboxEnvironment,
+  SandboxTestRequest,
+  SandboxTestResponse,
+  DeveloperPortalStats,
+  EndpointUsage,
+  TierUsage,
+  DeveloperUsageSummary,
+  PaginatedResponse,
+  PaginationParams,
+  ApiKeyQuery,
+  WebhookSubscriptionQuery,
+  WebhookDeliveryQuery,
+} from './types';

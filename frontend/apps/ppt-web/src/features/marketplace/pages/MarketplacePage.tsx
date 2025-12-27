@@ -178,26 +178,55 @@ export function MarketplacePage({
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Browse by Category</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {[
-              { value: 'plumbing', label: 'Plumbing', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z' },
+              {
+                value: 'plumbing',
+                label: 'Plumbing',
+                icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z',
+              },
               { value: 'electrical', label: 'Electrical', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
               { value: 'hvac', label: 'HVAC', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z' },
-              { value: 'cleaning', label: 'Cleaning', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z' },
-              { value: 'security', label: 'Security', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z' },
-              { value: 'general_maintenance', label: 'Maintenance', icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z' },
+              {
+                value: 'cleaning',
+                label: 'Cleaning',
+                icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z',
+              },
+              {
+                value: 'security',
+                label: 'Security',
+                icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z',
+              },
+              {
+                value: 'general_maintenance',
+                label: 'Maintenance',
+                icon: 'M12 2a10 10 0 100 20 10 10 0 000-20z',
+              },
             ].map((cat) => (
               <button
                 key={cat.value}
                 type="button"
                 onClick={() => {
-                  setFilters((prev) => ({ ...prev, category: cat.value as SearchFilters['category'] }));
+                  setFilters((prev) => ({
+                    ...prev,
+                    category: cat.value as SearchFilters['category'],
+                  }));
                   onSearch({ ...filters, category: cat.value as SearchFilters['category'] });
                 }}
                 className="p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow text-center"
               >
                 <div className="w-10 h-10 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-5 h-5 text-blue-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <title>{cat.label}</title>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={cat.icon} />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d={cat.icon}
+                    />
                   </svg>
                 </div>
                 <p className="mt-2 text-sm font-medium text-gray-900">{cat.label}</p>

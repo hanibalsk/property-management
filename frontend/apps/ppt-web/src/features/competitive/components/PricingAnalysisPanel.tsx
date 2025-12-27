@@ -74,9 +74,7 @@ export function PricingAnalysisPanel({
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Pricing Analysis
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900">Pricing Analysis</h3>
         {onRefresh && (
           <button
             type="button"
@@ -104,9 +102,7 @@ export function PricingAnalysisPanel({
 
       {/* Price Factors */}
       <div className="p-4 border-b">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">
-          Contributing Factors
-        </h4>
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Contributing Factors</h4>
         <div className="space-y-3">
           {analysis.factors.map((factor) => (
             <div
@@ -118,13 +114,9 @@ export function PricingAnalysisPanel({
                   <span className="text-xs px-2 py-0.5 bg-gray-200 rounded capitalize">
                     {factor.factorType}
                   </span>
-                  <span className="font-medium text-gray-900">
-                    {factor.factorName}
-                  </span>
+                  <span className="font-medium text-gray-900">{factor.factorName}</span>
                 </div>
-                <p className="text-sm text-gray-600 mt-1">
-                  {factor.explanation}
-                </p>
+                <p className="text-sm text-gray-600 mt-1">{factor.explanation}</p>
               </div>
               <div
                 className={`text-lg font-semibold ml-4 ${
@@ -141,9 +133,7 @@ export function PricingAnalysisPanel({
 
       {/* Price History */}
       <div className="p-4 border-b">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">
-          Price History (Area)
-        </h4>
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Price History (Area)</h4>
         {analysis.priceHistory.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -172,9 +162,7 @@ export function PricingAnalysisPanel({
             </table>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">
-            No price history available for this area.
-          </p>
+          <p className="text-sm text-gray-500">No price history available for this area.</p>
         )}
       </div>
 
@@ -194,25 +182,19 @@ export function PricingAnalysisPanel({
                   <div className="font-medium text-gray-900 capitalize">
                     {comp.propertyType} - {comp.city}
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {comp.sizeSqm} sqm
-                  </div>
+                  <div className="text-sm text-gray-500">{comp.sizeSqm} sqm</div>
                 </div>
                 <div className="text-right">
                   <div className="font-medium">
                     {formatPrice(comp.price, analysis.suggestion.currency)}
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {comp.similarityScore}% match
-                  </div>
+                  <div className="text-xs text-gray-500">{comp.similarityScore}% match</div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">
-            No comparable properties found.
-          </p>
+          <p className="text-sm text-gray-500">No comparable properties found.</p>
         )}
       </div>
 

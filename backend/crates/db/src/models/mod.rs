@@ -570,3 +570,181 @@ pub use regional_compliance::{
 
 // Epic 76: Move-in/Move-out Workflow
 pub mod move_workflow;
+
+pub use move_workflow::{
+    assignee_type, deduction_status, item_condition, key_type, task_status, workflow_status,
+    workflow_type, CompleteInspection, CompleteTimelineTask, CreateDepositDeduction,
+    CreateInspection, CreateInspectionItem, CreateInspectionPhoto, CreateInspectionTemplate,
+    CreateKeyHandoff, CreateMoveWorkflow, CreateTimelineFromTemplate, CreateTimelineTask,
+    DepositDeduction, DepositSummary, DisputeDeduction, Inspection, InspectionItem,
+    InspectionItemWithPhotos, InspectionPhoto, InspectionQuery, InspectionSummary,
+    InspectionTemplate, InspectionTemplateSummary, InspectionWithDetails, ItemTemplate, KeyHandoff,
+    MoveTimelineTask, MoveWorkflow, MoveWorkflowStatistics, MoveWorkflowSummary,
+    MoveWorkflowWithDetails, ResolveDeduction, RoomTemplate, TimelineOverview,
+    TimelineTaskTemplate, UpdateInspectionItem, UpdateInspectionTemplate, UpdateMoveWorkflow,
+    UpdateTimelineTask, WorkflowQuery as MoveWorkflowQuery,
+};
+
+// Epic 57: Building Registry (pet/vehicle/parking)
+pub mod registry;
+
+pub use registry::{
+    pet_size, pet_type, registry_status, vehicle_type, BuildingRegistryRules, CreateParkingSpot,
+    CreatePetRegistration, CreateVehicleRegistration, ParkingSpot, ParkingSpotQuery,
+    ParkingSpotWithDetails, PetRegistration, PetRegistrationQuery, PetRegistrationSummary,
+    PetRegistrationWithDetails, RegistryStatistics, ReviewRegistration, UpdateParkingSpot,
+    UpdatePetRegistration, UpdateRegistryRules, UpdateVehicleRegistration, VehicleRegistration,
+    VehicleRegistrationQuery, VehicleRegistrationSummary, VehicleRegistrationWithDetails,
+};
+
+// Epic 66: Platform Migration & Data Import
+pub mod migration;
+
+pub use migration::{
+    ApproveImportRequest, ApproveImportResponse, ColumnMappingStatus,
+    CreateImportJob as CreateMigrationImportJob, CreateImportTemplate, CreateMigrationExport,
+    DuplicateRecord, ExportCategoriesResponse, ExportCategoryInfo, ExportColumnDefinition,
+    ExportDataCategory, ExportFileEntry, ExportPrivacyOptions, ExportSchemaMetadata, FieldDataType,
+    FieldDifference, FieldValidation, ImportCategoriesResponse, ImportCategoryInfo, ImportDataType,
+    ImportFieldMapping, ImportJob, ImportJobFilter, ImportJobHistory, ImportJobStatus,
+    ImportJobStatusResponse, ImportOptions, ImportPreviewResult, ImportRowError, ImportTemplate,
+    ImportTemplateListResponse, ImportTemplateSummary, MigrationExport, MigrationExportResponse,
+    MigrationExportStatus, MigrationExportStatusResponse, MigrationPagination, RecordTypeCounts,
+    TemplateFormat, UpdateImportTemplate, ValidationIssue, ValidationSeverity,
+};
+
+// Epic 67: Advanced Compliance (AML/DSA)
+pub mod compliance;
+
+pub use compliance::{
+    AddComplianceNote, AmlAssessmentStatus, AmlRiskAssessment, AmlRiskLevel, ComplianceNote,
+    ContentOwnerInfo, ContentTypeCount, CountryRisk, CountryRiskRating, CreateAmlRiskAssessment,
+    CreateDsaTransparencyReport, CreateEddDocument, CreateEnhancedDueDiligence,
+    CreateModerationCase, DecideAppeal, DocumentVerificationStatus, DsaReportStatus,
+    DsaReportSummary, DsaTransparencyReport, DsaTransparencyReportResponse, EddDocument, EddStatus,
+    EnhancedDueDiligence, FileAppeal, ModeratedContentType, ModerationActionTemplate,
+    ModerationActionType, ModerationCase, ModerationCaseResponse, ModerationQueueQuery,
+    ModerationQueueStats, ModerationStatus, PriorityCount as AmlPriorityCount, ReportSource,
+    RiskFactor, SuspiciousActivity, TakeModerationAction, ViolationType, ViolationTypeCount,
+    AML_THRESHOLD_EUR_CENTS,
+};
+
+// Epic 68: Service Provider Marketplace
+pub mod marketplace;
+
+pub use marketplace::{
+    badge_type, pricing_type, profile_status, quote_status, review_status, rfq_status,
+    service_category, verification_status, verification_type,
+    CategoryCount as MarketplaceCategoryCount, CreateProviderQuote, CreateProviderReview,
+    CreateProviderVerification, CreateRequestForQuote, CreateServiceProviderProfile,
+    ExpiringVerification, ManagerMarketplaceDashboard, MarketplaceSearchQuery,
+    MarketplaceStatistics, ModerateReviewRequest, PendingAction, ProviderBadge, ProviderDashboard,
+    ProviderDetailView, ProviderProfileComplete, ProviderQuote, ProviderReview,
+    ProviderReviewResponse, ProviderReviewWithResponse, ProviderSearchResult, ProviderVerification,
+    QuoteComparisonView, QuoteWithProvider, RatingBreakdown, RatingDistribution, RequestForQuote,
+    ReviewQuery, ReviewStatistics, ReviewVerificationRequest, RfqInvitation, RfqQuery, RfqSummary,
+    ServiceProviderProfile, UpdateProviderQuote, UpdateProviderReview, UpdateRequestForQuote,
+    UpdateServiceProviderProfile, VerificationQuery, VerificationQueueItem,
+};
+
+// Epic 69: Public API & Developer Ecosystem
+pub mod public_api;
+
+pub use public_api::{
+    api_key_scope, api_key_status, rate_limit_tier, sdk_language,
+    webhook_delivery_status as public_api_webhook_delivery_status,
+    webhook_event_type as public_api_webhook_event_type, ApiChangelog, ApiEndpointDoc, ApiKey,
+    ApiKeyDisplay, ApiKeyQuery, ApiKeyUsageStats, ApiRequestLog, ApiRequestLogQuery, CreateApiKey,
+    CreateApiKeyResponse, CreateDeveloperAccount, CreateRateLimitConfig, CreateWebhookResponse,
+    CreateWebhookSubscription as CreatePublicApiWebhookSubscription, DeveloperAccount,
+    DeveloperPortalStats, DeveloperUsageSummary, EndpointUsage, PaginatedResponse, RateLimitConfig,
+    RateLimitHeaders, RateLimitStatus as PublicApiRateLimitStatus, RateLimitWindow,
+    RotateApiKeyResponse, RotateWebhookSecretResponse, SandboxEnvironment, SandboxTestRequest,
+    SandboxTestResponse, SdkDownloadInfo, SdkLanguageInfo, SdkVersion,
+    TestWebhookRequest as PublicApiTestWebhookRequest,
+    TestWebhookResponse as PublicApiTestWebhookResponse, TierUsage, UpdateApiKey,
+    UpdateDeveloperAccount, UpdateRateLimitConfig,
+    UpdateWebhookSubscription as UpdatePublicApiWebhookSubscription,
+    WebhookDelivery as PublicApiWebhookDelivery,
+    WebhookDeliveryQuery as PublicApiWebhookDeliveryQuery,
+    WebhookSubscription as PublicApiWebhookSubscription,
+    WebhookSubscriptionQuery as PublicApiWebhookSubscriptionQuery,
+};
+
+// Epic 70: Competitive Feature Enhancements
+pub mod competitive;
+
+pub use competitive::{
+    amenity_category, confidence_level, tour_type,
+    ComparableProperty as CompetitiveComparableProperty, ComparablePropertySummary,
+    ComparablesRequest, ComparablesResponse, ComparisonTableEntry, CompetitiveAnalysis,
+    CompetitiveFeaturesStatus, CreateTourHotspot, CreateVirtualTour, NearbyAmenity,
+    NeighborhoodInsights, NeighborhoodInsightsRequest, NeighborhoodInsightsResponse, PriceHistory,
+    PriceRange, PricingAnalysisRequest, PricingAnalysisResponse, PricingFactor, PricingSuggestion,
+    ReorderTours, TourHotspot, UpdateVirtualTour, VirtualTour, VirtualTourWithHotspots,
+};
+
+// Epic 71: Cross-Cutting Infrastructure
+pub mod infrastructure;
+
+pub use infrastructure::{
+    job_type, queue, AcknowledgeAlert, AlertSeverity, AlertStatus, BackgroundJob,
+    BackgroundJobExecution, BackgroundJobQuery, BackgroundJobQueueStats, BackgroundJobStatus,
+    BackgroundJobTypeStats, CreateBackgroundJob, CreateFeatureFlag as CreateInfraFeatureFlag,
+    DependencyHealth, EvaluateFeatureFlag, FeatureFlag as InfraFeatureFlag, FeatureFlagAuditAction,
+    FeatureFlagAuditLog, FeatureFlagEvaluation, FeatureFlagOverride as InfraFeatureFlagOverride,
+    FeatureFlagOverrideType, FeatureFlagValueType, HealthAlert, HealthAlertRule, HealthCheckConfig,
+    HealthCheckResult, HealthCheckType, HealthStatus, InfrastructureDashboard,
+    PaginatedResponse as InfrastructurePaginatedResponse, PrometheusMetric, ResolveAlert,
+    RetryBackgroundJob, Span, SpanKind, SpanStatus, SystemHealth, SystemMetrics, Trace, TraceQuery,
+    TraceWithSpans, UpdateFeatureFlag as UpdateInfraFeatureFlag,
+};
+
+// Epic 73: Infrastructure & Operations
+pub mod operations;
+
+pub use operations::{
+    Backup, BackupQuery, BackupStatus, BackupType, CloudServiceType, CostAlert, CostAlertQuery,
+    CostAlertSeverity, CostBudget, CostDashboard, CostOptimizationRecommendation, CostQuery,
+    CostTrendPoint, CreateBackup, CreateCostBudget, CreateDeployment, CreateMigration,
+    DatabaseMigration, Deployment, DeploymentDashboard, DeploymentEnvironment,
+    DeploymentHealthCheck, DeploymentQuery, DeploymentStatus, DisasterRecoveryDashboard,
+    DisasterRecoveryDrill, InfrastructureCost, InitiateRecovery, ListBackupsResponse,
+    ListBudgetsResponse, ListCostAlertsResponse, ListCostsResponse, ListDeploymentsResponse,
+    ListMigrationsResponse, ListRecommendationsResponse, ListUtilizationResponse, MigrationLog,
+    MigrationQuery, MigrationSafetyCheck, MigrationStatus, MigrationStrategy, RecordDrDrill,
+    RecordInfrastructureCost, RecoveryOperation, RecoveryStatus, ResourceUtilization,
+    SchemaVersion, ServiceCostSummary, SwitchTraffic, UpdateDeploymentStatus,
+    UpdateMigrationProgress,
+};
+
+// Epic 74: Owner Investment Analytics
+pub mod owner_analytics;
+
+pub use owner_analytics::{
+    AddComparableProperty, CalculateROIRequest, CashFlowBreakdown, CashFlowExpenses,
+    CashFlowIncome, ComparableProperty as OwnerAnalyticsComparableProperty, ComparisonMetrics,
+    CreateAutoApprovalRule, CreatePropertyValuation, ExpenseApprovalRequest,
+    ExpenseApprovalResponse, ExpenseApprovalStatus, ExpenseAutoApprovalRule, ExpenseRequestsQuery,
+    ListExpenseRequestsResponse, MonthlyCashFlow, OwnerPropertiesQuery, PortfolioComparisonRequest,
+    PortfolioProperty, PortfolioSummary, PropertyComparison, PropertyROI, PropertyValuation,
+    PropertyValuationWithComparables, PropertyValueHistory, ROIDashboard, ReviewExpenseRequest,
+    SubmitExpenseForApproval, UpdateAutoApprovalRule, ValuationMethod, ValueHistoryQuery,
+    ValueTrendAnalysis,
+};
+
+// Epic 77: Dispute Resolution
+pub mod disputes;
+
+pub use disputes::{
+    action_status, activity_type, dispute_category, dispute_priority, dispute_status,
+    escalation_severity, party_role, resolution_status, session_status, session_type, ActionItem,
+    AddEvidence, CategoryCount as DisputeCategoryCount, CompleteActionItem, CreateActionItem,
+    CreateEscalation, Dispute, DisputeActivity, DisputeEvidence, DisputeParty,
+    DisputePartyWithUser, DisputeQuery, DisputeResolution, DisputeStatistics, DisputeSummary,
+    DisputeWithDetails, Escalation, FileDispute, MediationCase, MediationSession,
+    MediationSessionWithAttendance, PartyActionsDashboard, PartySubmission,
+    PriorityCount as DisputePriorityCount, ProposeResolution, RecordSessionNotes, ResolutionTerm,
+    ResolutionVote, ResolutionWithVotes, ResolveEscalation, ScheduleSession, SessionAttendance,
+    StatusCount as DisputeStatusCount, SubmitResponse, UpdateDisputeStatus, VoteOnResolution,
+};

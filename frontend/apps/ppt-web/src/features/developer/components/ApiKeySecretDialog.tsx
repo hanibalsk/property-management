@@ -105,9 +105,7 @@ export function ApiKeySecretDialog({ isOpen, onClose, apiKey }: ApiKeySecretDial
                 type="button"
                 onClick={handleCopy}
                 className={`px-4 py-2 rounded-md transition-colors ${
-                  copied
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  copied ? 'bg-green-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 }`}
               >
                 {copied ? (
@@ -159,7 +157,7 @@ export function ApiKeySecretDialog({ isOpen, onClose, apiKey }: ApiKeySecretDial
             <h4 className="text-sm font-medium mb-2">Usage Example</h4>
             <pre className="p-4 bg-gray-900 text-gray-100 rounded-md text-sm overflow-x-auto">
               <code>
-{`curl -X GET "https://api.ppt.example.com/v1/buildings" \\
+                {`curl -X GET "https://api.ppt.example.com/v1/buildings" \\
   -H "Authorization: Bearer ${apiKey.secret}"`}
               </code>
             </pre>

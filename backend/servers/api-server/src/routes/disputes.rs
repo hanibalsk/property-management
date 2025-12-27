@@ -15,9 +15,9 @@ use common::errors::ErrorResponse;
 use db::models::{
     ActionItem, AddEvidence, CompleteActionItem, CreateActionItem, CreateEscalation, Dispute,
     DisputeActivity, DisputeEvidence, DisputeParty, DisputeQuery, DisputeResolution,
-    DisputeStatistics, DisputeSummary, DisputeWithDetails, Escalation, FileDispute,
-    MediationCase, MediationSession, PartyActionsDashboard, PartySubmission, ProposeResolution,
-    RecordSessionNotes, ResolveEscalation, ResolutionVote, ResolutionWithVotes, ScheduleSession,
+    DisputeStatistics, DisputeSummary, DisputeWithDetails, Escalation, FileDispute, MediationCase,
+    MediationSession, PartyActionsDashboard, PartySubmission, ProposeResolution,
+    RecordSessionNotes, ResolutionVote, ResolutionWithVotes, ResolveEscalation, ScheduleSession,
     SessionAttendance, SubmitResponse, UpdateDisputeStatus, VoteOnResolution,
 };
 use serde::Deserialize;
@@ -408,10 +408,7 @@ async fn withdraw_dispute(
             tracing::error!("Failed to withdraw dispute: {:?}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DB_ERROR",
-                    "Failed to withdraw dispute",
-                )),
+                Json(ErrorResponse::new("DB_ERROR", "Failed to withdraw dispute")),
             )
         })
 }
@@ -595,10 +592,7 @@ async fn schedule_session(
             tracing::error!("Failed to schedule session: {:?}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "DB_ERROR",
-                    "Failed to schedule session",
-                )),
+                Json(ErrorResponse::new("DB_ERROR", "Failed to schedule session")),
             )
         })
 }

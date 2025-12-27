@@ -84,10 +84,7 @@ export function VirtualTourForm({
     }
   };
 
-  const handleChange = (
-    field: keyof VirtualTourFormData,
-    value: string | boolean
-  ) => {
+  const handleChange = (field: keyof VirtualTourFormData, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: '' }));
@@ -98,9 +95,7 @@ export function VirtualTourForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Tour Type Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Tour Type
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Tour Type</label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {Object.entries(TOUR_TYPES).map(([key, value]) => (
             <button
@@ -119,9 +114,7 @@ export function VirtualTourForm({
                 {value === TOUR_TYPES.VIDEO && 'V'}
                 {value === TOUR_TYPES.EXTERNAL_EMBED && 'E'}
               </div>
-              <div className="text-xs capitalize">
-                {value.replace('_', ' ')}
-              </div>
+              <div className="text-xs capitalize">{value.replace('_', ' ')}</div>
             </button>
           ))}
         </div>
@@ -129,10 +122,7 @@ export function VirtualTourForm({
 
       {/* Title */}
       <div>
-        <label
-          htmlFor="title"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
           Title (optional)
         </label>
         <input
@@ -147,10 +137,7 @@ export function VirtualTourForm({
 
       {/* Description */}
       <div>
-        <label
-          htmlFor="description"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
           Description (optional)
         </label>
         <textarea
@@ -166,10 +153,7 @@ export function VirtualTourForm({
       {/* Type-specific fields */}
       {formData.tourType === TOUR_TYPES.PHOTO_360 && (
         <div>
-          <label
-            htmlFor="photoUrl"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="photoUrl" className="block text-sm font-medium text-gray-700 mb-1">
             360 Photo URL *
           </label>
           <input
@@ -182,9 +166,7 @@ export function VirtualTourForm({
             }`}
             placeholder="https://example.com/360-photo.jpg"
           />
-          {errors.photoUrl && (
-            <p className="mt-1 text-sm text-red-600">{errors.photoUrl}</p>
-          )}
+          {errors.photoUrl && <p className="mt-1 text-sm text-red-600">{errors.photoUrl}</p>}
         </div>
       )}
 
@@ -192,10 +174,7 @@ export function VirtualTourForm({
         formData.tourType === TOUR_TYPES.EXTERNAL_EMBED) && (
         <>
           <div>
-            <label
-              htmlFor="embedUrl"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label htmlFor="embedUrl" className="block text-sm font-medium text-gray-700 mb-1">
               Embed URL *
             </label>
             <input
@@ -212,17 +191,12 @@ export function VirtualTourForm({
                   : 'https://example.com/embed/...'
               }
             />
-            {errors.embedUrl && (
-              <p className="mt-1 text-sm text-red-600">{errors.embedUrl}</p>
-            )}
+            {errors.embedUrl && <p className="mt-1 text-sm text-red-600">{errors.embedUrl}</p>}
           </div>
 
           {formData.tourType === TOUR_TYPES.MATTERPORT && (
             <div>
-              <label
-                htmlFor="externalId"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label htmlFor="externalId" className="block text-sm font-medium text-gray-700 mb-1">
                 Matterport Model ID (optional)
               </label>
               <input
@@ -240,10 +214,7 @@ export function VirtualTourForm({
 
       {formData.tourType === TOUR_TYPES.VIDEO && (
         <div>
-          <label
-            htmlFor="videoUrl"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
+          <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-700 mb-1">
             Video URL *
           </label>
           <input
@@ -256,18 +227,13 @@ export function VirtualTourForm({
             }`}
             placeholder="https://example.com/tour-video.mp4"
           />
-          {errors.videoUrl && (
-            <p className="mt-1 text-sm text-red-600">{errors.videoUrl}</p>
-          )}
+          {errors.videoUrl && <p className="mt-1 text-sm text-red-600">{errors.videoUrl}</p>}
         </div>
       )}
 
       {/* Thumbnail */}
       <div>
-        <label
-          htmlFor="thumbnailUrl"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
+        <label htmlFor="thumbnailUrl" className="block text-sm font-medium text-gray-700 mb-1">
           Thumbnail URL (optional)
         </label>
         <input

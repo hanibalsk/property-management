@@ -173,12 +173,7 @@ export function DisputeList({
       ) : (
         <div className="space-y-4">
           {disputes.map((dispute) => (
-            <DisputeCard
-              key={dispute.id}
-              dispute={dispute}
-              onView={onView}
-              onManage={onManage}
-            />
+            <DisputeCard key={dispute.id} dispute={dispute} onView={onView} onManage={onManage} />
           ))}
         </div>
       )}
@@ -187,7 +182,8 @@ export function DisputeList({
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total} disputes
+            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total}{' '}
+            disputes
           </p>
           <div className="flex gap-2">
             <button
@@ -207,9 +203,7 @@ export function DisputeList({
                   type="button"
                   onClick={() => onPageChange(pageNum)}
                   className={`px-3 py-1 rounded-lg ${
-                    pageNum === page
-                      ? 'bg-blue-600 text-white'
-                      : 'border hover:bg-gray-50'
+                    pageNum === page ? 'bg-blue-600 text-white' : 'border hover:bg-gray-50'
                   }`}
                 >
                   {pageNum}

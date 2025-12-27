@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { RfqCard, type RfqSummary, type RfqStatus } from '../components/RfqCard';
+import { RfqCard, type RfqStatus, type RfqSummary } from '../components/RfqCard';
 
 interface RfqListPageProps {
   rfqs: RfqSummary[];
@@ -147,9 +147,7 @@ export function RfqListPage({
             />
           </svg>
           <h3 className="mt-4 text-lg font-medium text-gray-900">
-            {activeStatus === 'all'
-              ? 'No RFQs yet'
-              : `No ${activeStatus.replace('_', ' ')} RFQs`}
+            {activeStatus === 'all' ? 'No RFQs yet' : `No ${activeStatus.replace('_', ' ')} RFQs`}
           </h3>
           <p className="mt-2 text-gray-500">
             {activeStatus === 'all'
@@ -209,9 +207,7 @@ export function RfqListPage({
             <p className="text-sm text-gray-500">Active RFQs</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">
-              {statusCounts.quotes_received || 0}
-            </p>
+            <p className="text-2xl font-bold text-green-600">{statusCounts.quotes_received || 0}</p>
             <p className="text-sm text-gray-500">With Quotes</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">

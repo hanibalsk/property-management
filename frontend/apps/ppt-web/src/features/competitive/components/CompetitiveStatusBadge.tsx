@@ -40,12 +40,7 @@ export function CompetitiveStatusBadge({
       active: status.hasVirtualTours,
       count: status.virtualTourCount,
       icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -60,12 +55,7 @@ export function CompetitiveStatusBadge({
       label: 'Pricing Analysis',
       active: status.hasPricingAnalysis && status.pricingAnalysisValid,
       icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -78,15 +68,9 @@ export function CompetitiveStatusBadge({
     {
       key: 'neighborhood',
       label: 'Neighborhood',
-      active:
-        status.hasNeighborhoodInsights && status.neighborhoodInsightsValid,
+      active: status.hasNeighborhoodInsights && status.neighborhoodInsightsValid,
       icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -108,12 +92,7 @@ export function CompetitiveStatusBadge({
       active: status.hasComparables,
       count: status.comparablesCount,
       icon: (
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -149,9 +128,7 @@ export function CompetitiveStatusBadge({
     <div className={`bg-white rounded-lg shadow-sm border p-4 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-900">
-          Competitive Features
-        </h3>
+        <h3 className="text-sm font-semibold text-gray-900">Competitive Features</h3>
         <span
           className={`px-2 py-1 text-xs font-medium rounded-full ${
             completionPercent === 100
@@ -187,29 +164,19 @@ export function CompetitiveStatusBadge({
             className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50"
           >
             <div className="flex items-center gap-2">
-              <span
-                className={`${feature.active ? 'text-green-600' : 'text-gray-400'}`}
-              >
+              <span className={`${feature.active ? 'text-green-600' : 'text-gray-400'}`}>
                 {feature.icon}
               </span>
-              <span
-                className={`text-sm ${feature.active ? 'text-gray-900' : 'text-gray-500'}`}
-              >
+              <span className={`text-sm ${feature.active ? 'text-gray-900' : 'text-gray-500'}`}>
                 {feature.label}
               </span>
             </div>
             <div className="flex items-center gap-2">
               {feature.count !== undefined && feature.count > 0 && (
-                <span className="text-xs text-gray-500">
-                  {feature.count}
-                </span>
+                <span className="text-xs text-gray-500">{feature.count}</span>
               )}
               {feature.active ? (
-                <svg
-                  className="w-5 h-5 text-green-500"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
+                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -217,11 +184,7 @@ export function CompetitiveStatusBadge({
                   />
                 </svg>
               ) : (
-                <svg
-                  className="w-5 h-5 text-gray-300"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
+                <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"

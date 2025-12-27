@@ -5,7 +5,7 @@
  * Displays comparable properties in a sortable table format.
  */
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 export interface ComparableProperty {
   id: string;
@@ -39,13 +39,7 @@ export interface ComparablesTableProps {
   className?: string;
 }
 
-type SortField =
-  | 'similarity'
-  | 'price'
-  | 'pricePerSqm'
-  | 'distance'
-  | 'size'
-  | 'date';
+type SortField = 'similarity' | 'price' | 'pricePerSqm' | 'distance' | 'size' | 'date';
 type SortDirection = 'asc' | 'desc';
 
 /**
@@ -96,12 +90,8 @@ export function ComparablesTable({
           bVal = b.sizeSqm;
           break;
         case 'date':
-          aVal = a.transactionDate
-            ? new Date(a.transactionDate).getTime()
-            : 0;
-          bVal = b.transactionDate
-            ? new Date(b.transactionDate).getTime()
-            : 0;
+          aVal = a.transactionDate ? new Date(a.transactionDate).getTime() : 0;
+          bVal = b.transactionDate ? new Date(b.transactionDate).getTime() : 0;
           break;
         default:
           return 0;
@@ -134,11 +124,7 @@ export function ComparablesTable({
     });
   };
 
-  const getComparisonClass = (
-    value: number,
-    sourceValue?: number,
-    inverse = false
-  ) => {
+  const getComparisonClass = (value: number, sourceValue?: number, inverse = false) => {
     if (sourceValue === undefined) return '';
     const diff = ((value - sourceValue) / sourceValue) * 100;
     if (Math.abs(diff) < 5) return '';
@@ -204,9 +190,7 @@ export function ComparablesTable({
               <tr key={comp.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <div
-                      className={`w-10 h-2 rounded-full overflow-hidden bg-gray-200`}
-                    >
+                    <div className={`w-10 h-2 rounded-full overflow-hidden bg-gray-200`}>
                       <div
                         className={`h-full rounded-full ${
                           comp.similarityScore >= 80
@@ -218,16 +202,12 @@ export function ComparablesTable({
                         style={{ width: `${comp.similarityScore}%` }}
                       />
                     </div>
-                    <span className="text-gray-900 font-medium">
-                      {comp.similarityScore}%
-                    </span>
+                    <span className="text-gray-900 font-medium">{comp.similarityScore}%</span>
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <div>
-                    <div className="font-medium text-gray-900 capitalize">
-                      {comp.propertyType}
-                    </div>
+                    <div className="font-medium text-gray-900 capitalize">{comp.propertyType}</div>
                     <div className="text-gray-500">
                       {comp.city}
                       {comp.rooms && ` - ${comp.rooms} rooms`}
@@ -235,12 +215,7 @@ export function ComparablesTable({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={getComparisonClass(
-                      comp.sizeSqm,
-                      sourceProperty?.sizeSqm
-                    )}
-                  >
+                  <span className={getComparisonClass(comp.sizeSqm, sourceProperty?.sizeSqm)}>
                     {comp.sizeSqm} m2
                   </span>
                 </td>
@@ -262,18 +237,12 @@ export function ComparablesTable({
                     {formatPrice(comp.pricePerSqm, comp.currency)}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500">
-                  {formatDistance(comp.distanceMeters)}
-                </td>
-                <td className="px-4 py-3 text-gray-500">
-                  {formatDate(comp.transactionDate)}
-                </td>
+                <td className="px-4 py-3 text-gray-500">{formatDistance(comp.distanceMeters)}</td>
+                <td className="px-4 py-3 text-gray-500">{formatDate(comp.transactionDate)}</td>
                 <td className="px-4 py-3">
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      comp.isActive
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
+                      comp.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                     }`}
                   >
                     {comp.isActive ? 'Active' : 'Sold'}
@@ -297,9 +266,7 @@ export function ComparablesTable({
       </div>
 
       {comparables.length === 0 && (
-        <div className="p-8 text-center text-gray-500">
-          No comparable properties found.
-        </div>
+        <div className="p-8 text-center text-gray-500">No comparable properties found.</div>
       )}
 
       {/* Summary stats */}
@@ -309,8 +276,7 @@ export function ComparablesTable({
             <div>
               <div className="text-sm font-medium text-gray-900">
                 {Math.round(
-                  comparables.reduce((sum, c) => sum + c.pricePerSqm, 0) /
-                    comparables.length
+                  comparables.reduce((sum, c) => sum + c.pricePerSqm, 0) / comparables.length
                 )}{' '}
                 {comparables[0]?.currency ?? 'EUR'}
               </div>
@@ -337,8 +303,7 @@ export function ComparablesTable({
             <div>
               <div className="text-sm font-medium text-gray-900">
                 {Math.round(
-                  comparables.reduce((sum, c) => sum + c.similarityScore, 0) /
-                    comparables.length
+                  comparables.reduce((sum, c) => sum + c.similarityScore, 0) / comparables.length
                 )}
                 %
               </div>

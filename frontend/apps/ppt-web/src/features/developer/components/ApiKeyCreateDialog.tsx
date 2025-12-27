@@ -73,7 +73,7 @@ export function ApiKeyCreateDialog({
       name: name.trim(),
       scopes: selectedScopes,
       expiresAt: expiresAt ?? undefined,
-      rateLimitPerMinute: rateLimitPerMinute ? parseInt(rateLimitPerMinute, 10) : undefined,
+      rateLimitPerMinute: rateLimitPerMinute ? Number.parseInt(rateLimitPerMinute, 10) : undefined,
       allowedIps: ips.length > 0 ? ips : undefined,
     };
 
@@ -113,9 +113,7 @@ export function ApiKeyCreateDialog({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>
-          )}
+          {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{error}</div>}
 
           {/* Name */}
           <div>
@@ -195,12 +193,7 @@ export function ApiKeyCreateDialog({
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
             Advanced Options
           </button>

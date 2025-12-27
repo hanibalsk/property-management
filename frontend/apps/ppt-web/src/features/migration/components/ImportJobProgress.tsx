@@ -93,7 +93,14 @@ export function ImportJobProgress({
     if (!isPolling) return;
 
     const isTerminalStatus = (s: ImportJobStatus) =>
-      ['completed', 'partially_completed', 'failed', 'cancelled', 'validated', 'validation_failed'].includes(s);
+      [
+        'completed',
+        'partially_completed',
+        'failed',
+        'cancelled',
+        'validated',
+        'validation_failed',
+      ].includes(s);
 
     const fetchStatus = async () => {
       try {
@@ -192,19 +199,13 @@ export function ImportJobProgress({
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-lg font-medium text-gray-900">{status.filename}</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Template: {status.templateName}
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Template: {status.templateName}</p>
         </div>
         <span
           className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${STATUS_COLORS[status.status]}`}
         >
           {isInProgress && (
-            <svg
-              className="-ml-0.5 mr-1.5 h-4 w-4 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+            <svg className="-ml-0.5 mr-1.5 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -344,8 +345,8 @@ export function ImportJobProgress({
             <div className="ml-3">
               <h3 className="text-sm font-medium text-yellow-800">Import Partially Completed</h3>
               <p className="mt-1 text-sm text-yellow-700">
-                Imported {status.successfulRows.toLocaleString()} records.{' '}
-                {status.failedRows} rows failed.
+                Imported {status.successfulRows.toLocaleString()} records. {status.failedRows} rows
+                failed.
               </p>
             </div>
           </div>

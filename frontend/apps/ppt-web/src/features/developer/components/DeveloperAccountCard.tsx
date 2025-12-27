@@ -4,7 +4,7 @@
  * Displays developer account information and settings.
  */
 
-import type { DeveloperAccount, UpdateDeveloperAccount } from '../types';
+import type { DeveloperAccount } from '../types';
 
 interface DeveloperAccountCardProps {
   account: DeveloperAccount;
@@ -17,9 +17,7 @@ export function DeveloperAccountCard({ account, onEdit }: DeveloperAccountCardPr
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">Developer Account</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage your API access settings
-          </p>
+          <p className="text-sm text-muted-foreground">Manage your API access settings</p>
         </div>
         {onEdit && (
           <button

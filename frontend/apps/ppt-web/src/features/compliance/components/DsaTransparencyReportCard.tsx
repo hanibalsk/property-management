@@ -106,7 +106,9 @@ export const DsaTransparencyReportCard: React.FC<DsaTransparencyReportCardProps>
       <div className="dsa-report-header">
         <div className="dsa-report-title">
           <h3>DSA Transparency Report</h3>
-          <span className={`dsa-status-badge ${report.status}`}>{getStatusLabel(report.status)}</span>
+          <span className={`dsa-status-badge ${report.status}`}>
+            {getStatusLabel(report.status)}
+          </span>
         </div>
         <div className="dsa-report-period">
           <span>
@@ -204,7 +206,9 @@ export const DsaTransparencyReportCard: React.FC<DsaTransparencyReportCardProps>
           <ul className="dsa-violation-list">
             {report.violation_type_breakdown.map((item, index) => (
               <li key={index} className="dsa-violation-item">
-                <span className="dsa-violation-type">{formatViolationType(item.violation_type)}</span>
+                <span className="dsa-violation-type">
+                  {formatViolationType(item.violation_type)}
+                </span>
                 <span className="dsa-violation-count">{item.count}</span>
               </li>
             ))}

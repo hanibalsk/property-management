@@ -267,7 +267,9 @@ export function ProviderCard({ provider, onView, onRequestQuote, onContact }: Pr
                 )}
               </p>
               {provider.totalJobsCompleted !== undefined && provider.totalJobsCompleted > 0 && (
-                <p className="text-xs text-gray-500">{provider.totalJobsCompleted} jobs completed</p>
+                <p className="text-xs text-gray-500">
+                  {provider.totalJobsCompleted} jobs completed
+                </p>
               )}
             </div>
           </div>

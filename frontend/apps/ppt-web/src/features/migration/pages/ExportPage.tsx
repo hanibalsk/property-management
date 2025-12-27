@@ -6,12 +6,12 @@
 
 import { useCallback, useState } from 'react';
 import {
-  ExportCategorySelector,
   type ExportCategoryInfo,
+  ExportCategorySelector,
   type ExportDataCategory,
   type ExportPrivacyOptions,
 } from '../components/ExportCategorySelector';
-import { ExportProgress, type ExportStatusData } from '../components/ExportProgress';
+import { ExportProgress } from '../components/ExportProgress';
 
 type ExportStep = 'select' | 'exporting' | 'complete';
 
@@ -112,12 +112,15 @@ export function ExportPage() {
   const [showHistory, setShowHistory] = useState(false);
 
   // Handle export start
-  const handleExport = useCallback((categories: ExportDataCategory[], privacyOptions: ExportPrivacyOptions) => {
-    // In real implementation, call API
-    const exportId = crypto.randomUUID();
-    setCurrentExportId(exportId);
-    setStep('exporting');
-  }, []);
+  const handleExport = useCallback(
+    (_categories: ExportDataCategory[], _privacyOptions: ExportPrivacyOptions) => {
+      // In real implementation, call API with categories and privacyOptions
+      const exportId = crypto.randomUUID();
+      setCurrentExportId(exportId);
+      setStep('exporting');
+    },
+    []
+  );
 
   // Handle export completion
   const handleExportComplete = useCallback(() => {
@@ -176,10 +179,7 @@ export function ExportPage() {
 
         {/* Step 2: Exporting */}
         {step === 'exporting' && currentExportId && (
-          <ExportProgress
-            exportId={currentExportId}
-            onComplete={handleExportComplete}
-          />
+          <ExportProgress exportId={currentExportId} onComplete={handleExportComplete} />
         )}
 
         {/* Step 3: Complete */}
@@ -206,9 +206,7 @@ export function ExportPage() {
             <h2 className="text-sm font-medium text-gray-900">Export History</h2>
           </div>
           {MOCK_HISTORY.length === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-500">
-              No previous exports found.
-            </div>
+            <div className="py-8 text-center text-sm text-gray-500">No previous exports found.</div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -259,15 +257,15 @@ export function ExportPage() {
                           item.status === 'ready'
                             ? 'bg-green-100 text-green-800'
                             : item.status === 'downloaded'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
                         }`}
                       >
                         {item.status === 'ready'
                           ? 'Ready'
                           : item.status === 'downloaded'
-                          ? 'Downloaded'
-                          : 'Expired'}
+                            ? 'Downloaded'
+                            : 'Expired'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">

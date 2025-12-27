@@ -6,43 +6,26 @@
  */
 
 import { useState } from 'react';
-import {
-  VirtualTourViewer,
-  type VirtualTour,
-  TOUR_TYPES,
-} from '../components/VirtualTourViewer';
-import { VirtualTourForm } from '../components/VirtualTourForm';
-import {
-  PricingSuggestionCard,
-  type PricingSuggestion,
-} from '../components/PricingSuggestionCard';
-import {
-  PricingAnalysisPanel,
-  type PricingAnalysis,
-} from '../components/PricingAnalysisPanel';
-import {
-  NeighborhoodInsightsCard,
-  type NeighborhoodInsights,
-} from '../components/NeighborhoodInsightsCard';
-import {
-  AmenitiesMap,
-  type NearbyAmenity,
-  AMENITY_CATEGORIES,
-} from '../components/AmenitiesMap';
-import {
-  ComparablesTable,
-  type ComparableProperty,
-} from '../components/ComparablesTable';
+import { AMENITY_CATEGORIES, AmenitiesMap, type NearbyAmenity } from '../components/AmenitiesMap';
+import { type ComparableProperty, ComparablesTable } from '../components/ComparablesTable';
 import {
   ComparisonChart,
-  PriceRangeDisplay,
   type ComparisonEntry,
   type PriceRange,
+  PriceRangeDisplay,
 } from '../components/ComparisonChart';
 import {
-  CompetitiveStatusBadge,
   type CompetitiveFeaturesStatus,
+  CompetitiveStatusBadge,
 } from '../components/CompetitiveStatusBadge';
+import {
+  type NeighborhoodInsights,
+  NeighborhoodInsightsCard,
+} from '../components/NeighborhoodInsightsCard';
+import { type PricingAnalysis, PricingAnalysisPanel } from '../components/PricingAnalysisPanel';
+import { type PricingSuggestion, PricingSuggestionCard } from '../components/PricingSuggestionCard';
+import { VirtualTourForm } from '../components/VirtualTourForm';
+import { TOUR_TYPES, type VirtualTour, VirtualTourViewer } from '../components/VirtualTourViewer';
 
 export interface CompetitiveAnalysisPageProps {
   listingId: string;
@@ -101,8 +84,7 @@ const mockPricingAnalysis: PricingAnalysis = {
       factorType: 'location',
       factorName: 'Prime Location',
       impact: 5.0,
-      explanation:
-        'Located in a desirable neighborhood with good amenities',
+      explanation: 'Located in a desirable neighborhood with good amenities',
     },
     {
       id: 'factor-2',
@@ -227,9 +209,7 @@ const mockComparables: ComparableProperty[] = [
     currency: 'EUR',
     distanceMeters: 350,
     similarityScore: 95,
-    transactionDate: new Date(
-      Date.now() - 20 * 24 * 60 * 60 * 1000
-    ).toISOString(),
+    transactionDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
     isActive: false,
   },
   {
@@ -244,9 +224,7 @@ const mockComparables: ComparableProperty[] = [
     currency: 'EUR',
     distanceMeters: 500,
     similarityScore: 88,
-    transactionDate: new Date(
-      Date.now() - 45 * 24 * 60 * 60 * 1000
-    ).toISOString(),
+    transactionDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
     isActive: false,
   },
   {
@@ -310,12 +288,10 @@ const mockStatus: CompetitiveFeaturesStatus = {
 /**
  * Main competitive analysis page component.
  */
-export function CompetitiveAnalysisPage({
-  listingId,
-}: CompetitiveAnalysisPageProps) {
-  const [activeTab, setActiveTab] = useState<
-    'tours' | 'pricing' | 'neighborhood' | 'comparables'
-  >('tours');
+export function CompetitiveAnalysisPage({ listingId }: CompetitiveAnalysisPageProps) {
+  const [activeTab, setActiveTab] = useState<'tours' | 'pricing' | 'neighborhood' | 'comparables'>(
+    'tours'
+  );
   const [showTourForm, setShowTourForm] = useState(false);
   const [showPricingDetails, setShowPricingDetails] = useState(false);
   const [showAmenities, setShowAmenities] = useState(false);
@@ -334,12 +310,8 @@ export function CompetitiveAnalysisPage({
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Competitive Analysis
-              </h1>
-              <p className="text-gray-500 mt-1">
-                Listing: {listingId}
-              </p>
+              <h1 className="text-2xl font-bold text-gray-900">Competitive Analysis</h1>
+              <p className="text-gray-500 mt-1">Listing: {listingId}</p>
             </div>
             <CompetitiveStatusBadge status={mockStatus} compact />
           </div>
@@ -382,9 +354,7 @@ export function CompetitiveAnalysisPage({
         {activeTab === 'tours' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Virtual Tours
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900">Virtual Tours</h2>
               <button
                 type="button"
                 onClick={() => setShowTourForm(true)}
@@ -409,9 +379,7 @@ export function CompetitiveAnalysisPage({
 
             <VirtualTourViewer
               tour={mockTour}
-              onHotspotClick={(hotspot) =>
-                console.log('Hotspot clicked:', hotspot)
-              }
+              onHotspotClick={(hotspot) => console.log('Hotspot clicked:', hotspot)}
               className="h-[500px]"
             />
           </div>
@@ -438,8 +406,7 @@ export function CompetitiveAnalysisPage({
                   <div className="bg-white rounded-lg shadow-sm border p-6 flex items-center justify-center h-full">
                     <div className="text-center">
                       <p className="text-gray-500 mb-4">
-                        Click "View Full Analysis" to see detailed pricing
-                        breakdown
+                        Click "View Full Analysis" to see detailed pricing breakdown
                       </p>
                       <button
                         type="button"
@@ -497,8 +464,7 @@ export function CompetitiveAnalysisPage({
                         />
                       </svg>
                       <p className="text-gray-500 mb-4">
-                        Click "View Nearby Amenities" to explore the
-                        neighborhood
+                        Click "View Nearby Amenities" to explore the neighborhood
                       </p>
                       <button
                         type="button"
@@ -529,16 +495,11 @@ export function CompetitiveAnalysisPage({
                     pricePerSqm: 2785,
                     currency: 'EUR',
                   }}
-                  onViewDetails={(comp) =>
-                    console.log('View comparable:', comp)
-                  }
+                  onViewDetails={(comp) => console.log('View comparable:', comp)}
                 />
               </div>
               <div className="lg:col-span-1 space-y-6">
-                <PriceRangeDisplay
-                  range={mockPriceRange}
-                  currentPrice={195000}
-                />
+                <PriceRangeDisplay range={mockPriceRange} currentPrice={195000} />
                 <ComparisonChart entries={mockComparisonEntries} />
               </div>
             </div>

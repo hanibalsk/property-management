@@ -93,7 +93,8 @@ export function WebhookSecretDialog({
                   Save this secret - you won't see it again!
                 </h3>
                 <p className="text-sm text-yellow-700 mt-1">
-                  Use this secret to verify webhook signatures. Store it securely in your application.
+                  Use this secret to verify webhook signatures. Store it securely in your
+                  application.
                 </p>
               </div>
             </div>
@@ -110,9 +111,7 @@ export function WebhookSecretDialog({
                 type="button"
                 onClick={handleCopy}
                 className={`px-4 py-2 rounded-md transition-colors ${
-                  copied
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  copied ? 'bg-green-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 }`}
               >
                 {copied ? 'Copied!' : 'Copy'}
@@ -125,7 +124,7 @@ export function WebhookSecretDialog({
             <h4 className="text-sm font-medium mb-2">Signature Verification Example</h4>
             <pre className="p-4 bg-gray-900 text-gray-100 rounded-md text-sm overflow-x-auto">
               <code>
-{`// Node.js example
+                {`// Node.js example
 const crypto = require('crypto');
 
 function verifyWebhookSignature(payload, signature, secret) {

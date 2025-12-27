@@ -39,9 +39,7 @@ export function ApiKeysList({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">API Keys</h2>
-          <p className="text-muted-foreground">
-            Manage your API keys for authenticating requests
-          </p>
+          <p className="text-muted-foreground">Manage your API keys for authenticating requests</p>
         </div>
         <button
           type="button"
@@ -172,9 +170,7 @@ function FilterButton({ active, onClick, children }: FilterButtonProps) {
       type="button"
       onClick={onClick}
       className={`px-3 py-1 text-sm rounded-md transition-colors ${
-        active
-          ? 'bg-blue-600 text-white'
-          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+        active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
       }`}
     >
       {children}
@@ -202,9 +198,7 @@ function ApiKeyCard({ apiKey, onRotate, onRevoke, onViewUsage }: ApiKeyCardProps
             <StatusBadge status={apiKey.status} />
             {isExpired && <span className="text-xs text-red-600">(Expired)</span>}
           </div>
-          <p className="text-sm font-mono text-muted-foreground mb-2">
-            {apiKey.keyPrefix}...
-          </p>
+          <p className="text-sm font-mono text-muted-foreground mb-2">{apiKey.keyPrefix}...</p>
           <div className="flex flex-wrap gap-1 mb-2">
             {apiKey.scopes.map((scope) => (
               <ScopeBadge key={scope} scope={scope} />
@@ -288,11 +282,7 @@ function StatusBadge({ status }: { status: ApiKeyStatus }) {
 }
 
 function ScopeBadge({ scope }: { scope: ApiKeyScope }) {
-  return (
-    <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded">
-      {scope}
-    </span>
-  );
+  return <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded">{scope}</span>;
 }
 
 function formatDate(dateString: string): string {

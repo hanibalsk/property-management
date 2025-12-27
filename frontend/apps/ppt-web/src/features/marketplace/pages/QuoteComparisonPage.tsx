@@ -4,9 +4,9 @@
  */
 
 import { useState } from 'react';
-import type { RfqSummary } from '../components/RfqCard';
 import { QuoteCard, type QuoteSummary } from '../components/QuoteCard';
 import { QuoteComparisonTable } from '../components/QuoteComparisonTable';
+import type { RfqSummary } from '../components/RfqCard';
 
 interface QuoteComparisonPageProps {
   rfq: RfqSummary;
@@ -43,9 +43,7 @@ export function QuoteComparisonPage({
   };
 
   const quotesToCompare =
-    selectedQuotes.length > 0
-      ? quotes.filter((q) => selectedQuotes.includes(q.id))
-      : quotes;
+    selectedQuotes.length > 0 ? quotes.filter((q) => selectedQuotes.includes(q.id)) : quotes;
 
   if (isLoading) {
     return (
@@ -203,9 +201,7 @@ export function QuoteComparisonPage({
             />
           </svg>
           <h3 className="mt-4 text-lg font-medium text-gray-900">No quotes yet</h3>
-          <p className="mt-2 text-gray-500">
-            Providers have not submitted quotes for this RFQ yet
-          </p>
+          <p className="mt-2 text-gray-500">Providers have not submitted quotes for this RFQ yet</p>
         </div>
       ) : viewMode === 'table' ? (
         /* Table View */

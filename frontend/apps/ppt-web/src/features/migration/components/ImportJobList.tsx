@@ -4,9 +4,8 @@
  * Displays history of import jobs with status and actions.
  */
 
-import { useState } from 'react';
-import type { ImportDataType } from './ImportTemplateBuilder';
 import type { ImportJobStatus } from './ImportJobProgress';
+import type { ImportDataType } from './ImportTemplateBuilder';
 
 export interface ImportJobHistoryItem {
   id: string;
@@ -110,7 +109,7 @@ export function ImportJobList({
           <select
             value={statusFilter ?? ''}
             onChange={(e) =>
-              onStatusFilterChange?.(e.target.value as ImportJobStatus || undefined)
+              onStatusFilterChange?.((e.target.value as ImportJobStatus) || undefined)
             }
             className="rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >

@@ -10,7 +10,9 @@ export * from './RfqForm';
 export * from './RfqCard';
 export * from './QuoteCard';
 export * from './QuoteComparisonTable';
-export * from './VerificationBadge';
+// VerificationBadge exports BadgeType which conflicts with ProviderCard
+// Export only the component, not the type
+export { VerificationBadge } from './VerificationBadge';
 export * from './VerificationForm';
 export * from './ReviewCard';
 export * from './ReviewForm';

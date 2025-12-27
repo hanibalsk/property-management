@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import type { WebhookSubscription, WebhookEventType } from '../types';
+import type { WebhookEventType, WebhookSubscription } from '../types';
 
 interface WebhooksListProps {
   webhooks: WebhookSubscription[];
@@ -219,9 +219,7 @@ function WebhookCard({
             <h3 className="font-semibold truncate">{webhook.name}</h3>
             <span
               className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                webhook.isActive
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-800'
+                webhook.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
               }`}
             >
               {webhook.isActive ? 'Active' : 'Inactive'}
@@ -247,9 +245,7 @@ function WebhookCard({
 
           {/* Stats */}
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>
-              Deliveries: {webhook.totalDeliveries.toLocaleString()}
-            </span>
+            <span>Deliveries: {webhook.totalDeliveries.toLocaleString()}</span>
             <span className={successRate >= 95 ? 'text-green-600' : 'text-yellow-600'}>
               Success: {successRate.toFixed(1)}%
             </span>

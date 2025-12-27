@@ -90,12 +90,8 @@ export function ReviewForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          Review {providerName}
-        </h2>
-        {jobReference && (
-          <p className="text-sm text-gray-500 mb-6">For job: {jobReference}</p>
-        )}
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Review {providerName}</h2>
+        {jobReference && <p className="text-sm text-gray-500 mb-6">For job: {jobReference}</p>}
 
         {/* Rating Inputs */}
         <div className="space-y-6">

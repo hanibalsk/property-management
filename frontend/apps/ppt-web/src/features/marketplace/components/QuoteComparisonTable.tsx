@@ -73,7 +73,8 @@ export function QuoteComparisonTable({
     },
     {
       label: 'Provider Rating',
-      getValue: (q: QuoteSummary) => (q.providerRating ? `${q.providerRating.toFixed(1)} / 5` : '-'),
+      getValue: (q: QuoteSummary) =>
+        q.providerRating ? `${q.providerRating.toFixed(1)} / 5` : '-',
       isBest: (q: QuoteSummary) => q.providerRating === highestRating,
       highlight: true,
     },
@@ -97,7 +98,8 @@ export function QuoteComparisonTable({
     },
     {
       label: 'Duration',
-      getValue: (q: QuoteSummary) => (q.estimatedDurationDays ? `${q.estimatedDurationDays} days` : '-'),
+      getValue: (q: QuoteSummary) =>
+        q.estimatedDurationDays ? `${q.estimatedDurationDays} days` : '-',
       isBest: () => false,
       highlight: false,
     },

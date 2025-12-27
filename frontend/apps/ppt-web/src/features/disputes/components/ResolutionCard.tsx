@@ -96,7 +96,9 @@ export function ResolutionCard({
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[resolution.status]}`}>
+            <span
+              className={`px-2 py-0.5 text-xs font-medium rounded ${statusColors[resolution.status]}`}
+            >
               {statusLabels[resolution.status]}
             </span>
             {acceptanceRate !== undefined && (
@@ -121,7 +123,9 @@ export function ResolutionCard({
       {resolution.terms.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-gray-900">Terms ({completedTerms}/{totalTerms})</h4>
+            <h4 className="font-medium text-gray-900">
+              Terms ({completedTerms}/{totalTerms})
+            </h4>
             {totalTerms > 0 && (
               <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
@@ -147,16 +151,16 @@ export function ResolutionCard({
                   className="mt-1 rounded border-gray-300"
                 />
                 <div className="flex-1">
-                  <p className={`text-sm ${term.completed ? 'text-gray-500 line-through' : 'text-gray-700'}`}>
+                  <p
+                    className={`text-sm ${term.completed ? 'text-gray-500 line-through' : 'text-gray-700'}`}
+                  >
                     {term.description}
                   </p>
                   <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                     {term.responsiblePartyName && (
                       <span>Assigned to: {term.responsiblePartyName}</span>
                     )}
-                    {term.deadline && (
-                      <span>Due: {formatDate(term.deadline)}</span>
-                    )}
+                    {term.deadline && <span>Due: {formatDate(term.deadline)}</span>}
                     {term.completedAt && (
                       <span className="text-green-600">
                         Completed: {formatDate(term.completedAt)}
@@ -184,9 +188,7 @@ export function ResolutionCard({
               >
                 <div>
                   <span className="font-medium">{vote.partyName}</span>
-                  {vote.comments && (
-                    <p className="text-sm text-gray-600 mt-1">{vote.comments}</p>
-                  )}
+                  {vote.comments && <p className="text-sm text-gray-600 mt-1">{vote.comments}</p>}
                 </div>
                 <span className={vote.accepted ? 'text-green-600' : 'text-red-600'}>
                   {vote.accepted ? 'Accepted' : 'Rejected'}
@@ -226,15 +228,18 @@ export function ResolutionCard({
             Finalize Resolution
           </button>
         )}
-        {canImplement && onImplement && resolution.status === 'accepted' && progressPercent === 100 && (
-          <button
-            type="button"
-            onClick={() => onImplement(resolution.id)}
-            className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-          >
-            Mark as Implemented
-          </button>
-        )}
+        {canImplement &&
+          onImplement &&
+          resolution.status === 'accepted' &&
+          progressPercent === 100 && (
+            <button
+              type="button"
+              onClick={() => onImplement(resolution.id)}
+              className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+            >
+              Mark as Implemented
+            </button>
+          )}
       </div>
     </div>
   );

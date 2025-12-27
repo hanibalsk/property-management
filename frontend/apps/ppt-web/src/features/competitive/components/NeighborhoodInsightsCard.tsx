@@ -90,23 +90,14 @@ export function NeighborhoodInsightsCard({
     <div className="flex flex-col items-center">
       <div className="relative w-20 h-20">
         <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 36 36">
-          <circle
-            cx="18"
-            cy="18"
-            r="16"
-            fill="none"
-            stroke="#e5e7eb"
-            strokeWidth="2"
-          />
+          <circle cx="18" cy="18" r="16" fill="none" stroke="#e5e7eb" strokeWidth="2" />
           {score !== undefined && (
             <circle
               cx="18"
               cy="18"
               r="16"
               fill="none"
-              stroke={
-                score >= 70 ? '#16a34a' : score >= 50 ? '#ca8a04' : '#dc2626'
-              }
+              stroke={score >= 70 ? '#16a34a' : score >= 50 ? '#ca8a04' : '#dc2626'}
               strokeWidth="2"
               strokeDasharray={`${(score / 100) * 100.53} 100.53`}
               strokeLinecap="round"
@@ -130,9 +121,7 @@ export function NeighborhoodInsightsCard({
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Neighborhood Insights
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900">Neighborhood Insights</h3>
         {onRefresh && (
           <button
             type="button"
@@ -140,12 +129,7 @@ export function NeighborhoodInsightsCard({
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
             title="Refresh insights"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -236,16 +220,12 @@ export function NeighborhoodInsightsCard({
             <div className="text-xs text-gray-500">Population</div>
           </div>
           <div className="p-2 bg-gray-50 rounded-lg">
-            <div className="text-lg font-semibold text-gray-900">
-              {insights.medianAge ?? '-'}
-            </div>
+            <div className="text-lg font-semibold text-gray-900">{insights.medianAge ?? '-'}</div>
             <div className="text-xs text-gray-500">Median Age</div>
           </div>
           <div className="p-2 bg-gray-50 rounded-lg">
             <div className="text-lg font-semibold text-gray-900">
-              {insights.medianIncome
-                ? formatCurrency(insights.medianIncome)
-                : '-'}
+              {insights.medianIncome ? formatCurrency(insights.medianIncome) : '-'}
             </div>
             <div className="text-xs text-gray-500">Median Income</div>
           </div>
@@ -265,9 +245,7 @@ export function NeighborhoodInsightsCard({
               </span>
             )}
             {insights.crimeIndex !== undefined && (
-              <span className="text-sm text-gray-600">
-                Crime Index: {insights.crimeIndex}/100
-              </span>
+              <span className="text-sm text-gray-600">Crime Index: {insights.crimeIndex}/100</span>
             )}
           </div>
         </div>
@@ -281,12 +259,7 @@ export function NeighborhoodInsightsCard({
             onClick={onViewAmenities}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-sm font-medium"
           >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -308,8 +281,7 @@ export function NeighborhoodInsightsCard({
       {/* Data sources */}
       <div className="px-4 py-3 bg-gray-50 rounded-b-lg">
         <p className="text-xs text-gray-400">
-          Data sources:{' '}
-          {Object.values(insights.dataSources).join(', ') || 'Various'}
+          Data sources: {Object.values(insights.dataSources).join(', ') || 'Various'}
         </p>
       </div>
     </div>

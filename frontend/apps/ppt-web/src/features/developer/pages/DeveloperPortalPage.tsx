@@ -6,30 +6,28 @@
  */
 
 import { useState } from 'react';
-import { DeveloperDashboard } from '../components/DeveloperDashboard';
-import { ApiKeysList } from '../components/ApiKeysList';
+import { ApiChangelogList, ApiDocumentation } from '../components/ApiDocumentation';
 import { ApiKeyCreateDialog } from '../components/ApiKeyCreateDialog';
 import { ApiKeySecretDialog } from '../components/ApiKeySecretDialog';
-import { WebhooksList } from '../components/WebhooksList';
-import { WebhookCreateDialog } from '../components/WebhookCreateDialog';
-import { WebhookSecretDialog } from '../components/WebhookSecretDialog';
-import { ApiDocumentation, ApiChangelogList } from '../components/ApiDocumentation';
+import { ApiKeysList } from '../components/ApiKeysList';
+import { DeveloperDashboard } from '../components/DeveloperDashboard';
 import { RateLimitStatus, RateLimitTierComparison } from '../components/RateLimitStatus';
 import { SdkDownloadList } from '../components/SdkDownloadList';
+import { WebhookCreateDialog } from '../components/WebhookCreateDialog';
+import { WebhookSecretDialog } from '../components/WebhookSecretDialog';
+import { WebhooksList } from '../components/WebhooksList';
 import type {
-  DeveloperAccount,
-  DeveloperUsageSummary,
-  RateLimitStatus as RateLimitStatusType,
-  RateLimitConfig,
   ApiKey,
   CreateApiKey,
   CreateApiKeyResponse,
-  WebhookSubscription,
-  CreateWebhookSubscription,
   CreateWebhookResponse,
-  ApiEndpointDoc,
-  ApiChangelog,
+  CreateWebhookSubscription,
+  DeveloperAccount,
+  DeveloperUsageSummary,
+  RateLimitConfig,
+  RateLimitStatus as RateLimitStatusType,
   SdkLanguageInfo,
+  WebhookSubscription,
 } from '../types';
 
 interface DeveloperPortalPageProps {
@@ -286,11 +284,7 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
       {/* Tab Content */}
       <div>
         {activeTab === 'dashboard' && (
-          <DeveloperDashboard
-            account={account}
-            usage={usage}
-            rateLimitStatus={rateLimitStatus}
-          />
+          <DeveloperDashboard account={account} usage={usage} rateLimitStatus={rateLimitStatus} />
         )}
 
         {activeTab === 'keys' && (

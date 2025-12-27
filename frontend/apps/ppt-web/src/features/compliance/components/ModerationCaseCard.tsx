@@ -41,7 +41,13 @@ export type ViolationType =
   | 'inappropriate_content'
   | 'other';
 
-export type ModerationActionType = 'remove' | 'restrict' | 'warn' | 'approve' | 'ignore' | 'escalate';
+export type ModerationActionType =
+  | 'remove'
+  | 'restrict'
+  | 'warn'
+  | 'approve'
+  | 'ignore'
+  | 'escalate';
 
 export interface ContentOwnerInfo {
   user_id: string;
@@ -207,9 +213,7 @@ export const ModerationCaseCard: React.FC<ModerationCaseCardProps> = ({
           <span className="moderation-violation-type">
             {getViolationTypeLabel(case_.violation_type)}
           </span>
-          {case_.report_reason && (
-            <p className="moderation-report-reason">{case_.report_reason}</p>
-          )}
+          {case_.report_reason && <p className="moderation-report-reason">{case_.report_reason}</p>}
         </div>
       </div>
 

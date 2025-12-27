@@ -118,9 +118,7 @@ export function ImportPreview({
         </div>
         <div
           className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
-            preview.isValid
-              ? 'bg-green-100 text-green-800'
-              : 'bg-red-100 text-red-800'
+            preview.isValid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
           }`}
         >
           {preview.isValid ? 'Validation Passed' : 'Validation Failed'}
@@ -286,12 +284,14 @@ export function ImportPreview({
                       </p>
                       {issue.originalValue && (
                         <p className="mt-1 text-xs">
-                          Original: <code className="rounded bg-white/50 px-1">{issue.originalValue}</code>
+                          Original:{' '}
+                          <code className="rounded bg-white/50 px-1">{issue.originalValue}</code>
                         </p>
                       )}
                       {issue.suggestedValue && (
                         <p className="text-xs">
-                          Suggested: <code className="rounded bg-white/50 px-1">{issue.suggestedValue}</code>
+                          Suggested:{' '}
+                          <code className="rounded bg-white/50 px-1">{issue.suggestedValue}</code>
                         </p>
                       )}
                     </div>
@@ -382,7 +382,10 @@ export function ImportPreview({
                   {preview.sampleRecords.map((record, index) => (
                     <tr key={index}>
                       {Object.values(record).map((value, colIndex) => (
-                        <td key={colIndex} className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                        <td
+                          key={colIndex}
+                          className="whitespace-nowrap px-4 py-3 text-sm text-gray-600"
+                        >
                           {String(value ?? '-')}
                         </td>
                       ))}

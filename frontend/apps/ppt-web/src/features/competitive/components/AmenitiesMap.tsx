@@ -5,7 +5,7 @@
  * Displays nearby amenities on a map grouped by category.
  */
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 /** Amenity category constants */
 export const AMENITY_CATEGORIES = {
@@ -25,8 +25,7 @@ export const AMENITY_CATEGORIES = {
   BANK: 'bank',
 } as const;
 
-export type AmenityCategory =
-  (typeof AMENITY_CATEGORIES)[keyof typeof AMENITY_CATEGORIES];
+export type AmenityCategory = (typeof AMENITY_CATEGORIES)[keyof typeof AMENITY_CATEGORIES];
 
 export interface NearbyAmenity {
   id: string;
@@ -75,9 +74,7 @@ export function AmenitiesMap({
   className = '',
 }: AmenitiesMapProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedAmenity, setSelectedAmenity] = useState<NearbyAmenity | null>(
-    null
-  );
+  const [selectedAmenity, setSelectedAmenity] = useState<NearbyAmenity | null>(null);
 
   // Group amenities by category
   const amenitiesByCategory = useMemo(() => {
@@ -94,7 +91,7 @@ export function AmenitiesMap({
   const categories = Object.keys(amenitiesByCategory);
 
   const filteredAmenities = selectedCategory
-    ? amenitiesByCategory[selectedCategory] ?? []
+    ? (amenitiesByCategory[selectedCategory] ?? [])
     : amenities;
 
   const formatDistance = (meters: number) => {
@@ -108,9 +105,7 @@ export function AmenitiesMap({
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
       {/* Category filters */}
       <div className="p-4 border-b">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-          Nearby Amenities
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">Nearby Amenities</h3>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -137,23 +132,15 @@ export function AmenitiesMap({
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
-                onClick={() =>
-                  setSelectedCategory(
-                    selectedCategory === category ? null : category
-                  )
-                }
+                onClick={() => setSelectedCategory(selectedCategory === category ? null : category)}
               >
                 <span
                   className={`w-5 h-5 flex items-center justify-center text-xs text-white rounded-full ${config.color}`}
                 >
                   {config.icon}
                 </span>
-                <span className="capitalize">
-                  {category.replace('_', ' ')}
-                </span>
-                <span className="text-xs">
-                  ({amenitiesByCategory[category].length})
-                </span>
+                <span className="capitalize">{category.replace('_', ' ')}</span>
+                <span className="text-xs">({amenitiesByCategory[category].length})</span>
               </button>
             );
           })}
@@ -214,13 +201,9 @@ export function AmenitiesMap({
         <div className="p-4 border-t bg-blue-50">
           <div className="flex items-start justify-between">
             <div>
-              <h4 className="font-medium text-gray-900">
-                {selectedAmenity.name}
-              </h4>
+              <h4 className="font-medium text-gray-900">{selectedAmenity.name}</h4>
               {selectedAmenity.address && (
-                <p className="text-sm text-gray-600">
-                  {selectedAmenity.address}
-                </p>
+                <p className="text-sm text-gray-600">{selectedAmenity.address}</p>
               )}
               <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
                 <span>{formatDistance(selectedAmenity.distanceMeters)}</span>
@@ -243,12 +226,7 @@ export function AmenitiesMap({
               className="text-gray-400 hover:text-gray-600"
               onClick={() => setSelectedAmenity(null)}
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -288,9 +266,7 @@ export function AmenitiesMap({
                   {config.icon}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 truncate">
-                    {amenity.name}
-                  </div>
+                  <div className="font-medium text-gray-900 truncate">{amenity.name}</div>
                   <div className="text-sm text-gray-500 capitalize">
                     {amenity.category.replace('_', ' ')}
                   </div>

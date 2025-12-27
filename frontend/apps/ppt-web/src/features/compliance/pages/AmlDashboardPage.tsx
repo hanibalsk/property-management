@@ -7,7 +7,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { AmlRiskAssessmentCard } from '../components/AmlRiskAssessmentCard';
-import type { AmlRiskAssessment, AmlRiskLevel, AmlAssessmentStatus } from '../components/AmlRiskAssessmentCard';
+import type { AmlRiskAssessment } from '../components/AmlRiskAssessmentCard';
 
 interface AmlThresholds {
   transaction_threshold_eur: number;

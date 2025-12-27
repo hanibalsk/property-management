@@ -81,10 +81,7 @@ export function VerificationForm({ onSubmit, onCancel, isLoading }: Verification
     }
 
     // Insurance and licenses typically require expiry dates
-    if (
-      (formData.type === 'insurance' || formData.type === 'license') &&
-      !formData.expiryDate
-    ) {
+    if ((formData.type === 'insurance' || formData.type === 'license') && !formData.expiryDate) {
       newErrors.expiryDate = 'Expiry date is required for this document type';
     }
 
@@ -161,7 +158,10 @@ export function VerificationForm({ onSubmit, onCancel, isLoading }: Verification
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="documentNumber" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="documentNumber"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Document/Registration Number
               </label>
               <input
@@ -208,8 +208,7 @@ export function VerificationForm({ onSubmit, onCancel, isLoading }: Verification
 
             <div>
               <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-1">
-                Expiry Date{' '}
-                {(formData.type === 'insurance' || formData.type === 'license') && '*'}
+                Expiry Date {(formData.type === 'insurance' || formData.type === 'license') && '*'}
               </label>
               <input
                 id="expiryDate"
@@ -228,9 +227,7 @@ export function VerificationForm({ onSubmit, onCancel, isLoading }: Verification
 
           {/* Document Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Upload Document
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Upload Document</label>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
               <svg
                 className="mx-auto w-12 h-12 text-gray-400"

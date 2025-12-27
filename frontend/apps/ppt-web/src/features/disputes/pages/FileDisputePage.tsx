@@ -80,9 +80,7 @@ export function FileDisputePage({
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
         {/* Category */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value as DisputeCategory)}
@@ -102,9 +100,7 @@ export function FileDisputePage({
 
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
           <input
             type="text"
             value={title}
@@ -142,9 +138,7 @@ export function FileDisputePage({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Unit (optional)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Unit (optional)</label>
             <select
               value={unitId}
               onChange={(e) => setUnitId(e.target.value)}

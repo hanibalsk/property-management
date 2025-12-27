@@ -5,13 +5,16 @@
 
 import { useState } from 'react';
 import type { ProviderSummary } from '../components/ProviderCard';
-import type { Badge, Verification } from '../components/VerificationBadge';
-import { ProviderProfileForm, type ProviderProfileFormData } from '../components/ProviderProfileForm';
-import { VerificationForm, type VerificationFormData } from '../components/VerificationForm';
-import { BadgeList, VerificationList } from '../components/VerificationBadge';
+import {
+  ProviderProfileForm,
+  type ProviderProfileFormData,
+} from '../components/ProviderProfileForm';
 import { RatingBreakdown, type RatingBreakdownData } from '../components/RatingBreakdown';
-import { ReviewList, type ReviewData } from '../components/ReviewCard';
+import { type ReviewData, ReviewList } from '../components/ReviewCard';
 import { ResponseForm } from '../components/ReviewForm';
+import type { Badge, Verification } from '../components/VerificationBadge';
+import { BadgeList, VerificationList } from '../components/VerificationBadge';
+import { VerificationForm, type VerificationFormData } from '../components/VerificationForm';
 
 interface ProviderProfilePageProps {
   profile: ProviderSummary & {
@@ -152,7 +155,12 @@ export function ProviderProfilePage({
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <title>Back</title>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
           Back to Dashboard
         </button>
@@ -194,7 +202,12 @@ export function ProviderProfilePage({
             />
           ) : (
             <div className="w-20 h-20 rounded-lg bg-gray-200 flex items-center justify-center">
-              <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-10 h-10 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <title>Company</title>
                 <path
                   strokeLinecap="round"
@@ -232,7 +245,9 @@ export function ProviderProfilePage({
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4 text-center">
-          <p className="text-3xl font-bold text-gray-900">{ratingBreakdown.averageOverall.toFixed(1)}</p>
+          <p className="text-3xl font-bold text-gray-900">
+            {ratingBreakdown.averageOverall.toFixed(1)}
+          </p>
           <p className="text-sm text-gray-500">Average Rating</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
@@ -272,11 +287,7 @@ export function ProviderProfilePage({
       {/* Recent Reviews */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Reviews</h3>
-        <ReviewList
-          reviews={reviews}
-          isProviderView
-          onRespond={handleRespondToReview}
-        />
+        <ReviewList reviews={reviews} isProviderView onRespond={handleRespondToReview} />
       </div>
     </div>
   );

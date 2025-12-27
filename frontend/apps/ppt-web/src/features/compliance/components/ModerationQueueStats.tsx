@@ -93,7 +93,9 @@ export const ModerationQueueStats: React.FC<ModerationQueueStatsProps> = ({
           <div className="moderation-stat-label">Total Queue</div>
         </div>
         <div className="moderation-stat-card time">
-          <div className="moderation-stat-value">{formatHours(stats.avg_resolution_time_hours)}</div>
+          <div className="moderation-stat-value">
+            {formatHours(stats.avg_resolution_time_hours)}
+          </div>
           <div className="moderation-stat-label">Avg Resolution</div>
         </div>
       </div>
@@ -152,7 +154,9 @@ export const ModerationQueueStats: React.FC<ModerationQueueStatsProps> = ({
                 key={index}
                 className="moderation-violation-item"
                 onClick={() => onFilterByViolationType?.(item.violation_type)}
-                onKeyDown={(e) => e.key === 'Enter' && onFilterByViolationType?.(item.violation_type)}
+                onKeyDown={(e) =>
+                  e.key === 'Enter' && onFilterByViolationType?.(item.violation_type)
+                }
                 role="button"
                 tabIndex={0}
               >

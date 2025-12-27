@@ -219,9 +219,7 @@ export function ExportCategorySelector({
                   className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <div>
-                  <span className="text-sm font-medium text-gray-900">
-                    Anonymize personal data
-                  </span>
+                  <span className="text-sm font-medium text-gray-900">Anonymize personal data</span>
                   <p className="text-xs text-gray-500">
                     Replace names, emails, and phone numbers with anonymized values
                   </p>

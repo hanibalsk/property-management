@@ -7,7 +7,17 @@
 
 import { type ChangeEvent, useCallback, useState } from 'react';
 
-export type FieldDataType = 'string' | 'integer' | 'decimal' | 'boolean' | 'date' | 'datetime' | 'email' | 'phone' | 'uuid' | 'enum';
+export type FieldDataType =
+  | 'string'
+  | 'integer'
+  | 'decimal'
+  | 'boolean'
+  | 'date'
+  | 'datetime'
+  | 'email'
+  | 'phone'
+  | 'uuid'
+  | 'enum';
 
 export interface FieldValidation {
   required: boolean;
@@ -31,7 +41,16 @@ export interface ImportFieldMapping {
   description?: string;
 }
 
-export type ImportDataType = 'buildings' | 'units' | 'residents' | 'financials' | 'faults' | 'documents' | 'meters' | 'votes' | 'custom';
+export type ImportDataType =
+  | 'buildings'
+  | 'units'
+  | 'residents'
+  | 'financials'
+  | 'faults'
+  | 'documents'
+  | 'meters'
+  | 'votes'
+  | 'custom';
 
 interface ImportTemplateBuilderProps {
   initialTemplate?: {
@@ -87,7 +106,9 @@ export function ImportTemplateBuilder({
 }: ImportTemplateBuilderProps) {
   const [name, setName] = useState(initialTemplate?.name ?? '');
   const [description, setDescription] = useState(initialTemplate?.description ?? '');
-  const [dataType, setDataType] = useState<ImportDataType>(initialTemplate?.dataType ?? 'buildings');
+  const [dataType, setDataType] = useState<ImportDataType>(
+    initialTemplate?.dataType ?? 'buildings'
+  );
   const [fieldMappings, setFieldMappings] = useState<ImportFieldMapping[]>(
     initialTemplate?.fieldMappings ?? []
   );
@@ -114,12 +135,15 @@ export function ImportTemplateBuilder({
     );
   }, []);
 
-  const handleRemoveField = useCallback((fieldId: string) => {
-    setFieldMappings((prev) => prev.filter((field) => field.id !== fieldId));
-    if (editingFieldId === fieldId) {
-      setEditingFieldId(null);
-    }
-  }, [editingFieldId]);
+  const handleRemoveField = useCallback(
+    (fieldId: string) => {
+      setFieldMappings((prev) => prev.filter((field) => field.id !== fieldId));
+      if (editingFieldId === fieldId) {
+        setEditingFieldId(null);
+      }
+    },
+    [editingFieldId]
+  );
 
   const handleMoveField = useCallback((fieldId: string, direction: 'up' | 'down') => {
     setFieldMappings((prev) => {
@@ -188,7 +212,9 @@ export function ImportTemplateBuilder({
           <select
             id="data-type"
             value={dataType}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setDataType(e.target.value as ImportDataType)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+              setDataType(e.target.value as ImportDataType)
+            }
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           >
             {DATA_TYPE_OPTIONS.map((option) => (
@@ -243,7 +269,9 @@ export function ImportTemplateBuilder({
                 isFirst={index === 0}
                 isLast={index === fieldMappings.length - 1}
                 isExpanded={editingFieldId === field.id}
-                onToggleExpand={() => setEditingFieldId(editingFieldId === field.id ? null : field.id)}
+                onToggleExpand={() =>
+                  setEditingFieldId(editingFieldId === field.id ? null : field.id)
+                }
                 onUpdate={(updates) => handleUpdateField(field.id, updates)}
                 onRemove={() => handleRemoveField(field.id)}
                 onMove={(direction) => handleMoveField(field.id, direction)}
@@ -332,7 +360,12 @@ function FieldMappingRow({
             title="Move up"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 15l7-7 7 7"
+              />
             </svg>
           </button>
           <button
@@ -343,7 +376,12 @@ function FieldMappingRow({
             title="Move down"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
           <button

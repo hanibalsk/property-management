@@ -104,9 +104,7 @@ export function FileDisputeDialog({
             <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
               {/* Category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as DisputeCategory)}
@@ -123,9 +121,7 @@ export function FileDisputeDialog({
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
                 <input
                   type="text"
                   value={title}

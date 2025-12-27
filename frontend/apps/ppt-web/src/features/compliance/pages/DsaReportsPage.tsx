@@ -7,7 +7,10 @@
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { DsaTransparencyReportCard } from '../components/DsaTransparencyReportCard';
-import type { DsaTransparencyReport, DsaReportStatus } from '../components/DsaTransparencyReportCard';
+import type {
+  DsaReportStatus,
+  DsaTransparencyReport,
+} from '../components/DsaTransparencyReportCard';
 
 interface DsaMetrics {
   current_period_start: string;
@@ -157,7 +160,8 @@ export const DsaReportsPage: React.FC = () => {
         <div className="dsa-current-metrics">
           <h2>Current Period Metrics</h2>
           <p className="dsa-period-info">
-            Period: {formatDate(metrics.current_period_start)} - {formatDate(metrics.current_period_end)}
+            Period: {formatDate(metrics.current_period_start)} -{' '}
+            {formatDate(metrics.current_period_end)}
           </p>
           <div className="dsa-metrics-grid">
             <div className="dsa-metric-card">
@@ -169,7 +173,9 @@ export const DsaReportsPage: React.FC = () => {
               <div className="dsa-metric-label">Pending Cases</div>
             </div>
             <div className="dsa-metric-card">
-              <div className="dsa-metric-value">{metrics.avg_resolution_time_hours.toFixed(1)}h</div>
+              <div className="dsa-metric-value">
+                {metrics.avg_resolution_time_hours.toFixed(1)}h
+              </div>
               <div className="dsa-metric-label">Avg Resolution Time</div>
             </div>
             <div className="dsa-metric-card">

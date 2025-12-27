@@ -5,7 +5,6 @@
  * usage statistics, and quick access to API keys and webhooks.
  */
 
-import { useState } from 'react';
 import type { DeveloperAccount, DeveloperUsageSummary, RateLimitStatus } from '../types';
 
 interface DeveloperDashboardProps {
@@ -21,9 +20,7 @@ export function DeveloperDashboard({ account, usage, rateLimitStatus }: Develope
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Developer Portal</h1>
-          <p className="text-muted-foreground">
-            Manage your API keys, webhooks, and monitor usage
-          </p>
+          <p className="text-muted-foreground">Manage your API keys, webhooks, and monitor usage</p>
         </div>
         <div className="flex items-center gap-2">
           {account.isVerified ? (
@@ -119,7 +116,9 @@ export function DeveloperDashboard({ account, usage, rateLimitStatus }: Develope
         <div className="grid gap-4 md:grid-cols-3">
           <RateLimitBar
             label="Per Minute"
-            used={rateLimitStatus.requestsPerMinute.limit - rateLimitStatus.requestsPerMinute.remaining}
+            used={
+              rateLimitStatus.requestsPerMinute.limit - rateLimitStatus.requestsPerMinute.remaining
+            }
             limit={rateLimitStatus.requestsPerMinute.limit}
             resetAt={rateLimitStatus.requestsPerMinute.resetAt}
           />
@@ -247,7 +246,9 @@ function StatCard({ title, value, description, icon, isWarning }: StatCardProps)
           <p className={`text-2xl font-bold ${isWarning ? 'text-yellow-600' : ''}`}>{value}</p>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
-        <div className={`p-3 rounded-full ${isWarning ? 'bg-yellow-100 text-yellow-600' : 'bg-blue-100 text-blue-600'}`}>
+        <div
+          className={`p-3 rounded-full ${isWarning ? 'bg-yellow-100 text-yellow-600' : 'bg-blue-100 text-blue-600'}`}
+        >
           {icon}
         </div>
       </div>

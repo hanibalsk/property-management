@@ -53,8 +53,7 @@ export function FileUploader({
     (f: File): string | null => {
       // Check file type
       const extension = `.${f.name.split('.').pop()?.toLowerCase()}`;
-      const isValidType =
-        acceptedTypes.includes(f.type) || acceptedTypes.includes(extension);
+      const isValidType = acceptedTypes.includes(f.type) || acceptedTypes.includes(extension);
       if (!isValidType) {
         return `Invalid file type. Accepted: CSV, Excel (.xlsx, .xls)`;
       }
@@ -123,11 +122,14 @@ export function FileUploader({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('template_id', templateId);
-      formData.append('options', JSON.stringify({
-        skip_errors: skipErrors,
-        update_existing: updateExisting,
-        dry_run: false,
-      }));
+      formData.append(
+        'options',
+        JSON.stringify({
+          skip_errors: skipErrors,
+          update_existing: updateExisting,
+          dry_run: false,
+        })
+      );
 
       // Simulate upload progress (in real implementation, use XMLHttpRequest or fetch with progress)
       const simulateProgress = () => {
@@ -197,8 +199,8 @@ export function FileUploader({
           isDragOver
             ? 'border-blue-500 bg-blue-50'
             : uploadState.status === 'error'
-            ? 'border-red-300 bg-red-50'
-            : 'border-gray-300 hover:border-gray-400'
+              ? 'border-red-300 bg-red-50'
+              : 'border-gray-300 hover:border-gray-400'
         }`}
       >
         {!file ? (

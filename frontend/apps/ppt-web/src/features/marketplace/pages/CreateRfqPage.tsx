@@ -4,9 +4,9 @@
  */
 
 import { useState } from 'react';
-import { RfqForm, type RfqFormData } from '../components/RfqForm';
 import { ProviderCard, type ProviderSummary } from '../components/ProviderCard';
 import { ProviderSearchFilters, type SearchFilters } from '../components/ProviderSearchFilters';
+import { RfqForm, type RfqFormData } from '../components/RfqForm';
 
 interface CreateRfqPageProps {
   buildingId?: string;
@@ -153,11 +153,7 @@ export function CreateRfqPage({
                   >
                     {isSelected && (
                       <div className="absolute top-2 right-2 z-10 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                        <svg
-                          className="w-4 h-4 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <title>Selected</title>
                           <path
                             fillRule="evenodd"

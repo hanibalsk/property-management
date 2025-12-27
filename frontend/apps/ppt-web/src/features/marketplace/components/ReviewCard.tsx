@@ -83,9 +83,7 @@ export function ReviewCard({
       {review.reviewTitle && (
         <h3 className="mt-4 text-lg font-medium text-gray-900">{review.reviewTitle}</h3>
       )}
-      {review.reviewText && (
-        <p className="mt-2 text-gray-600">{review.reviewText}</p>
-      )}
+      {review.reviewText && <p className="mt-2 text-gray-600">{review.reviewText}</p>}
 
       {/* Rating Breakdown */}
       <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">

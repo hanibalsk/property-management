@@ -33,10 +33,7 @@ function RatingBar({ label, count, total }: { label: string; count: number; tota
     <div className="flex items-center gap-2">
       <span className="w-12 text-sm text-gray-600">{label}</span>
       <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-yellow-400 rounded-full"
-          style={{ width: `${percentage}%` }}
-        />
+        <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${percentage}%` }} />
       </div>
       <span className="w-8 text-sm text-gray-500 text-right">{count}</span>
     </div>

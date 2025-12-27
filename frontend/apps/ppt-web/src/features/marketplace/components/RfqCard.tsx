@@ -133,7 +133,12 @@ export function RfqCard({ rfq, onView, onEdit, onCompareQuotes, onCancel }: RfqC
           <div className="flex items-center gap-2">
             {rfq.isUrgent && (
               <span className="text-red-500" title="Urgent">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-label="Urgent">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                  aria-label="Urgent"
+                >
                   <title>Urgent</title>
                   <path
                     fillRule="evenodd"
@@ -169,7 +174,9 @@ export function RfqCard({ rfq, onView, onEdit, onCompareQuotes, onCancel }: RfqC
         </div>
         <div>
           <span className="text-gray-500">Quote Deadline:</span>{' '}
-          <span className={`font-medium ${deadlineStatus.urgent ? 'text-red-600' : 'text-gray-900'}`}>
+          <span
+            className={`font-medium ${deadlineStatus.urgent ? 'text-red-600' : 'text-gray-900'}`}
+          >
             {deadlineStatus.text}
           </span>
         </div>
@@ -178,7 +185,12 @@ export function RfqCard({ rfq, onView, onEdit, onCompareQuotes, onCancel }: RfqC
       {/* Quote Stats */}
       <div className="mt-4 flex items-center gap-4">
         <div className="flex items-center gap-1">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-5 h-5 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <title>Providers invited</title>
             <path
               strokeLinecap="round"
@@ -190,7 +202,12 @@ export function RfqCard({ rfq, onView, onEdit, onCompareQuotes, onCancel }: RfqC
           <span className="text-sm text-gray-600">{rfq.invitedProvidersCount} invited</span>
         </div>
         <div className="flex items-center gap-1">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-5 h-5 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <title>Quotes received</title>
             <path
               strokeLinecap="round"

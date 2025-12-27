@@ -4,15 +4,11 @@
  */
 
 import { useState } from 'react';
-import type {
-  DisputeCategory,
-  DisputePriority,
-  DisputeStatus,
-} from '../components/DisputeCard';
+import { type ActionItem, ActionItemCard } from '../components/ActionItemCard';
+import type { DisputeCategory, DisputePriority, DisputeStatus } from '../components/DisputeCard';
 import { categoryLabels, priorityLabels, statusLabels } from '../components/DisputeCard';
 import { DisputeTimeline, type TimelineEntry } from '../components/DisputeTimeline';
-import { ActionItemCard, type ActionItem } from '../components/ActionItemCard';
-import { ResolutionCard, type Resolution, type ResolutionVote } from '../components/ResolutionCard';
+import { type Resolution, ResolutionCard, type ResolutionVote } from '../components/ResolutionCard';
 
 export interface DisputeParty {
   id: string;
@@ -76,12 +72,20 @@ interface DisputeDetailPageProps {
   onUpdateStatus: (status: DisputeStatus, reason?: string) => void;
   onAddEvidence: (file: File, description?: string) => void;
   onDeleteEvidence: (id: string) => void;
-  onProposeResolution: (text: string, terms: Array<{ description: string; deadline?: string; responsiblePartyId?: string }>) => void;
+  onProposeResolution: (
+    text: string,
+    terms: Array<{ description: string; deadline?: string; responsiblePartyId?: string }>
+  ) => void;
   onVoteResolution: (resolutionId: string, accepted: boolean, comments?: string) => void;
   onAcceptResolution: (resolutionId: string) => void;
   onImplementResolution: (resolutionId: string) => void;
   onCompleteResolutionTerm: (resolutionId: string, termId: string) => void;
-  onCreateAction: (data: { title: string; description: string; assignedTo: string; dueDate: string }) => void;
+  onCreateAction: (data: {
+    title: string;
+    description: string;
+    assignedTo: string;
+    dueDate: string;
+  }) => void;
   onCompleteAction: (actionId: string, notes?: string) => void;
   onSendReminder: (actionId: string) => void;
   onEscalate: (actionId: string) => void;
@@ -150,7 +154,9 @@ export function DisputeDetailPage({
 
   const canManage = isManager || isMediator;
   const canPropose = canManage || isParty;
-  const activeStatus = ['filed', 'under_review', 'mediation', 'awaiting_response'].includes(dispute.status);
+  const activeStatus = ['filed', 'under_review', 'mediation', 'awaiting_response'].includes(
+    dispute.status
+  );
   const pendingActions = actionItems.filter((a) => a.status !== 'completed');
   const overdueActions = actionItems.filter((a) => a.status === 'overdue');
 
@@ -207,10 +213,10 @@ export function DisputeDetailPage({
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm font-mono text-gray-500">
-                {dispute.referenceNumber}
-              </span>
-              <span className={`px-2 py-1 text-sm font-medium rounded ${statusColors[dispute.status]}`}>
+              <span className="text-sm font-mono text-gray-500">{dispute.referenceNumber}</span>
+              <span
+                className={`px-2 py-1 text-sm font-medium rounded ${statusColors[dispute.status]}`}
+              >
                 {statusLabels[dispute.status]}
               </span>
             </div>
@@ -249,7 +255,9 @@ export function DisputeDetailPage({
 
       {/* Stats Bar */}
       {pendingActions.length > 0 && (
-        <div className={`mb-6 p-4 rounded-lg ${overdueActions.length > 0 ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'}`}>
+        <div
+          className={`mb-6 p-4 rounded-lg ${overdueActions.length > 0 ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200'}`}
+        >
           <p className={overdueActions.length > 0 ? 'text-red-800' : 'text-yellow-800'}>
             {overdueActions.length > 0 ? (
               <span className="font-medium">{overdueActions.length} overdue action(s)</span>
@@ -278,17 +286,11 @@ export function DisputeDetailPage({
           {/* Evidence */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Evidence ({evidence.length})
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900">Evidence ({evidence.length})</h2>
               {(isParty || canManage) && (
                 <label className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
                   Add Evidence
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
+                  <input type="file" className="hidden" onChange={handleFileUpload} />
                 </label>
               )}
             </div>
@@ -297,11 +299,15 @@ export function DisputeDetailPage({
             ) : (
               <div className="space-y-3">
                 {evidence.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
                     <div>
                       <p className="font-medium">{item.originalFilename}</p>
                       <p className="text-sm text-gray-500">
-                        Uploaded by {item.uploaderName} - {new Date(item.createdAt).toLocaleDateString()}
+                        Uploaded by {item.uploaderName} -{' '}
+                        {new Date(item.createdAt).toLocaleDateString()}
                       </p>
                       {item.description && (
                         <p className="text-sm text-gray-600 mt-1">{item.description}</p>

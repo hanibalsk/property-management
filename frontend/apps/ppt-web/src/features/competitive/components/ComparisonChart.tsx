@@ -38,9 +38,7 @@ export function ComparisonChart({
   return (
     <div className={`bg-white rounded-lg shadow-sm border ${className}`}>
       <div className="p-4 border-b">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Feature Comparison
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900">Feature Comparison</h3>
       </div>
 
       <div className="overflow-x-auto">
@@ -66,9 +64,7 @@ export function ComparisonChart({
           <tbody className="divide-y divide-gray-100">
             {entries.map((entry, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  {entry.feature}
-                </td>
+                <td className="px-4 py-3 font-medium text-gray-900">{entry.feature}</td>
                 <td className="px-4 py-3 text-center font-semibold text-blue-600 bg-blue-50">
                   {entry.sourceValue}
                 </td>
@@ -84,9 +80,7 @@ export function ComparisonChart({
       </div>
 
       {entries.length === 0 && (
-        <div className="p-8 text-center text-gray-500">
-          No comparison data available.
-        </div>
+        <div className="p-8 text-center text-gray-500">No comparison data available.</div>
       )}
     </div>
   );
@@ -106,11 +100,7 @@ export interface PriceRangeDisplayProps {
   className?: string;
 }
 
-export function PriceRangeDisplay({
-  range,
-  currentPrice,
-  className = '',
-}: PriceRangeDisplayProps) {
+export function PriceRangeDisplay({ range, currentPrice, className = '' }: PriceRangeDisplayProps) {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('sk-SK', {
       style: 'currency',
@@ -127,9 +117,7 @@ export function PriceRangeDisplay({
 
   return (
     <div className={`bg-white rounded-lg shadow-sm border p-4 ${className}`}>
-      <h4 className="text-sm font-medium text-gray-700 mb-4">
-        Market Price Range
-      </h4>
+      <h4 className="text-sm font-medium text-gray-700 mb-4">Market Price Range</h4>
 
       {/* Price range bar */}
       <div className="relative pt-8 pb-4">

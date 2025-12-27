@@ -29,7 +29,8 @@ export interface TimelineEntry {
   createdAt: string;
 }
 
-const activityIcons: Record<ActivityType, string> = {
+// Icons for timeline entries - exported for use in other components
+export const activityIcons: Record<ActivityType, string> = {
   dispute_filed: 'document-plus',
   status_changed: 'arrow-path',
   party_added: 'user-plus',
@@ -133,9 +134,10 @@ export function DisputeTimeline({ entries, maxEntries, onShowMore }: DisputeTime
                   <p className="mt-1 text-gray-700">{entry.description}</p>
                   {entry.metadata && Object.keys(entry.metadata).length > 0 && (
                     <div className="mt-2 text-sm text-gray-500">
-                      {entry.metadata.oldStatus && entry.metadata.newStatus && (
+                      {'oldStatus' in entry.metadata && 'newStatus' in entry.metadata && (
                         <span>
-                          Status: {String(entry.metadata.oldStatus)} → {String(entry.metadata.newStatus)}
+                          Status: {String(entry.metadata.oldStatus)} →{' '}
+                          {String(entry.metadata.newStatus)}
                         </span>
                       )}
                     </div>

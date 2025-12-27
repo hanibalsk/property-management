@@ -5,8 +5,8 @@
 
 import { useState } from 'react';
 import {
-  MediationSessionCard,
   type MediationSession,
+  MediationSessionCard,
   type SessionAttendee,
   type SessionType,
   sessionTypeLabels,
@@ -55,14 +55,14 @@ export function MediationPage({
   submissions,
   isMediator = false,
   isParty = false,
-  currentUserId,
+  currentUserId: _currentUserId,
   isLoading,
   onBack,
   onScheduleSession,
   onCancelSession,
   onCompleteSession,
   onConfirmAttendance,
-  onRecordAttendance,
+  onRecordAttendance: _onRecordAttendance,
   onSubmitResponse,
 }: MediationPageProps) {
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
@@ -95,7 +95,7 @@ export function MediationPage({
       onScheduleSession({
         sessionType,
         scheduledAt,
-        durationMinutes: parseInt(durationMinutes) || undefined,
+        durationMinutes: Number.parseInt(durationMinutes) || undefined,
         location: location || undefined,
         meetingUrl: meetingUrl || undefined,
         attendeePartyIds: selectedAttendees,

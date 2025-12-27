@@ -1,6 +1,5 @@
 //! Owner Investment Analytics routes (Epic 74).
 use crate::state::AppState;
-use api_core::extractors::TenantContext;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -9,6 +8,7 @@ use axum::{
 };
 use chrono::NaiveDate;
 use common::errors::ErrorResponse;
+use common::TenantContext;
 use db::models::owner_analytics::{
     AddComparableProperty, CalculateROIRequest, CreateAutoApprovalRule, CreatePropertyValuation,
     ExpenseRequestsQuery, OwnerPropertiesQuery, PortfolioComparisonRequest, ReviewExpenseRequest,

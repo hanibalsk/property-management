@@ -145,7 +145,9 @@ export const AmlRiskAssessmentCard: React.FC<AmlRiskAssessmentCardProps> = ({
       <div className="aml-verification-status">
         <h4>Verification Status</h4>
         <div className="aml-verification-grid">
-          <div className={`aml-verification-item ${assessment.id_verified ? 'verified' : 'pending'}`}>
+          <div
+            className={`aml-verification-item ${assessment.id_verified ? 'verified' : 'pending'}`}
+          >
             <span className="aml-verification-icon">{assessment.id_verified ? 'Y' : 'N'}</span>
             <span className="aml-verification-label">ID Verified</span>
           </div>

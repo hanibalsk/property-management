@@ -11,10 +11,10 @@ use chrono::Utc;
 use db::models::{
     amenity_category, confidence_level, tour_type, ComparablePropertySummary, ComparablesRequest,
     ComparablesResponse, ComparisonTableEntry, CompetitiveAnalysis, CompetitiveFeaturesStatus,
-    CreateTourHotspot, CreateVirtualTour, NeighborhoodInsights, NeighborhoodInsightsRequest,
-    NeighborhoodInsightsResponse, NearbyAmenity, PriceHistory, PriceRange, PricingAnalysisRequest,
-    PricingAnalysisResponse, PricingFactor, PricingSuggestion, ReorderTours, TourHotspot,
-    UpdateVirtualTour, VirtualTour, VirtualTourWithHotspots,
+    CreateTourHotspot, CreateVirtualTour, NearbyAmenity, NeighborhoodInsights,
+    NeighborhoodInsightsRequest, NeighborhoodInsightsResponse, PriceHistory, PriceRange,
+    PricingAnalysisRequest, PricingAnalysisResponse, PricingFactor, PricingSuggestion,
+    ReorderTours, TourHotspot, UpdateVirtualTour, VirtualTour, VirtualTourWithHotspots,
 };
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -33,7 +33,10 @@ pub fn router() -> Router<AppState> {
             "/listings/:listing_id/tours/reorder",
             post(reorder_virtual_tours),
         )
-        .route("/listings/:listing_id/tours/:tour_id", get(get_virtual_tour))
+        .route(
+            "/listings/:listing_id/tours/:tour_id",
+            get(get_virtual_tour),
+        )
         .route(
             "/listings/:listing_id/tours/:tour_id",
             put(update_virtual_tour),
@@ -55,10 +58,7 @@ pub fn router() -> Router<AppState> {
             delete(delete_tour_hotspot),
         )
         // Dynamic Pricing (Story 70.2)
-        .route(
-            "/listings/:listing_id/pricing",
-            get(get_pricing_suggestion),
-        )
+        .route("/listings/:listing_id/pricing", get(get_pricing_suggestion))
         .route(
             "/listings/:listing_id/pricing/analyze",
             post(analyze_pricing),
@@ -81,10 +81,7 @@ pub fn router() -> Router<AppState> {
             get(get_nearby_amenities),
         )
         // Comparables (Story 70.4)
-        .route(
-            "/listings/:listing_id/comparables",
-            get(get_comparables),
-        )
+        .route("/listings/:listing_id/comparables", get(get_comparables))
         .route(
             "/listings/:listing_id/comparables/refresh",
             post(refresh_comparables),
@@ -562,20 +559,18 @@ pub async fn analyze_pricing(
         },
     ];
 
-    let price_history = vec![
-        PriceHistory {
-            id: Uuid::new_v4(),
-            listing_id: Some(listing_id),
-            property_type: "apartment".to_string(),
-            city: "Bratislava".to_string(),
-            postal_code: Some("81101".to_string()),
-            transaction_type: "sale".to_string(),
-            price: dec!(190000),
-            price_per_sqm: Some(dec!(2800)),
-            currency: "EUR".to_string(),
-            recorded_at: now - chrono::Duration::days(30),
-        },
-    ];
+    let price_history = vec![PriceHistory {
+        id: Uuid::new_v4(),
+        listing_id: Some(listing_id),
+        property_type: "apartment".to_string(),
+        city: "Bratislava".to_string(),
+        postal_code: Some("81101".to_string()),
+        transaction_type: "sale".to_string(),
+        price: dec!(190000),
+        price_per_sqm: Some(dec!(2800)),
+        currency: "EUR".to_string(),
+        recorded_at: now - chrono::Duration::days(30),
+    }];
 
     let comparables_used = vec![ComparablePropertySummary {
         id: Uuid::new_v4(),
@@ -803,20 +798,18 @@ pub async fn get_nearby_amenities(
 ) -> Result<Json<Vec<NearbyAmenity>>, (axum::http::StatusCode, String)> {
     let insights_id = Uuid::new_v4();
 
-    let amenities = vec![
-        NearbyAmenity {
-            id: Uuid::new_v4(),
-            insights_id,
-            category: amenity_category::SUPERMARKET.to_string(),
-            name: "Lidl".to_string(),
-            address: Some("Stefanikova 25".to_string()),
-            distance_meters: dec!(300),
-            latitude: dec!(48.1495),
-            longitude: dec!(17.1085),
-            rating: Some(dec!(4.0)),
-            details: None,
-        },
-    ];
+    let amenities = vec![NearbyAmenity {
+        id: Uuid::new_v4(),
+        insights_id,
+        category: amenity_category::SUPERMARKET.to_string(),
+        name: "Lidl".to_string(),
+        address: Some("Stefanikova 25".to_string()),
+        distance_meters: dec!(300),
+        latitude: dec!(48.1495),
+        longitude: dec!(17.1085),
+        rating: Some(dec!(4.0)),
+        details: None,
+    }];
 
     Ok(Json(amenities))
 }

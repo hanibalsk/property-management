@@ -22,7 +22,7 @@ tokio = { version = "1.35", features = ["full"] }
 
 # Web framework
 axum = { version = "0.7", features = ["macros"] }
-axum-extra = { version = "0.9", features = ["typed-header"] }
+axum-extra = { version = "0.9", features = ["typed-header", "multipart"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
 
@@ -40,6 +40,7 @@ validator = { version = "0.16", features = ["derive"] }
 # Database
 sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono", "migrate", "rust_decimal"] }
 rust_decimal = { version = "1.34", features = ["serde", "serde-str"] }
+rust_decimal_macros = "1.34"
 
 # Auth
 jsonwebtoken = "9.2"

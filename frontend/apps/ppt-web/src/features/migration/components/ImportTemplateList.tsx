@@ -92,7 +92,7 @@ export function ImportTemplateList({
         <label className="text-sm font-medium text-gray-700">Filter by type:</label>
         <select
           value={selectedDataType ?? ''}
-          onChange={(e) => onDataTypeChange?.(e.target.value as ImportDataType || undefined)}
+          onChange={(e) => onDataTypeChange?.((e.target.value as ImportDataType) || undefined)}
           className="rounded-md border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
         >
           <option value="">All types</option>

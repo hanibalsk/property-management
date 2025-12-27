@@ -100,12 +100,7 @@ export function PricingSuggestionCard({
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 12h14"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
           </svg>
         );
     }
@@ -114,8 +109,7 @@ export function PricingSuggestionCard({
   const getPricePosition = () => {
     if (!currentPrice) return null;
     const range = suggestion.suggestedPriceHigh - suggestion.suggestedPriceLow;
-    const position =
-      ((currentPrice - suggestion.suggestedPriceLow) / range) * 100;
+    const position = ((currentPrice - suggestion.suggestedPriceLow) / range) * 100;
     return Math.max(0, Math.min(100, position));
   };
 
@@ -125,9 +119,7 @@ export function PricingSuggestionCard({
     <div className={`bg-white rounded-lg shadow-sm border p-6 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">
-          Pricing Suggestion
-        </h3>
+        <h3 className="text-lg font-semibold text-gray-900">Pricing Suggestion</h3>
         <span
           className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getConfidenceColor()}`}
         >
@@ -181,9 +173,7 @@ export function PricingSuggestionCard({
         <div className="text-center p-3 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-center gap-1 mb-1">
             {getTrendIcon()}
-            <span className="text-sm font-medium capitalize">
-              {suggestion.marketTrend}
-            </span>
+            <span className="text-sm font-medium capitalize">{suggestion.marketTrend}</span>
           </div>
           <div className="text-xs text-gray-500">Market Trend</div>
         </div>
@@ -204,12 +194,7 @@ export function PricingSuggestionCard({
       {/* Seasonal adjustment */}
       {suggestion.seasonalAdjustment && suggestion.seasonalAdjustment !== 1 && (
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -218,8 +203,7 @@ export function PricingSuggestionCard({
             />
           </svg>
           <span>
-            Includes {((suggestion.seasonalAdjustment - 1) * 100).toFixed(0)}%
-            seasonal adjustment
+            Includes {((suggestion.seasonalAdjustment - 1) * 100).toFixed(0)}% seasonal adjustment
           </span>
         </div>
       )}
