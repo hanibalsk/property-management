@@ -50,7 +50,7 @@ jobs:
 
           PR_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.state' 2>/dev/null || echo "not_found")
 
-          if [ "$PR_STATE" == "not_found" ]; then
+          if [ "$PR_STATE" = "not_found" ]; then
             echo "❌ PR #$PR_NUMBER not found"
             exit 1
           fi
@@ -209,7 +209,7 @@ jobs:
           echo "PR author: $PR_AUTHOR"
 
           # Validate that token owner is different from PR author
-          if [ "$TOKEN_OWNER" == "$PR_AUTHOR" ]; then
+          if [ "$TOKEN_OWNER" = "$PR_AUTHOR" ]; then
             echo "❌ Cannot approve PR: AUTO_APPROVE_TOKEN belongs to the PR author ($PR_AUTHOR)."
             echo "GitHub doesn't allow users to approve their own PRs."
             echo "Please use a token from a different user account."
@@ -237,7 +237,7 @@ EOF
 )
             # Safely substitute the comment after heredoc processing
             BODY="${BODY//COMMENT_PLACEHOLDER/$COMMENT}"
-          elif [ "$SKIP_CI" == "true" ]; then
+          elif [ "$SKIP_CI" = "true" ]; then
             BODY=$(cat <<'EOF'
 ✅ **Approved** (CI check skipped)
 
