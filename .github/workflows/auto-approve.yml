@@ -195,6 +195,10 @@ jobs:
             echo "No stale approvals to dismiss"
           fi
 
+      - name: Checkout repository
+        if: steps.check.outputs.should_approve == 'true'
+        uses: actions/checkout@v4
+
       - name: Auto-approve PR
         if: steps.check.outputs.should_approve == 'true'
         env:
