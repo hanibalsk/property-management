@@ -2,6 +2,12 @@ name: Approve PR
 
 # Manually invokable workflow for PR approval
 # Used by shepherd agents to approve PRs after all checks pass
+#
+# SECURITY NOTE: This workflow allows programmatic PR approval.
+# Access is controlled by GitHub's workflow_dispatch permissions.
+# Only users/apps with write access can trigger this workflow.
+# The AUTO_APPROVE_TOKEN must be from a different user than the PR author
+# to satisfy GitHub's requirement that users cannot approve their own PRs.
 
 on:
   workflow_dispatch:
@@ -105,6 +111,27 @@ jobs:
             echo "✅ All $TOTAL CI checks passed!"
           fi
 
+      - name: Validate AUTO_APPROVE_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN }}
+        run: |
+          # Check if AUTO_APPROVE_TOKEN is configured
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ AUTO_APPROVE_TOKEN secret is not configured."
+            echo "Please add a valid AUTO_APPROVE_TOKEN secret with permissions to approve pull requests."
+            echo "The token must be from a different user than the PR author."
+            exit 1
+          fi
+
+          # Validate token works
+          if ! gh auth status >/dev/null 2>&1; then
+            echo "❌ Failed to authenticate with AUTO_APPROVE_TOKEN."
+            echo "Ensure the token is valid and has 'repo' scope."
+            exit 1
+          fi
+
+          echo "✅ AUTO_APPROVE_TOKEN is valid"
+
       - name: Approve PR
         env:
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN }}
@@ -113,19 +140,28 @@ jobs:
           COMMENT="${{ github.event.inputs.comment }}"
           SKIP_CI="${{ github.event.inputs.skip_ci_check }}"
 
-          # Build approval message
+          # Build approval message using heredoc for safe multi-line strings
           if [ -n "$COMMENT" ]; then
-            BODY="✅ **Approved**: $COMMENT
+            BODY=$(cat <<EOF
+✅ **Approved**: $COMMENT
 
-_Approved via workflow dispatch._"
+_Approved via workflow dispatch._
+EOF
+)
           elif [ "$SKIP_CI" == "true" ]; then
-            BODY="✅ **Approved** (CI check skipped)
+            BODY=$(cat <<EOF
+✅ **Approved** (CI check skipped)
 
-_Approved via workflow dispatch._"
+_Approved via workflow dispatch._
+EOF
+)
           else
-            BODY="✅ **Approved**: All CI checks passed
+            BODY=$(cat <<EOF
+✅ **Approved**: All CI checks passed
 
-_Approved via workflow dispatch._"
+_Approved via workflow dispatch._
+EOF
+)
           fi
 
           gh pr review "$PR_NUMBER" --approve --body "$BODY"
