@@ -533,7 +533,6 @@ async fn set_carbon_target(
     get,
     path = "/api/v1/energy/buildings/{building_id}/carbon/export",
     params(("building_id" = Uuid, Path, description = "Building ID")),
-    request_body = CarbonExportRequest,
     responses(
         (status = 200, description = "PDF report", content_type = "application/pdf"),
         (status = 404, description = "Building not found", body = ErrorResponse),

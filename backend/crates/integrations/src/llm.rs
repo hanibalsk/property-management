@@ -53,6 +53,7 @@ pub enum LlmError {
 pub struct LlmConfig {
     pub openai_api_key: Option<String>,
     pub anthropic_api_key: Option<String>,
+    pub anthropic_api_version: String,
     pub azure_openai_endpoint: Option<String>,
     pub azure_openai_api_key: Option<String>,
     pub azure_openai_deployment: Option<String>,
@@ -65,6 +66,8 @@ impl Default for LlmConfig {
         Self {
             openai_api_key: std::env::var("OPENAI_API_KEY").ok(),
             anthropic_api_key: std::env::var("ANTHROPIC_API_KEY").ok(),
+            anthropic_api_version: std::env::var("ANTHROPIC_API_VERSION")
+                .unwrap_or_else(|_| "2024-10-22".to_string()),
             azure_openai_endpoint: std::env::var("AZURE_OPENAI_ENDPOINT").ok(),
             azure_openai_api_key: std::env::var("AZURE_OPENAI_API_KEY").ok(),
             azure_openai_deployment: std::env::var("AZURE_OPENAI_DEPLOYMENT").ok(),
@@ -159,7 +162,7 @@ impl LlmClient {
             .http_client
             .post("https://api.anthropic.com/v1/messages")
             .header("x-api-key", api_key)
-            .header("anthropic-version", "2024-01-01")
+            .header("anthropic-version", &self.config.anthropic_api_version)
             .header("Content-Type", "application/json")
             .json(&anthropic_request)
             .send()

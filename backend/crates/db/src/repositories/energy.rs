@@ -750,10 +750,10 @@ impl EnergyRepository {
 
         let comparable_count = comparables.len() as i32;
 
-        // Calculate percentile
+        // Calculate percentile (percentage of values less than or equal to this value)
         let percentile = if comparable_count > 0 {
-            let below = comparables.iter().filter(|v| **v > value).count();
-            ((below as f64 / comparable_count as f64) * 100.0) as i32
+            let at_or_below = comparables.iter().filter(|v| **v <= value).count();
+            ((at_or_below as f64 / comparable_count as f64) * 100.0) as i32
         } else {
             50 // Default to median if no comparables
         };

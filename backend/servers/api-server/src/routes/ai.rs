@@ -1645,12 +1645,8 @@ async fn link_voice_device(
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
     let tenant = extract_tenant_context(&headers)?;
 
-    // Generate a unique device ID based on the auth code
-    let device_id = format!(
-        "{}_{}",
-        req.platform,
-        &req.auth_code[..8.min(req.auth_code.len())]
-    );
+    // Generate a unique device ID using UUID to avoid collisions
+    let device_id = format!("{}_{}", req.platform, Uuid::new_v4());
 
     let device = state
         .llm_document_repo

@@ -431,6 +431,8 @@ impl LlmDocumentRepository {
         .bind(document_id)
         .bind(chunk_index)
         .bind(chunk_text)
+        // TODO: For production, use pgvector extension for efficient vector storage and similarity search.
+        // Storing embeddings as JSONB is inefficient for vector operations.
         .bind(
             embedding
                 .as_ref()
@@ -463,9 +465,9 @@ impl LlmDocumentRepository {
         Ok(result.rows_affected())
     }
 
-    /// Search embeddings by text (simple text search, not vector similarity).
-    /// Vector similarity search would require pgvector extension.
-    pub async fn search_embeddings(
+    /// Search documents by text (simple text search, not semantic/vector similarity).
+    /// For semantic search using embeddings, pgvector extension would be required.
+    pub async fn search_documents_by_text(
         &self,
         organization_id: Uuid,
         search_text: &str,
