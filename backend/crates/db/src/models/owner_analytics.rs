@@ -102,11 +102,13 @@ pub struct ValueTrendSummary {
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct CashFlowBreakdown {
-    pub property_id: Uuid,
-    pub period: String,
+    pub unit_id: Uuid,
+    pub period_start: NaiveDate,
+    pub period_end: NaiveDate,
     pub income: CashFlowIncome,
     pub expenses: CashFlowExpenses,
-    pub net: Decimal,
+    pub net_cash_flow: Decimal,
+    pub cumulative_cash_flow: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
@@ -121,14 +123,15 @@ pub struct CashFlowExpenses {
     pub maintenance: Decimal,
     pub utilities: Decimal,
     pub insurance: Decimal,
-    pub taxes: Decimal,
+    pub property_taxes: Decimal,
+    pub management_fees: Decimal,
     pub other: Decimal,
     pub total: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct MonthlyCashFlow {
-    pub month: String,
+    pub month: NaiveDate,
     pub income: Decimal,
     pub expenses: Decimal,
     pub net: Decimal,
@@ -138,8 +141,11 @@ pub struct MonthlyCashFlow {
 pub struct ExpenseAutoApprovalRule {
     pub id: Uuid,
     pub organization_id: Uuid,
-    pub category: String,
-    pub max_amount: Decimal,
+    pub owner_id: Uuid,
+    pub unit_id: Option<Uuid>,
+    pub max_amount_per_expense: Decimal,
+    pub max_monthly_total: Decimal,
+    pub allowed_categories: Vec<String>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -180,15 +186,25 @@ pub struct ExpenseApprovalRequest {
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct SubmitExpenseForApproval {
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub amount: Decimal,
     pub category: String,
     pub description: String,
 }
 
+/// Decision status for expense approval.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[sqlx(type_name = "expense_approval_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum ExpenseApprovalDecision {
+    Approved,
+    Rejected,
+    NeedsInfo,
+}
+
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct ReviewExpenseRequest {
-    pub approved: bool,
+    pub decision: ExpenseApprovalDecision,
     pub notes: Option<String>,
 }
 
@@ -196,6 +212,7 @@ pub struct ReviewExpenseRequest {
 pub struct ExpenseApprovalResponse {
     pub request: ExpenseApprovalRequest,
     pub auto_approved: bool,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
@@ -215,13 +232,13 @@ pub struct ExpenseRequestsQuery {
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct ListExpenseRequestsResponse {
-    pub items: Vec<ExpenseApprovalRequest>,
+    pub requests: Vec<ExpenseApprovalRequest>,
     pub total: i64,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct PortfolioProperty {
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub address: String,
     pub current_value: Decimal,
     pub roi: Decimal,
@@ -238,17 +255,18 @@ pub struct PortfolioSummary {
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct OwnerPropertiesQuery {
-    pub owner_id: Uuid,
+    pub owner_id: Option<Uuid>,
+    pub organization_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct PortfolioComparisonRequest {
-    pub property_ids: Vec<Uuid>,
+    pub unit_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct PropertyComparison {
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub value: Decimal,
     pub roi: Decimal,
     pub net_income: Decimal,
@@ -257,27 +275,27 @@ pub struct PropertyComparison {
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct ComparisonMetrics {
     pub properties: Vec<PropertyComparison>,
-    pub best_roi_property: Uuid,
-    pub highest_value_property: Uuid,
+    pub best_roi_unit: Uuid,
+    pub highest_value_unit: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct PropertyValueHistory {
     pub id: Uuid,
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub value: Decimal,
     pub recorded_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct ValueHistoryQuery {
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub limit: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct ValueTrendAnalysis {
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub history: Vec<PropertyValueHistory>,
     pub trend_percent: Decimal,
 }

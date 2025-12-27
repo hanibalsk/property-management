@@ -102,7 +102,7 @@ async fn list_templates(
     ))?;
 
     // In a real implementation, query the database
-    let templates = get_default_templates(org_id, query.data_type, query.include_system);
+    let templates = generate_sample_templates(org_id, query.data_type, query.include_system);
 
     Ok(Json(ListTemplatesResponse {
         total: templates.len() as i64,
@@ -1232,7 +1232,9 @@ async fn validate_import(
 // Helper Functions
 // ============================================================================
 
-fn get_default_templates(
+/// Generate sample template data for demonstration.
+/// Note: In production, this would query actual templates from the database.
+fn generate_sample_templates(
     _org_id: Uuid,
     data_type: Option<ImportDataType>,
     include_system: bool,

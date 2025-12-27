@@ -35,6 +35,10 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
+/// Number of rating dimensions used for calculating overall rating.
+/// Dimensions: quality, timeliness, communication, value.
+const RATING_DIMENSIONS_COUNT: f64 = 4.0;
+
 /// Create marketplace router with all sub-routes.
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -908,7 +912,7 @@ async fn create_review(
         + payload.data.timeliness_rating
         + payload.data.communication_rating
         + payload.data.value_rating) as f64
-        / 4.0;
+        / RATING_DIMENSIONS_COUNT;
 
     // In production, this would call state.marketplace_repo.create_review(provider_id, user.user_id, payload)
     let review = ProviderReview {

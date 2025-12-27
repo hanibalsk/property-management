@@ -20,10 +20,14 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
-/// Default page size for listings
+/// Default page size for listings.
+/// TODO: Use this constant in pagination logic when implementing database queries.
+#[allow(dead_code)]
 const DEFAULT_LIST_LIMIT: i64 = 50;
 
-/// Maximum page size
+/// Maximum page size.
+/// TODO: Use this constant in pagination logic when implementing database queries.
+#[allow(dead_code)]
 const MAX_LIST_LIMIT: i64 = 100;
 
 type ApiResult<T> = Result<T, (StatusCode, Json<ErrorResponse>)>;
