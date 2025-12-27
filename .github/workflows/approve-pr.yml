@@ -1,0 +1,143 @@
+name: Approve PR
+
+# Manually invokable workflow for PR approval
+# Used by shepherd agents to approve PRs after all checks pass
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to approve'
+        required: true
+        type: number
+      skip_ci_check:
+        description: 'Skip CI check (approve regardless of CI status)'
+        required: false
+        type: boolean
+        default: false
+      comment:
+        description: 'Optional approval comment'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  approve:
+    name: Approve PR
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+      contents: read
+      checks: read
+
+    steps:
+      - name: Validate PR exists
+        id: validate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          REPO=${{ github.repository }}
+
+          echo "Validating PR #$PR_NUMBER exists..."
+
+          PR_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.state' 2>/dev/null || echo "not_found")
+
+          if [ "$PR_STATE" == "not_found" ]; then
+            echo "❌ PR #$PR_NUMBER not found"
+            exit 1
+          fi
+
+          if [ "$PR_STATE" != "open" ]; then
+            echo "❌ PR #$PR_NUMBER is $PR_STATE (not open)"
+            exit 1
+          fi
+
+          echo "✅ PR #$PR_NUMBER is open"
+          echo "state=$PR_STATE" >> $GITHUB_OUTPUT
+
+      - name: Check CI status
+        if: ${{ github.event.inputs.skip_ci_check != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          REPO=${{ github.repository }}
+
+          echo "Checking CI status for PR #$PR_NUMBER..."
+
+          # Get the HEAD SHA of the PR
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          echo "HEAD SHA: $HEAD_SHA"
+
+          # Get check runs status
+          CHECK_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
+            --jq '{
+              total: .total_count,
+              completed: [.check_runs[] | select(.status == "completed")] | length,
+              success: [.check_runs[] | select(.conclusion == "success")] | length,
+              failure: [.check_runs[] | select(.conclusion == "failure")] | length,
+              pending: [.check_runs[] | select(.status != "completed")] | length
+            }')
+
+          TOTAL=$(echo "$CHECK_STATUS" | jq -r '.total')
+          COMPLETED=$(echo "$CHECK_STATUS" | jq -r '.completed')
+          SUCCESS=$(echo "$CHECK_STATUS" | jq -r '.success')
+          FAILURE=$(echo "$CHECK_STATUS" | jq -r '.failure')
+          PENDING=$(echo "$CHECK_STATUS" | jq -r '.pending')
+
+          echo "CI Status: $COMPLETED/$TOTAL completed ($SUCCESS success, $FAILURE failure, $PENDING pending)"
+
+          if [ "$FAILURE" -gt 0 ]; then
+            echo "❌ CI failed! $FAILURE check(s) failed."
+            exit 1
+          fi
+
+          if [ "$PENDING" -gt 0 ]; then
+            echo "⏳ CI still running: $PENDING check(s) pending"
+            exit 1
+          fi
+
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "⚠️ No CI checks found - proceeding anyway"
+          else
+            echo "✅ All $TOTAL CI checks passed!"
+          fi
+
+      - name: Approve PR
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          COMMENT="${{ github.event.inputs.comment }}"
+          SKIP_CI="${{ github.event.inputs.skip_ci_check }}"
+
+          # Build approval message
+          if [ -n "$COMMENT" ]; then
+            BODY="✅ **Approved**: $COMMENT
+
+_Approved via workflow dispatch._"
+          elif [ "$SKIP_CI" == "true" ]; then
+            BODY="✅ **Approved** (CI check skipped)
+
+_Approved via workflow dispatch._"
+          else
+            BODY="✅ **Approved**: All CI checks passed
+
+_Approved via workflow dispatch._"
+          fi
+
+          gh pr review "$PR_NUMBER" --approve --body "$BODY"
+
+          echo "✅ PR #$PR_NUMBER approved!"
+
+      - name: Report result
+        if: always()
+        run: |
+          echo "## Approval Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **PR**: #${{ github.event.inputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Skip CI**: ${{ github.event.inputs.skip_ci_check }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Comment**: ${{ github.event.inputs.comment || '(none)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
