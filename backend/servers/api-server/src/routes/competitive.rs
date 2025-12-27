@@ -301,6 +301,7 @@ pub async fn update_virtual_tour(
         description: data.description,
         photo_url: data.photo_url,
         embed_url: data.embed_url,
+        external_id: None,
         video_url: data.video_url,
         thumbnail_url: data.thumbnail_url,
         display_order: 1,

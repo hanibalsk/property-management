@@ -177,7 +177,7 @@ async fn create_aml_assessment(
     Json(req): Json<CreateAmlAssessmentRequest>,
 ) -> Result<Json<AmlAssessmentResponse>, (StatusCode, String)> {
     // Any authenticated user can trigger assessment, but only for their org
-    let org_id = user.org_id.ok_or((
+    let org_id = user.tenant_id.ok_or((
         StatusCode::BAD_REQUEST,
         "Organization context required".to_string(),
     ))?;

@@ -1,5 +1,6 @@
 //! Owner Investment Analytics routes (Epic 74).
 use crate::state::AppState;
+use api_core::extractors::AuthUser;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -8,7 +9,6 @@ use axum::{
 };
 use chrono::NaiveDate;
 use common::errors::ErrorResponse;
-use common::TenantContext;
 use db::models::owner_analytics::{
     AddComparableProperty, CalculateROIRequest, CreateAutoApprovalRule, CreatePropertyValuation,
     ExpenseRequestsQuery, OwnerPropertiesQuery, PortfolioComparisonRequest, ReviewExpenseRequest,
@@ -50,8 +50,7 @@ pub fn router() -> Router<AppState> {
 
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct ValueHistoryParams {
-    pub from_date: Option<NaiveDate>,
-    pub to_date: Option<NaiveDate>,
+    pub limit: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
@@ -101,374 +100,377 @@ pub struct SubmitExpenseRequest {
 
 async fn get_unit_valuation(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Path(uid): Path<Uuid>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let org = ctx.organization_id.ok_or_else(|| {
+    let org = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message("Organization context required")),
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
-    match s.owner_analytics.get_latest_valuation(uid, org).await {
+    match s.owner_analytics_repo.get_latest_valuation(uid, org).await {
         Ok(Some(v)) => Ok(Json(serde_json::to_value(v).unwrap())),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::message("Not found")),
+            Json(ErrorResponse::not_found("Not found")),
         )),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn create_valuation(
     State(s): State<AppState>,
-    _ctx: TenantContext,
+    _user: AuthUser,
     Path(_uid): Path<Uuid>,
     Json(r): Json<CreateValuationRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
     match s
-        .owner_analytics
+        .owner_analytics_repo
         .create_valuation(r.organization_id, r.data)
         .await
     {
         Ok(v) => Ok(Json(serde_json::to_value(v).unwrap())),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
 }
 
 async fn get_valuation_with_comparables(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Path(vid): Path<Uuid>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let org = ctx.organization_id.ok_or_else(|| {
+    let org = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message("Organization context required")),
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
     match s
-        .owner_analytics
+        .owner_analytics_repo
         .get_valuation_with_comparables(vid, org)
         .await
     {
         Ok(Some(v)) => Ok(Json(serde_json::to_value(v).unwrap())),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::message("Not found")),
+            Json(ErrorResponse::not_found("Not found")),
         )),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn add_comparable(
     State(s): State<AppState>,
-    _ctx: TenantContext,
+    _user: AuthUser,
     Path(vid): Path<Uuid>,
     Json(r): Json<AddComparableProperty>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    match s.owner_analytics.add_comparable(vid, r).await {
+    match s.owner_analytics_repo.add_comparable(vid, r).await {
         Ok(c) => Ok(Json(serde_json::to_value(c).unwrap())),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
 }
 
 async fn get_value_history(
     State(s): State<AppState>,
-    _ctx: TenantContext,
+    _user: AuthUser,
     Path(uid): Path<Uuid>,
     Query(p): Query<ValueHistoryParams>,
 ) -> ApiResult<Json<serde_json::Value>> {
     match s
-        .owner_analytics
+        .owner_analytics_repo
         .get_value_history(ValueHistoryQuery {
             unit_id: uid,
-            from_date: p.from_date,
-            to_date: p.to_date,
+            limit: p.limit,
         })
         .await
     {
         Ok(h) => Ok(Json(serde_json::to_value(h).unwrap())),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn get_value_trend(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Path(uid): Path<Uuid>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let org = ctx.organization_id.ok_or_else(|| {
+    let org = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message("Organization context required")),
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
-    match s.owner_analytics.get_value_trend(uid, org).await {
+    match s.owner_analytics_repo.get_value_trend(uid, org).await {
         Ok(Some(t)) => Ok(Json(serde_json::to_value(t).unwrap())),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::message("Not found")),
+            Json(ErrorResponse::not_found("Not found")),
         )),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn calculate_roi(
     State(s): State<AppState>,
-    _ctx: TenantContext,
+    _user: AuthUser,
     Path(_uid): Path<Uuid>,
     Json(r): Json<CalculateROIWithOrg>,
 ) -> ApiResult<Json<serde_json::Value>> {
     match s
-        .owner_analytics
+        .owner_analytics_repo
         .calculate_roi(r.organization_id, r.data)
         .await
     {
         Ok(roi) => Ok(Json(serde_json::to_value(roi).unwrap())),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
 }
 
 async fn get_cash_flow_breakdown(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Path(uid): Path<Uuid>,
     Query(p): Query<CashFlowParams>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let org = ctx.organization_id.ok_or_else(|| {
+    let org = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message("Organization context required")),
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
     match s
-        .owner_analytics
+        .owner_analytics_repo
         .get_cash_flow_breakdown(uid, org, p.from_date, p.to_date)
         .await
     {
         Ok(cf) => Ok(Json(serde_json::to_value(cf).unwrap())),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn get_roi_dashboard(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Path(uid): Path<Uuid>,
     Query(p): Query<ROIDashboardParams>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let org = ctx.organization_id.ok_or_else(|| {
+    let org = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message("Organization context required")),
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
     match s
-        .owner_analytics
+        .owner_analytics_repo
         .get_roi_dashboard(uid, org, p.from_date, p.to_date)
         .await
     {
         Ok(d) => Ok(Json(serde_json::to_value(d).unwrap())),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn get_portfolio_summary(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Query(p): Query<PortfolioParams>,
 ) -> ApiResult<Json<serde_json::Value>> {
     match s
-        .owner_analytics
+        .owner_analytics_repo
         .get_portfolio_summary(OwnerPropertiesQuery {
             owner_id: p.owner_id,
-            organization_id: ctx.organization_id,
+            organization_id: user.tenant_id,
         })
         .await
     {
         Ok(ps) => Ok(Json(serde_json::to_value(ps).unwrap())),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn compare_properties(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Json(r): Json<PortfolioComparisonRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let org = ctx.organization_id.ok_or_else(|| {
+    let org = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message("Organization context required")),
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
-    match s.owner_analytics.compare_properties(org, r).await {
+    match s.owner_analytics_repo.compare_properties(org, r).await {
         Ok(c) => Ok(Json(serde_json::to_value(c).unwrap())),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
 }
 
 async fn list_auto_approval_rules(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let org = ctx.organization_id.ok_or_else(|| {
+    let org = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message("Organization context required")),
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
     match s
-        .owner_analytics
-        .get_auto_approval_rules(ctx.user_id, org)
+        .owner_analytics_repo
+        .get_auto_approval_rules(user.user_id, org)
         .await
     {
         Ok(r) => Ok(Json(serde_json::to_value(r).unwrap())),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn create_auto_approval_rule(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Json(r): Json<CreateRuleRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
     match s
-        .owner_analytics
-        .create_auto_approval_rule(ctx.user_id, r.organization_id, r.data)
+        .owner_analytics_repo
+        .create_auto_approval_rule(user.user_id, r.organization_id, r.data)
         .await
     {
         Ok(rule) => Ok(Json(serde_json::to_value(rule).unwrap())),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
 }
 
 async fn update_auto_approval_rule(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Path(id): Path<Uuid>,
     Json(r): Json<UpdateAutoApprovalRule>,
 ) -> ApiResult<Json<serde_json::Value>> {
     match s
-        .owner_analytics
-        .update_auto_approval_rule(id, ctx.user_id, r)
+        .owner_analytics_repo
+        .update_auto_approval_rule(id, user.user_id, r)
         .await
     {
         Ok(rule) => Ok(Json(serde_json::to_value(rule).unwrap())),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
 }
 
 async fn delete_auto_approval_rule(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
     match s
-        .owner_analytics
-        .delete_auto_approval_rule(id, ctx.user_id)
+        .owner_analytics_repo
+        .delete_auto_approval_rule(id, user.user_id)
         .await
     {
         Ok(_) => Ok(StatusCode::NO_CONTENT),
         Err(e) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::not_found(&e.to_string())),
         )),
     }
 }
 
 async fn submit_expense(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Json(r): Json<SubmitExpenseRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
     match s
-        .owner_analytics
-        .submit_expense_for_approval(ctx.user_id, r.organization_id, r.data)
+        .owner_analytics_repo
+        .submit_expense_for_approval(user.user_id, r.organization_id, r.data)
         .await
     {
         Ok(resp) => Ok(Json(serde_json::to_value(resp).unwrap())),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
 }
 
 async fn list_expense_requests(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Query(q): Query<ExpenseRequestsQuery>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let org = ctx.organization_id.ok_or_else(|| {
+    let org = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message("Organization context required")),
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
-    match s.owner_analytics.list_expense_requests(org, q).await {
+    match s.owner_analytics_repo.list_expense_requests(org, q).await {
         Ok(r) => Ok(Json(serde_json::to_value(r).unwrap())),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }
 
 async fn review_expense(
     State(s): State<AppState>,
-    ctx: TenantContext,
+    user: AuthUser,
     Path(id): Path<Uuid>,
     Json(r): Json<ReviewExpenseRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    match s.owner_analytics.review_expense(id, ctx.user_id, r).await {
+    match s
+        .owner_analytics_repo
+        .review_expense(id, user.user_id, r)
+        .await
+    {
         Ok(e) => Ok(Json(serde_json::to_value(e).unwrap())),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::message(e.to_string())),
+            Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
 }

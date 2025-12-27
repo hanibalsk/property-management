@@ -39,6 +39,16 @@ pub struct AuthUser {
     pub role: Option<TenantRole>,
 }
 
+impl AuthUser {
+    /// Check if user is a platform administrator.
+    pub fn is_platform_admin(&self) -> bool {
+        matches!(
+            self.role,
+            Some(TenantRole::SuperAdmin) | Some(TenantRole::PlatformAdmin)
+        )
+    }
+}
+
 #[async_trait]
 impl<S> FromRequestParts<S> for AuthUser
 where

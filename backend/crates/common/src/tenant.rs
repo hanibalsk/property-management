@@ -42,6 +42,8 @@ impl TenantContext {
 pub enum TenantRole {
     /// Super administrator (platform level)
     SuperAdmin,
+    /// Platform administrator (infrastructure/operations)
+    PlatformAdmin,
     /// Organization administrator
     OrgAdmin,
     /// Building manager
@@ -69,6 +71,7 @@ impl TenantRole {
     pub fn level(&self) -> u8 {
         match self {
             TenantRole::SuperAdmin => 100,
+            TenantRole::PlatformAdmin => 95,
             TenantRole::OrgAdmin => 90,
             TenantRole::Manager => 80,
             TenantRole::TechnicalManager => 75,
@@ -84,7 +87,10 @@ impl TenantRole {
 
     /// Check if role is admin-level.
     pub fn is_admin(&self) -> bool {
-        matches!(self, TenantRole::SuperAdmin | TenantRole::OrgAdmin)
+        matches!(
+            self,
+            TenantRole::SuperAdmin | TenantRole::PlatformAdmin | TenantRole::OrgAdmin
+        )
     }
 
     /// Check if role is manager-level.
@@ -92,6 +98,7 @@ impl TenantRole {
         matches!(
             self,
             TenantRole::SuperAdmin
+                | TenantRole::PlatformAdmin
                 | TenantRole::OrgAdmin
                 | TenantRole::Manager
                 | TenantRole::TechnicalManager
@@ -103,6 +110,7 @@ impl std::fmt::Display for TenantRole {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TenantRole::SuperAdmin => write!(f, "Super Admin"),
+            TenantRole::PlatformAdmin => write!(f, "Platform Admin"),
             TenantRole::OrgAdmin => write!(f, "Organization Admin"),
             TenantRole::Manager => write!(f, "Manager"),
             TenantRole::TechnicalManager => write!(f, "Technical Manager"),

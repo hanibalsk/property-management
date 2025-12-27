@@ -150,7 +150,7 @@ async fn create_developer_account(
     let account = DeveloperAccount {
         id: Uuid::new_v4(),
         user_id: user.user_id,
-        organization_id: user.organization_id,
+        organization_id: user.tenant_id,
         company_name: payload.company_name,
         website: payload.website,
         description: payload.description,
@@ -710,10 +710,10 @@ async fn list_webhook_event_types(
     tag = "developer"
 )]
 async fn get_rate_limit_status(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
 ) -> Result<Json<RateLimitStatus>, (StatusCode, Json<ErrorResponse>)> {
-    use db::models::{RateLimitStatus, RateLimitWindow};
+    use db::models::public_api::RateLimitWindow;
 
     let now = Utc::now();
     let status = RateLimitStatus {

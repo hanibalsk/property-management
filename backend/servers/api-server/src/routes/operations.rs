@@ -132,7 +132,7 @@ async fn list_deployments(
     Query(query): Query<DeploymentQuery>,
 ) -> ApiResult<Json<db::models::operations::ListDeploymentsResponse>> {
     // Only platform admins can access operations endpoints
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access operations",
         ));
@@ -167,7 +167,7 @@ async fn create_deployment(
     auth: AuthUser,
     Json(payload): Json<CreateDeployment>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::Deployment>)> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can create deployments",
         ));
@@ -198,7 +198,7 @@ async fn get_deployment_dashboard(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::DeploymentDashboard>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access deployment dashboard",
         ));
@@ -232,7 +232,7 @@ async fn get_deployment(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::Deployment>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access deployments",
         ));
@@ -269,7 +269,7 @@ async fn update_deployment_status(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateDeploymentStatus>,
 ) -> ApiResult<Json<db::models::operations::Deployment>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can update deployments",
         ));
@@ -307,7 +307,7 @@ async fn switch_traffic(
     Path(id): Path<Uuid>,
     Json(payload): Json<SwitchTraffic>,
 ) -> ApiResult<Json<db::models::operations::Deployment>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can switch traffic",
         ));
@@ -342,7 +342,7 @@ async fn rollback_deployment(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::Deployment>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can rollback deployments",
         ));
@@ -376,7 +376,7 @@ async fn list_deployment_health_checks(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<db::models::operations::DeploymentHealthCheck>>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can view health checks",
         ));
@@ -407,7 +407,7 @@ async fn run_health_checks(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<db::models::operations::DeploymentHealthCheck>>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can run health checks",
         ));
@@ -443,7 +443,7 @@ async fn list_migrations(
     auth: AuthUser,
     Query(query): Query<MigrationQuery>,
 ) -> ApiResult<Json<db::models::operations::ListMigrationsResponse>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access migrations",
         ));
@@ -478,7 +478,7 @@ async fn create_migration(
     auth: AuthUser,
     Json(payload): Json<CreateMigration>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::DatabaseMigration>)> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can create migrations",
         ));
@@ -512,7 +512,7 @@ async fn get_migration(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::DatabaseMigration>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access migrations",
         ));
@@ -549,7 +549,7 @@ async fn update_migration_progress(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateMigrationProgress>,
 ) -> ApiResult<Json<db::models::operations::DatabaseMigration>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can update migrations",
         ));
@@ -583,7 +583,7 @@ async fn list_migration_logs(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<db::models::operations::MigrationLog>>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can view migration logs",
         ));
@@ -615,7 +615,7 @@ async fn rollback_migration(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::DatabaseMigration>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can rollback migrations",
         ));
@@ -650,7 +650,7 @@ async fn check_migration_safety(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::MigrationSafetyCheck>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can check migration safety",
         ));
@@ -682,7 +682,7 @@ async fn list_schema_versions(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<db::models::operations::SchemaVersion>>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can view schema versions",
         ));
@@ -711,7 +711,7 @@ async fn get_current_schema_version(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::SchemaVersion>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can view schema version",
         ));
@@ -747,7 +747,7 @@ async fn list_backups(
     auth: AuthUser,
     Query(query): Query<BackupQuery>,
 ) -> ApiResult<Json<db::models::operations::ListBackupsResponse>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access backups",
         ));
@@ -782,7 +782,7 @@ async fn create_backup(
     auth: AuthUser,
     Json(payload): Json<CreateBackup>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::Backup>)> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can create backups",
         ));
@@ -813,7 +813,7 @@ async fn get_dr_dashboard(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::DisasterRecoveryDashboard>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access DR dashboard",
         ));
@@ -844,7 +844,7 @@ async fn get_backup(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::Backup>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access backups",
         ));
@@ -879,7 +879,7 @@ async fn verify_backup(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::Backup>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can verify backups",
         ));
@@ -914,7 +914,7 @@ async fn initiate_recovery(
     auth: AuthUser,
     Json(payload): Json<InitiateRecovery>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::RecoveryOperation>)> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can initiate recovery",
         ));
@@ -948,7 +948,7 @@ async fn get_recovery_status(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::RecoveryOperation>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can view recovery status",
         ));
@@ -980,7 +980,7 @@ async fn list_dr_drills(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<Vec<db::models::operations::DisasterRecoveryDrill>>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can view DR drills",
         ));
@@ -1014,7 +1014,7 @@ async fn record_dr_drill(
     StatusCode,
     Json<db::models::operations::DisasterRecoveryDrill>,
 )> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can record DR drills",
         ));
@@ -1049,7 +1049,7 @@ async fn list_costs(
     auth: AuthUser,
     Query(query): Query<CostQuery>,
 ) -> ApiResult<Json<db::models::operations::ListCostsResponse>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access cost data",
         ));
@@ -1090,7 +1090,7 @@ async fn record_cost(
     auth: AuthUser,
     Json(payload): Json<RecordInfrastructureCost>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::InfrastructureCost>)> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can record costs",
         ));
@@ -1121,7 +1121,7 @@ async fn get_cost_dashboard(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::CostDashboard>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access cost dashboard",
         ));
@@ -1149,7 +1149,7 @@ async fn list_budgets(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::ListBudgetsResponse>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access budgets",
         ));
@@ -1180,7 +1180,7 @@ async fn create_budget(
     auth: AuthUser,
     Json(payload): Json<CreateCostBudget>,
 ) -> ApiResult<(StatusCode, Json<db::models::operations::CostBudget>)> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can create budgets",
         ));
@@ -1214,7 +1214,7 @@ async fn get_budget(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::CostBudget>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access budgets",
         ));
@@ -1251,7 +1251,7 @@ async fn update_budget(
     Path(id): Path<Uuid>,
     Json(payload): Json<CreateCostBudget>,
 ) -> ApiResult<Json<db::models::operations::CostBudget>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can update budgets",
         ));
@@ -1285,7 +1285,7 @@ async fn list_cost_alerts(
     auth: AuthUser,
     Query(query): Query<CostAlertQuery>,
 ) -> ApiResult<Json<db::models::operations::ListCostAlertsResponse>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access cost alerts",
         ));
@@ -1325,7 +1325,7 @@ async fn acknowledge_cost_alert(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::CostAlert>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can acknowledge cost alerts",
         ));
@@ -1357,7 +1357,7 @@ async fn list_resource_utilization(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::ListUtilizationResponse>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access utilization data",
         ));
@@ -1388,7 +1388,7 @@ async fn list_optimization_recommendations(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> ApiResult<Json<db::models::operations::ListRecommendationsResponse>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can access recommendations",
         ));
@@ -1422,7 +1422,7 @@ async fn mark_recommendation_implemented(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<db::models::operations::CostOptimizationRecommendation>> {
-    if !auth.is_platform_admin {
+    if !auth.is_platform_admin() {
         return Err(forbidden_error(
             "Only platform administrators can update recommendations",
         ));

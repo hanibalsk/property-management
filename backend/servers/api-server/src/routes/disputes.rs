@@ -20,6 +20,7 @@ use db::models::{
     RecordSessionNotes, ResolutionVote, ResolutionWithVotes, ResolveEscalation, ScheduleSession,
     SessionAttendance, SubmitResponse, UpdateDisputeStatus, VoteOnResolution,
 };
+use db::repositories::{UpdateAttendanceData, UpdateSessionData};
 use serde::Deserialize;
 use utoipa::IntoParams;
 use uuid::Uuid;
@@ -630,9 +631,16 @@ async fn update_session(
     Path((_id, session_id)): Path<(Uuid, Uuid)>,
     Json(data): Json<UpdateSessionRequest>,
 ) -> Result<Json<MediationSession>, (StatusCode, Json<ErrorResponse>)> {
+    let update_data = UpdateSessionData {
+        scheduled_at: data.scheduled_at,
+        duration_minutes: data.duration_minutes,
+        location: data.location,
+        meeting_url: data.meeting_url,
+        status: data.status,
+    };
     state
         .dispute_repo
-        .update_session(session_id, data)
+        .update_session(session_id, update_data)
         .await
         .map(Json)
         .map_err(|e| {
@@ -691,9 +699,14 @@ async fn update_attendance(
     Path((_id, session_id, party_id)): Path<(Uuid, Uuid, Uuid)>,
     Json(data): Json<UpdateAttendanceRequest>,
 ) -> Result<Json<SessionAttendance>, (StatusCode, Json<ErrorResponse>)> {
+    let update_data = UpdateAttendanceData {
+        confirmed: data.confirmed,
+        attended: data.attended,
+        notes: data.notes,
+    };
     state
         .dispute_repo
-        .update_attendance(session_id, party_id, data)
+        .update_attendance(session_id, party_id, update_data)
         .await
         .map(Json)
         .map_err(|e| {
@@ -808,21 +821,23 @@ async fn get_mediation_case(
     _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<MediationCase>, (StatusCode, Json<ErrorResponse>)> {
-    state
-        .dispute_repo
-        .get_mediation_case(id)
-        .await
-        .map(Json)
-        .map_err(|e| {
+    match state.dispute_repo.get_mediation_case(id).await {
+        Ok(Some(case)) => Ok(Json(case)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Mediation case not found")),
+        )),
+        Err(e) => {
             tracing::error!("Failed to get mediation case: {:?}", e);
-            (
+            Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
                     "DB_ERROR",
                     "Failed to get mediation case",
                 )),
-            )
-        })
+            ))
+        }
+    }
 }
 
 // =============================================================================
@@ -883,18 +898,24 @@ async fn get_resolution(
     _user: AuthUser,
     Path((_id, resolution_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<ResolutionWithVotes>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    match state
         .dispute_repo
         .get_resolution_with_votes(resolution_id)
         .await
-        .map(Json)
-        .map_err(|e| {
+    {
+        Ok(Some(resolution)) => Ok(Json(resolution)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Resolution not found")),
+        )),
+        Err(e) => {
             tracing::error!("Failed to get resolution: {:?}", e);
-            (
+            Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to get resolution")),
-            )
-        })
+            ))
+        }
+    }
 }
 
 /// Vote on a resolution.
@@ -1054,24 +1075,20 @@ async fn get_action_item(
     _user: AuthUser,
     Path((_id, action_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<ActionItem>, (StatusCode, Json<ErrorResponse>)> {
-    state
-        .dispute_repo
-        .find_action_item_by_id(action_id)
-        .await
-        .map_err(|e| {
+    match state.dispute_repo.find_action_item(action_id).await {
+        Ok(Some(item)) => Ok(Json(item)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Action item not found")),
+        )),
+        Err(e) => {
             tracing::error!("Failed to get action item: {:?}", e);
-            (
+            Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to get action item")),
-            )
-        })?
-        .map(Json)
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Action item not found")),
-            )
-        })
+            ))
+        }
+    }
 }
 
 /// Update an action item.
@@ -1083,7 +1100,13 @@ async fn update_action_item(
 ) -> Result<Json<ActionItem>, (StatusCode, Json<ErrorResponse>)> {
     state
         .dispute_repo
-        .update_action_item(action_id, data)
+        .update_action_item(
+            action_id,
+            data.title,
+            data.description,
+            data.due_date,
+            data.status,
+        )
         .await
         .map(Json)
         .map_err(|e| {

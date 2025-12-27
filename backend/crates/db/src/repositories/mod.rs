@@ -213,3 +213,23 @@ pub use energy::EnergyRepository;
 pub mod llm_document;
 
 pub use llm_document::LlmDocumentRepository;
+
+// Epic 57: Pet & Vehicle Registry
+pub mod registry;
+
+pub use registry::RegistryRepository;
+
+// Epic 73: Infrastructure & Operations
+pub mod operations;
+
+pub use operations::OperationsRepository;
+
+// Epic 74: Owner Investment Analytics
+pub mod owner_analytics;
+
+pub use owner_analytics::OwnerAnalyticsRepository;
+
+// Epic 77: Dispute Resolution
+pub mod dispute;
+
+pub use dispute::{DisputeRepository, UpdateAttendanceData, UpdateSessionData};

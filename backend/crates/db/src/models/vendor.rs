@@ -4,7 +4,7 @@ use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 /// Vendor status constants.
@@ -530,7 +530,7 @@ pub struct VendorJobSummary {
 }
 
 /// Vendor job query parameters.
-#[derive(Debug, Default, Deserialize, ToSchema)]
+#[derive(Debug, Default, Deserialize, ToSchema, IntoParams)]
 pub struct VendorJobQuery {
     pub status: Option<String>,
     pub from_date: Option<NaiveDate>,

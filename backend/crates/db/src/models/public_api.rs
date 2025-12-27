@@ -6,7 +6,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 // ==================== API Key Status Constants ====================
@@ -269,7 +269,7 @@ pub struct UpdateApiKey {
 }
 
 /// API key query parameters.
-#[derive(Debug, Default, Deserialize, ToSchema)]
+#[derive(Debug, Default, Deserialize, ToSchema, IntoParams)]
 pub struct ApiKeyQuery {
     pub status: Option<String>,
     pub scope: Option<String>,
@@ -367,7 +367,7 @@ pub struct UpdateWebhookSubscription {
 }
 
 /// Webhook subscription query parameters.
-#[derive(Debug, Default, Deserialize, ToSchema)]
+#[derive(Debug, Default, Deserialize, ToSchema, IntoParams)]
 pub struct WebhookSubscriptionQuery {
     pub event_type: Option<String>,
     pub is_active: Option<bool>,
