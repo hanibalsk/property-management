@@ -9,6 +9,9 @@ pub mod accounting;
 pub mod calendar;
 pub mod crypto;
 
+// Epic 64: Advanced AI & LLM Capabilities
+pub mod llm;
+
 // Re-exports
 pub use airbnb::AirbnbClient;
 pub use booking::BookingClient;
@@ -29,4 +32,11 @@ pub use accounting::{
 // Encryption utilities for sensitive integration data
 pub use crypto::{
     decrypt_if_available, encrypt_if_available, CryptoError, IntegrationCrypto, ENCRYPTION_KEY_ENV,
+};
+
+// Story 64.1-64.4: LLM Integration
+pub use llm::{
+    ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ContextChunk, EnhancedChatResult,
+    LeaseGenerationInput, LeaseGenerationResult, ListingDescriptionInput, ListingDescriptionResult,
+    LlmClient, LlmConfig, LlmError, TokenUsage,
 };

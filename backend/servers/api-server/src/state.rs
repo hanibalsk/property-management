@@ -6,11 +6,12 @@ use db::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
         AutomationRepository, BudgetRepository, BuildingRepository, CommunityRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DocumentRepository, DocumentTemplateRepository, EmergencyRepository, EquipmentRepository,
-        FacilityRepository, FaultRepository, FeatureFlagRepository, FinancialRepository,
-        FormRepository, GovernmentPortalRepository, GranularNotificationRepository,
-        HealthMonitoringRepository, HelpRepository, InsuranceRepository, IntegrationRepository,
-        LeaseRepository, LegalRepository, ListingRepository, MeterRepository,
+        DocumentRepository, DocumentTemplateRepository, EmergencyRepository, EnergyRepository,
+        EquipmentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
+        FinancialRepository, FormRepository, GovernmentPortalRepository,
+        GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
+        InsuranceRepository, IntegrationRepository, LeaseRepository, LegalRepository,
+        ListingRepository, LlmDocumentRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OrganizationMemberRepository, OrganizationRepository, PackageVisitorRepository,
         PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository, RentalRepository,
@@ -100,6 +101,10 @@ pub struct AppState {
     pub package_visitor_repo: PackageVisitorRepository,
     // Epic 61: External Integrations Suite
     pub integration_repo: IntegrationRepository,
+    // Epic 65: Energy & Sustainability Tracking
+    pub energy_repo: EnergyRepository,
+    // Epic 64: Advanced AI & LLM Capabilities
+    pub llm_document_repo: LlmDocumentRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -184,6 +189,10 @@ impl AppState {
         let package_visitor_repo = PackageVisitorRepository::new(db.clone());
         // Epic 61: External Integrations Suite
         let integration_repo = IntegrationRepository::new(db.clone());
+        // Epic 65: Energy & Sustainability Tracking
+        let energy_repo = EnergyRepository::new(db.clone());
+        // Epic 64: Advanced AI & LLM Capabilities
+        let llm_document_repo = LlmDocumentRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -245,6 +254,8 @@ impl AppState {
             form_repo,
             package_visitor_repo,
             integration_repo,
+            energy_repo,
+            llm_document_repo,
             auth_service,
             email_service,
             jwt_service,

@@ -74,3 +74,6 @@ pub mod package_visitor;
 
 // Epic 59: News & Media Management
 pub mod news_articles;
+
+// Epic 65: Energy & Sustainability Tracking
+pub mod energy;

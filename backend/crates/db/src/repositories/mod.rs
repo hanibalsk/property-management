@@ -203,3 +203,13 @@ pub use news_article::NewsArticleRepository;
 pub mod integration;
 
 pub use integration::IntegrationRepository;
+
+// Epic 65: Energy & Sustainability Tracking
+pub mod energy;
+
+pub use energy::EnergyRepository;
+
+// Epic 64: Advanced AI & LLM Capabilities
+pub mod llm_document;
+
+pub use llm_document::LlmDocumentRepository;
