@@ -205,11 +205,17 @@ jobs:
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ steps.pr.outputs.number }}
+          REPO=${{ github.repository }}
           REASON="${{ steps.check.outputs.reason }}"
 
-          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: $REASON
+          BODY="$(cat <<EOF
+          ✅ Auto-approved: ${REASON}
 
-          _This approval was automatically granted by the claude-threads CI workflow._"
+          _This approval was automatically granted by the claude-threads CI workflow._
+          EOF
+          )"
+
+          gh pr review "$PR_NUMBER" --repo "$REPO" --approve --body "$BODY"
 
           echo "✅ PR #$PR_NUMBER approved!"
 
