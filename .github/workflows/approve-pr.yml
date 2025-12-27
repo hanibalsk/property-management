@@ -55,7 +55,7 @@ jobs:
             exit 1
           fi
 
-          if [ "$PR_STATE" != "open" ]; then
+          if ! [ "$PR_STATE" = "open" ]; then
             echo "❌ PR #$PR_NUMBER is $PR_STATE (not open)"
             exit 1
           fi
@@ -163,6 +163,8 @@ jobs:
           fi
 
           # Verify all completed checks are successful
+          # Safety check: While non-success conclusions are already rejected above (lines 147-157),
+          # this provides an additional safety net in case the logic changes or edge cases arise.
           if [ "$COMPLETED" -ne "$SUCCESS" ]; then
             echo "❌ Not all completed check runs have 'success' conclusion"
             exit 1
@@ -251,7 +253,7 @@ EOF
 )
           fi
 
-          gh pr review "$PR_NUMBER" --approve --body "$BODY"
+          gh pr review "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --approve --body "$BODY"
 
           echo "✅ PR #$PR_NUMBER approved!"
 
