@@ -203,7 +203,8 @@ jobs:
           PR_NUMBER=${{ steps.pr.outputs.number }}
           REASON="${{ steps.check.outputs.reason }}"
 
-          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: $REASON
+          REPO=${{ github.repository }}
+          gh pr review "$PR_NUMBER" --repo "$REPO" --approve --body "✅ Auto-approved: $REASON
 
           _This approval was automatically granted by the claude-threads CI workflow._"
 
