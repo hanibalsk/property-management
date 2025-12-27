@@ -1,0 +1,268 @@
+name: Approve PR
+
+# Manually invokable workflow for PR approval
+# Used by shepherd agents to approve PRs after all checks pass
+#
+# SECURITY NOTE: This workflow allows programmatic PR approval.
+# Access is controlled by GitHub's workflow_dispatch permissions.
+# Only users/apps with write access can trigger this workflow.
+# The AUTO_APPROVE_TOKEN must be from a different user than the PR author
+# to satisfy GitHub's requirement that users cannot approve their own PRs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to approve'
+        required: true
+        type: number
+      skip_ci_check:
+        description: 'Skip CI check (approve regardless of CI status)'
+        required: false
+        type: boolean
+        default: false
+      comment:
+        description: 'Optional approval comment'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  approve:
+    name: Approve PR
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+      contents: read
+      checks: read
+
+    steps:
+      - name: Validate PR exists
+        id: validate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          REPO=${{ github.repository }}
+
+          echo "Validating PR #$PR_NUMBER exists..."
+
+          PR_STATE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.state' 2>/dev/null || echo "not_found")
+
+          if [ "$PR_STATE" = "not_found" ]; then
+            echo "❌ PR #$PR_NUMBER not found"
+            exit 1
+          fi
+
+          if ! [ "$PR_STATE" = "open" ]; then
+            echo "❌ PR #$PR_NUMBER is $PR_STATE (not open)"
+            exit 1
+          fi
+
+          echo "✅ PR #$PR_NUMBER is open"
+          echo "state=$PR_STATE" >> $GITHUB_OUTPUT
+
+      - name: Check CI status
+        if: ${{ github.event.inputs.skip_ci_check != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          REPO=${{ github.repository }}
+
+          echo "Checking CI status for PR #$PR_NUMBER..."
+
+          # Get the HEAD SHA of the PR
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          echo "HEAD SHA: $HEAD_SHA"
+
+          # Get check runs status
+          CHECK_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" \
+            --jq '{
+              total: .total_count,
+              completed: [.check_runs[] | select(.status == "completed")] | length,
+              success: [.check_runs[] | select(.conclusion == "success")] | length,
+              failure: [.check_runs[] | select(.conclusion == "failure")] | length,
+              skipped: [.check_runs[] | select(.conclusion == "skipped")] | length,
+              cancelled: [.check_runs[] | select(.conclusion == "cancelled")] | length,
+              neutral: [.check_runs[] | select(.conclusion == "neutral")] | length,
+              action_required: [.check_runs[] | select(.conclusion == "action_required")] | length,
+              timed_out: [.check_runs[] | select(.conclusion == "timed_out")] | length,
+              pending: [.check_runs[] | select(.status != "completed")] | length
+            }')
+
+          TOTAL=$(echo "$CHECK_STATUS" | jq -r '.total')
+          COMPLETED=$(echo "$CHECK_STATUS" | jq -r '.completed')
+          SUCCESS=$(echo "$CHECK_STATUS" | jq -r '.success')
+          FAILURE=$(echo "$CHECK_STATUS" | jq -r '.failure')
+          SKIPPED=$(echo "$CHECK_STATUS" | jq -r '.skipped')
+          CANCELLED=$(echo "$CHECK_STATUS" | jq -r '.cancelled')
+          NEUTRAL=$(echo "$CHECK_STATUS" | jq -r '.neutral')
+          ACTION_REQUIRED=$(echo "$CHECK_STATUS" | jq -r '.action_required')
+          TIMED_OUT=$(echo "$CHECK_STATUS" | jq -r '.timed_out')
+          PENDING=$(echo "$CHECK_STATUS" | jq -r '.pending')
+
+          # Get commit status (for external CI systems)
+          COMMIT_STATUS=$(gh api "repos/$REPO/commits/$HEAD_SHA/status" \
+            --jq '{
+              state: .state,
+              total: .statuses | length,
+              success: [.statuses[] | select(.state == "success")] | length,
+              failure: [.statuses[] | select(.state == "failure")] | length,
+              error: [.statuses[] | select(.state == "error")] | length,
+              pending: [.statuses[] | select(.state == "pending")] | length
+            }')
+
+          STATUS_TOTAL=$(echo "$COMMIT_STATUS" | jq -r '.total')
+          STATUS_SUCCESS=$(echo "$COMMIT_STATUS" | jq -r '.success')
+          STATUS_FAILURE=$(echo "$COMMIT_STATUS" | jq -r '.failure')
+          STATUS_ERROR=$(echo "$COMMIT_STATUS" | jq -r '.error')
+          STATUS_PENDING=$(echo "$COMMIT_STATUS" | jq -r '.pending')
+
+          COMBINED_TOTAL=$((TOTAL + STATUS_TOTAL))
+
+          echo "Check Runs: $COMPLETED/$TOTAL completed ($SUCCESS success, $FAILURE failure, $PENDING pending)"
+          echo "Commit Statuses: $STATUS_TOTAL total ($STATUS_SUCCESS success, $STATUS_FAILURE failure, $STATUS_ERROR error, $STATUS_PENDING pending)"
+          echo "Combined Total: $COMBINED_TOTAL checks"
+
+          # Fail if no checks found
+          if [ "$COMBINED_TOTAL" -eq 0 ]; then
+            echo "❌ No CI checks found! At least one CI check is required for approval."
+            exit 1
+          fi
+
+          # Fail if any check failed
+          if [ "$FAILURE" -gt 0 ]; then
+            echo "❌ CI failed! $FAILURE check run(s) failed."
+            exit 1
+          fi
+
+          # Fail if any commit status failed or errored
+          if [ "$STATUS_FAILURE" -gt 0 ] || [ "$STATUS_ERROR" -gt 0 ]; then
+            echo "❌ CI failed! $STATUS_FAILURE commit status(es) failed, $STATUS_ERROR errored."
+            exit 1
+          fi
+
+          # Fail on non-success conclusions (skipped, cancelled, neutral, action_required, timed_out)
+          NON_SUCCESS=$((SKIPPED + CANCELLED + NEUTRAL + ACTION_REQUIRED + TIMED_OUT))
+          if [ "$NON_SUCCESS" -gt 0 ]; then
+            echo "❌ CI checks have non-success conclusions:"
+            [ "$SKIPPED" -gt 0 ] && echo "  - $SKIPPED skipped"
+            [ "$CANCELLED" -gt 0 ] && echo "  - $CANCELLED cancelled"
+            [ "$NEUTRAL" -gt 0 ] && echo "  - $NEUTRAL neutral"
+            [ "$ACTION_REQUIRED" -gt 0 ] && echo "  - $ACTION_REQUIRED action_required"
+            [ "$TIMED_OUT" -gt 0 ] && echo "  - $TIMED_OUT timed_out"
+            exit 1
+          fi
+
+          # Fail if any checks or statuses are pending
+          if [ "$PENDING" -gt 0 ] || [ "$STATUS_PENDING" -gt 0 ]; then
+            echo "⏳ CI still running: $PENDING check run(s) pending, $STATUS_PENDING commit status(es) pending"
+            exit 1
+          fi
+
+          # Verify all completed checks are successful
+          # Safety check: While non-success conclusions are already rejected above (lines 147-157),
+          # this provides an additional safety net in case the logic changes or edge cases arise.
+          if [ "$COMPLETED" -ne "$SUCCESS" ]; then
+            echo "❌ Not all completed check runs have 'success' conclusion"
+            exit 1
+          fi
+
+          # Verify all commit statuses are successful (if any exist)
+          if [ "$STATUS_TOTAL" -gt 0 ] && [ "$STATUS_SUCCESS" -ne "$STATUS_TOTAL" ]; then
+            echo "❌ Not all commit statuses have 'success' state"
+            exit 1
+          fi
+
+          echo "✅ All $COMBINED_TOTAL CI checks passed! ($TOTAL check runs, $STATUS_TOTAL commit statuses)"
+
+      - name: Validate AUTO_APPROVE_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+
+          # Check if AUTO_APPROVE_TOKEN is configured
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ AUTO_APPROVE_TOKEN secret is not configured."
+            echo "Please add a valid AUTO_APPROVE_TOKEN secret with permissions to approve pull requests."
+            echo "The token must be from a different user than the PR author."
+            exit 1
+          fi
+
+          # Validate token works
+          if ! gh auth status >/dev/null 2>&1; then
+            echo "❌ Failed to authenticate with AUTO_APPROVE_TOKEN."
+            echo "Ensure the token is valid and has 'repo' scope."
+            exit 1
+          fi
+
+          # Get the token owner
+          TOKEN_OWNER=$(gh api user --jq '.login')
+          echo "Token owner: $TOKEN_OWNER"
+
+          # Get the PR author
+          PR_AUTHOR=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.user.login')
+          echo "PR author: $PR_AUTHOR"
+
+          # Validate that token owner is different from PR author
+          if [ "$TOKEN_OWNER" = "$PR_AUTHOR" ]; then
+            echo "❌ Cannot approve PR: AUTO_APPROVE_TOKEN belongs to the PR author ($PR_AUTHOR)."
+            echo "GitHub doesn't allow users to approve their own PRs."
+            echo "Please use a token from a different user account."
+            exit 1
+          fi
+
+          echo "✅ AUTO_APPROVE_TOKEN is valid (owner: $TOKEN_OWNER, PR author: $PR_AUTHOR)"
+
+      - name: Approve PR
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          COMMENT="${{ github.event.inputs.comment }}"
+          SKIP_CI="${{ github.event.inputs.skip_ci_check }}"
+
+          # Build approval message using heredoc for safe multi-line strings
+          # Using single-quoted heredoc (<<'EOF') prevents variable expansion and command injection
+          if [ -n "$COMMENT" ]; then
+            BODY=$(cat <<'EOF'
+✅ **Approved**: COMMENT_PLACEHOLDER
+
+_Approved via workflow dispatch._
+EOF
+)
+            # Safely substitute the comment after heredoc processing
+            BODY="${BODY//COMMENT_PLACEHOLDER/$COMMENT}"
+          elif [ "$SKIP_CI" = "true" ]; then
+            BODY=$(cat <<'EOF'
+✅ **Approved** (CI check skipped)
+
+_Approved via workflow dispatch._
+EOF
+)
+          else
+            BODY=$(cat <<'EOF'
+✅ **Approved**: All CI checks passed
+
+_Approved via workflow dispatch._
+EOF
+)
+          fi
+
+          gh pr review "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --approve --body "$BODY"
+
+          echo "✅ PR #$PR_NUMBER approved!"
+
+      - name: Report result
+        if: always()
+        run: |
+          echo "## Approval Result" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **PR**: #${{ github.event.inputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Skip CI**: ${{ github.event.inputs.skip_ci_check }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Comment**: ${{ github.event.inputs.comment || '(none)' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
