@@ -20,6 +20,12 @@ _bmad/
 .cursor/
 .mcp.json
 
+# === Orchestration (local automation) ===
+orchestrate
+.orchestrate/
+.worktrees/
+.secrets
+
 # === Documentation ===
 !docs/
 !docs/**
