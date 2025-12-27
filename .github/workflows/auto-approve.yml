@@ -32,7 +32,7 @@ jobs:
       - name: Get PR number
         id: pr
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
           else
             echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
@@ -88,7 +88,7 @@ jobs:
             fi
 
             # If all checks completed successfully
-            if [ "$COMPLETED" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
+            if [ "$COMPLETED" -eq "$TOTAL" ] && [ "$SUCCESS" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
               echo "✅ All $TOTAL CI checks passed!"
               break
             fi
@@ -195,27 +195,17 @@ jobs:
             echo "No stale approvals to dismiss"
           fi
 
-      - name: Checkout repository
-        if: steps.check.outputs.should_approve == 'true'
-        uses: actions/checkout@v4
-
       - name: Auto-approve PR
         if: steps.check.outputs.should_approve == 'true'
         env:
           GH_TOKEN: ${{ secrets.AUTO_APPROVE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ steps.pr.outputs.number }}
-          REPO=${{ github.repository }}
           REASON="${{ steps.check.outputs.reason }}"
 
-          BODY="$(cat <<EOF
-          ✅ Auto-approved: ${REASON}
+          gh pr review "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --approve --body "✅ Auto-approved: $REASON
 
-          _This approval was automatically granted by the claude-threads CI workflow._
-          EOF
-          )"
-
-          gh pr review "$PR_NUMBER" --repo "$REPO" --approve --body "$BODY"
+          _This approval was automatically granted by the claude-threads CI workflow._"
 
           echo "✅ PR #$PR_NUMBER approved!"
 
