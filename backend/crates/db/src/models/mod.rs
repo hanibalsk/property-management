@@ -311,15 +311,15 @@ pub use work_order::{
 pub mod vendor;
 
 pub use vendor::{
-    access_method, contract_status, contract_type, invoice_status, service_type, vendor_badge,
-    vendor_status, AcceptJobRequest, AccessCodeResponse, ContractQuery, CreatePropertyAccess,
-    CreateVendor, CreateVendorContact, CreateVendorContract, CreateVendorInvoice,
-    CreateVendorRating, DeclineJobRequest, ExpiringContract, GenerateAccessCode, InvoiceQuery,
-    InvoiceSummary, MaterialItem, PropertyAccessInfo, ProposeAlternativeTime, ServiceCount,
-    SubmitWorkCompletion, UpdateVendor, UpdateVendorContract, UpdateVendorInvoice, Vendor,
-    VendorContact, VendorContract, VendorDashboardStats, VendorEarningsSummary, VendorFeedback,
-    VendorInvoice, VendorInvoiceWithTracking, VendorJob, VendorJobQuery, VendorJobSummary,
-    VendorProfile, VendorQuery, VendorRating, VendorStatistics, VendorWithDetails, WorkCompletion,
+    contract_status, contract_type, invoice_status, service_type, vendor_status, AcceptJobRequest,
+    AccessCodeResponse, ContractQuery, CreateVendor, CreateVendorContact, CreateVendorContract,
+    CreateVendorInvoice, CreateVendorRating, DeclineJobRequest, ExpiringContract,
+    GenerateAccessCode, InvoiceQuery, InvoiceSummary, MaterialItem, PropertyAccessInfo,
+    ProposeAlternativeTime, ServiceCount, SubmitWorkCompletion, UpdateVendor, UpdateVendorContract,
+    UpdateVendorInvoice, Vendor, VendorContact, VendorContract, VendorDashboardStats,
+    VendorEarningsSummary, VendorFeedback, VendorInvoice, VendorInvoiceWithTracking, VendorJob,
+    VendorJobQuery, VendorJobSummary, VendorProfile, VendorQuery, VendorRating, VendorStatistics,
+    VendorWithDetails, WorkCompletion,
 };
 
 // Epic 22: Insurance Management
@@ -567,3 +567,6 @@ pub use regional_compliance::{
     SlovakGdprConsent, SlovakVoteMinutes, SlovakVoteValidation, SlovakVotingConfig,
     ValidateCzechVote, ValidateSlovakVote, VoteParticipantMinutes,
 };
+
+// Epic 76: Move-in/Move-out Workflow
+pub mod move_workflow;

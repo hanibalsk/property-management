@@ -7,15 +7,14 @@ use axum::{
 };
 use chrono::{NaiveDate, Utc};
 use rust_decimal::Decimal;
-use std::sync::Arc;
 use uuid::Uuid;
 
-use api_core::extractors::TenantContextExtractor;
+use api_core::extractors::TenantExtractor;
 use db::models::regional_compliance::*;
 
 use crate::state::AppState;
 
-pub fn router() -> Router<Arc<AppState>> {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/jurisdiction", get(get_jurisdiction))
         .route("/jurisdiction", put(set_jurisdiction))
@@ -52,16 +51,16 @@ pub fn router() -> Router<Arc<AppState>> {
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/jurisdiction", tag = "Regional Compliance", responses((status = 200, description = "Current jurisdiction", body = Jurisdiction)))]
 async fn get_jurisdiction(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
 ) -> Json<Jurisdiction> {
     Json(Jurisdiction::default())
 }
 
 #[utoipa::path(put, path = "/api/v1/regional-compliance/jurisdiction", tag = "Regional Compliance", request_body = SetJurisdiction, responses((status = 200, description = "Jurisdiction updated", body = Jurisdiction)))]
 async fn set_jurisdiction(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<SetJurisdiction>,
 ) -> Json<Jurisdiction> {
     Json(payload.jurisdiction)
@@ -69,8 +68,8 @@ async fn set_jurisdiction(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/slovak/voting/config", tag = "Regional Compliance", request_body = ConfigureSlovakVoting, responses((status = 200, description = "Config saved", body = SlovakVotingConfig)))]
 async fn configure_slovak_voting(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<ConfigureSlovakVoting>,
 ) -> Json<SlovakVotingConfig> {
     Json(SlovakVotingConfig {
@@ -93,8 +92,8 @@ async fn configure_slovak_voting(
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/slovak/voting/config/{building_id}", tag = "Regional Compliance", params(("building_id" = Uuid, Path, description = "Building ID")), responses((status = 200, description = "Config", body = SlovakVotingConfig)))]
 async fn get_slovak_voting_config(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Path(building_id): Path<Uuid>,
 ) -> Json<SlovakVotingConfig> {
     Json(SlovakVotingConfig {
@@ -115,8 +114,8 @@ async fn get_slovak_voting_config(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/slovak/voting/validate", tag = "Regional Compliance", request_body = ValidateSlovakVote, responses((status = 200, description = "Validation result", body = SlovakVoteValidation)))]
 async fn validate_slovak_vote(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<ValidateSlovakVote>,
 ) -> Json<SlovakVoteValidation> {
     let required_quorum = payload.decision_type.required_quorum_percentage();
@@ -139,8 +138,8 @@ async fn validate_slovak_vote(
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/slovak/voting/minutes/{vote_id}", tag = "Regional Compliance", params(("vote_id" = Uuid, Path, description = "Vote ID")), responses((status = 200, description = "Minutes", body = SlovakVoteMinutes)))]
 async fn get_slovak_vote_minutes(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Path(vote_id): Path<Uuid>,
 ) -> Json<SlovakVoteMinutes> {
     Json(SlovakVoteMinutes {
@@ -170,8 +169,8 @@ async fn get_slovak_vote_minutes(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/slovak/accounting/config", tag = "Regional Compliance", request_body = ConfigureSlovakAccounting, responses((status = 200, description = "Config saved", body = SlovakAccountingConfig)))]
 async fn configure_slovak_accounting(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<ConfigureSlovakAccounting>,
 ) -> Json<SlovakAccountingConfig> {
     Json(SlovakAccountingConfig {
@@ -192,8 +191,8 @@ async fn configure_slovak_accounting(
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/slovak/accounting/config", tag = "Regional Compliance", responses((status = 200, description = "Config", body = SlovakAccountingConfig)))]
 async fn get_slovak_accounting_config(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
 ) -> Json<SlovakAccountingConfig> {
     Json(SlovakAccountingConfig {
         id: Uuid::new_v4(),
@@ -211,8 +210,8 @@ async fn get_slovak_accounting_config(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/slovak/accounting/export", tag = "Regional Compliance", request_body = ExportSlovakAccounting, responses((status = 200, description = "Export", body = SlovakAccountingExport)))]
 async fn export_slovak_accounting(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<ExportSlovakAccounting>,
 ) -> Json<SlovakAccountingExport> {
     Json(SlovakAccountingExport {
@@ -239,8 +238,8 @@ async fn export_slovak_accounting(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/slovak/gdpr/config", tag = "Regional Compliance", request_body = ConfigureSlovakGdpr, responses((status = 200, description = "Config saved", body = SlovakGdprConfig)))]
 async fn configure_slovak_gdpr(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<ConfigureSlovakGdpr>,
 ) -> Json<SlovakGdprConfig> {
     Json(SlovakGdprConfig {
@@ -259,8 +258,8 @@ async fn configure_slovak_gdpr(
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/slovak/gdpr/config", tag = "Regional Compliance", responses((status = 200, description = "Config", body = SlovakGdprConfig)))]
 async fn get_slovak_gdpr_config(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
 ) -> Json<SlovakGdprConfig> {
     Json(SlovakGdprConfig {
         id: Uuid::new_v4(),
@@ -278,8 +277,8 @@ async fn get_slovak_gdpr_config(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/slovak/gdpr/consent", tag = "Regional Compliance", request_body = RecordGdprConsent, responses((status = 200, description = "Consent recorded", body = SlovakGdprConsent)))]
 async fn record_gdpr_consent(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<RecordGdprConsent>,
 ) -> Json<SlovakGdprConsent> {
     Json(SlovakGdprConsent {
@@ -300,8 +299,8 @@ async fn record_gdpr_consent(
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/slovak/gdpr/consent/status", tag = "Regional Compliance", responses((status = 200, description = "Status", body = GdprConsentStatus)))]
 async fn get_gdpr_consent_status(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
 ) -> Json<GdprConsentStatus> {
     Json(GdprConsentStatus {
         user_id: Uuid::new_v4(),
@@ -327,8 +326,8 @@ async fn get_gdpr_consent_status(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/slovak/gdpr/consent/withdraw", tag = "Regional Compliance", request_body = RecordGdprConsent, responses((status = 200, description = "Withdrawn", body = SlovakGdprConsent)))]
 async fn withdraw_gdpr_consent(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<RecordGdprConsent>,
 ) -> Json<SlovakGdprConsent> {
     Json(SlovakGdprConsent {
@@ -349,8 +348,8 @@ async fn withdraw_gdpr_consent(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/czech/svj/config", tag = "Regional Compliance", request_body = ConfigureCzechSvj, responses((status = 200, description = "Config saved", body = CzechSvjConfig)))]
 async fn configure_czech_svj(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<ConfigureCzechSvj>,
 ) -> Json<CzechSvjConfig> {
     Json(CzechSvjConfig {
@@ -376,8 +375,8 @@ async fn configure_czech_svj(
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/czech/svj/config/{building_id}", tag = "Regional Compliance", params(("building_id" = Uuid, Path, description = "Building ID")), responses((status = 200, description = "Config", body = CzechSvjConfig)))]
 async fn get_czech_svj_config(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Path(building_id): Path<Uuid>,
 ) -> Json<CzechSvjConfig> {
     Json(CzechSvjConfig {
@@ -401,8 +400,8 @@ async fn get_czech_svj_config(
 
 #[utoipa::path(post, path = "/api/v1/regional-compliance/czech/svj/validate", tag = "Regional Compliance", request_body = ValidateCzechVote, responses((status = 200, description = "Validation result", body = CzechVoteValidation)))]
 async fn validate_czech_vote(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Json(payload): Json<ValidateCzechVote>,
 ) -> Json<CzechVoteValidation> {
     let required_quorum = payload.decision_type.required_quorum_percentage();
@@ -430,8 +429,8 @@ async fn validate_czech_vote(
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/czech/svj/usneseni/{vote_id}", tag = "Regional Compliance", params(("vote_id" = Uuid, Path, description = "Vote ID")), responses((status = 200, description = "Usneseni", body = CzechSvjUsneseni)))]
 async fn get_czech_usneseni(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
     Path(vote_id): Path<Uuid>,
 ) -> Json<CzechSvjUsneseni> {
     Json(CzechSvjUsneseni {
@@ -464,8 +463,8 @@ async fn get_czech_usneseni(
 
 #[utoipa::path(get, path = "/api/v1/regional-compliance/status", tag = "Regional Compliance", responses((status = 200, description = "Status", body = RegionalComplianceStatus)))]
 async fn get_compliance_status(
-    _ctx: TenantContextExtractor,
-    State(_state): State<Arc<AppState>>,
+    _ctx: TenantExtractor,
+    State(_state): State<AppState>,
 ) -> Json<RegionalComplianceStatus> {
     Json(RegionalComplianceStatus {
         organization_id: Uuid::new_v4(),

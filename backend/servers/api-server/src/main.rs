@@ -382,8 +382,6 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/news", routes::news_articles::router())
         // Energy routes (Epic 65)
         .nest("/api/v1/energy", routes::energy::router())
-        // Owner Analytics routes (Epic 74)
-        .nest("/api/v1/owner-analytics", routes::owner_analytics::router())
         // Regional Compliance routes (Epic 72)
         .nest(
             "/api/v1/regional-compliance",

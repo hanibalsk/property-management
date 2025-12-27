@@ -80,6 +80,3 @@ pub mod energy;
 
 // Epic 72: Regional Legal Compliance (SK/CZ)
 pub mod regional_compliance;
-
-// Epic 74: Owner Analytics
-pub mod owner_analytics;

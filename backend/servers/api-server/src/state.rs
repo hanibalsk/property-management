@@ -5,10 +5,10 @@ use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
         AutomationRepository, BudgetRepository, BuildingRepository, CommunityRepository,
-        CompetitiveRepository, CriticalNotificationRepository, DataExportRepository,
-        DelegationRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
-        EnergyRepository, EquipmentRepository, FacilityRepository, FaultRepository,
-        FeatureFlagRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
+        CriticalNotificationRepository, DataExportRepository, DelegationRepository,
+        DocumentRepository, DocumentTemplateRepository, EmergencyRepository, EnergyRepository,
+        EquipmentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
+        FinancialRepository, FormRepository, GovernmentPortalRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         InsuranceRepository, IntegrationRepository, LeaseRepository, LegalRepository,
         ListingRepository, LlmDocumentRepository, MeterRepository,
@@ -105,8 +105,6 @@ pub struct AppState {
     pub energy_repo: EnergyRepository,
     // Epic 64: Advanced AI & LLM Capabilities
     pub llm_document_repo: LlmDocumentRepository,
-    // Epic 70: Competitive Feature Enhancements
-    pub competitive_repo: CompetitiveRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -195,8 +193,6 @@ impl AppState {
         let energy_repo = EnergyRepository::new(db.clone());
         // Epic 64: Advanced AI & LLM Capabilities
         let llm_document_repo = LlmDocumentRepository::new(db.clone());
-        // Epic 70: Competitive Feature Enhancements
-        let competitive_repo = CompetitiveRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -260,7 +256,6 @@ impl AppState {
             integration_repo,
             energy_repo,
             llm_document_repo,
-            competitive_repo,
             auth_service,
             email_service,
             jwt_service,
