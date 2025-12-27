@@ -32,7 +32,7 @@ jobs:
       - name: Get PR number
         id: pr
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
           else
             echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
@@ -88,7 +88,7 @@ jobs:
             fi
 
             # If all checks completed successfully
-            if [ "$COMPLETED" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
+            if [ "$COMPLETED" -eq "$TOTAL" ] && [ "$SUCCESS" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
               echo "✅ All $TOTAL CI checks passed!"
               break
             fi
@@ -203,7 +203,7 @@ jobs:
           PR_NUMBER=${{ steps.pr.outputs.number }}
           REASON="${{ steps.check.outputs.reason }}"
 
-          gh pr review "$PR_NUMBER" --approve --body "✅ Auto-approved: $REASON
+          gh pr review "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --approve --body "✅ Auto-approved: $REASON
 
           _This approval was automatically granted by the claude-threads CI workflow._"
 
