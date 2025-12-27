@@ -78,8 +78,8 @@ pub mod news_articles;
 // Epic 65: Energy & Sustainability Tracking
 pub mod energy;
 
-// Epic 70: Competitive Feature Enhancements
-pub mod competitive;
+// Epic 72: Regional Legal Compliance (SK/CZ)
+pub mod regional_compliance;
 
-// Epic 78: Vendor Operations Portal
-pub mod vendor_portal;
+// Epic 74: Owner Analytics
+pub mod owner_analytics;

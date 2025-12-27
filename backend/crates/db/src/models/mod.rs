@@ -553,15 +553,17 @@ pub use llm_document::{
     VoiceCommandRequest, VoiceCommandResponse,
 };
 
-// Epic 70: Competitive Feature Enhancements
-pub mod competitive;
+// Epic 72: Regional Legal Compliance (SK/CZ)
+pub mod regional_compliance;
 
-pub use competitive::{
-    amenity_type, dynamic_pricing_status, price_change_type, tour_format, tour_status,
-    AreaStatistics, ComparableSale, CreateComparableSale, CreateDynamicPricingConfig,
-    CreateNearbyAmenity, CreateVirtualTour, DynamicPricingConfig, MarketTrend, MarketTrendQuery,
-    NearbyAmenity, NeighborhoodData, NeighborhoodDataWithAmenities, PriceHistoryEntry,
-    PriceHistoryQuery, PriceHistorySummary, PriceSuggestion, RecordPriceHistory,
-    RespondToSuggestion, TourViewAnalytics, UpdateDynamicPricingConfig, UpdateVirtualTour,
-    UpsertNeighborhoodData, VirtualTour, VirtualTourWithStats,
+pub use regional_compliance::{
+    slovak_accounts, ConfigureCzechSvj, ConfigureSlovakAccounting, ConfigureSlovakGdpr,
+    ConfigureSlovakVoting, ConsentCategoryStatus, CzechDecisionType, CzechOrgType, CzechSvjConfig,
+    CzechSvjUsneseni, CzechVoteValidation, DpoContact, ExportSlovakAccounting, GdprConsentCategory,
+    GdprConsentStatus, Jurisdiction, PohodaExport, PohodaHeader, PohodaInvoiceExport,
+    PohodaInvoiceItemExport, PohodaPaymentExport, ProcessingPurpose, QuestionMinutes,
+    RecordGdprConsent, RegionalComplianceStatus, SetJurisdiction, SlovakAccountingConfig,
+    SlovakAccountingExport, SlovakAccountingFormat, SlovakDecisionType, SlovakGdprConfig,
+    SlovakGdprConsent, SlovakVoteMinutes, SlovakVoteValidation, SlovakVotingConfig,
+    ValidateCzechVote, ValidateSlovakVote, VoteParticipantMinutes,
 };
