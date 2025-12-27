@@ -46,15 +46,20 @@ pub struct ComparableProperty {
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct AddComparableProperty {
     pub address: String,
-    pub price: Decimal,
-    pub sold_date: Option<NaiveDate>,
+    pub sale_price: Decimal,
+    pub size_sqm: i32,
+    pub rooms: i32,
+    pub distance_km: Decimal,
+    pub similarity_score: Decimal,
+    pub source: String,
 }
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct CalculateROIRequest {
-    pub property_id: Uuid,
-    pub purchase_price: Decimal,
-    pub purchase_date: NaiveDate,
+    pub unit_id: Uuid,
+    pub total_investment: Decimal,
+    pub from_date: NaiveDate,
+    pub to_date: NaiveDate,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
@@ -84,8 +89,8 @@ pub struct CashFlowBreakdown {
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct CashFlowIncome {
-    pub rent: Decimal,
-    pub other: Decimal,
+    pub rental_income: Decimal,
+    pub other_fees: Decimal,
     pub total: Decimal,
 }
 
@@ -120,29 +125,35 @@ pub struct ExpenseAutoApprovalRule {
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct CreateAutoApprovalRule {
-    pub category: String,
-    pub max_amount: Decimal,
+    pub unit_id: Option<Uuid>,
+    pub max_amount_per_expense: Option<Decimal>,
+    pub max_monthly_total: Option<Decimal>,
+    pub allowed_categories: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct UpdateAutoApprovalRule {
-    pub category: Option<String>,
-    pub max_amount: Option<Decimal>,
+    pub unit_id: Option<Uuid>,
+    pub max_amount_per_expense: Option<Decimal>,
+    pub max_monthly_total: Option<Decimal>,
+    pub allowed_categories: Option<Vec<String>>,
     pub is_active: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct ExpenseApprovalRequest {
     pub id: Uuid,
-    pub property_id: Uuid,
+    pub unit_id: Uuid,
     pub amount: Decimal,
     pub category: String,
     pub description: String,
     pub status: String,
+    pub auto_approval_rule_id: Option<Uuid>,
+    pub review_notes: Option<String>,
     pub submitted_by: Uuid,
     pub reviewed_by: Option<Uuid>,
-    pub submitted_at: DateTime<Utc>,
-    pub reviewed_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Deserialize, ToSchema)]

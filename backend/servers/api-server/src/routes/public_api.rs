@@ -36,9 +36,10 @@ use crate::state::AppState;
 /// Generate a cryptographically secure random secret.
 /// Uses 32 bytes of random data encoded as hex (64 characters).
 fn generate_secure_secret(prefix: &str) -> String {
-    let mut rng = rand::rng();
+    use rand::RngCore;
+    let mut rng = rand::thread_rng();
     let mut bytes = [0u8; 32];
-    rng.fill(&mut bytes);
+    rng.fill_bytes(&mut bytes);
     format!("{}_{}", prefix, hex::encode(bytes))
 }
 
