@@ -77,3 +77,6 @@ pub mod news_articles;
 
 // Epic 65: Energy & Sustainability Tracking
 pub mod energy;
+
+// Epic 72: Regional Legal Compliance (SK/CZ)
+pub mod regional_compliance;

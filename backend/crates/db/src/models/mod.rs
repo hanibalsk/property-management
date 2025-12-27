@@ -547,3 +547,18 @@ pub use llm_document::{
     UpdateEscalationConfig, UpdatePromptTemplate, VoiceAssistantDevice, VoiceCommandHistory,
     VoiceCommandRequest, VoiceCommandResponse,
 };
+
+// Epic 72: Regional Legal Compliance (SK/CZ)
+pub mod regional_compliance;
+
+pub use regional_compliance::{
+    slovak_accounts, ConfigureCzechSvj, ConfigureSlovakAccounting, ConfigureSlovakGdpr,
+    ConfigureSlovakVoting, ConsentCategoryStatus, CzechDecisionType, CzechOrgType, CzechSvjConfig,
+    CzechSvjUsneseni, CzechVoteValidation, DpoContact, ExportSlovakAccounting, GdprConsentCategory,
+    GdprConsentStatus, Jurisdiction, PohodaExport, PohodaHeader, PohodaInvoiceExport,
+    PohodaInvoiceItemExport, PohodaPaymentExport, ProcessingPurpose, QuestionMinutes,
+    RecordGdprConsent, RegionalComplianceStatus, SetJurisdiction, SlovakAccountingConfig,
+    SlovakAccountingExport, SlovakAccountingFormat, SlovakDecisionType, SlovakGdprConfig,
+    SlovakGdprConsent, SlovakVoteMinutes, SlovakVoteValidation, SlovakVotingConfig,
+    ValidateCzechVote, ValidateSlovakVote, VoteParticipantMinutes,
+};

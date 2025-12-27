@@ -169,7 +169,10 @@ use state::AppState;
         (name = "IoT Sensors", description = "IoT sensor registration and management"),
         (name = "Community", description = "Community & social features: groups, posts, events, marketplace"),
         (name = "Automation", description = "Workflow automation rules, templates, and execution"),
-        (name = "energy", description = "Energy & sustainability: EPCs, carbon footprint, sustainability scores, benchmarking")
+        (name = "energy", description = "Energy & sustainability: EPCs, carbon footprint, sustainability scores, benchmarking"),
+        (name = "Marketplace", description = "Service provider marketplace: providers, bookings, reviews, tenant insurance"),
+        (name = "Competitive Features", description = "Competitive enhancements: dynamic pricing, neighborhood data, virtual tours, market trends"),
+        (name = "Regional Compliance", description = "Slovak & Czech regional legal compliance: voting quorum, accounting exports, GDPR, SVJ")
     )
 )]
 struct ApiDoc;
@@ -379,6 +382,21 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/news", routes::news_articles::router())
         // Energy routes (Epic 65)
         .nest("/api/v1/energy", routes::energy::router())
+        // Regional Compliance routes (Epic 72)
+        .nest(
+            "/api/v1/regional-compliance",
+            routes::regional_compliance::router(),
+        )
+        // Marketplace routes (Epic 68)
+        .nest("/api/v1/marketplace", routes::marketplace::router())
+        // Dispute routes (Epic 77)
+        .nest("/api/v1/disputes", routes::disputes::router())
+        // Owner Analytics routes (Epic 74)
+        .nest("/api/v1/owner-analytics", routes::owner_analytics::router())
+        // AML Compliance routes (Epic 67)
+        .nest("/api/v1/aml-compliance", routes::aml_compliance::router())
+        // Competitive Features routes (Epic 70)
+        .nest("/api/v1/competitive", routes::competitive::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
