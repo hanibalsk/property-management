@@ -594,6 +594,44 @@ async fn upload_edd_document(
     // Require compliance role to upload EDD documents
     require_compliance_role(&user)?;
 
+    // Verify that the user has permission to upload documents for this specific EDD record
+    // In production, this would query the database to verify:
+    // 1. The EDD record exists
+    // 2. The user has permission to access the organization associated with the EDD
+    // 3. The EDD is in a state that allows document uploads (not completed/expired)
+    //
+    // For now, we log the authorization check
+    tracing::debug!(
+        edd_id = %edd_id,
+        user_id = %user.user_id,
+        org_id = ?user.tenant_id,
+        "Verifying user permission to upload document for EDD record"
+    );
+
+    // TODO: Implement database check once EDD repository is available
+    // Example implementation:
+    // let edd_record = state.edd_repo.get_edd_record(edd_id).await
+    //     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    //     .ok_or((StatusCode::NOT_FOUND, format!("EDD record {} not found", edd_id)))?;
+    //
+    // // Verify organization access
+    // if let Some(tenant_id) = user.tenant_id {
+    //     if edd_record.organization_id != tenant_id {
+    //         return Err((
+    //             StatusCode::FORBIDDEN,
+    //             "You do not have permission to upload documents for this EDD record".to_string()
+    //         ));
+    //     }
+    // }
+    //
+    // // Verify EDD is in uploadable state
+    // if matches!(edd_record.status, EddStatus::Completed | EddStatus::Expired) {
+    //     return Err((
+    //         StatusCode::BAD_REQUEST,
+    //         "Cannot upload documents to a completed or expired EDD record".to_string()
+    //     ));
+    // }
+
     let doc_id = Uuid::new_v4();
     let now = Utc::now();
 

@@ -33,9 +33,19 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
-/// Number of rating dimensions used for calculating overall rating.
-/// Dimensions: quality, timeliness, communication, value.
-const RATING_DIMENSIONS_COUNT: f64 = 4.0;
+/// Rating dimension configuration
+pub mod rating_dimensions {
+    /// Number of rating dimensions used for calculating overall rating.
+    /// Must match the number of dimensions in DIMENSION_NAMES.
+    pub const COUNT: f64 = 4.0;
+
+    /// Names of rating dimensions that contribute to overall rating.
+    /// Used for validation and documentation.
+    pub const DIMENSION_NAMES: &[&str] = &["quality", "timeliness", "communication", "value"];
+}
+
+/// Number of rating dimensions (deprecated - use rating_dimensions::COUNT).
+const RATING_DIMENSIONS_COUNT: f64 = rating_dimensions::COUNT;
 
 /// Create marketplace router with all sub-routes.
 pub fn router() -> Router<AppState> {

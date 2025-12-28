@@ -21,16 +21,18 @@ use uuid::Uuid;
 use crate::state::AppState;
 
 /// Default page size for listings.
-/// TODO: Use this constant in pagination logic when implementing database queries.
-#[allow(dead_code)]
 const DEFAULT_LIST_LIMIT: i64 = 50;
 
-/// Maximum page size.
-/// TODO: Use this constant in pagination logic when implementing database queries.
-#[allow(dead_code)]
+/// Maximum page size to prevent excessive data retrieval.
 const MAX_LIST_LIMIT: i64 = 100;
 
 type ApiResult<T> = Result<T, (StatusCode, Json<ErrorResponse>)>;
+
+/// Apply pagination defaults and limits to a query limit.
+/// Ensures limit does not exceed MAX_LIST_LIMIT.
+fn apply_pagination_limit(limit: i64) -> i64 {
+    limit.min(MAX_LIST_LIMIT)
+}
 
 /// Create operations routes router.
 pub fn router() -> Router<AppState> {
@@ -139,7 +141,7 @@ async fn list_deployments(
     }
 
     let repo = &state.operations_repo;
-    let limit = query.limit.min(MAX_LIST_LIMIT);
+    let limit = apply_pagination_limit(query.limit);
 
     repo.list_deployments(query.environment, query.status, limit, query.offset)
         .await
@@ -450,7 +452,7 @@ async fn list_migrations(
     }
 
     let repo = &state.operations_repo;
-    let limit = query.limit.min(MAX_LIST_LIMIT);
+    let limit = apply_pagination_limit(query.limit);
 
     repo.list_migrations(query.status, limit, query.offset)
         .await
@@ -754,7 +756,7 @@ async fn list_backups(
     }
 
     let repo = &state.operations_repo;
-    let limit = query.limit.min(MAX_LIST_LIMIT);
+    let limit = apply_pagination_limit(query.limit);
 
     repo.list_backups(query.backup_type, query.status, limit, query.offset)
         .await
@@ -1056,7 +1058,7 @@ async fn list_costs(
     }
 
     let repo = &state.operations_repo;
-    let limit = query.limit.min(MAX_LIST_LIMIT);
+    let limit = apply_pagination_limit(query.limit);
 
     repo.list_costs(
         query.period_start,
@@ -1292,7 +1294,7 @@ async fn list_cost_alerts(
     }
 
     let repo = &state.operations_repo;
-    let limit = query.limit.min(MAX_LIST_LIMIT);
+    let limit = apply_pagination_limit(query.limit);
 
     repo.list_cost_alerts(
         query.unacknowledged_only,

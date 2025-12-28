@@ -62,11 +62,15 @@ impl OwnerAnalyticsRepository {
         _vid: Uuid,
         org: Uuid,
     ) -> Result<Option<PropertyValuationWithComparables>, AppError> {
-        let v = self.get_latest_valuation(Uuid::new_v4(), org).await?;
-        Ok(v.map(|x| PropertyValuationWithComparables {
-            valuation: x,
-            comparables: vec![],
-        }))
+        let valuation = self.get_latest_valuation(Uuid::new_v4(), org).await?;
+
+        match valuation {
+            Some(v) => Ok(Some(PropertyValuationWithComparables {
+                valuation: v,
+                comparables: vec![],
+            })),
+            None => Ok(None),
+        }
     }
 
     pub async fn add_comparable(
@@ -94,14 +98,19 @@ impl OwnerAnalyticsRepository {
         q: ValueHistoryQuery,
     ) -> Result<Vec<PropertyValueHistory>, AppError> {
         let now = Utc::now();
-        Ok((0..12)
-            .map(|i| PropertyValueHistory {
+        let mut history = Vec::new();
+
+        // Generate 12 months of mock history data
+        for i in 0..12 {
+            history.push(PropertyValueHistory {
                 id: Uuid::new_v4(),
                 unit_id: q.unit_id,
                 value: Decimal::new(180000 + i * 1000, 0),
                 recorded_at: now - chrono::Duration::days(i * 30),
-            })
-            .collect())
+            });
+        }
+
+        Ok(history)
     }
 
     pub async fn get_value_trend(
@@ -109,17 +118,19 @@ impl OwnerAnalyticsRepository {
         uid: Uuid,
         _org: Uuid,
     ) -> Result<Option<ValueTrendAnalysis>, AppError> {
-        let h = self
-            .get_value_history(ValueHistoryQuery {
-                unit_id: uid,
-                limit: None,
-            })
-            .await?;
-        Ok(Some(ValueTrendAnalysis {
+        let query = ValueHistoryQuery {
             unit_id: uid,
-            history: h,
+            limit: None,
+        };
+        let history = self.get_value_history(query).await?;
+
+        let trend = ValueTrendAnalysis {
+            unit_id: uid,
+            history,
             trend_percent: Decimal::new(55, 1),
-        }))
+        };
+
+        Ok(Some(trend))
     }
 
     pub async fn calculate_roi(
@@ -128,9 +139,16 @@ impl OwnerAnalyticsRepository {
         req: CalculateROIRequest,
     ) -> Result<PropertyROI, AppError> {
         let total_returns = Decimal::new(20000, 0);
+
+        // Calculate ROI percentage
         let roi_pct = (total_returns / req.total_investment * Decimal::new(100, 0)).round_dp(2);
+
+        // Calculate period in months
         let months = (req.to_date - req.from_date).num_days() as i32 / 30;
+
+        // Calculate annualized ROI
         let annualized = roi_pct * Decimal::new(12, 0) / Decimal::from(months.max(1));
+
         Ok(PropertyROI {
             unit_id: req.unit_id,
             total_investment: req.total_investment,
@@ -178,29 +196,32 @@ impl OwnerAnalyticsRepository {
         from: chrono::NaiveDate,
         to: chrono::NaiveDate,
     ) -> Result<ROIDashboard, AppError> {
-        let r = self
-            .calculate_roi(
-                org,
-                CalculateROIRequest {
-                    unit_id: uid,
-                    total_investment: Decimal::new(150000, 0),
-                    from_date: from,
-                    to_date: to,
-                },
-            )
-            .await?;
-        let cf = self.get_cash_flow_breakdown(uid, org, from, to).await?;
-        let trend = self.get_value_trend(uid, org).await?;
+        // Calculate ROI
+        let roi_request = CalculateROIRequest {
+            unit_id: uid,
+            total_investment: Decimal::new(150000, 0),
+            from_date: from,
+            to_date: to,
+        };
+        let property_roi = self.calculate_roi(org, roi_request).await?;
+
+        // Get cash flow breakdown
+        let cash_flow_breakdown = self.get_cash_flow_breakdown(uid, org, from, to).await?;
+
+        // Get value trend
+        let value_trend = self.get_value_trend(uid, org).await?;
+
+        // Build dashboard
         Ok(ROIDashboard {
-            property_roi: r,
+            property_roi,
             cash_flow: CashFlowSummary {
-                total_income: cf.income.total,
-                total_expenses: cf.expenses.total,
-                net_cash_flow: cf.net_cash_flow,
+                total_income: cash_flow_breakdown.income.total,
+                total_expenses: cash_flow_breakdown.expenses.total,
+                net_cash_flow: cash_flow_breakdown.net_cash_flow,
             },
             value_trend: ValueTrendSummary {
                 current_value: Decimal::new(190000, 0),
-                trend_percentage: trend.map(|t| t.trend_percent).unwrap_or_default(),
+                trend_percentage: value_trend.map(|t| t.trend_percent).unwrap_or_default(),
             },
         })
     }
@@ -240,19 +261,20 @@ impl OwnerAnalyticsRepository {
         req: PortfolioComparisonRequest,
     ) -> Result<ComparisonMetrics, AppError> {
         let first_id = req.unit_ids.first().copied().unwrap_or_else(Uuid::new_v4);
-        let props: Vec<PropertyComparison> = req
-            .unit_ids
-            .iter()
-            .enumerate()
-            .map(|(i, &id)| PropertyComparison {
+
+        // Build property comparisons
+        let mut properties = Vec::new();
+        for (i, &id) in req.unit_ids.iter().enumerate() {
+            properties.push(PropertyComparison {
                 unit_id: id,
                 value: Decimal::new(190000 + (i as i64) * 30000, 0),
                 roi: Decimal::new(80 - (i as i64) * 10, 1),
                 net_income: Decimal::new(700 + (i as i64) * 100, 0),
-            })
-            .collect();
+            });
+        }
+
         Ok(ComparisonMetrics {
-            properties: props,
+            properties,
             best_roi_unit: first_id,
             highest_value_unit: first_id,
         })
