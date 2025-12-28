@@ -94,7 +94,7 @@ async fn get_dashboard_stats(
         upcoming_jobs: 12,
         pending_action_jobs: 2,
         completed_this_month: 28,
-        total_earnings_this_month: Decimal::new(4500_00, 2),
+        total_earnings_this_month: Decimal::new(450000, 2),
         average_rating: Some(Decimal::new(47, 1)),
     };
 
@@ -389,9 +389,9 @@ async fn get_work_completion(
         time_spent_hours: Decimal::new(2, 0),
         materials_used: vec![],
         notes: Some("Replaced washer and tightened fittings".to_string()),
-        labor_cost: Decimal::new(150_00, 2),
-        materials_cost: Decimal::new(25_00, 2),
-        total_cost: Decimal::new(175_00, 2),
+        labor_cost: Decimal::new(15000, 2),
+        materials_cost: Decimal::new(2500, 2),
+        total_cost: Decimal::new(17500, 2),
     };
 
     Ok(Json(completion))
@@ -420,7 +420,7 @@ async fn list_invoices(
             job_title: Some("Fix leaky faucet".to_string()),
             invoice_date: Utc::now().date_naive(),
             due_date: Some(Utc::now().date_naive() + chrono::Duration::days(30)),
-            total_amount: Decimal::new(175_00, 2),
+            total_amount: Decimal::new(17500, 2),
             paid_amount: Decimal::ZERO,
             status: "pending".to_string(),
             payment_expected_date: Some(Utc::now().date_naive() + chrono::Duration::days(14)),
@@ -432,8 +432,8 @@ async fn list_invoices(
             job_title: Some("HVAC maintenance".to_string()),
             invoice_date: Utc::now().date_naive() - chrono::Duration::days(15),
             due_date: Some(Utc::now().date_naive() + chrono::Duration::days(15)),
-            total_amount: Decimal::new(450_00, 2),
-            paid_amount: Decimal::new(450_00, 2),
+            total_amount: Decimal::new(45000, 2),
+            paid_amount: Decimal::new(45000, 2),
             status: "paid".to_string(),
             payment_expected_date: None,
         },
@@ -550,9 +550,9 @@ async fn get_earnings_summary(
         period_start,
         period_end: today,
         total_jobs: 28,
-        total_earnings: Decimal::new(4500_00, 2),
-        paid_amount: Decimal::new(3800_00, 2),
-        pending_amount: Decimal::new(700_00, 2),
+        total_earnings: Decimal::new(450000, 2),
+        paid_amount: Decimal::new(380000, 2),
+        pending_amount: Decimal::new(70000, 2),
     };
 
     Ok(Json(summary))
