@@ -226,31 +226,19 @@ jobs:
           COMMENT="${{ github.event.inputs.comment }}"
           SKIP_CI="${{ github.event.inputs.skip_ci_check }}"
 
-          # Build approval message using heredoc for safe multi-line strings
-          # Using single-quoted heredoc (<<'EOF') prevents variable expansion and command injection
+          # Build approval message
           if [ -n "$COMMENT" ]; then
-            BODY=$(cat <<'EOF'
-✅ **Approved**: COMMENT_PLACEHOLDER
+            BODY="✅ **Approved**: ${COMMENT}
 
-_Approved via workflow dispatch._
-EOF
-)
-            # Safely substitute the comment after heredoc processing
-            BODY="${BODY//COMMENT_PLACEHOLDER/$COMMENT}"
+          _Approved via workflow dispatch._"
           elif [ "$SKIP_CI" = "true" ]; then
-            BODY=$(cat <<'EOF'
-✅ **Approved** (CI check skipped)
+            BODY="✅ **Approved** (CI check skipped)
 
-_Approved via workflow dispatch._
-EOF
-)
+          _Approved via workflow dispatch._"
           else
-            BODY=$(cat <<'EOF'
-✅ **Approved**: All CI checks passed
+            BODY="✅ **Approved**: All CI checks passed
 
-_Approved via workflow dispatch._
-EOF
-)
+          _Approved via workflow dispatch._"
           fi
 
           gh pr review "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --approve --body "$BODY"

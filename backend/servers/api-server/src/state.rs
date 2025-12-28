@@ -6,15 +6,16 @@ use db::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
         AutomationRepository, BudgetRepository, BuildingRepository, CommunityRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DocumentRepository, DocumentTemplateRepository, EmergencyRepository, EnergyRepository,
-        EquipmentRepository, FacilityRepository, FaultRepository, FeatureFlagRepository,
-        FinancialRepository, FormRepository, GovernmentPortalRepository,
+        DisputeRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
+        EnergyRepository, EquipmentRepository, FacilityRepository, FaultRepository,
+        FeatureFlagRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         InsuranceRepository, IntegrationRepository, LeaseRepository, LegalRepository,
         ListingRepository, LlmDocumentRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
-        OrganizationMemberRepository, OrganizationRepository, PackageVisitorRepository,
-        PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository, RentalRepository,
+        OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
+        OwnerAnalyticsRepository, PackageVisitorRepository, PasswordResetRepository,
+        PersonMonthRepository, PlatformAdminRepository, RegistryRepository, RentalRepository,
         RoleRepository, SensorRepository, SentimentRepository, SessionRepository,
         SignatureRequestRepository, SubscriptionRepository, SystemAnnouncementRepository,
         TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
@@ -105,6 +106,14 @@ pub struct AppState {
     pub energy_repo: EnergyRepository,
     // Epic 64: Advanced AI & LLM Capabilities
     pub llm_document_repo: LlmDocumentRepository,
+    // Epic 57: Pet & Vehicle Registry
+    pub registry_repo: RegistryRepository,
+    // Epic 73: Infrastructure & Operations
+    pub operations_repo: OperationsRepository,
+    // Epic 74: Owner Investment Analytics
+    pub owner_analytics_repo: OwnerAnalyticsRepository,
+    // Epic 77: Dispute Resolution
+    pub dispute_repo: DisputeRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -193,6 +202,14 @@ impl AppState {
         let energy_repo = EnergyRepository::new(db.clone());
         // Epic 64: Advanced AI & LLM Capabilities
         let llm_document_repo = LlmDocumentRepository::new(db.clone());
+        // Epic 57: Pet & Vehicle Registry
+        let registry_repo = RegistryRepository::new(db.clone());
+        // Epic 73: Infrastructure & Operations
+        let operations_repo = OperationsRepository::new(db.clone());
+        // Epic 74: Owner Investment Analytics
+        let owner_analytics_repo = OwnerAnalyticsRepository::new(db.clone());
+        // Epic 77: Dispute Resolution
+        let dispute_repo = DisputeRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -256,6 +273,10 @@ impl AppState {
             integration_repo,
             energy_repo,
             llm_document_repo,
+            registry_repo,
+            operations_repo,
+            owner_analytics_repo,
+            dispute_repo,
             auth_service,
             email_service,
             jwt_service,

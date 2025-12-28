@@ -9,9 +9,9 @@
 // Allow dead code for stub implementations during development
 #![allow(dead_code)]
 
-use axum::{routing::get, Router};
+use axum::{http, routing::get, Router};
 use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
@@ -169,7 +169,10 @@ use state::AppState;
         (name = "IoT Sensors", description = "IoT sensor registration and management"),
         (name = "Community", description = "Community & social features: groups, posts, events, marketplace"),
         (name = "Automation", description = "Workflow automation rules, templates, and execution"),
-        (name = "energy", description = "Energy & sustainability: EPCs, carbon footprint, sustainability scores, benchmarking")
+        (name = "energy", description = "Energy & sustainability: EPCs, carbon footprint, sustainability scores, benchmarking"),
+        (name = "Marketplace", description = "Service provider marketplace: providers, bookings, reviews, tenant insurance"),
+        (name = "Competitive Features", description = "Competitive enhancements: dynamic pricing, neighborhood data, virtual tours, market trends"),
+        (name = "Regional Compliance", description = "Slovak & Czech regional legal compliance: voting quorum, accounting exports, GDPR, SVJ")
     )
 )]
 struct ApiDoc;
@@ -379,11 +382,65 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/news", routes::news_articles::router())
         // Energy routes (Epic 65)
         .nest("/api/v1/energy", routes::energy::router())
+        // Regional Compliance routes (Epic 72)
+        .nest(
+            "/api/v1/regional-compliance",
+            routes::regional_compliance::router(),
+        )
+        // Migration routes (Epic 66)
+        .nest("/api/v1/migration", routes::migration::router())
+        // AML/DSA Compliance routes (Epic 67)
+        .nest("/api/v1/aml-dsa", routes::aml_dsa::router())
+        // Marketplace routes (Epic 68)
+        .nest("/api/v1/marketplace", routes::marketplace::router())
+        // Public API / Developer routes (Epic 69)
+        .nest("/api/v1/developer", routes::public_api::router())
+        // Competitive Features routes (Epic 70)
+        .nest("/api/v1/competitive", routes::competitive::router())
+        // Infrastructure routes (Epic 71)
+        .nest("/api/v1/infrastructure", routes::infrastructure::router())
+        // Operations routes (Epic 73)
+        .nest("/api/v1/operations", routes::operations::router())
+        // Owner Analytics routes (Epic 74)
+        .nest("/api/v1/owner-analytics", routes::owner_analytics::router())
+        // Dispute Resolution routes (Epic 77)
+        .nest("/api/v1/disputes", routes::disputes::router())
+        // Vendor Portal routes (Epic 78)
+        .nest("/api/v1/vendor-portal", routes::vendor_portal::router())
+        // Registry routes (Epic 64)
+        .nest("/api/v1/registry", routes::registry::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
         .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive())
+        // CORS configuration - allow specific origins in production
+        // TODO: Move allowed origins to configuration
+        .layer(
+            CorsLayer::new()
+                // Allow requests from our frontends (development and production)
+                .allow_origin([
+                    "http://localhost:3000".parse().unwrap(), // ppt-web dev
+                    "http://localhost:3001".parse().unwrap(), // reality-web dev
+                    "http://localhost:8081".parse().unwrap(), // mobile dev
+                    "https://ppt.three-two-bit.com".parse().unwrap(), // production
+                    "https://reality.three-two-bit.com".parse().unwrap(), // reality production
+                ])
+                // Allow common HTTP methods
+                .allow_methods([
+                    http::Method::GET,
+                    http::Method::POST,
+                    http::Method::PUT,
+                    http::Method::PATCH,
+                    http::Method::DELETE,
+                    http::Method::OPTIONS,
+                ])
+                // Allow common headers
+                .allow_headers(Any)
+                // Allow credentials (cookies, authorization headers)
+                .allow_credentials(true)
+                // Cache preflight response for 1 hour
+                .max_age(std::time::Duration::from_secs(3600)),
+        )
         // Application state
         .with_state(state);
 

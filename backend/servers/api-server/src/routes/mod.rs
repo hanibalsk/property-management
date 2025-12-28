@@ -77,3 +77,39 @@ pub mod news_articles;
 
 // Epic 65: Energy & Sustainability Tracking
 pub mod energy;
+
+// Epic 64: Advanced AI & LLM Capabilities
+pub mod registry;
+
+// Epic 66: Platform Migration & Data Import
+pub mod migration;
+
+// Epic 67: Advanced Compliance (AML/DSA)
+pub mod aml_dsa;
+
+// Epic 68: Service Provider Marketplace
+pub mod marketplace;
+
+// Epic 69: Public API & Developer Ecosystem
+pub mod public_api;
+
+// Epic 70: Competitive Feature Enhancements
+pub mod competitive;
+
+// Epic 71: Cross-Cutting Infrastructure
+pub mod infrastructure;
+
+// Epic 72: Regional Legal Compliance (SK/CZ)
+pub mod regional_compliance;
+
+// Epic 73: Infrastructure & Operations
+pub mod operations;
+
+// Epic 74: Owner Investment Analytics
+pub mod owner_analytics;
+
+// Epic 77: Dispute Resolution
+pub mod disputes;
+
+// Epic 78: Vendor Operations Portal
+pub mod vendor_portal;
