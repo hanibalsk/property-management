@@ -16,7 +16,6 @@ use db::models::{
     PricingAnalysisRequest, PricingAnalysisResponse, PricingFactor, PricingSuggestion,
     ReorderTours, TourHotspot, UpdateVirtualTour, VirtualTour, VirtualTourWithHotspots,
 };
-use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -122,7 +121,7 @@ pub struct VirtualToursResponse {
 )]
 pub async fn list_virtual_tours(
     State(_state): State<AppState>,
-    TenantExtractor(tenant): TenantExtractor,
+    TenantExtractor(_tenant): TenantExtractor,
     Path(listing_id): Path<Uuid>,
 ) -> Result<Json<VirtualToursResponse>, (axum::http::StatusCode, String)> {
     // Mock implementation - would query database

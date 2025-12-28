@@ -14,12 +14,11 @@ use db::models::{
     infrastructure::{
         CreateFeatureFlag, FeatureFlag, FeatureFlagOverride, PaginatedResponse, UpdateFeatureFlag,
     },
-    AcknowledgeAlert, AlertSeverity, AlertStatus, BackgroundJob, BackgroundJobExecution,
-    BackgroundJobQuery, BackgroundJobQueueStats, BackgroundJobStatus, BackgroundJobTypeStats,
-    CreateBackgroundJob, DependencyHealth, EvaluateFeatureFlag, FeatureFlagAuditLog,
-    FeatureFlagEvaluation, HealthAlert, HealthAlertRule, HealthCheckConfig, HealthCheckResult,
-    HealthStatus, InfrastructureDashboard, PrometheusMetric, ResolveAlert, RetryBackgroundJob,
-    Span, SystemHealth, SystemMetrics, Trace, TraceQuery, TraceWithSpans,
+    AcknowledgeAlert, BackgroundJob, BackgroundJobExecution, BackgroundJobQueueStats,
+    BackgroundJobTypeStats, CreateBackgroundJob, DependencyHealth, EvaluateFeatureFlag,
+    FeatureFlagAuditLog, FeatureFlagEvaluation, HealthAlert, HealthAlertRule, HealthCheckConfig,
+    HealthCheckResult, HealthStatus, InfrastructureDashboard, PrometheusMetric, ResolveAlert,
+    RetryBackgroundJob, Span, SystemHealth, SystemMetrics, Trace, TraceWithSpans,
 };
 use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};

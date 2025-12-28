@@ -10,23 +10,22 @@ use axum::{
     routing::{delete, get, patch, post},
     Json, Router,
 };
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{NaiveDate, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
     public_api::{
-        webhook_delivery_status, webhook_event_type, CreateWebhookSubscription, RateLimitStatus,
-        TestWebhookRequest, TestWebhookResponse, UpdateWebhookSubscription, WebhookDelivery,
-        WebhookDeliveryQuery, WebhookSubscription, WebhookSubscriptionQuery,
+        webhook_event_type, CreateWebhookSubscription, RateLimitStatus, TestWebhookRequest,
+        TestWebhookResponse, UpdateWebhookSubscription, WebhookDelivery, WebhookDeliveryQuery,
+        WebhookSubscription, WebhookSubscriptionQuery,
     },
-    ApiChangelog, ApiEndpointDoc, ApiKey, ApiKeyDisplay, ApiKeyQuery, ApiKeyUsageStats,
-    ApiRequestLog, ApiRequestLogQuery, CreateApiKey, CreateApiKeyResponse, CreateDeveloperAccount,
+    ApiChangelog, ApiEndpointDoc, ApiKeyDisplay, ApiKeyQuery, ApiKeyUsageStats, ApiRequestLog,
+    ApiRequestLogQuery, CreateApiKey, CreateApiKeyResponse, CreateDeveloperAccount,
     CreateRateLimitConfig, CreateWebhookResponse, DeveloperAccount, DeveloperPortalStats,
     DeveloperUsageSummary, PaginatedResponse, RateLimitConfig, RotateApiKeyResponse,
     RotateWebhookSecretResponse, SandboxEnvironment, SandboxTestRequest, SandboxTestResponse,
     SdkDownloadInfo, SdkLanguageInfo, SdkVersion, UpdateApiKey, UpdateDeveloperAccount,
     UpdateRateLimitConfig,
 };
-use rand::Rng;
 use serde::Deserialize;
 use utoipa::IntoParams;
 use uuid::Uuid;
@@ -142,7 +141,7 @@ pub struct SuspendDeveloperRequest {
     tag = "developer"
 )]
 async fn create_developer_account(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     user: AuthUser,
     Json(payload): Json<CreateDeveloperAccount>,
 ) -> Result<(StatusCode, Json<DeveloperAccount>), (StatusCode, Json<ErrorResponse>)> {
@@ -180,8 +179,8 @@ async fn create_developer_account(
     tag = "developer"
 )]
 async fn get_my_developer_account(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
 ) -> Result<Json<DeveloperAccount>, (StatusCode, Json<ErrorResponse>)> {
     // Implementation would fetch developer account
     Err((
@@ -195,9 +194,9 @@ async fn get_my_developer_account(
 
 /// Update current user's developer account.
 async fn update_my_developer_account(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Json(payload): Json<UpdateDeveloperAccount>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Json(_payload): Json<UpdateDeveloperAccount>,
 ) -> Result<Json<DeveloperAccount>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -210,8 +209,8 @@ async fn update_my_developer_account(
 
 /// Get usage summary for current developer.
 async fn get_my_usage_summary(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
 ) -> Result<Json<DeveloperUsageSummary>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -237,8 +236,8 @@ async fn get_my_usage_summary(
     tag = "developer"
 )]
 async fn create_api_key(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
     Json(payload): Json<CreateApiKey>,
 ) -> Result<(StatusCode, Json<CreateApiKeyResponse>), (StatusCode, Json<ErrorResponse>)> {
     // Validate scopes
@@ -248,7 +247,7 @@ async fn create_api_key(
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
                     "INVALID_SCOPE",
-                    &format!("Invalid scope: {}", scope),
+                    format!("Invalid scope: {}", scope),
                 )),
             ));
         }
@@ -283,18 +282,18 @@ async fn create_api_key(
     tag = "developer"
 )]
 async fn list_api_keys(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Query(query): Query<ApiKeyQuery>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Query(_query): Query<ApiKeyQuery>,
 ) -> Result<Json<Vec<ApiKeyDisplay>>, (StatusCode, Json<ErrorResponse>)> {
     Ok(Json(vec![]))
 }
 
 /// Get API key details.
 async fn get_api_key(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<ApiKeyDisplay>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -304,10 +303,10 @@ async fn get_api_key(
 
 /// Update an API key.
 async fn update_api_key(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<UpdateApiKey>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
+    Json(_payload): Json<UpdateApiKey>,
 ) -> Result<Json<ApiKeyDisplay>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -330,9 +329,9 @@ async fn update_api_key(
     tag = "developer"
 )]
 async fn revoke_api_key(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Implementation would revoke the key
     Ok(StatusCode::NO_CONTENT)
@@ -353,9 +352,9 @@ async fn revoke_api_key(
     tag = "developer"
 )]
 async fn rotate_api_key(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<RotateApiKeyResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Implementation would rotate the key
     Err((
@@ -366,10 +365,10 @@ async fn rotate_api_key(
 
 /// Get usage statistics for an API key.
 async fn get_api_key_usage(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
-    Query(query): Query<DateRangeQuery>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
+    Query(_query): Query<DateRangeQuery>,
 ) -> Result<Json<Vec<ApiKeyUsageStats>>, (StatusCode, Json<ErrorResponse>)> {
     Ok(Json(vec![]))
 }
@@ -387,8 +386,8 @@ async fn get_api_key_usage(
     tag = "developer"
 )]
 async fn list_api_endpoints(
-    State(state): State<AppState>,
-    Query(query): Query<PaginationQuery>,
+    State(_state): State<AppState>,
+    Query(_query): Query<PaginationQuery>,
 ) -> Result<Json<Vec<ApiEndpointDoc>>, (StatusCode, Json<ErrorResponse>)> {
     // Return sample endpoints for documentation
     Ok(Json(vec![]))
@@ -396,8 +395,8 @@ async fn list_api_endpoints(
 
 /// Get details for a specific API endpoint.
 async fn get_api_endpoint(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<ApiEndpointDoc>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -416,8 +415,8 @@ async fn get_api_endpoint(
     tag = "developer"
 )]
 async fn list_api_changelog(
-    State(state): State<AppState>,
-    Query(query): Query<PaginationQuery>,
+    State(_state): State<AppState>,
+    Query(_query): Query<PaginationQuery>,
 ) -> Result<Json<Vec<ApiChangelog>>, (StatusCode, Json<ErrorResponse>)> {
     Ok(Json(vec![]))
 }
@@ -432,7 +431,7 @@ async fn list_api_changelog(
     tag = "developer"
 )]
 async fn get_openapi_spec(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     // Return OpenAPI spec
     Ok(Json(serde_json::json!({
@@ -459,8 +458,8 @@ async fn get_openapi_spec(
 
 /// Create a sandbox environment for testing.
 async fn create_sandbox(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
 ) -> Result<(StatusCode, Json<SandboxEnvironment>), (StatusCode, Json<ErrorResponse>)> {
     let sandbox = SandboxEnvironment {
         id: Uuid::new_v4(),
@@ -480,9 +479,9 @@ async fn create_sandbox(
 
 /// Test an API request in the sandbox.
 async fn test_sandbox_request(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Json(payload): Json<SandboxTestRequest>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Json(_payload): Json<SandboxTestRequest>,
 ) -> Result<Json<SandboxTestResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Simulate API request in sandbox
     let response = SandboxTestResponse {
@@ -503,9 +502,9 @@ async fn test_sandbox_request(
 
 /// Get sandbox environment details.
 async fn get_sandbox(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<SandboxEnvironment>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -515,9 +514,9 @@ async fn get_sandbox(
 
 /// Delete a sandbox environment.
 async fn delete_sandbox(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     Ok(StatusCode::NO_CONTENT)
 }
@@ -537,8 +536,8 @@ async fn delete_sandbox(
     tag = "developer"
 )]
 async fn create_webhook(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
     Json(payload): Json<CreateWebhookSubscription>,
 ) -> Result<(StatusCode, Json<CreateWebhookResponse>), (StatusCode, Json<ErrorResponse>)> {
     // Validate event types
@@ -548,7 +547,7 @@ async fn create_webhook(
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
                     "INVALID_EVENT_TYPE",
-                    &format!("Invalid event type: {}", event_type),
+                    format!("Invalid event type: {}", event_type),
                 )),
             ));
         }
@@ -581,18 +580,18 @@ async fn create_webhook(
     tag = "developer"
 )]
 async fn list_webhooks(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Query(query): Query<WebhookSubscriptionQuery>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Query(_query): Query<WebhookSubscriptionQuery>,
 ) -> Result<Json<Vec<WebhookSubscription>>, (StatusCode, Json<ErrorResponse>)> {
     Ok(Json(vec![]))
 }
 
 /// Get webhook details.
 async fn get_webhook(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<WebhookSubscription>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -602,10 +601,10 @@ async fn get_webhook(
 
 /// Update a webhook subscription.
 async fn update_webhook(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<UpdateWebhookSubscription>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
+    Json(_payload): Json<UpdateWebhookSubscription>,
 ) -> Result<Json<WebhookSubscription>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -615,9 +614,9 @@ async fn update_webhook(
 
 /// Delete a webhook subscription.
 async fn delete_webhook(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     Ok(StatusCode::NO_CONTENT)
 }
@@ -638,10 +637,10 @@ async fn delete_webhook(
     tag = "developer"
 )]
 async fn test_webhook(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<TestWebhookRequest>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
+    Json(_payload): Json<TestWebhookRequest>,
 ) -> Result<Json<TestWebhookResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Simulate webhook test delivery
     let response = TestWebhookResponse {
@@ -657,8 +656,8 @@ async fn test_webhook(
 
 /// Rotate webhook secret.
 async fn rotate_webhook_secret(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<RotateWebhookSecretResponse>, (StatusCode, Json<ErrorResponse>)> {
     let new_secret = generate_secure_secret("whsec");
@@ -674,10 +673,10 @@ async fn rotate_webhook_secret(
 
 /// List webhook delivery logs.
 async fn list_webhook_deliveries(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
-    Query(query): Query<WebhookDeliveryQuery>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
+    Query(_query): Query<WebhookDeliveryQuery>,
 ) -> Result<Json<Vec<WebhookDelivery>>, (StatusCode, Json<ErrorResponse>)> {
     Ok(Json(vec![]))
 }
@@ -692,7 +691,7 @@ async fn list_webhook_deliveries(
     tag = "developer"
 )]
 async fn list_webhook_event_types(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<Json<Vec<&'static str>>, (StatusCode, Json<ErrorResponse>)> {
     Ok(Json(webhook_event_type::ALL.to_vec()))
 }
@@ -748,7 +747,7 @@ async fn get_rate_limit_status(
     tag = "developer"
 )]
 async fn list_rate_limit_tiers(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<Json<Vec<RateLimitConfig>>, (StatusCode, Json<ErrorResponse>)> {
     let tiers = vec![
         RateLimitConfig {
@@ -820,7 +819,7 @@ async fn list_rate_limit_tiers(
     tag = "developer"
 )]
 async fn list_sdk_languages(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<Json<Vec<SdkLanguageInfo>>, (StatusCode, Json<ErrorResponse>)> {
     let languages = vec![
         SdkLanguageInfo {
@@ -854,7 +853,7 @@ async fn list_sdk_languages(
 
 /// Get SDK information for a specific language.
 async fn get_sdk_info(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Path(language): Path<String>,
 ) -> Result<Json<SdkDownloadInfo>, (StatusCode, Json<ErrorResponse>)> {
     let info = SdkDownloadInfo {
@@ -866,7 +865,7 @@ async fn get_sdk_info(
             language
         ),
         package_name: Some(format!("ppt-api-client-{}", language)),
-        package_manager_url: Some(format!("https://www.npmjs.com/package/@ppt/api-client")),
+        package_manager_url: Some("https://www.npmjs.com/package/@ppt/api-client".to_string()),
         checksum_sha256: Some("abc123...".to_string()),
         release_notes: Some("Initial release with full API coverage".to_string()),
     };
@@ -885,7 +884,7 @@ async fn download_sdk(
 
 /// List SDK versions for a specific language.
 async fn list_sdk_versions(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Path(language): Path<String>,
 ) -> Result<Json<Vec<SdkVersion>>, (StatusCode, Json<ErrorResponse>)> {
     let versions = vec![SdkVersion {
@@ -917,8 +916,8 @@ async fn list_sdk_versions(
 
 /// List all developers (admin only).
 async fn list_developers(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
     Query(query): Query<PaginationQuery>,
 ) -> Result<Json<PaginatedResponse<DeveloperAccount>>, (StatusCode, Json<ErrorResponse>)> {
     let response = PaginatedResponse {
@@ -934,9 +933,9 @@ async fn list_developers(
 
 /// Get developer details (admin only).
 async fn get_developer(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<DeveloperAccount>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -946,10 +945,10 @@ async fn get_developer(
 
 /// Update developer account (admin only).
 async fn update_developer(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<UpdateDeveloperAccount>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
+    Json(_payload): Json<UpdateDeveloperAccount>,
 ) -> Result<Json<DeveloperAccount>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -959,9 +958,9 @@ async fn update_developer(
 
 /// Verify a developer account (admin only).
 async fn verify_developer(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
 ) -> Result<Json<DeveloperAccount>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -971,10 +970,10 @@ async fn verify_developer(
 
 /// Suspend a developer account (admin only).
 async fn suspend_developer(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<SuspendDeveloperRequest>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
+    Json(_payload): Json<SuspendDeveloperRequest>,
 ) -> Result<Json<DeveloperAccount>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -984,8 +983,8 @@ async fn suspend_developer(
 
 /// Create rate limit configuration (admin only).
 async fn create_rate_limit_config(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
     Json(payload): Json<CreateRateLimitConfig>,
 ) -> Result<(StatusCode, Json<RateLimitConfig>), (StatusCode, Json<ErrorResponse>)> {
     let config = RateLimitConfig {
@@ -1007,10 +1006,10 @@ async fn create_rate_limit_config(
 
 /// Update rate limit configuration (admin only).
 async fn update_rate_limit_config(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(id): Path<Uuid>,
-    Json(payload): Json<UpdateRateLimitConfig>,
+    State(_state): State<AppState>,
+    _user: AuthUser,
+    Path(_id): Path<Uuid>,
+    Json(_payload): Json<UpdateRateLimitConfig>,
 ) -> Result<Json<RateLimitConfig>, (StatusCode, Json<ErrorResponse>)> {
     Err((
         StatusCode::NOT_FOUND,
@@ -1023,8 +1022,8 @@ async fn update_rate_limit_config(
 
 /// Get developer portal statistics (admin only).
 async fn get_portal_stats(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
 ) -> Result<Json<DeveloperPortalStats>, (StatusCode, Json<ErrorResponse>)> {
     let stats = DeveloperPortalStats {
         total_developers: 150,
@@ -1042,8 +1041,8 @@ async fn get_portal_stats(
 
 /// List API request logs (admin only).
 async fn list_request_logs(
-    State(state): State<AppState>,
-    user: AuthUser,
+    State(_state): State<AppState>,
+    _user: AuthUser,
     Query(query): Query<ApiRequestLogQuery>,
 ) -> Result<Json<PaginatedResponse<ApiRequestLog>>, (StatusCode, Json<ErrorResponse>)> {
     let response = PaginatedResponse {

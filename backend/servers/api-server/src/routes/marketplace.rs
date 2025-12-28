@@ -14,19 +14,17 @@ use axum::{
     routing::{delete, get, patch, post},
     Json, Router,
 };
-use chrono::NaiveDate;
 use common::errors::ErrorResponse;
 use db::models::{
-    CategoryCount, CreateProviderQuote, CreateProviderReview, CreateProviderVerification,
-    CreateRequestForQuote, CreateServiceProviderProfile, ExpiringVerification,
-    ManagerMarketplaceDashboard, MarketplaceSearchQuery, MarketplaceStatistics,
-    ModerateReviewRequest, PendingAction, ProviderBadge, ProviderDashboard,
-    ProviderProfileComplete, ProviderQuote, ProviderReview, ProviderReviewResponse,
-    ProviderReviewWithResponse, ProviderSearchResult, ProviderVerification, QuoteComparisonView,
-    QuoteWithProvider, RatingBreakdown, RatingDistribution, RequestForQuote, ReviewQuery,
-    ReviewStatistics, ReviewVerificationRequest, RfqInvitation, RfqQuery, RfqSummary,
-    ServiceProviderProfile, UpdateProviderQuote, UpdateProviderReview, UpdateRequestForQuote,
-    UpdateServiceProviderProfile, VerificationQuery, VerificationQueueItem,
+    CreateProviderQuote, CreateProviderReview, CreateProviderVerification, CreateRequestForQuote,
+    CreateServiceProviderProfile, ExpiringVerification, ManagerMarketplaceDashboard,
+    MarketplaceSearchQuery, MarketplaceStatistics, ModerateReviewRequest, ProviderBadge,
+    ProviderDashboard, ProviderProfileComplete, ProviderQuote, ProviderReview,
+    ProviderReviewResponse, ProviderReviewWithResponse, ProviderSearchResult, ProviderVerification,
+    QuoteComparisonView, RatingBreakdown, RatingDistribution, RequestForQuote, ReviewQuery,
+    ReviewVerificationRequest, RfqInvitation, RfqQuery, ServiceProviderProfile,
+    UpdateProviderQuote, UpdateProviderReview, UpdateRequestForQuote, UpdateServiceProviderProfile,
+    VerificationQuery, VerificationQueueItem,
 };
 use rust_decimal::Decimal;
 use serde::Deserialize;
@@ -369,7 +367,7 @@ async fn get_my_profile(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Provider profile not found for user {}", user.user_id),
+            format!("Provider profile not found for user {}", user.user_id),
         )),
     ))
 }
@@ -432,7 +430,7 @@ async fn get_provider(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Provider {} not found", id),
+            format!("Provider {} not found", id),
         )),
     ))
 }
@@ -448,7 +446,7 @@ async fn get_provider_complete(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Provider {} not found", id),
+            format!("Provider {} not found", id),
         )),
     ))
 }
@@ -516,7 +514,7 @@ async fn get_rfq(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("RFQ {} not found", id),
+            format!("RFQ {} not found", id),
         )),
     ))
 }
@@ -533,7 +531,7 @@ async fn update_rfq(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("RFQ {} not found", id),
+            format!("RFQ {} not found", id),
         )),
     ))
 }
@@ -549,7 +547,7 @@ async fn delete_rfq(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("RFQ {} not found", id),
+            format!("RFQ {} not found", id),
         )),
     ))
 }
@@ -575,7 +573,7 @@ async fn compare_quotes(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("RFQ {} not found", id),
+            format!("RFQ {} not found", id),
         )),
     ))
 }
@@ -592,7 +590,7 @@ async fn award_quote(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("RFQ {} not found", id),
+            format!("RFQ {} not found", id),
         )),
     ))
 }
@@ -608,7 +606,7 @@ async fn cancel_rfq(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("RFQ {} not found", id),
+            format!("RFQ {} not found", id),
         )),
     ))
 }
@@ -667,7 +665,7 @@ async fn get_quote(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Quote {} not found", id),
+            format!("Quote {} not found", id),
         )),
     ))
 }
@@ -684,7 +682,7 @@ async fn update_quote(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Quote {} not found", id),
+            format!("Quote {} not found", id),
         )),
     ))
 }
@@ -700,7 +698,7 @@ async fn withdraw_quote(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Quote {} not found", id),
+            format!("Quote {} not found", id),
         )),
     ))
 }
@@ -726,7 +724,7 @@ async fn mark_invitation_viewed(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Invitation {} not found", id),
+            format!("Invitation {} not found", id),
         )),
     ))
 }
@@ -748,7 +746,7 @@ async fn decline_invitation(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Invitation {} not found", id),
+            format!("Invitation {} not found", id),
         )),
     ))
 }
@@ -828,7 +826,7 @@ async fn get_verification(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Verification {} not found", id),
+            format!("Verification {} not found", id),
         )),
     ))
 }
@@ -836,7 +834,7 @@ async fn get_verification(
 /// Review a verification (admin only).
 async fn review_verification(
     State(_state): State<AppState>,
-    user: AuthUser,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
     Json(_data): Json<ReviewVerificationRequest>,
 ) -> Result<Json<ProviderVerification>, (StatusCode, Json<ErrorResponse>)> {
@@ -845,7 +843,7 @@ async fn review_verification(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Verification {} not found", id),
+            format!("Verification {} not found", id),
         )),
     ))
 }
@@ -893,7 +891,7 @@ async fn revoke_badge(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Badge {} not found", id),
+            format!("Badge {} not found", id),
         )),
     ))
 }
@@ -1000,7 +998,7 @@ async fn get_review(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Review {} not found", id),
+            format!("Review {} not found", id),
         )),
     ))
 }
@@ -1017,7 +1015,7 @@ async fn update_review(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Review {} not found", id),
+            format!("Review {} not found", id),
         )),
     ))
 }
@@ -1033,7 +1031,7 @@ async fn delete_review(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Review {} not found", id),
+            format!("Review {} not found", id),
         )),
     ))
 }
@@ -1050,7 +1048,7 @@ async fn respond_to_review(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Review {} not found", id),
+            format!("Review {} not found", id),
         )),
     ))
 }
@@ -1058,7 +1056,7 @@ async fn respond_to_review(
 /// Moderate a review (admin only).
 async fn moderate_review(
     State(_state): State<AppState>,
-    user: AuthUser,
+    _user: AuthUser,
     Path(id): Path<Uuid>,
     Json(_data): Json<ModerateReviewRequest>,
 ) -> Result<Json<ProviderReview>, (StatusCode, Json<ErrorResponse>)> {
@@ -1067,7 +1065,7 @@ async fn moderate_review(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Review {} not found", id),
+            format!("Review {} not found", id),
         )),
     ))
 }
@@ -1083,7 +1081,7 @@ async fn mark_review_helpful(
         StatusCode::NOT_FOUND,
         Json(ErrorResponse::new(
             "NOT_FOUND",
-            &format!("Review {} not found", id),
+            format!("Review {} not found", id),
         )),
     ))
 }

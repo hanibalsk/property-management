@@ -12,12 +12,11 @@ use axum::{
 };
 use axum_extra::extract::Multipart;
 use db::models::{
-    ApproveImportRequest, ApproveImportResponse, CreateImportTemplate, CreateMigrationExport,
-    CreateMigrationImportJob, ExportCategoriesResponse, ExportCategoryInfo, ExportDataCategory,
-    ExportPrivacyOptions, FieldDataType, FieldValidation, ImportCategoriesResponse,
-    ImportCategoryInfo, ImportDataType, ImportFieldMapping, ImportJobFilter, ImportJobHistory,
-    ImportJobStatus, ImportJobStatusResponse, ImportOptions, ImportPreviewResult, ImportRowError,
-    ImportTemplateSummary, MigrationExportResponse, MigrationExportStatus,
+    ApproveImportRequest, ApproveImportResponse, ExportCategoriesResponse, ExportCategoryInfo,
+    ExportDataCategory, ExportPrivacyOptions, FieldDataType, FieldValidation,
+    ImportCategoriesResponse, ImportCategoryInfo, ImportDataType, ImportFieldMapping,
+    ImportJobHistory, ImportJobStatus, ImportJobStatusResponse, ImportPreviewResult,
+    ImportRowError, ImportTemplateSummary, MigrationExportResponse, MigrationExportStatus,
     MigrationExportStatusResponse, MigrationPagination, RecordTypeCounts, TemplateFormat,
     UpdateImportTemplate, ValidationIssue, ValidationSeverity,
 };
@@ -944,7 +943,7 @@ pub struct ExportHistoryEntry {
 async fn get_export_history(
     State(_state): State<AppState>,
     user: AuthUser,
-    Query(pagination): Query<MigrationPagination>,
+    Query(_pagination): Query<MigrationPagination>,
 ) -> Result<Json<Vec<ExportHistoryEntry>>, (StatusCode, String)> {
     let _org_id = user.tenant_id.ok_or((
         StatusCode::BAD_REQUEST,
