@@ -106,7 +106,7 @@ This document defines the architecture for the Property Management System (PPT) 
 **Status:** Accepted
 
 **Context:**
-The system has 493 use cases across 51 categories with complex domain logic. The team is small (< 10 developers initially).
+The system has 508 use cases across 51 categories with complex domain logic. The team is small (< 10 developers initially).
 
 **Decision:**
 Implement as two modular monoliths (api-server, reality-server) rather than microservices.

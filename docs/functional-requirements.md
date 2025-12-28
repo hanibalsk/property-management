@@ -2,7 +2,7 @@
 
 > **Parent:** See `docs/CLAUDE.md` for documentation overview.
 
-This document decomposes all 493 use cases into concrete system functions with defined inputs, outputs, and business rules.
+This document decomposes all 508 use cases into concrete system functions with defined inputs, outputs, and business rules.
 
 ---
 
@@ -7069,7 +7069,7 @@ This document decomposes all 493 use cases into concrete system functions with d
 
 ## Summary
 
-This document defines functional requirements for all 493 use cases across 51 categories:
+This document defines functional requirements for all 508 use cases across 51 categories:
 
 | Category Range | Domain |
 |----------------|--------|

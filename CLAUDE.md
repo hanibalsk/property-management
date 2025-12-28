@@ -55,25 +55,25 @@
 ### backend/
 | Component | Technology |
 |-----------|------------|
-| Framework | Rust, Axum 0.8 |
-| Database | PostgreSQL 16+ (RLS), SQLx, SeaORM |
+| Framework | Rust 1.75+, Axum 0.7 |
+| Database | PostgreSQL 16+ (RLS), SQLx |
 | Cache | Redis (sessions, pub/sub) |
-| Auth | JWT (15m access, 7d refresh), Argon2id, TOTP |
-| API | OpenAPI 3.1 (TypeSpec), WebSocket |
+| Auth | JWT (15m access, 7d refresh), Argon2id |
+| API | OpenAPI (utoipa), WebSocket |
 | Storage | S3-compatible |
 
 ### frontend/
 | App | Technology |
 |-----|------------|
-| ppt-web | React 19, Vite 6, Radix UI, Tailwind CSS |
-| reality-web | Next.js 15.5 (SSR/SSG), Tailwind CSS |
-| mobile | React Native 0.83, React Native Paper |
-| shared | TypeScript, @hey-api/openapi-ts (SDK gen) |
+| ppt-web | React 18, Vite 5, TanStack Query |
+| reality-web | Next.js 14 (SSR/SSG), next-intl |
+| mobile | React Native 0.73, Expo 50 |
+| shared | TypeScript 5, @hey-api/openapi-ts (SDK gen) |
 
 ### mobile-native/
 | Component | Technology |
 |-----------|------------|
-| Framework | Kotlin Multiplatform 2.3 |
+| Framework | Kotlin Multiplatform |
 | UI | Compose (Android), SwiftUI (iOS) |
 | SDK | openapi-generator (Kotlin) |
 
