@@ -10,6 +10,7 @@
 #![allow(dead_code)]
 
 use axum::{http, routing::get, Router};
+use http::HeaderValue;
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -25,6 +26,66 @@ mod state;
 use db::repositories::AnnouncementRepository;
 use services::{EmailService, JwtService, Scheduler, SchedulerConfig};
 use state::AppState;
+
+/// Default CORS allowed origins for api-server.
+/// Includes development origins and production domains.
+const DEFAULT_CORS_ORIGINS: &[&str] = &[
+    "http://localhost:3000",             // ppt-web dev
+    "http://localhost:3001",             // reality-web dev
+    "http://localhost:8080",             // api-server dev (swagger-ui)
+    "http://localhost:8081",             // mobile dev / reality-server
+    "https://ppt.three-two-bit.com",     // production
+    "https://reality.three-two-bit.com", // reality production
+];
+
+/// Parse CORS allowed origins from environment variable.
+///
+/// Reads `CORS_ALLOWED_ORIGINS` environment variable as a comma-separated list of origins.
+/// Falls back to default origins if not set.
+///
+/// # Example
+/// ```bash
+/// CORS_ALLOWED_ORIGINS=https://example.com,https://api.example.com
+/// ```
+fn get_cors_allowed_origins() -> Vec<HeaderValue> {
+    match std::env::var("CORS_ALLOWED_ORIGINS") {
+        Ok(origins_str) if !origins_str.is_empty() => {
+            let origins: Vec<HeaderValue> = origins_str
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .filter_map(|origin| {
+                    origin.parse::<HeaderValue>().ok().or_else(|| {
+                        tracing::warn!("Invalid CORS origin '{}', skipping", origin);
+                        None
+                    })
+                })
+                .collect();
+
+            if origins.is_empty() {
+                tracing::warn!(
+                    "CORS_ALLOWED_ORIGINS is set but no valid origins found, using defaults"
+                );
+                parse_default_origins()
+            } else {
+                tracing::info!("Using {} configured CORS origins", origins.len());
+                origins
+            }
+        }
+        _ => {
+            tracing::info!("CORS_ALLOWED_ORIGINS not set, using default origins");
+            parse_default_origins()
+        }
+    }
+}
+
+/// Parse the default origins into HeaderValue vector.
+fn parse_default_origins() -> Vec<HeaderValue> {
+    DEFAULT_CORS_ORIGINS
+        .iter()
+        .filter_map(|origin| origin.parse::<HeaderValue>().ok())
+        .collect()
+}
 
 #[derive(OpenApi)]
 #[openapi(
@@ -413,18 +474,11 @@ async fn main() -> anyhow::Result<()> {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
         .layer(TraceLayer::new_for_http())
-        // CORS configuration - allow specific origins in production
-        // TODO: Move allowed origins to configuration
+        // CORS configuration - origins configurable via CORS_ALLOWED_ORIGINS env var
         .layer(
             CorsLayer::new()
-                // Allow requests from our frontends (development and production)
-                .allow_origin([
-                    "http://localhost:3000".parse().unwrap(), // ppt-web dev
-                    "http://localhost:3001".parse().unwrap(), // reality-web dev
-                    "http://localhost:8081".parse().unwrap(), // mobile dev
-                    "https://ppt.three-two-bit.com".parse().unwrap(), // production
-                    "https://reality.three-two-bit.com".parse().unwrap(), // reality production
-                ])
+                // Allow requests from configured origins (env var or defaults)
+                .allow_origin(get_cors_allowed_origins())
                 // Allow common HTTP methods
                 .allow_methods([
                     http::Method::GET,

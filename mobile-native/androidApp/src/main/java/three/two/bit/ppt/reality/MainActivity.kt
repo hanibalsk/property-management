@@ -28,8 +28,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize API configuration
-        // TODO: Load from BuildConfig or environment in production
+        // Initialize API configuration from BuildConfig.
+        // The API_BASE_URL is configured in androidApp/build.gradle.kts:
+        // - Debug: http://10.0.2.2:8081 (Android emulator localhost)
+        // - Release: https://api.realityportal.example.com (production HTTPS)
+        // For production deployments, update the release buildConfigField in build.gradle.kts.
         if (!ApiConfig.isInitialized) {
             ApiConfig.initialize(BuildConfig.API_BASE_URL)
         }

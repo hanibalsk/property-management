@@ -179,8 +179,3 @@ function formatNumber(num: number): string {
   }
   return num.toLocaleString();
 }
-
-// Stub for SDK install instructions
-export function SdkInstallInstructions() {
-  return <div>SDK Install Instructions</div>;
-}

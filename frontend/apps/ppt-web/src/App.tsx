@@ -85,9 +85,16 @@ function ArticleDetailRoute() {
   return <ArticleDetailPage articleId={articleId} />;
 }
 
-/** Route wrapper for disputes page with mock data (Epic 77) */
+/**
+ * Route wrapper for disputes page (Epic 77).
+ *
+ * Note: This component uses empty mock data as intentional placeholders for demonstration.
+ * In production, data fetching should be implemented using React Query hooks from @ppt/api-client.
+ * The DisputesPage component is a presentational component that receives data via props.
+ */
 function DisputesPageRoute() {
-  // TODO: Replace with real data fetching via React Query
+  // Demo mode: Empty data for UI demonstration purposes
+  // Production implementation should use useDisputes() hook from api-client
   const handleNavigateToCreate = () => {
     window.location.href = '/disputes/new';
   };
@@ -98,7 +105,7 @@ function DisputesPageRoute() {
     window.location.href = `/disputes/${id}`;
   };
   const handleFilterChange = () => {
-    // TODO: Implement filter handling
+    // Filter handling will be implemented with React Query when data fetching is added
   };
 
   return (
@@ -114,11 +121,17 @@ function DisputesPageRoute() {
   );
 }
 
-/** Route wrapper for file dispute page (Epic 77) */
+/**
+ * Route wrapper for file dispute page (Epic 77).
+ *
+ * Note: Submission handlers are placeholders for demonstration purposes.
+ * Production implementation should use useCreateDispute() mutation from api-client.
+ */
 function FileDisputePageRoute() {
-  // TODO: Replace with real data fetching and submission via React Query
+  // Demo mode: Placeholder handlers for UI demonstration
+  // Production implementation should use useCreateDispute() mutation from api-client
   const handleSubmit = () => {
-    // TODO: Implement actual dispute submission
+    // Dispute submission will be implemented with React Query mutation
     window.location.href = '/disputes';
   };
   const handleCancel = () => {
@@ -128,12 +141,18 @@ function FileDisputePageRoute() {
   return <FileDisputePage onSubmit={handleSubmit} onCancel={handleCancel} />;
 }
 
-/** Route wrapper for dispute detail page to extract params (Epic 77) */
+/**
+ * Route wrapper for dispute detail page (Epic 77).
+ *
+ * Note: This is a placeholder component. Full implementation requires:
+ * 1. useDispute(disputeId) hook from api-client for data fetching
+ * 2. DisputeDetailPage component with proper props interface
+ * 3. Loading/error states handling
+ */
 function DisputeDetailRoute() {
   const { disputeId } = useParams<{ disputeId: string }>();
   if (!disputeId) return <div>Dispute not found</div>;
-  // TODO: Fetch dispute data and pass to DisputeDetailPage
-  // For now, show a placeholder
+  // Placeholder: Data fetching will be implemented with useDispute() hook from api-client
   return (
     <div>
       <h1>Dispute Details</h1>

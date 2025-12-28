@@ -1,5 +1,6 @@
 //! Property Import routes (Epic 34: Property Import).
 
+use crate::extractors::AuthenticatedUser;
 use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
@@ -81,15 +82,29 @@ pub struct FeedResponse {
     )
 )]
 pub async fn list_import_jobs(
-    State(_state): State<AppState>,
-    Query(_query): Query<ImportJobsQuery>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Query(query): Query<ImportJobsQuery>,
 ) -> Result<Json<ImportJobsResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let jobs = state
+        .reality_portal_repo
+        .list_import_jobs(
+            auth.user_id,
+            query.status,
+            query.limit.unwrap_or(20),
+            query.offset.unwrap_or(0),
+        )
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to list import jobs: {}", e),
+            )
+        })?;
+
+    let total = jobs.len() as i64;
+
+    Ok(Json(ImportJobsResponse { jobs, total }))
 }
 
 /// Create a new import job.
@@ -105,14 +120,22 @@ pub async fn list_import_jobs(
     )
 )]
 pub async fn create_import_job(
-    State(_state): State<AppState>,
-    Json(_data): Json<CreatePortalImportJob>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Json(data): Json<CreatePortalImportJob>,
 ) -> Result<Json<ImportJobResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let job = state
+        .reality_portal_repo
+        .create_import_job(auth.user_id, data)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to create import job: {}", e),
+            )
+        })?;
+
+    Ok(Json(ImportJobResponse { job }))
 }
 
 /// Get import job by ID.
@@ -258,13 +281,23 @@ pub async fn cancel_import_job(
     )
 )]
 pub async fn list_feeds(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
 ) -> Result<Json<FeedsResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract agency_id from authentication context when auth middleware is implemented.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let feeds = state
+        .reality_portal_repo
+        .list_feed_subscriptions(auth.user_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to list feeds: {}", e),
+            )
+        })?;
+
+    let total = feeds.len() as i64;
+
+    Ok(Json(FeedsResponse { feeds, total }))
 }
 
 /// Create a new feed subscription.
@@ -280,14 +313,22 @@ pub async fn list_feeds(
     )
 )]
 pub async fn create_feed(
-    State(_state): State<AppState>,
-    Json(_data): Json<CreateFeedSubscription>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Json(data): Json<CreateFeedSubscription>,
 ) -> Result<Json<FeedResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract agency_id from authentication context when auth middleware is implemented.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let feed = state
+        .reality_portal_repo
+        .create_feed_subscription(auth.user_id, data)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to create feed: {}", e),
+            )
+        })?;
+
+    Ok(Json(FeedResponse { feed }))
 }
 
 /// Get feed subscription by ID.
