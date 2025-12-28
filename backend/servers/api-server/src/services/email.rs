@@ -693,6 +693,7 @@ impl EmailService {
     }
 
     /// Send fault notification email to building manager.
+    #[allow(clippy::too_many_arguments)]
     pub async fn send_fault_notification_email(
         &self,
         email: &str,
