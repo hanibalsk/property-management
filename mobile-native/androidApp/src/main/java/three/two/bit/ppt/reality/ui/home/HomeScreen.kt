@@ -42,7 +42,6 @@ fun HomeScreen(
     onAccountClick: () -> Unit,
     onInquiriesClick: () -> Unit
 ) {
-    val scope = rememberCoroutineScope()
     val authState by ssoService.authState.collectAsState()
 
     var featuredListings by remember { mutableStateOf<List<ListingSummary>>(emptyList()) }

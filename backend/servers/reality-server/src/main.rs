@@ -9,7 +9,7 @@
 // Allow dead code for stub implementations during development
 #![allow(dead_code)]
 
-use axum::{routing::get, Router};
+use axum::{http, routing::get, Router};
 use db::models::{
     CreateAgencyInvitation, CreateFeedSubscription, CreateListingInquiry, CreatePortalImportJob,
     CreateRealityAgency, CreateRealtorProfile, CreateSavedSearch, FavoritesResponse,
@@ -20,7 +20,7 @@ use db::models::{
     UpdateRealityAgency, UpdateRealtorProfile, UpdateSavedSearch,
 };
 use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
@@ -227,7 +227,37 @@ async fn main() -> anyhow::Result<()> {
         .with_state(state)
         // Middleware
         .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive());
+        // CORS configuration - allow specific origins in production
+        // TODO: Move allowed origins to configuration
+        .layer(
+            CorsLayer::new()
+                // Allow requests from our frontends (development and production)
+                .allow_origin([
+                    "http://localhost:3000".parse().unwrap(), // ppt-web dev
+                    "http://localhost:3001".parse().unwrap(), // reality-web dev
+                    "http://localhost:8081".parse().unwrap(), // mobile dev
+                    "https://ppt.three-two-bit.com".parse().unwrap(), // production
+                    "https://reality.three-two-bit.com".parse().unwrap(), // reality production
+                    "https://reality-portal.sk".parse().unwrap(), // Slovakia portal
+                    "https://reality-portal.cz".parse().unwrap(), // Czech portal
+                    "https://reality-portal.eu".parse().unwrap(), // EU portal
+                ])
+                // Allow common HTTP methods
+                .allow_methods([
+                    http::Method::GET,
+                    http::Method::POST,
+                    http::Method::PUT,
+                    http::Method::PATCH,
+                    http::Method::DELETE,
+                    http::Method::OPTIONS,
+                ])
+                // Allow common headers
+                .allow_headers(Any)
+                // Allow credentials (cookies, authorization headers)
+                .allow_credentials(true)
+                // Cache preflight response for 1 hour
+                .max_age(std::time::Duration::from_secs(3600)),
+        );
 
     // Run server
     let addr = SocketAddr::from(([0, 0, 0, 0], 8081));

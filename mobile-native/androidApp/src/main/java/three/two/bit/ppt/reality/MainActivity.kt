@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import three.two.bit.ppt.reality.api.ApiConfig
+import three.two.bit.ppt.reality.api.HttpClientProvider
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.listing.ListingRepository
 import three.two.bit.ppt.reality.navigation.RealityNavHost
@@ -60,9 +62,19 @@ class MainActivity : ComponentActivity() {
         if (uri.scheme == "reality" && uri.host == "sso") {
             val token = uri.getQueryParameter("token")
             if (token != null) {
-                // Validate token and login
-                kotlinx.coroutines.MainScope().launch { ssoService.validateAndLogin(token) }
+                // Validate token and login using lifecycleScope to prevent leaks
+                lifecycleScope.launch { ssoService.validateAndLogin(token) }
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Clean up shared HttpClient resources when activity is destroyed
+        // Note: In a full app, this should be in Application.onTerminate() instead
+        // to avoid closing the client prematurely in single-activity apps
+        if (isFinishing) {
+            HttpClientProvider.close()
         }
     }
 }
