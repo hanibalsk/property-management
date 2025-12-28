@@ -302,7 +302,11 @@ export function ReportsPage({
                 schedules={schedules}
                 isLoading={isLoading}
                 onEdit={(schedule) => {
-                  // TODO: Implement schedule editing functionality
+                  // TODO(Epic 53): Implement schedule editing - open ScheduleForm in edit mode
+                  // with pre-populated data from the schedule object. This requires:
+                  // 1. Adding an 'editingSchedule' state to track the schedule being edited
+                  // 2. Passing initialData prop to ScheduleForm when editing
+                  // 3. Using onUpdateSchedule callback instead of onCreateSchedule
                   void schedule.id;
                 }}
                 onDelete={async (id) => {
@@ -315,7 +319,12 @@ export function ReportsPage({
                   await onRunScheduleNow?.(id);
                 }}
                 onViewHistory={(id) => {
-                  // TODO: Implement schedule history view
+                  // TODO(Epic 53): Implement schedule execution history view
+                  // This should navigate to a history page or open a modal showing:
+                  // 1. Past execution times and statuses (success/failure)
+                  // 2. Generated reports from each execution
+                  // 3. Error logs for failed executions
+                  // Consider: GET /api/v1/reports/schedules/{id}/history endpoint
                   void id;
                 }}
               />

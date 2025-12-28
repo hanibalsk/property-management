@@ -1,5 +1,6 @@
 //! Realtor routes (Epic 33: Realtor Tools).
 
+use crate::extractors::AuthenticatedUser;
 use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
@@ -59,14 +60,27 @@ pub struct InquiriesQuery {
     )
 )]
 pub async fn get_my_profile(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
 ) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let profile = state
+        .reality_portal_repo
+        .get_realtor_profile(auth.user_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get profile: {}", e),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                "Profile not found".to_string(),
+            )
+        })?;
+
+    Ok(Json(ProfileResponse { profile }))
 }
 
 /// Get realtor profile by user ID.
@@ -117,15 +131,30 @@ pub async fn get_profile(
     )
 )]
 pub async fn create_profile(
-    State(_state): State<AppState>,
-    Json(_data): Json<CreateRealtorProfile>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Json(data): Json<CreateRealtorProfile>,
 ) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let profile = state
+        .reality_portal_repo
+        .upsert_realtor_profile(auth.user_id, data)
+        .await
+        .map_err(|e| {
+            let error_str = e.to_string();
+            if error_str.contains("already exists") {
+                (
+                    axum::http::StatusCode::BAD_REQUEST,
+                    "Profile already exists".to_string(),
+                )
+            } else {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to create profile: {}", e),
+                )
+            }
+        })?;
+
+    Ok(Json(ProfileResponse { profile }))
 }
 
 /// Update realtor profile.
@@ -141,15 +170,30 @@ pub async fn create_profile(
     )
 )]
 pub async fn update_profile(
-    State(_state): State<AppState>,
-    Json(_data): Json<UpdateRealtorProfile>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Json(data): Json<UpdateRealtorProfile>,
 ) -> Result<Json<ProfileResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let profile = state
+        .reality_portal_repo
+        .update_realtor_profile(auth.user_id, data)
+        .await
+        .map_err(|e| {
+            let error_str = e.to_string();
+            if error_str.contains("not found") {
+                (
+                    axum::http::StatusCode::NOT_FOUND,
+                    "Profile not found".to_string(),
+                )
+            } else {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to update profile: {}", e),
+                )
+            }
+        })?;
+
+    Ok(Json(ProfileResponse { profile }))
 }
 
 /// List realtor's inquiries.
@@ -164,15 +208,29 @@ pub async fn update_profile(
     )
 )]
 pub async fn list_inquiries(
-    State(_state): State<AppState>,
-    Query(_query): Query<InquiriesQuery>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Query(query): Query<InquiriesQuery>,
 ) -> Result<Json<InquiriesResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let inquiries = state
+        .reality_portal_repo
+        .get_realtor_inquiries(
+            auth.user_id,
+            query.status,
+            query.limit.unwrap_or(20),
+            query.offset.unwrap_or(0),
+        )
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to list inquiries: {}", e),
+            )
+        })?;
+
+    let total = inquiries.len() as i64;
+
+    Ok(Json(InquiriesResponse { inquiries, total }))
 }
 
 /// Mark inquiry as read.
@@ -219,14 +277,29 @@ pub async fn mark_inquiry_read(
     )
 )]
 pub async fn respond_to_inquiry(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_data): Json<SendInquiryMessage>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+    Json(data): Json<SendInquiryMessage>,
 ) -> Result<Json<InquiryMessage>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let message = state
+        .reality_portal_repo
+        .respond_to_inquiry(id, auth.user_id, &data.message)
+        .await
+        .map_err(|e| {
+            let error_str = e.to_string();
+            if error_str.contains("not found") {
+                (
+                    axum::http::StatusCode::NOT_FOUND,
+                    "Inquiry not found".to_string(),
+                )
+            } else {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to respond to inquiry: {}", e),
+                )
+            }
+        })?;
+
+    Ok(Json(message))
 }

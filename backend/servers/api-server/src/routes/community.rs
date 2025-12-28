@@ -4,11 +4,11 @@
 
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     routing::{get, post},
     Json, Router,
 };
-use common::errors::ErrorResponse;
+use common::{errors::ErrorResponse, TenantContext};
 use db::models::{
     CommunityComment, CommunityEvent, CommunityEventRsvp, CommunityGroup,
     CommunityGroupWithMembership, CommunityPost, CreateCommunityComment, CreateCommunityEvent,
@@ -20,6 +20,38 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::state::AppState;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Extract tenant context from request headers.
+fn extract_tenant_context(
+    headers: &HeaderMap,
+) -> Result<TenantContext, (StatusCode, Json<ErrorResponse>)> {
+    let tenant_header = headers
+        .get("X-Tenant-Context")
+        .and_then(|h| h.to_str().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new(
+                    "MISSING_CONTEXT",
+                    "Authentication required",
+                )),
+            )
+        })?;
+
+    serde_json::from_str(tenant_header).map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_CONTEXT",
+                "Invalid authentication context format",
+            )),
+        )
+    })
+}
 
 /// Create community router.
 pub fn router() -> Router<AppState> {
@@ -165,19 +197,29 @@ pub async fn list_groups(
     tag = "Community"
 )]
 pub async fn create_group(
-    State(_state): State<AppState>,
-    Path(_path): Path<BuildingIdPath>,
-    Json(_data): Json<CreateCommunityGroup>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<BuildingIdPath>,
+    Json(data): Json<CreateCommunityGroup>,
 ) -> Result<(StatusCode, Json<CommunityGroup>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let group = state
+        .community_repo
+        .create_group(path.building_id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create group");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create group",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(group)))
 }
 
 /// Get a community group by ID.
@@ -228,18 +270,25 @@ pub async fn get_group(
     tag = "Community"
 )]
 pub async fn join_group(
-    State(_state): State<AppState>,
-    Path(_path): Path<GroupIdPath>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<GroupIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    state
+        .community_repo
+        .join_group(path.id, context.user_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to join group");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to join group")),
+            )
+        })?;
+
+    Ok(StatusCode::OK)
 }
 
 /// Leave a community group.
@@ -255,18 +304,28 @@ pub async fn join_group(
     tag = "Community"
 )]
 pub async fn leave_group(
-    State(_state): State<AppState>,
-    Path(_path): Path<GroupIdPath>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<GroupIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    state
+        .community_repo
+        .leave_group(path.id, context.user_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to leave group");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to leave group",
+                )),
+            )
+        })?;
+
+    Ok(StatusCode::OK)
 }
 
 // ==================== Posts (Story 37.2) ====================
@@ -318,19 +377,29 @@ pub async fn list_posts(
     tag = "Community"
 )]
 pub async fn create_post(
-    State(_state): State<AppState>,
-    Path(_path): Path<GroupPostsPath>,
-    Json(_data): Json<CreateCommunityPost>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<GroupPostsPath>,
+    Json(data): Json<CreateCommunityPost>,
 ) -> Result<(StatusCode, Json<CommunityPost>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let post = state
+        .community_repo
+        .create_post(path.group_id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create post");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create post",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(post)))
 }
 
 /// Add reaction to a post.
@@ -347,19 +416,29 @@ pub async fn create_post(
     tag = "Community"
 )]
 pub async fn add_reaction(
-    State(_state): State<AppState>,
-    Path(_path): Path<PostIdPath>,
-    Json(_data): Json<AddReactionRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<PostIdPath>,
+    Json(data): Json<AddReactionRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    state
+        .community_repo
+        .add_post_reaction(path.id, context.user_id, &data.reaction_type)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to add reaction");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to add reaction",
+                )),
+            )
+        })?;
+
+    Ok(StatusCode::OK)
 }
 
 /// Create a comment on a post.
@@ -376,19 +455,29 @@ pub async fn add_reaction(
     tag = "Community"
 )]
 pub async fn create_comment(
-    State(_state): State<AppState>,
-    Path(_path): Path<PostIdPath>,
-    Json(_data): Json<CreateCommunityComment>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<PostIdPath>,
+    Json(data): Json<CreateCommunityComment>,
 ) -> Result<(StatusCode, Json<CommunityComment>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let comment = state
+        .community_repo
+        .create_comment(path.id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create comment");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create comment",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(comment)))
 }
 
 // ==================== Events (Story 37.3) ====================
@@ -443,19 +532,29 @@ pub async fn list_events(
     tag = "Community"
 )]
 pub async fn create_event(
-    State(_state): State<AppState>,
-    Path(_path): Path<BuildingIdPath>,
-    Json(_data): Json<CreateCommunityEvent>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<BuildingIdPath>,
+    Json(data): Json<CreateCommunityEvent>,
 ) -> Result<(StatusCode, Json<CommunityEvent>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let event = state
+        .community_repo
+        .create_event(path.building_id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create event");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create event",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(event)))
 }
 
 /// RSVP to an event.
@@ -472,19 +571,29 @@ pub async fn create_event(
     tag = "Community"
 )]
 pub async fn rsvp_event(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_data): Json<EventRsvpRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(data): Json<EventRsvpRequest>,
 ) -> Result<Json<CommunityEventRsvp>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let rsvp = state
+        .community_repo
+        .rsvp_event(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to RSVP to event");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to RSVP to event",
+                )),
+            )
+        })?;
+
+    Ok(Json(rsvp))
 }
 
 // ==================== Marketplace (Story 37.4) ====================
@@ -536,19 +645,29 @@ pub async fn list_items(
     tag = "Community"
 )]
 pub async fn create_item(
-    State(_state): State<AppState>,
-    Path(_path): Path<BuildingIdPath>,
-    Json(_data): Json<CreateMarketplaceItem>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<BuildingIdPath>,
+    Json(data): Json<CreateMarketplaceItem>,
 ) -> Result<(StatusCode, Json<MarketplaceItem>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let item = state
+        .community_repo
+        .create_item(path.building_id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create item");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create item",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(item)))
 }
 
 /// Get a marketplace item by ID.
@@ -600,17 +719,27 @@ pub async fn get_item(
     tag = "Community"
 )]
 pub async fn create_inquiry(
-    State(_state): State<AppState>,
-    Path(_path): Path<ItemIdPath>,
-    Json(_data): Json<CreateMarketplaceInquiry>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<ItemIdPath>,
+    Json(data): Json<CreateMarketplaceInquiry>,
 ) -> Result<(StatusCode, Json<MarketplaceInquiry>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let inquiry = state
+        .community_repo
+        .create_inquiry(path.id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create inquiry");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create inquiry",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(inquiry)))
 }

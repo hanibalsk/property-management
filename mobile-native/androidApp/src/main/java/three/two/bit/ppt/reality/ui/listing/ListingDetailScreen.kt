@@ -27,8 +27,12 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
+import three.two.bit.ppt.reality.favorites.FavoritesRepository
+import three.two.bit.ppt.reality.inquiry.CreateInquiryRequest
+import three.two.bit.ppt.reality.inquiry.InquiryRepository
 import three.two.bit.ppt.reality.listing.*
 import three.two.bit.ppt.reality.util.FormatUtils
 
@@ -54,8 +58,34 @@ fun ListingDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isFavorite by remember { mutableStateOf(false) }
+    var isFavoriteLoading by remember { mutableStateOf(false) }
     var showInquiryDialog by remember { mutableStateOf(false) }
+    var isInquirySubmitting by remember { mutableStateOf(false) }
+    var inquiryError by remember { mutableStateOf<String?>(null) }
     var showShareSheet by remember { mutableStateOf(false) }
+
+    // Create repositories with session token when authenticated
+    val sessionToken = (authState as? AuthState.Authenticated)?.sessionToken
+    val favoritesRepository =
+        remember(sessionToken) {
+            FavoritesRepository(baseUrl = ApiConfig.requireBaseUrl(), sessionToken = sessionToken)
+        }
+    val inquiryRepository =
+        remember(sessionToken) {
+            InquiryRepository(baseUrl = ApiConfig.requireBaseUrl(), sessionToken = sessionToken)
+        }
+
+    // Load initial favorite state when authenticated
+    LaunchedEffect(listingId, authState) {
+        if (authState is AuthState.Authenticated) {
+            favoritesRepository
+                .isFavorite(listingId)
+                .fold(
+                    onSuccess = { isFav -> isFavorite = isFav },
+                    onFailure = { /* Silently fail - favorites status is non-critical */}
+                )
+        }
+    }
 
     // Load listing details
     LaunchedEffect(listingId) {
@@ -89,18 +119,25 @@ fun ListingDetailScreen(
                     }
                     IconButton(
                         onClick = {
-                            if (authState is AuthState.Authenticated) {
-                                isFavorite = !isFavorite
-                                // TODO(Epic-48): Persist favorites via FavoritesRepository
-                                // Current limitation: Favorites only toggle local UI state and are
-                                // not persisted to backend. Changes will be lost on screen
-                                // navigation or app restart.
-                                // Required implementation:
-                                // - Create FavoritesRepository instance with session token
-                                // - Call addFavorite(listingId) when isFavorite becomes true
-                                // - Call removeFavorite(listingId) when isFavorite becomes false
-                                // - Handle Result.failure with error message display
-                                // - Load initial favorite state via isFavorite(listingId) on mount
+                            if (authState is AuthState.Authenticated && !isFavoriteLoading) {
+                                val newFavoriteState = !isFavorite
+                                isFavoriteLoading = true
+                                scope.launch {
+                                    val result =
+                                        if (newFavoriteState) {
+                                            favoritesRepository.addFavorite(listingId)
+                                        } else {
+                                            favoritesRepository.removeFavorite(listingId)
+                                        }
+                                    result.fold(
+                                        onSuccess = { isFavorite = newFavoriteState },
+                                        onFailure = {
+                                            // Revert optimistic update on failure
+                                            // Error is silently handled - could show snackbar
+                                        }
+                                    )
+                                    isFavoriteLoading = false
+                                }
                             }
                         }
                     ) {
@@ -183,20 +220,38 @@ fun ListingDetailScreen(
         InquiryDialog(
             listing = listing!!,
             isAuthenticated = authState is AuthState.Authenticated,
-            onDismiss = { showInquiryDialog = false },
-            onSubmit = { message ->
-                // TODO(Epic-48): Submit inquiry via InquiryRepository
-                // Current limitation: Dialog collects inquiry message but does not submit to
-                // backend. User will see success feedback without actual inquiry being sent.
-                // Required implementation:
-                // - Create InquiryRepository instance with session token from authState
-                // - Build CreateInquiryRequest with listingId and message
-                // - Call createInquiry(request) in coroutine scope
-                // - Handle Result.success: close dialog and call onInquirySuccess()
-                // - Handle Result.failure: display error message to user
-                // - For unauthenticated users, include optional name/email/phone fields
+            isSubmitting = isInquirySubmitting,
+            errorMessage = inquiryError,
+            onDismiss = {
                 showInquiryDialog = false
-                onInquirySuccess()
+                inquiryError = null
+            },
+            onSubmit = { message, name, email, phone ->
+                isInquirySubmitting = true
+                inquiryError = null
+                scope.launch {
+                    val request =
+                        CreateInquiryRequest(
+                            listingId = listingId,
+                            message = message,
+                            name = name,
+                            email = email,
+                            phone = phone
+                        )
+                    inquiryRepository
+                        .createInquiry(request)
+                        .fold(
+                            onSuccess = {
+                                isInquirySubmitting = false
+                                showInquiryDialog = false
+                                onInquirySuccess()
+                            },
+                            onFailure = { error ->
+                                isInquirySubmitting = false
+                                inquiryError = error.message ?: "Failed to send inquiry"
+                            }
+                        )
+                }
             }
         )
     }
@@ -658,17 +713,27 @@ private fun ErrorContent(message: String, onRetry: () -> Unit, modifier: Modifie
 private fun InquiryDialog(
     listing: ListingDetail,
     isAuthenticated: Boolean,
+    isSubmitting: Boolean = false,
+    errorMessage: String? = null,
     onDismiss: () -> Unit,
-    onSubmit: (String) -> Unit
+    onSubmit: (message: String, name: String?, email: String?, phone: String?) -> Unit
 ) {
     var message by remember {
         mutableStateOf(
             "Hi, I'm interested in ${listing.title}. Please contact me with more information."
         )
     }
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+
+    val canSubmit =
+        message.isNotBlank() &&
+            !isSubmitting &&
+            (isAuthenticated || (name.isNotBlank() && email.isNotBlank()))
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
         title = { Text("Send Inquiry") },
         text = {
             Column {
@@ -697,6 +762,37 @@ private fun InquiryDialog(
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
+
+                    // Contact fields for unauthenticated users
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Name *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isSubmitting
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email *") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isSubmitting
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = { Text("Phone (optional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isSubmitting
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 OutlinedTextField(
@@ -705,14 +801,47 @@ private fun InquiryDialog(
                     label = { Text("Message") },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 4,
-                    maxLines = 6
+                    maxLines = 6,
+                    enabled = !isSubmitting
                 )
+
+                // Error message display
+                errorMessage?.let { error ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         },
         confirmButton = {
-            Button(onClick = { onSubmit(message) }, enabled = message.isNotBlank()) { Text("Send") }
+            Button(
+                onClick = {
+                    onSubmit(
+                        message,
+                        name.takeIf { it.isNotBlank() },
+                        email.takeIf { it.isNotBlank() },
+                        phone.takeIf { it.isNotBlank() }
+                    )
+                },
+                enabled = canSubmit
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(if (isSubmitting) "Sending..." else "Send")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Cancel") }
+        }
     )
 }
 

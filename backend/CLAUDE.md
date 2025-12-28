@@ -73,6 +73,7 @@ Key workspace dependencies:
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `JWT_SECRET` | Yes | Secret key for JWT signing (min 32 chars) |
 | `RUST_LOG` | No | Log level (default: info) |
+| `CORS_ALLOWED_ORIGINS` | No | Comma-separated list of allowed CORS origins |
 
 ```bash
 # Required
@@ -81,6 +82,20 @@ JWT_SECRET=your-secure-random-secret-key-min-32-chars
 
 # Optional
 RUST_LOG=debug
+CORS_ALLOWED_ORIGINS=https://example.com,https://api.example.com
 ```
+
+### CORS Configuration
+
+Both servers support configurable CORS origins via the `CORS_ALLOWED_ORIGINS` environment variable.
+
+**Format:** Comma-separated list of origins (e.g., `https://example.com,https://api.example.com`)
+
+**Default origins (if not set):**
+
+| Server | Default Origins |
+|--------|-----------------|
+| api-server | localhost:3000, localhost:3001, localhost:8080, localhost:8081, ppt.three-two-bit.com, reality.three-two-bit.com |
+| reality-server | localhost:3000, localhost:3001, localhost:8080, localhost:8081, ppt.three-two-bit.com, reality.three-two-bit.com, reality-portal.sk, reality-portal.cz, reality-portal.eu |
 
 > **Security:** `JWT_SECRET` has no fallback. Server will fail to authenticate requests if not set.

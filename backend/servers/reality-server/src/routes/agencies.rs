@@ -1,5 +1,6 @@
 //! Agency routes (Epic 32: Agency Management).
 
+use crate::extractors::AuthenticatedUser;
 use crate::state::AppState;
 use axum::{
     extract::{Path, State},
@@ -56,15 +57,30 @@ pub struct MembersResponse {
     )
 )]
 pub async fn create_agency(
-    State(_state): State<AppState>,
-    Json(_data): Json<CreateRealityAgency>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Json(data): Json<CreateRealityAgency>,
 ) -> Result<Json<AgencyResponse>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let agency = state
+        .reality_portal_repo
+        .create_agency(auth.user_id, data)
+        .await
+        .map_err(|e| {
+            let error_str = e.to_string();
+            if error_str.contains("duplicate") || error_str.contains("already exists") {
+                (
+                    axum::http::StatusCode::BAD_REQUEST,
+                    "Agency with this name or slug already exists".to_string(),
+                )
+            } else {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to create agency: {}", e),
+                )
+            }
+        })?;
+
+    Ok(Json(AgencyResponse { agency }))
 }
 
 /// Get agency by ID.
@@ -250,22 +266,42 @@ pub async fn list_members(
     )
 )]
 pub async fn create_invitation(
-    State(_state): State<AppState>,
-    Path(_agency_id): Path<Uuid>,
-    Json(_data): Json<CreateAgencyInvitation>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Path(agency_id): Path<Uuid>,
+    Json(data): Json<CreateAgencyInvitation>,
 ) -> Result<Json<RealityAgencyInvitation>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let invitation = state
+        .reality_portal_repo
+        .create_invitation(agency_id, auth.user_id, data)
+        .await
+        .map_err(|e| {
+            let error_str = e.to_string();
+            if error_str.contains("not found") {
+                (
+                    axum::http::StatusCode::NOT_FOUND,
+                    "Agency not found".to_string(),
+                )
+            } else if error_str.contains("permission") || error_str.contains("unauthorized") {
+                (
+                    axum::http::StatusCode::FORBIDDEN,
+                    "Not authorized to create invitations for this agency".to_string(),
+                )
+            } else {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to create invitation: {}", e),
+                )
+            }
+        })?;
+
+    Ok(Json(invitation))
 }
 
 /// Accept invitation request.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AcceptInvitationRequest {
-    pub user_id: Uuid, // In production, this comes from auth context
+    pub user_id: Uuid, // Deprecated: now extracted from auth context
 }
 
 /// Accept agency invitation.
@@ -281,13 +317,33 @@ pub struct AcceptInvitationRequest {
     )
 )]
 pub async fn accept_invitation(
-    State(_state): State<AppState>,
-    Path(_token): Path<String>,
+    State(state): State<AppState>,
+    auth: AuthenticatedUser,
+    Path(token): Path<String>,
 ) -> Result<Json<RealityAgencyMember>, (axum::http::StatusCode, String)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        axum::http::StatusCode::UNAUTHORIZED,
-        "Authentication required".to_string(),
-    ))
+    let member = state
+        .reality_portal_repo
+        .accept_invitation(&token, auth.user_id)
+        .await
+        .map_err(|e| {
+            let error_str = e.to_string();
+            if error_str.contains("expired") {
+                (
+                    axum::http::StatusCode::BAD_REQUEST,
+                    "Invitation has expired".to_string(),
+                )
+            } else if error_str.contains("not found") || error_str.contains("invalid") {
+                (
+                    axum::http::StatusCode::BAD_REQUEST,
+                    "Invalid invitation token".to_string(),
+                )
+            } else {
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to accept invitation: {}", e),
+                )
+            }
+        })?;
+
+    Ok(Json(member))
 }

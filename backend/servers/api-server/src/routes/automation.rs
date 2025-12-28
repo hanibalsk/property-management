@@ -4,11 +4,11 @@
 
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     routing::{delete, get, post, put},
     Json, Router,
 };
-use common::errors::ErrorResponse;
+use common::{errors::ErrorResponse, TenantContext};
 use db::models::{
     CreateAutomationRule, CreateRuleFromTemplate, UpdateAutomationRule, WorkflowAutomationLog,
     WorkflowAutomationRule, WorkflowAutomationTemplate,
@@ -18,6 +18,38 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::state::AppState;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Extract tenant context from request headers.
+fn extract_tenant_context(
+    headers: &HeaderMap,
+) -> Result<TenantContext, (StatusCode, Json<ErrorResponse>)> {
+    let tenant_header = headers
+        .get("X-Tenant-Context")
+        .and_then(|h| h.to_str().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new(
+                    "MISSING_CONTEXT",
+                    "Authentication required",
+                )),
+            )
+        })?;
+
+    serde_json::from_str(tenant_header).map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_CONTEXT",
+                "Invalid authentication context format",
+            )),
+        )
+    })
+}
 
 /// Create automation router.
 pub fn router() -> Router<AppState> {
@@ -124,19 +156,29 @@ pub async fn list_rules(
     tag = "Automation"
 )]
 pub async fn create_rule(
-    State(_state): State<AppState>,
-    Path(_path): Path<OrgIdPath>,
-    Json(_data): Json<CreateAutomationRule>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<OrgIdPath>,
+    Json(data): Json<CreateAutomationRule>,
 ) -> Result<(StatusCode, Json<WorkflowAutomationRule>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract created_by from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized rule creation.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let rule = state
+        .automation_repo
+        .create_rule(path.org_id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create rule");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create rule",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(rule)))
 }
 
 /// Get an automation rule by ID.
@@ -410,17 +452,27 @@ pub async fn get_template(
     tag = "Automation"
 )]
 pub async fn create_from_template(
-    State(_state): State<AppState>,
-    Path(_path): Path<OrgIdPath>,
-    Json(_data): Json<CreateRuleFromTemplate>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(path): Path<OrgIdPath>,
+    Json(data): Json<CreateRuleFromTemplate>,
 ) -> Result<(StatusCode, Json<WorkflowAutomationRule>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract created_by from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized rule creation.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let rule = state
+        .automation_repo
+        .create_from_template(path.org_id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create rule from template");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create rule from template",
+                )),
+            )
+        })?;
+
+    Ok((StatusCode::CREATED, Json(rule)))
 }

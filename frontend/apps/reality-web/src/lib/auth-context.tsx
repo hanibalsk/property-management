@@ -62,12 +62,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<SsoUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check session on mount
-  useEffect(() => {
-    checkSession();
-  }, []);
-
-  const checkSession = async () => {
+  const checkSession = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE}/api/v1/sso/session`, {
         credentials: 'include',
@@ -88,7 +83,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Check session on mount
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
 
   const login = useCallback((redirectUri?: string) => {
     const params = new URLSearchParams();

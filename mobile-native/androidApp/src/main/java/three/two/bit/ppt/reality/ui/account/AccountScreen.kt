@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.BuildConfig
 import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
@@ -461,7 +462,11 @@ private fun AboutSection() {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            AboutItem(icon = Icons.Default.Info, title = "Version", value = "1.0.0")
+            AboutItem(
+                icon = Icons.Default.Info,
+                title = "Version",
+                value = BuildConfig.VERSION_NAME
+            )
 
             HorizontalDivider()
 

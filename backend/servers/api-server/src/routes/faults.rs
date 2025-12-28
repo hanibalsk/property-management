@@ -3,18 +3,52 @@
 use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     routing::{delete, get, post, put},
     Json, Router,
 };
-use common::errors::ErrorResponse;
+use common::{errors::ErrorResponse, TenantContext};
 use db::models::{
-    AiSuggestion, Fault, FaultAttachment, FaultStatistics, FaultSummary,
-    FaultTimelineEntryWithUser, FaultWithDetails, UpdateFault,
+    AddFaultComment, AddWorkNote, AiSuggestion, AssignFault, ConfirmFault, CreateFault,
+    CreateFaultAttachment, Fault, FaultAttachment, FaultListQuery, FaultStatistics, FaultSummary,
+    FaultTimelineEntryWithUser, FaultWithDetails, ReopenFault, ResolveFault, TriageFault,
+    UpdateFault, UpdateFaultStatus,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Extract tenant context from request headers.
+fn extract_tenant_context(
+    headers: &HeaderMap,
+) -> Result<TenantContext, (StatusCode, Json<ErrorResponse>)> {
+    let tenant_header = headers
+        .get("X-Tenant-Context")
+        .and_then(|h| h.to_str().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new(
+                    "MISSING_CONTEXT",
+                    "Authentication required",
+                )),
+            )
+        })?;
+
+    serde_json::from_str(tenant_header).map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_CONTEXT",
+                "Invalid authentication context format",
+            )),
+        )
+    })
+}
 
 // ============================================================================
 // Response Types
@@ -247,17 +281,42 @@ pub fn router() -> Router<AppState> {
     tag = "Faults"
 )]
 async fn create_fault(
-    State(_state): State<AppState>,
-    Json(_req): Json<CreateFaultRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<CreateFaultRequest>,
 ) -> Result<(StatusCode, Json<CreateFaultResponse>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract reporter_id and org_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized fault creation.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
+    let context = extract_tenant_context(&headers)?;
+
+    let data = CreateFault {
+        organization_id: context.tenant_id,
+        building_id: req.building_id,
+        unit_id: req.unit_id,
+        reporter_id: context.user_id,
+        title: req.title,
+        description: req.description,
+        location_description: req.location_description,
+        category: req.category,
+        priority: req.priority,
+        idempotency_key: req.idempotency_key,
+    };
+
+    let fault = state.fault_repo.create(data).await.map_err(|e| {
+        tracing::error!("Failed to create fault: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new(
+                "INTERNAL_ERROR",
+                "Failed to create fault",
+            )),
+        )
+    })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(CreateFaultResponse {
+            id: fault.id,
+            message: "Fault created successfully".to_string(),
+        }),
     ))
 }
 
@@ -273,18 +332,46 @@ async fn create_fault(
     tag = "Faults"
 )]
 async fn list_faults(
-    State(_state): State<AppState>,
-    Query(_query): Query<ListFaultsQuery>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<ListFaultsQuery>,
 ) -> Result<Json<FaultListResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract org_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let list_query = FaultListQuery {
+        building_id: query.building_id,
+        unit_id: query.unit_id,
+        status: query.status.map(|s| vec![s]),
+        priority: query.priority.map(|p| vec![p]),
+        category: query.category.map(|c| vec![c]),
+        assigned_to: query.assigned_to,
+        reporter_id: None,
+        search: query.search,
+        from_date: query.from_date,
+        to_date: query.to_date,
+        limit: query.limit,
+        offset: query.offset,
+        sort_by: query.sort_by,
+        sort_order: query.sort_order,
+    };
+
+    let faults = state
+        .fault_repo
+        .list(context.tenant_id, list_query)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to list faults: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to list faults",
+                )),
+            )
+        })?;
+
+    let count = faults.len();
+    Ok(Json(FaultListResponse { faults, count }))
 }
 
 /// List my faults (Story 4.5).
@@ -298,18 +385,33 @@ async fn list_faults(
     tag = "Faults"
 )]
 async fn list_my_faults(
-    State(_state): State<AppState>,
-    Query(_query): Query<ListFaultsQuery>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<ListFaultsQuery>,
 ) -> Result<Json<FaultListResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let faults = state
+        .fault_repo
+        .list_by_reporter(
+            context.user_id,
+            query.limit.unwrap_or(50),
+            query.offset.unwrap_or(0),
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to list my faults: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to list faults",
+                )),
+            )
+        })?;
+
+    let count = faults.len();
+    Ok(Json(FaultListResponse { faults, count }))
 }
 
 /// Get fault details.
@@ -327,10 +429,11 @@ async fn list_my_faults(
 )]
 async fn get_fault(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Json<FaultDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Get user from auth context for internal visibility check
-    let is_manager = true; // Placeholder
+    let context = extract_tenant_context(&headers)?;
+    let is_manager = context.role.is_manager();
 
     let fault = match state.fault_repo.find_by_id_with_details(id).await {
         Ok(Some(f)) => f,
@@ -457,19 +560,66 @@ async fn update_fault(
     tag = "Faults"
 )]
 async fn triage_fault(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<TriageFaultRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<TriageFaultRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized triage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    // Check fault exists
+    let existing = match state.fault_repo.find_by_id(id).await {
+        Ok(Some(f)) => f,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find fault: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to find fault")),
+            ));
+        }
+    };
+
+    if existing.status != "new" {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "BAD_REQUEST",
+                "Fault has already been triaged",
+            )),
+        ));
+    }
+
+    let data = TriageFault {
+        priority: req.priority,
+        category: req.category,
+        assigned_to: req.assigned_to,
+    };
+
+    let fault = state
+        .fault_repo
+        .triage(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to triage fault: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to triage fault",
+                )),
+            )
+        })?;
+
+    Ok(Json(FaultActionResponse {
+        message: "Fault triaged successfully".to_string(),
+        fault,
+    }))
 }
 
 /// Assign a fault.
@@ -487,19 +637,36 @@ async fn triage_fault(
     tag = "Faults"
 )]
 async fn assign_fault(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<AssignFaultRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<AssignFaultRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized assignment.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let data = AssignFault {
+        assigned_to: req.assigned_to,
+    };
+
+    let fault = state
+        .fault_repo
+        .assign(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to assign fault: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to assign fault",
+                )),
+            )
+        })?;
+
+    Ok(Json(FaultActionResponse {
+        message: "Fault assigned successfully".to_string(),
+        fault,
+    }))
 }
 
 /// Update fault status (Story 4.4).
@@ -518,19 +685,39 @@ async fn assign_fault(
     tag = "Faults"
 )]
 async fn update_status(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<UpdateStatusRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateStatusRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized status updates.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let data = UpdateFaultStatus {
+        status: req.status,
+        note: req.note,
+        scheduled_date: req.scheduled_date,
+        estimated_completion: req.estimated_completion,
+    };
+
+    let fault = state
+        .fault_repo
+        .update_status(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update status: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to update status",
+                )),
+            )
+        })?;
+
+    Ok(Json(FaultActionResponse {
+        message: "Status updated successfully".to_string(),
+        fault,
+    }))
 }
 
 /// Resolve a fault (Story 4.4).
@@ -548,19 +735,36 @@ async fn update_status(
     tag = "Faults"
 )]
 async fn resolve_fault(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<ResolveFaultRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<ResolveFaultRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized resolution.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let data = ResolveFault {
+        resolution_notes: req.resolution_notes,
+    };
+
+    let fault = state
+        .fault_repo
+        .resolve(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to resolve fault: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to resolve fault",
+                )),
+            )
+        })?;
+
+    Ok(Json(FaultActionResponse {
+        message: "Fault resolved successfully".to_string(),
+        fault,
+    }))
 }
 
 /// Confirm fault resolution (Story 4.6).
@@ -579,19 +783,37 @@ async fn resolve_fault(
     tag = "Faults"
 )]
 async fn confirm_fault(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<ConfirmFaultRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<ConfirmFaultRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized confirmation.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let data = ConfirmFault {
+        rating: req.rating,
+        feedback: req.feedback,
+    };
+
+    let fault = state
+        .fault_repo
+        .confirm(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to confirm fault: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to confirm fault",
+                )),
+            )
+        })?;
+
+    Ok(Json(FaultActionResponse {
+        message: "Resolution confirmed successfully".to_string(),
+        fault,
+    }))
 }
 
 /// Reopen a fault (Story 4.6).
@@ -609,19 +831,34 @@ async fn confirm_fault(
     tag = "Faults"
 )]
 async fn reopen_fault(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<ReopenFaultRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<ReopenFaultRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized reopening.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let data = ReopenFault { reason: req.reason };
+
+    let fault = state
+        .fault_repo
+        .reopen(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to reopen fault: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to reopen fault",
+                )),
+            )
+        })?;
+
+    Ok(Json(FaultActionResponse {
+        message: "Fault reopened successfully".to_string(),
+        fault,
+    }))
 }
 
 /// List comments for a fault.
@@ -638,10 +875,11 @@ async fn reopen_fault(
 )]
 async fn list_comments(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Path(id): Path<Uuid>,
 ) -> Result<Json<TimelineResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Determine if user is manager for internal visibility
-    let is_manager = true;
+    let context = extract_tenant_context(&headers)?;
+    let is_manager = context.role.is_manager();
 
     match state.fault_repo.list_timeline(id, is_manager).await {
         Ok(entries) => Ok(Json(TimelineResponse { entries })),
@@ -673,19 +911,34 @@ async fn list_comments(
     tag = "Faults"
 )]
 async fn add_comment(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<AddCommentRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<AddCommentRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized comments.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let data = AddFaultComment {
+        note: req.note,
+        is_internal: req.is_internal,
+    };
+
+    state
+        .fault_repo
+        .add_comment(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to add comment: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to add comment",
+                )),
+            )
+        })?;
+
+    Ok(StatusCode::CREATED)
 }
 
 /// Add a work note to a fault.
@@ -703,19 +956,31 @@ async fn add_comment(
     tag = "Faults"
 )]
 async fn add_work_note(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<AddWorkNoteRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<AddWorkNoteRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized work notes.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let data = AddWorkNote { note: req.note };
+
+    state
+        .fault_repo
+        .add_work_note(id, context.user_id, data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to add work note: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to add work note",
+                )),
+            )
+        })?;
+
+    Ok(StatusCode::CREATED)
 }
 
 /// List attachments for a fault.
@@ -764,19 +1029,39 @@ async fn list_attachments(
     tag = "Faults"
 )]
 async fn add_attachment(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_req): Json<AddAttachmentRequest>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<AddAttachmentRequest>,
 ) -> Result<(StatusCode, Json<FaultAttachment>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract user_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent unauthorized attachments.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let data = CreateFaultAttachment {
+        fault_id: id,
+        filename: req.filename.clone(),
+        original_filename: req.original_filename,
+        content_type: req.content_type,
+        size_bytes: req.size_bytes,
+        storage_url: req.storage_url,
+        thumbnail_url: req.thumbnail_url,
+        uploaded_by: context.user_id,
+        description: req.description,
+        width: req.width,
+        height: req.height,
+    };
+
+    let attachment = state.fault_repo.add_attachment(data).await.map_err(|e| {
+        tracing::error!("Failed to add attachment: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new(
+                "INTERNAL_ERROR",
+                "Failed to add attachment",
+            )),
+        )
+    })?;
+
+    Ok((StatusCode::CREATED, Json(attachment)))
 }
 
 /// Delete an attachment.
@@ -960,16 +1245,26 @@ async fn get_ai_suggestion(
     tag = "Faults"
 )]
 async fn get_statistics(
-    State(_state): State<AppState>,
-    Query(_query): Query<StatisticsQuery>,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<StatisticsQuery>,
 ) -> Result<Json<StatisticsResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Extract org_id from authentication context when auth middleware is implemented.
-    // Returns UNAUTHORIZED until proper auth is in place to prevent data leakage.
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    let context = extract_tenant_context(&headers)?;
+
+    let statistics = state
+        .fault_repo
+        .get_statistics(context.tenant_id, query.building_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get statistics: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to get statistics",
+                )),
+            )
+        })?;
+
+    Ok(Json(StatisticsResponse { statistics }))
 }

@@ -7,7 +7,7 @@
 'use client';
 
 import type { ListingSummary } from '@ppt/reality-api-client';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 const MAX_COMPARISON_ITEMS = 4;
 const STORAGE_KEY = 'ppt-comparison';
@@ -28,6 +28,8 @@ const ComparisonContext = createContext<ComparisonContextValue | null>(null);
 export function ComparisonProvider({ children }: { children: React.ReactNode }) {
   const [listings, setListings] = useState<ListingSummary[]>([]);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  // Ref to track current listings for synchronous access in addToComparison
+  const listingsRef = useRef<ListingSummary[]>([]);
 
   // Load from localStorage on mount (SSR safety: check window exists)
   useEffect(() => {
@@ -46,6 +48,9 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
 
   // Save to localStorage when listings change (SSR safety: check window exists)
   useEffect(() => {
+    // Keep ref in sync with state for synchronous access
+    listingsRef.current = listings;
+
     if (typeof window === 'undefined') return;
     if (listings.length > 0) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(listings));
@@ -64,18 +69,17 @@ export function ComparisonProvider({ children }: { children: React.ReactNode }) 
   );
 
   const addToComparison = useCallback((listing: ListingSummary) => {
-    let added = false;
-    setListings((prev) => {
-      if (prev.length >= MAX_COMPARISON_ITEMS) {
-        return prev;
-      }
-      if (prev.some((l) => l.id === listing.id)) {
-        return prev;
-      }
-      added = true;
-      return [...prev, listing];
-    });
-    return added;
+    // Use ref for synchronous check to determine return value
+    const current = listingsRef.current;
+    if (current.length >= MAX_COMPARISON_ITEMS) {
+      return false;
+    }
+    if (current.some((l) => l.id === listing.id)) {
+      return false;
+    }
+    // Update state (ref will be updated in useEffect)
+    setListings((prev) => [...prev, listing]);
+    return true;
   }, []);
 
   const removeFromComparison = useCallback((listingId: string) => {

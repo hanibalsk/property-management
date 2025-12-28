@@ -1,9 +1,21 @@
 //! Email service (Epic 1, Story 1.7).
 //!
-//! This is a stub implementation. In production, integrate with
-//! an email provider (SendGrid, AWS SES, etc.).
+//! Supports SMTP email sending in production and logging fallback in development.
+//! Configure via environment variables:
+//! - SMTP_HOST: SMTP server hostname
+//! - SMTP_PORT: SMTP server port (default: 587)
+//! - SMTP_USERNAME: SMTP authentication username
+//! - SMTP_PASSWORD: SMTP authentication password
+//! - SMTP_FROM: Sender email address
+//! - SMTP_TLS: Enable TLS (default: true)
 
 use db::models::Locale;
+use lettre::{
+    message::{header::ContentType, Mailbox},
+    transport::smtp::authentication::Credentials,
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+};
+use std::sync::Arc;
 use thiserror::Error;
 
 /// Email service errors.
@@ -12,11 +24,66 @@ pub enum EmailError {
     #[error("Failed to send email: {0}")]
     SendFailed(String),
 
-    #[error("Invalid email address")]
-    InvalidAddress,
+    #[error("Invalid email address: {0}")]
+    InvalidAddress(String),
 
     #[error("Template not found: {0}")]
     TemplateNotFound(String),
+
+    #[error("SMTP configuration error: {0}")]
+    ConfigurationError(String),
+
+    #[error("Failed to build email message: {0}")]
+    MessageBuildError(String),
+}
+
+/// SMTP configuration loaded from environment variables.
+#[derive(Clone, Debug)]
+pub struct SmtpConfig {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub password: String,
+    pub from_address: String,
+    pub from_name: String,
+    pub use_tls: bool,
+}
+
+impl SmtpConfig {
+    /// Load SMTP configuration from environment variables.
+    pub fn from_env() -> Option<Self> {
+        let host = std::env::var("SMTP_HOST").ok()?;
+        let port = std::env::var("SMTP_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(587);
+        let username = std::env::var("SMTP_USERNAME").ok()?;
+        let password = std::env::var("SMTP_PASSWORD").ok()?;
+        let from_address = std::env::var("SMTP_FROM").ok()?;
+        let from_name = std::env::var("SMTP_FROM_NAME")
+            .unwrap_or_else(|_| "Property Management System".to_string());
+        let use_tls = std::env::var("SMTP_TLS")
+            .map(|v| v != "false" && v != "0")
+            .unwrap_or(true);
+
+        Some(Self {
+            host,
+            port,
+            username,
+            password,
+            from_address,
+            from_name,
+            use_tls,
+        })
+    }
+}
+
+/// Email transport type supporting both SMTP and logging fallback.
+enum EmailTransport {
+    /// SMTP transport for production email sending.
+    Smtp(AsyncSmtpTransport<Tokio1Executor>),
+    /// Logging fallback for development mode.
+    Log,
 }
 
 /// Email service for sending transactional emails.
@@ -26,12 +93,54 @@ pub struct EmailService {
     base_url: String,
     /// Whether to actually send emails (false in development)
     enabled: bool,
+    /// SMTP configuration (None if using log fallback)
+    smtp_config: Option<SmtpConfig>,
+    /// SMTP transport (shared via Arc for Clone)
+    transport: Arc<EmailTransport>,
 }
 
 impl EmailService {
-    /// Create a new EmailService.
+    /// Create a new EmailService with SMTP support.
+    ///
+    /// If SMTP configuration is available via environment variables, it will be used.
+    /// Otherwise, falls back to logging mode.
     pub fn new(base_url: String, enabled: bool) -> Self {
-        Self { base_url, enabled }
+        let smtp_config = SmtpConfig::from_env();
+
+        let transport = if enabled {
+            if let Some(ref config) = smtp_config {
+                match Self::create_smtp_transport(config) {
+                    Ok(smtp) => {
+                        tracing::info!(
+                            host = %config.host,
+                            port = %config.port,
+                            "SMTP email transport configured"
+                        );
+                        Arc::new(EmailTransport::Smtp(smtp))
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "Failed to create SMTP transport, falling back to logging mode"
+                        );
+                        Arc::new(EmailTransport::Log)
+                    }
+                }
+            } else {
+                tracing::info!("SMTP not configured, using logging mode for emails");
+                Arc::new(EmailTransport::Log)
+            }
+        } else {
+            tracing::info!("Email sending disabled, using logging mode");
+            Arc::new(EmailTransport::Log)
+        };
+
+        Self {
+            base_url,
+            enabled,
+            smtp_config,
+            transport,
+        }
     }
 
     /// Create a development EmailService (logs instead of sending).
@@ -39,7 +148,25 @@ impl EmailService {
         Self {
             base_url: "http://localhost:3000".to_string(),
             enabled: false,
+            smtp_config: None,
+            transport: Arc::new(EmailTransport::Log),
         }
+    }
+
+    /// Create SMTP transport from configuration.
+    fn create_smtp_transport(
+        config: &SmtpConfig,
+    ) -> Result<AsyncSmtpTransport<Tokio1Executor>, EmailError> {
+        let creds = Credentials::new(config.username.clone(), config.password.clone());
+
+        let builder = if config.use_tls {
+            AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.host)
+                .map_err(|e| EmailError::ConfigurationError(e.to_string()))?
+        } else {
+            AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.host)
+        };
+
+        Ok(builder.port(config.port).credentials(creds).build())
     }
 
     /// Send email verification email.
@@ -87,21 +214,179 @@ impl EmailService {
         self.send_email(email, &subject, &body).await
     }
 
-    /// Internal send method.
+    /// Send a generic notification email.
+    pub async fn send_notification_email(
+        &self,
+        email: &str,
+        name: &str,
+        subject: &str,
+        message: &str,
+        locale: &Locale,
+    ) -> Result<(), EmailError> {
+        let body = self.get_notification_body(name, message, locale);
+        self.send_email(email, subject, &body).await
+    }
+
+    /// Internal send method supporting both SMTP and logging modes.
     async fn send_email(&self, to: &str, subject: &str, body: &str) -> Result<(), EmailError> {
-        if self.enabled {
-            // TODO: Implement actual email sending
-            // In production, use an email provider SDK
-            tracing::info!(to = %to, subject = %subject, "Would send email (not implemented)");
-        } else {
-            // Development mode: log the email
-            tracing::info!(
+        match self.transport.as_ref() {
+            EmailTransport::Smtp(smtp) => self.send_via_smtp(smtp, to, subject, body).await,
+            EmailTransport::Log => {
+                // Development mode: log the email content
+                tracing::info!(
+                    to = %to,
+                    subject = %subject,
+                    body_length = %body.len(),
+                    "Email logged (development mode)"
+                );
+                tracing::debug!(
+                    to = %to,
+                    subject = %subject,
+                    body = %body,
+                    "Full email content (development mode)"
+                );
+                Ok(())
+            }
+        }
+    }
+
+    /// Send email via SMTP transport.
+    async fn send_via_smtp(
+        &self,
+        transport: &AsyncSmtpTransport<Tokio1Executor>,
+        to: &str,
+        subject: &str,
+        body: &str,
+    ) -> Result<(), EmailError> {
+        let config = self
+            .smtp_config
+            .as_ref()
+            .ok_or_else(|| EmailError::ConfigurationError("SMTP config missing".to_string()))?;
+
+        // Parse sender address
+        let from_mailbox: Mailbox = format!("{} <{}>", config.from_name, config.from_address)
+            .parse()
+            .map_err(|e| EmailError::InvalidAddress(format!("Invalid from address: {}", e)))?;
+
+        // Parse recipient address
+        let to_mailbox: Mailbox = to.parse().map_err(|e| {
+            EmailError::InvalidAddress(format!("Invalid to address '{}': {}", to, e))
+        })?;
+
+        // Build the email message
+        let email = Message::builder()
+            .from(from_mailbox)
+            .to(to_mailbox)
+            .subject(subject)
+            .header(ContentType::TEXT_PLAIN)
+            .body(body.to_string())
+            .map_err(|e| EmailError::MessageBuildError(e.to_string()))?;
+
+        // Send the email
+        transport.send(email).await.map_err(|e| {
+            tracing::error!(
+                error = %e,
                 to = %to,
                 subject = %subject,
-                body = %body,
-                "Email (dev mode - not sent)"
+                "Failed to send email via SMTP"
             );
+            EmailError::SendFailed(e.to_string())
+        })?;
+
+        tracing::info!(
+            to = %to,
+            subject = %subject,
+            "Email sent successfully via SMTP"
+        );
+
+        Ok(())
+    }
+
+    /// Send email with HTML content.
+    pub async fn send_html_email(
+        &self,
+        to: &str,
+        subject: &str,
+        html_body: &str,
+        text_body: &str,
+    ) -> Result<(), EmailError> {
+        match self.transport.as_ref() {
+            EmailTransport::Smtp(smtp) => {
+                self.send_html_via_smtp(smtp, to, subject, html_body, text_body)
+                    .await
+            }
+            EmailTransport::Log => {
+                tracing::info!(
+                    to = %to,
+                    subject = %subject,
+                    html_length = %html_body.len(),
+                    text_length = %text_body.len(),
+                    "HTML email logged (development mode)"
+                );
+                Ok(())
+            }
         }
+    }
+
+    /// Send HTML email via SMTP transport.
+    async fn send_html_via_smtp(
+        &self,
+        transport: &AsyncSmtpTransport<Tokio1Executor>,
+        to: &str,
+        subject: &str,
+        html_body: &str,
+        text_body: &str,
+    ) -> Result<(), EmailError> {
+        use lettre::message::{MultiPart, SinglePart};
+
+        let config = self
+            .smtp_config
+            .as_ref()
+            .ok_or_else(|| EmailError::ConfigurationError("SMTP config missing".to_string()))?;
+
+        let from_mailbox: Mailbox = format!("{} <{}>", config.from_name, config.from_address)
+            .parse()
+            .map_err(|e| EmailError::InvalidAddress(format!("Invalid from address: {}", e)))?;
+
+        let to_mailbox: Mailbox = to.parse().map_err(|e| {
+            EmailError::InvalidAddress(format!("Invalid to address '{}': {}", to, e))
+        })?;
+
+        let email = Message::builder()
+            .from(from_mailbox)
+            .to(to_mailbox)
+            .subject(subject)
+            .multipart(
+                MultiPart::alternative()
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::TEXT_PLAIN)
+                            .body(text_body.to_string()),
+                    )
+                    .singlepart(
+                        SinglePart::builder()
+                            .header(ContentType::TEXT_HTML)
+                            .body(html_body.to_string()),
+                    ),
+            )
+            .map_err(|e| EmailError::MessageBuildError(e.to_string()))?;
+
+        transport.send(email).await.map_err(|e| {
+            tracing::error!(
+                error = %e,
+                to = %to,
+                subject = %subject,
+                "Failed to send HTML email via SMTP"
+            );
+            EmailError::SendFailed(e.to_string())
+        })?;
+
+        tracing::info!(
+            to = %to,
+            subject = %subject,
+            "HTML email sent successfully via SMTP"
+        );
+
         Ok(())
     }
 
@@ -197,6 +482,27 @@ impl EmailService {
         }
     }
 
+    fn get_notification_body(&self, name: &str, message: &str, locale: &Locale) -> String {
+        match locale {
+            Locale::Slovak => format!(
+                "Dobrý deň {},\n\n{}\n\nS pozdravom,\nTím PPT",
+                name, message
+            ),
+            Locale::Czech => format!(
+                "Dobrý den {},\n\n{}\n\nS pozdravem,\nTým PPT",
+                name, message
+            ),
+            Locale::German => format!(
+                "Guten Tag {},\n\n{}\n\nMit freundlichen Grüßen,\nDas PPT-Team",
+                name, message
+            ),
+            Locale::English => format!(
+                "Hello {},\n\n{}\n\nBest regards,\nThe PPT Team",
+                name, message
+            ),
+        }
+    }
+
     // ==================== Additional Email Types ====================
 
     /// Send welcome email after successful email verification.
@@ -275,19 +581,19 @@ impl EmailService {
     ) -> String {
         match locale {
             Locale::Slovak => format!(
-                "Dobrý deň {},\n\nZaznamenali sme nové prihlásenie do vášho účtu:\n\n• Zariadenie: {}\n• IP adresa: {}\n\nAk ste to boli vy, túto správu môžete ignorovať.\n\nAk ste sa neprihlasovali, odporúčame okamžite zmeniť heslo a skontrolovať aktívne relácie v nastaveniach účtu.\n\nS pozdravom,\nTím PPT",
+                "Dobrý deň {},\n\nZaznamenali sme nové prihlásenie do vášho účtu:\n\n- Zariadenie: {}\n- IP adresa: {}\n\nAk ste to boli vy, túto správu môžete ignorovať.\n\nAk ste sa neprihlasovali, odporúčame okamžite zmeniť heslo a skontrolovať aktívne relácie v nastaveniach účtu.\n\nS pozdravom,\nTím PPT",
                 name, device, ip
             ),
             Locale::Czech => format!(
-                "Dobrý den {},\n\nZaznamenali jsme nové přihlášení k vašemu účtu:\n\n• Zařízení: {}\n• IP adresa: {}\n\nPokud jste to byli vy, tuto zprávu můžete ignorovat.\n\nPokud jste se nepřihlašovali, doporučujeme okamžitě změnit heslo a zkontrolovat aktivní relace v nastavení účtu.\n\nS pozdravem,\nTým PPT",
+                "Dobrý den {},\n\nZaznamenali jsme nové přihlášení k vašemu účtu:\n\n- Zařízení: {}\n- IP adresa: {}\n\nPokud jste to byli vy, tuto zprávu můžete ignorovat.\n\nPokud jste se nepřihlašovali, doporučujeme okamžitě změnit heslo a zkontrolovat aktivní relace v nastavení účtu.\n\nS pozdravem,\nTým PPT",
                 name, device, ip
             ),
             Locale::German => format!(
-                "Guten Tag {},\n\nWir haben eine neue Anmeldung bei Ihrem Konto festgestellt:\n\n• Gerät: {}\n• IP-Adresse: {}\n\nWenn Sie das waren, können Sie diese Nachricht ignorieren.\n\nFalls Sie sich nicht angemeldet haben, empfehlen wir, sofort das Passwort zu ändern und aktive Sitzungen in den Kontoeinstellungen zu überprüfen.\n\nMit freundlichen Grüßen,\nDas PPT-Team",
+                "Guten Tag {},\n\nWir haben eine neue Anmeldung bei Ihrem Konto festgestellt:\n\n- Gerät: {}\n- IP-Adresse: {}\n\nWenn Sie das waren, können Sie diese Nachricht ignorieren.\n\nFalls Sie sich nicht angemeldet haben, empfehlen wir, sofort das Passwort zu ändern und aktive Sitzungen in den Kontoeinstellungen zu überprüfen.\n\nMit freundlichen Grüßen,\nDas PPT-Team",
                 name, device, ip
             ),
             Locale::English => format!(
-                "Hello {},\n\nWe detected a new login to your account:\n\n• Device: {}\n• IP Address: {}\n\nIf this was you, you can ignore this message.\n\nIf you didn't log in, we recommend immediately changing your password and reviewing active sessions in your account settings.\n\nBest regards,\nThe PPT Team",
+                "Hello {},\n\nWe detected a new login to your account:\n\n- Device: {}\n- IP Address: {}\n\nIf this was you, you can ignore this message.\n\nIf you didn't log in, we recommend immediately changing your password and reviewing active sessions in your account settings.\n\nBest regards,\nThe PPT Team",
                 name, device, ip
             ),
         }
@@ -384,5 +690,213 @@ impl EmailService {
                 name, reason_text
             ),
         }
+    }
+
+    /// Send fault notification email to building manager.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn send_fault_notification_email(
+        &self,
+        email: &str,
+        name: &str,
+        fault_title: &str,
+        fault_description: &str,
+        building_name: &str,
+        reporter_name: &str,
+        locale: &Locale,
+    ) -> Result<(), EmailError> {
+        let subject = self.get_fault_notification_subject(building_name, locale);
+        let body = self.get_fault_notification_body(
+            name,
+            fault_title,
+            fault_description,
+            building_name,
+            reporter_name,
+            locale,
+        );
+
+        self.send_email(email, &subject, &body).await
+    }
+
+    fn get_fault_notification_subject(&self, building_name: &str, locale: &Locale) -> String {
+        match locale {
+            Locale::Slovak => format!("Nová porucha nahlásená - {}", building_name),
+            Locale::Czech => format!("Nová porucha nahlášena - {}", building_name),
+            Locale::German => format!("Neuer Mangel gemeldet - {}", building_name),
+            Locale::English => format!("New Fault Reported - {}", building_name),
+        }
+    }
+
+    fn get_fault_notification_body(
+        &self,
+        name: &str,
+        fault_title: &str,
+        fault_description: &str,
+        building_name: &str,
+        reporter_name: &str,
+        locale: &Locale,
+    ) -> String {
+        match locale {
+            Locale::Slovak => format!(
+                "Dobrý deň {},\n\nBola nahlásená nová porucha v budove {}.\n\nNázov: {}\nPopis: {}\nNahlásil: {}\n\nPreskúmajte prosím túto poruchu v systéme.\n\nS pozdravom,\nTím PPT",
+                name, building_name, fault_title, fault_description, reporter_name
+            ),
+            Locale::Czech => format!(
+                "Dobrý den {},\n\nByla nahlášena nová porucha v budově {}.\n\nNázev: {}\nPopis: {}\nNahlásil: {}\n\nProsím přezkoumejte tuto poruchu v systému.\n\nS pozdravem,\nTým PPT",
+                name, building_name, fault_title, fault_description, reporter_name
+            ),
+            Locale::German => format!(
+                "Guten Tag {},\n\nEin neuer Mangel wurde im Gebäude {} gemeldet.\n\nTitel: {}\nBeschreibung: {}\nGemeldet von: {}\n\nBitte überprüfen Sie diesen Mangel im System.\n\nMit freundlichen Grüßen,\nDas PPT-Team",
+                name, building_name, fault_title, fault_description, reporter_name
+            ),
+            Locale::English => format!(
+                "Hello {},\n\nA new fault has been reported in building {}.\n\nTitle: {}\nDescription: {}\nReported by: {}\n\nPlease review this fault in the system.\n\nBest regards,\nThe PPT Team",
+                name, building_name, fault_title, fault_description, reporter_name
+            ),
+        }
+    }
+
+    /// Send voting reminder email.
+    pub async fn send_voting_reminder_email(
+        &self,
+        email: &str,
+        name: &str,
+        vote_title: &str,
+        deadline: &str,
+        locale: &Locale,
+    ) -> Result<(), EmailError> {
+        let subject = self.get_voting_reminder_subject(locale);
+        let body = self.get_voting_reminder_body(name, vote_title, deadline, locale);
+
+        self.send_email(email, &subject, &body).await
+    }
+
+    fn get_voting_reminder_subject(&self, locale: &Locale) -> String {
+        match locale {
+            Locale::Slovak => "Pripomienka hlasovania".to_string(),
+            Locale::Czech => "Připomínka hlasování".to_string(),
+            Locale::German => "Abstimmungserinnerung".to_string(),
+            Locale::English => "Voting Reminder".to_string(),
+        }
+    }
+
+    fn get_voting_reminder_body(
+        &self,
+        name: &str,
+        vote_title: &str,
+        deadline: &str,
+        locale: &Locale,
+    ) -> String {
+        match locale {
+            Locale::Slovak => format!(
+                "Dobrý deň {},\n\nPripomíname vám hlasovanie: {}\n\nTermín na hlasovanie: {}\n\nPrihláste sa do systému a odovzdajte svoj hlas.\n\nS pozdravom,\nTím PPT",
+                name, vote_title, deadline
+            ),
+            Locale::Czech => format!(
+                "Dobrý den {},\n\nPřipomínáme vám hlasování: {}\n\nTermín pro hlasování: {}\n\nPřihlaste se do systému a odevzdejte svůj hlas.\n\nS pozdravem,\nTým PPT",
+                name, vote_title, deadline
+            ),
+            Locale::German => format!(
+                "Guten Tag {},\n\nWir erinnern Sie an die Abstimmung: {}\n\nAbstimmungsfrist: {}\n\nMelden Sie sich im System an und geben Sie Ihre Stimme ab.\n\nMit freundlichen Grüßen,\nDas PPT-Team",
+                name, vote_title, deadline
+            ),
+            Locale::English => format!(
+                "Hello {},\n\nReminder about the vote: {}\n\nVoting deadline: {}\n\nLog in to the system to cast your vote.\n\nBest regards,\nThe PPT Team",
+                name, vote_title, deadline
+            ),
+        }
+    }
+
+    /// Check if SMTP is properly configured.
+    pub fn is_smtp_configured(&self) -> bool {
+        matches!(self.transport.as_ref(), EmailTransport::Smtp(_))
+    }
+
+    /// Check if email sending is enabled.
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_smtp_config_from_env_missing() {
+        // When SMTP env vars are not set, from_env returns None
+        std::env::remove_var("SMTP_HOST");
+        let config = SmtpConfig::from_env();
+        assert!(config.is_none());
+    }
+
+    #[test]
+    fn test_development_mode() {
+        let service = EmailService::development();
+        assert!(!service.is_enabled());
+        assert!(!service.is_smtp_configured());
+    }
+
+    #[test]
+    fn test_verification_subject_localization() {
+        let service = EmailService::development();
+
+        assert_eq!(
+            service.get_verification_subject(&Locale::English),
+            "Verify your email address"
+        );
+        assert_eq!(
+            service.get_verification_subject(&Locale::Slovak),
+            "Overte svoju e-mailovú adresu"
+        );
+        assert_eq!(
+            service.get_verification_subject(&Locale::Czech),
+            "Ověřte svou e-mailovou adresu"
+        );
+        assert_eq!(
+            service.get_verification_subject(&Locale::German),
+            "Bestätigen Sie Ihre E-Mail-Adresse"
+        );
+    }
+
+    #[test]
+    fn test_reset_subject_localization() {
+        let service = EmailService::development();
+
+        assert_eq!(
+            service.get_reset_subject(&Locale::English),
+            "Reset your password"
+        );
+        assert_eq!(
+            service.get_reset_subject(&Locale::Slovak),
+            "Obnovenie hesla"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_send_email_development_mode() {
+        let service = EmailService::development();
+
+        // In development mode, send_email should succeed without actually sending
+        let result = service
+            .send_email("test@example.com", "Test Subject", "Test Body")
+            .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_send_verification_email_development_mode() {
+        let service = EmailService::development();
+
+        let result = service
+            .send_verification_email(
+                "test@example.com",
+                "John Doe",
+                "test-token-123",
+                &Locale::English,
+            )
+            .await;
+
+        assert!(result.is_ok());
     }
 }

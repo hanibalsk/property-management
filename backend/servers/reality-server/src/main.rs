@@ -9,28 +9,93 @@
 // Allow dead code for stub implementations during development
 #![allow(dead_code)]
 
-use axum::{routing::get, Router};
+use axum::{http, routing::get, Router};
 use db::models::{
-    CreateAgencyInvitation, CreateFeedSubscription, CreateListingInquiry, CreatePortalImportJob,
-    CreateRealityAgency, CreateRealtorProfile, CreateSavedSearch, FavoritesResponse,
-    InquiryMessage, ListingInquiry, PortalImportJob, PortalImportJobWithStats,
-    PublicListingSearchResponse, RealityAgency, RealityAgencyInvitation, RealityAgencyMember,
-    RealityFeedSubscription, RealtorProfile, SavedSearch, SavedSearchesResponse,
+    AddFavorite, CreateAgencyInvitation, CreateFeedSubscription, CreateListingInquiry,
+    CreatePortalImportJob, CreatePortalSavedSearch, CreateRealityAgency, CreateRealtorProfile,
+    InquiryMessage, ListingInquiry, PortalFavorite, PortalFavoriteWithListing, PortalImportJob,
+    PortalImportJobWithStats, PortalSavedSearch, PublicListingSearchResponse, RealityAgency,
+    RealityAgencyInvitation, RealityAgencyMember, RealityFeedSubscription, RealtorProfile,
     SendInquiryMessage, UpdateAgencyBranding, UpdateFeedSubscription, UpdatePortalImportJob,
-    UpdateRealityAgency, UpdateRealtorProfile, UpdateSavedSearch,
+    UpdatePortalSavedSearch, UpdateRealityAgency, UpdateRealtorProfile,
 };
+use http::HeaderValue;
 use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+pub mod extractors;
 mod handlers;
 mod routes;
 pub mod state;
 
 use state::AppState;
+
+/// Default CORS allowed origins for reality-server.
+/// Includes development origins and production domains for all regional portals.
+const DEFAULT_CORS_ORIGINS: &[&str] = &[
+    "http://localhost:3000",             // ppt-web dev
+    "http://localhost:3001",             // reality-web dev
+    "http://localhost:8080",             // api-server dev
+    "http://localhost:8081",             // reality-server dev (swagger-ui)
+    "https://ppt.three-two-bit.com",     // production
+    "https://reality.three-two-bit.com", // reality production
+    "https://reality-portal.sk",         // Slovakia portal
+    "https://reality-portal.cz",         // Czech portal
+    "https://reality-portal.eu",         // EU portal
+];
+
+/// Parse CORS allowed origins from environment variable.
+///
+/// Reads `CORS_ALLOWED_ORIGINS` environment variable as a comma-separated list of origins.
+/// Falls back to default origins if not set.
+///
+/// # Example
+/// ```bash
+/// CORS_ALLOWED_ORIGINS=https://example.com,https://api.example.com
+/// ```
+fn get_cors_allowed_origins() -> Vec<HeaderValue> {
+    match std::env::var("CORS_ALLOWED_ORIGINS") {
+        Ok(origins_str) if !origins_str.is_empty() => {
+            let origins: Vec<HeaderValue> = origins_str
+                .split(',')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .filter_map(|origin| {
+                    origin.parse::<HeaderValue>().ok().or_else(|| {
+                        tracing::warn!("Invalid CORS origin '{}', skipping", origin);
+                        None
+                    })
+                })
+                .collect();
+
+            if origins.is_empty() {
+                tracing::warn!(
+                    "CORS_ALLOWED_ORIGINS is set but no valid origins found, using defaults"
+                );
+                parse_default_origins()
+            } else {
+                tracing::info!("Using {} configured CORS origins", origins.len());
+                origins
+            }
+        }
+        _ => {
+            tracing::info!("CORS_ALLOWED_ORIGINS not set, using default origins");
+            parse_default_origins()
+        }
+    }
+}
+
+/// Parse the default origins into HeaderValue vector.
+fn parse_default_origins() -> Vec<HeaderValue> {
+    DEFAULT_CORS_ORIGINS
+        .iter()
+        .filter_map(|origin| origin.parse::<HeaderValue>().ok())
+        .collect()
+}
 
 #[derive(OpenApi)]
 #[openapi(
@@ -107,15 +172,16 @@ use state::AppState;
         routes::listings::ListingDetail,
         routes::listings::SuggestionsResponse,
         routes::favorites::CheckFavoriteResponse,
+        routes::favorites::FavoritesResponse,
+        routes::saved_searches::SavedSearchesResponse,
         routes::saved_searches::RunSavedSearchResponse,
-        db::models::AddFavorite,
-        db::models::FavoriteWithListing,
-        FavoritesResponse,
+        AddFavorite,
+        PortalFavorite,
+        PortalFavoriteWithListing,
         PublicListingSearchResponse,
-        CreateSavedSearch,
-        UpdateSavedSearch,
-        SavedSearch,
-        SavedSearchesResponse,
+        CreatePortalSavedSearch,
+        UpdatePortalSavedSearch,
+        PortalSavedSearch,
         routes::sso::SsoError,
         routes::sso::SsoUserInfo,
         routes::sso::SessionInfo,
@@ -227,7 +293,27 @@ async fn main() -> anyhow::Result<()> {
         .with_state(state)
         // Middleware
         .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive());
+        // CORS configuration - origins configurable via CORS_ALLOWED_ORIGINS env var
+        .layer(
+            CorsLayer::new()
+                // Allow requests from configured origins (env var or defaults)
+                .allow_origin(get_cors_allowed_origins())
+                // Allow common HTTP methods
+                .allow_methods([
+                    http::Method::GET,
+                    http::Method::POST,
+                    http::Method::PUT,
+                    http::Method::PATCH,
+                    http::Method::DELETE,
+                    http::Method::OPTIONS,
+                ])
+                // Allow common headers
+                .allow_headers(Any)
+                // Allow credentials (cookies, authorization headers)
+                .allow_credentials(true)
+                // Cache preflight response for 1 hour
+                .max_age(std::time::Duration::from_secs(3600)),
+        );
 
     // Run server
     let addr = SocketAddr::from(([0, 0, 0, 0], 8081));

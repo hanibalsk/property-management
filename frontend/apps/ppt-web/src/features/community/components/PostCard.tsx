@@ -158,7 +158,11 @@ export function PostCard({
         {/* Menu */}
         {isCurrentUser && (
           <div className="relative group">
-            <button type="button" className="p-1 text-gray-400 hover:text-gray-600 rounded">
+            <button
+              type="button"
+              className="p-1 text-gray-400 hover:text-gray-600 rounded"
+              aria-label="Post options menu"
+            >
               <svg
                 className="w-5 h-5"
                 fill="none"

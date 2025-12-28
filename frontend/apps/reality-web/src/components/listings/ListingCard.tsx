@@ -8,7 +8,6 @@
 
 import type { ListingSummary } from '@ppt/reality-api-client';
 import Link from 'next/link';
-import { useState } from 'react';
 
 interface ListingCardProps {
   listing: ListingSummary;
@@ -21,8 +20,6 @@ export function ListingCard({
   onToggleFavorite,
   showFavoriteButton = true,
 }: ListingCardProps) {
-  const [, setIsHovered] = useState(false);
-
   const formatPrice = (price: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -38,12 +35,7 @@ export function ListingCard({
   };
 
   return (
-    <Link
-      href={`/listings/${listing.slug}`}
-      className="card"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <Link href={`/listings/${listing.slug}`} className="card">
       {/* Image */}
       <div className="image-container">
         {listing.primaryPhoto ? (

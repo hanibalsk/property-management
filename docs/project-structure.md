@@ -15,7 +15,7 @@ property-management/
 ├── docs/                             # Documentation
 │   ├── CLAUDE.md                    # Docs context
 │   ├── spec1.0.md                   # Original specification
-│   ├── use-cases.md                 # 407 use cases
+│   ├── use-cases.md                 # 508 use cases (51 categories)
 │   ├── project-structure.md         # This file
 │   └── api/                         # API specifications
 │       ├── README.md

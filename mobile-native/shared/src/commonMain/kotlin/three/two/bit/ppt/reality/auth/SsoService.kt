@@ -1,16 +1,13 @@
 package three.two.bit.ppt.reality.auth
 
-import io.ktor.client.*
 import io.ktor.client.call.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.json.Json
+import three.two.bit.ppt.reality.api.ApiConfig
+import three.two.bit.ppt.reality.api.HttpClientProvider
 
 /**
  * SSO Service for Reality Portal (Epic 10A-SSO).
@@ -19,18 +16,14 @@ import kotlinx.serialization.json.Json
  * 1. PM app calls createMobileToken() with PM access token
  * 2. PM app opens Reality Portal via deep-link: reality://sso?token=xxx
  * 3. Reality Portal validates token and creates session
+ *
+ * Note: Uses shared HttpClientProvider to avoid resource leaks. The baseUrl is obtained from
+ * ApiConfig which must be initialized at app startup.
  */
-class SsoService(private val baseUrl: String = "http://localhost:8081") {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        encodeDefaults = true
-    }
-
-    private val client = HttpClient {
-        install(ContentNegotiation) { json(json) }
-        defaultRequest { contentType(ContentType.Application.Json) }
-    }
+class SsoService {
+    private val client = HttpClientProvider.client
+    private val baseUrl: String
+        get() = ApiConfig.requireBaseUrl()
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Unauthenticated)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
