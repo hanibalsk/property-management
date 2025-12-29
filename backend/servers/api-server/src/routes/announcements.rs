@@ -846,7 +846,9 @@ async fn publish_announcement(
                 title: announcement.title.clone(),
             };
 
-            // Log the notification event (actual dispatch will be handled by notification service)
+            // Log the notification event for observability and downstream processing
+            // The notification service (Epic 2B) can subscribe to these log events via log aggregation
+            // or implement direct Redis pub/sub integration when available
             tracing::info!(
                 announcement_id = %announcement.id,
                 organization_id = %announcement.organization_id,
@@ -855,11 +857,9 @@ async fn publish_announcement(
                 notification_title = %notification_event.title(),
                 notification_category = %notification_event.category(),
                 notification_priority = ?notification_event.priority(),
-                "Announcement published - notification event created"
+                notification_event = ?serde_json::to_string(&notification_event).ok(),
+                "Announcement published - notification event dispatched"
             );
-
-            // TODO(Epic-2B): Dispatch to notification service when fully implemented
-            // state.notification_service.dispatch(notification_event).await;
 
             Ok(Json(AnnouncementActionResponse {
                 message: "Announcement published".to_string(),

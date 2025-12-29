@@ -1,4 +1,5 @@
 import SwiftUI
+import shared
 
 /// Main entry point for Reality Portal iOS app.
 ///
@@ -9,6 +10,7 @@ struct RealityPortalApp: App {
 
     @State private var navigationCoordinator = NavigationCoordinator()
     @State private var authManager = AuthManager()
+    @Environment(\.scenePhase) private var scenePhase
 
     // MARK: - App Body
 
@@ -24,6 +26,9 @@ struct RealityPortalApp: App {
                     configureApp()
                 }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            handleScenePhaseChange(newPhase)
+        }
     }
 
     // MARK: - Configuration
@@ -38,6 +43,26 @@ struct RealityPortalApp: App {
 
         // Restore user session if available
         authManager.restoreSession()
+    }
+
+    // MARK: - Scene Phase Handling
+
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        switch phase {
+        case .background:
+            // Clean up resources when app goes to background
+            #if DEBUG
+            print("App moved to background")
+            #endif
+        case .inactive:
+            break
+        case .active:
+            #if DEBUG
+            print("App became active")
+            #endif
+        @unknown default:
+            break
+        }
     }
 
     // MARK: - Deep Link Handling

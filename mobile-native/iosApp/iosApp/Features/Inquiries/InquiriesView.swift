@@ -1,4 +1,5 @@
 import SwiftUI
+import shared
 
 /// Inquiries screen for Reality Portal iOS app.
 ///
@@ -12,6 +13,12 @@ struct InquiriesView: View {
     @State private var inquiries: [InquiryPreview] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+
+    private var inquiryRepository: InquiryRepository {
+        DependencyContainer.shared.makeAuthenticatedInquiryRepository(
+            sessionToken: authManager.getSessionToken()
+        )
+    }
 
     var body: some View {
         Group {
@@ -133,10 +140,17 @@ struct InquiriesView: View {
         isLoading = true
         errorMessage = nil
 
-        // TODO: Integrate with KMP inquiries use case
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        // Load inquiries from KMP shared module
+        let result = await inquiryRepository.getInquiries(page: 1, pageSize: 50, status: nil)
 
-        inquiries = InquiryPreview.samples
+        if let response = result.getOrNull() {
+            inquiries = response.inquiries.map { KMPBridge.toInquiryPreview($0) }
+        } else if let error = result.exceptionOrNull() {
+            errorMessage = error.message ?? "Failed to load inquiries"
+            #if DEBUG
+            print("Inquiries error: \(errorMessage ?? "Unknown")")
+            #endif
+        }
 
         isLoading = false
     }

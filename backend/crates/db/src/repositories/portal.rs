@@ -247,6 +247,42 @@ impl PortalRepository {
         Ok(row.0)
     }
 
+    /// Get a single listing by ID.
+    pub async fn get_listing_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<PublicListingSummary>, SqlxError> {
+        let row = sqlx::query_as::<_, PublicListingRow>(
+            r#"
+            SELECT
+                l.id, l.title, l.description, l.price, l.currency,
+                l.size_sqm, l.rooms, l.city, l.property_type, l.transaction_type,
+                (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY display_order LIMIT 1) as photo_url,
+                l.published_at
+            FROM listings l
+            WHERE l.id = $1 AND l.status = 'active'
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| PublicListingSummary {
+            id: r.id,
+            title: r.title,
+            description: r.description,
+            price: r.price.try_into().unwrap_or(0),
+            currency: r.currency,
+            size_sqm: r.size_sqm.map(|d| d.try_into().unwrap_or(0)),
+            rooms: r.rooms,
+            city: r.city,
+            property_type: r.property_type,
+            transaction_type: r.transaction_type,
+            photo_url: r.photo_url,
+            published_at: r.published_at,
+        }))
+    }
+
     /// Get nearby cities for suggestions.
     pub async fn get_nearby_cities(
         &self,

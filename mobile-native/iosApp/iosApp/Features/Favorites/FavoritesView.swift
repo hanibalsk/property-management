@@ -1,4 +1,5 @@
 import SwiftUI
+import shared
 
 /// Favorites screen for Reality Portal iOS app.
 ///
@@ -12,6 +13,12 @@ struct FavoritesView: View {
     @State private var favorites: [ListingPreview] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+
+    private var favoritesRepository: FavoritesRepository {
+        DependencyContainer.shared.makeAuthenticatedFavoritesRepository(
+            sessionToken: authManager.getSessionToken()
+        )
+    }
 
     var body: some View {
         Group {
@@ -135,10 +142,21 @@ struct FavoritesView: View {
         isLoading = true
         errorMessage = nil
 
-        // TODO: Integrate with KMP favorites use case
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        // Load favorites from KMP shared module
+        let result = await favoritesRepository.getFavorites()
 
-        favorites = ListingPreview.sampleFeatured
+        if let response = result.getOrNull() {
+            favorites = response.favorites.compactMap { favoriteEntry in
+                // Convert FavoriteEntry to ListingPreview
+                guard let listing = favoriteEntry.listing else { return nil }
+                return KMPBridge.toListingPreview(listing)
+            }
+        } else if let error = result.exceptionOrNull() {
+            errorMessage = error.message ?? "Failed to load favorites"
+            #if DEBUG
+            print("Favorites error: \(errorMessage ?? "Unknown")")
+            #endif
+        }
 
         isLoading = false
     }
@@ -147,7 +165,13 @@ struct FavoritesView: View {
         // Optimistic update
         favorites.removeAll { $0.id == id }
 
-        // TODO: Integrate with KMP to persist removal
+        // Persist removal via KMP
+        let result = await favoritesRepository.removeFavorite(listingId: id)
+
+        if result.exceptionOrNull() != nil {
+            // Reload on error to restore state
+            await loadFavorites()
+        }
     }
 }
 
@@ -161,14 +185,35 @@ private struct FavoriteListingCard: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
-                // Image placeholder
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemGray5))
-                    .frame(width: 100, height: 80)
-                    .overlay {
+                // Image placeholder or async image
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(.systemGray5))
+                        .frame(width: 100, height: 80)
+
+                    if let thumbnailUrl = listing.thumbnailUrl,
+                       let url = URL(string: thumbnailUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 100, height: 80)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            case .failure, .empty:
+                                Image(systemName: "photo")
+                                    .foregroundStyle(.secondary)
+                            @unknown default:
+                                Image(systemName: "photo")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
                         Image(systemName: "photo")
                             .foregroundStyle(.secondary)
                     }
+                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(listing.formattedPrice)

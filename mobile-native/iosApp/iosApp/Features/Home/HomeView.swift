@@ -1,4 +1,5 @@
 import SwiftUI
+import shared
 
 /// Home screen for Reality Portal iOS app.
 ///
@@ -13,6 +14,8 @@ struct HomeView: View {
     @State private var recentListings: [ListingPreview] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+
+    private let listingRepository = DependencyContainer.shared.listingRepository
 
     var body: some View {
         ScrollView {
@@ -214,18 +217,52 @@ struct HomeView: View {
         isLoading = true
         errorMessage = nil
 
-        // TODO: Integrate with KMP shared module
-        // Placeholder data for now
-        do {
-            try await Task.sleep(nanoseconds: 500_000_000)
+        // Load featured and recent listings from KMP shared module
+        async let featuredResult = loadFeaturedListings()
+        async let recentResult = loadRecentListings()
 
-            featuredListings = ListingPreview.sampleFeatured
-            recentListings = ListingPreview.sampleRecent
-        } catch {
-            errorMessage = error.localizedDescription
+        let (featured, recent) = await (featuredResult, recentResult)
+
+        featuredListings = featured
+        recentListings = recent
+
+        if featuredListings.isEmpty && recentListings.isEmpty && errorMessage == nil {
+            // If both are empty and no error, show a message
+            errorMessage = "No listings available"
         }
 
         isLoading = false
+    }
+
+    private func loadFeaturedListings() async -> [ListingPreview] {
+        let result = await listingRepository.getFeaturedListings()
+
+        if let response = result.getOrNull() {
+            return response.listings.map { KMPBridge.toListingPreview($0) }
+        } else if let error = result.exceptionOrNull() {
+            await MainActor.run {
+                errorMessage = error.message ?? "Failed to load featured listings"
+            }
+            return []
+        }
+        return []
+    }
+
+    private func loadRecentListings() async -> [ListingPreview] {
+        let result = await listingRepository.getRecentListings(limit: 10)
+
+        if let response = result.getOrNull() {
+            return response.listings.map { KMPBridge.toListingPreview($0) }
+        } else if let error = result.exceptionOrNull() {
+            // Don't overwrite error from featured listings
+            if errorMessage == nil {
+                await MainActor.run {
+                    errorMessage = error.message ?? "Failed to load recent listings"
+                }
+            }
+            return []
+        }
+        return []
     }
 }
 
@@ -284,28 +321,51 @@ private struct FeaturedListingCard: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 8) {
-                // Image placeholder
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray5))
-                    .frame(width: 280, height: 160)
-                    .overlay {
-                        VStack {
-                            Image(systemName: "photo")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
+                // Image placeholder or async image
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemGray5))
+                        .frame(width: 280, height: 160)
+
+                    if let thumbnailUrl = listing.thumbnailUrl,
+                       let url = URL(string: thumbnailUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 280, height: 160)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            case .failure:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                            case .empty:
+                                ProgressView()
+                            @unknown default:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
+                    } else {
+                        Image(systemName: "photo")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
                     }
-                    .overlay(alignment: .topLeading) {
-                        Text("Featured")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.accentColor)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                            .padding(8)
-                    }
+                }
+                .overlay(alignment: .topLeading) {
+                    Text("Featured")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .padding(8)
+                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(listing.formattedPrice)
@@ -353,14 +413,35 @@ private struct ListingRowCard: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                // Image placeholder
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemGray5))
-                    .frame(width: 100, height: 80)
-                    .overlay {
+                // Image placeholder or async image
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(.systemGray5))
+                        .frame(width: 100, height: 80)
+
+                    if let thumbnailUrl = listing.thumbnailUrl,
+                       let url = URL(string: thumbnailUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 100, height: 80)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            case .failure, .empty:
+                                Image(systemName: "photo")
+                                    .foregroundStyle(.secondary)
+                            @unknown default:
+                                Image(systemName: "photo")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
                         Image(systemName: "photo")
                             .foregroundStyle(.secondary)
                     }
+                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(listing.formattedPrice)
@@ -406,6 +487,7 @@ struct ListingPreview: Identifiable {
     let location: String
     let areaSqm: Int?
     let rooms: Int?
+    let thumbnailUrl: String?
 
     var formattedPrice: String {
         let formatter = NumberFormatter()
@@ -413,6 +495,18 @@ struct ListingPreview: Identifiable {
         formatter.currencyCode = currency
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: price)) ?? "\(price) \(currency)"
+    }
+
+    /// Initialize with all parameters
+    init(id: String, title: String, price: Int, currency: String, location: String, areaSqm: Int?, rooms: Int?, thumbnailUrl: String? = nil) {
+        self.id = id
+        self.title = title
+        self.price = price
+        self.currency = currency
+        self.location = location
+        self.areaSqm = areaSqm
+        self.rooms = rooms
+        self.thumbnailUrl = thumbnailUrl
     }
 
     static let sampleFeatured: [ListingPreview] = [

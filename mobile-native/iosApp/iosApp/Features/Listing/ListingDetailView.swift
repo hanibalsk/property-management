@@ -1,4 +1,5 @@
 import SwiftUI
+import shared
 
 /// Listing detail screen for Reality Portal iOS app.
 ///
@@ -12,12 +13,19 @@ struct ListingDetailView: View {
 
     let listingId: String
 
-    @State private var listing: ListingDetail?
+    @State private var listing: ListingDetailModel?
     @State private var isLoading = true
     @State private var isFavorite = false
     @State private var showGallery = false
     @State private var showInquirySheet = false
     @State private var errorMessage: String?
+
+    private let listingRepository = DependencyContainer.shared.listingRepository
+    private var favoritesRepository: FavoritesRepository {
+        DependencyContainer.shared.makeAuthenticatedFavoritesRepository(
+            sessionToken: authManager.getSessionToken()
+        )
+    }
 
     var body: some View {
         Group {
@@ -72,7 +80,7 @@ struct ListingDetailView: View {
         }
     }
 
-    private func listingContent(_ listing: ListingDetail) -> some View {
+    private func listingContent(_ listing: ListingDetailModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Photo header
@@ -113,20 +121,43 @@ struct ListingDetailView: View {
         }
     }
 
-    private func photoHeader(_ listing: ListingDetail) -> some View {
+    private func photoHeader(_ listing: ListingDetailModel) -> some View {
         Button {
             showGallery = true
         } label: {
             ZStack(alignment: .bottomTrailing) {
-                // Main image placeholder
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .frame(height: 280)
-                    .overlay {
+                // Main image placeholder or async image
+                ZStack {
+                    Rectangle()
+                        .fill(Color(.systemGray5))
+                        .frame(height: 280)
+
+                    if let firstPhoto = listing.photos.first,
+                       let url = URL(string: firstPhoto) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(height: 280)
+                                    .clipped()
+                            case .failure, .empty:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                            @unknown default:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
                         Image(systemName: "photo")
                             .font(.largeTitle)
                             .foregroundStyle(.secondary)
                     }
+                }
 
                 // Photo count badge
                 HStack(spacing: 4) {
@@ -145,7 +176,7 @@ struct ListingDetailView: View {
         .buttonStyle(.plain)
     }
 
-    private func priceSection(_ listing: ListingDetail) -> some View {
+    private func priceSection(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(listing.formattedPrice)
                 .font(.title)
@@ -166,7 +197,7 @@ struct ListingDetailView: View {
         }
     }
 
-    private func featuresRow(_ listing: ListingDetail) -> some View {
+    private func featuresRow(_ listing: ListingDetailModel) -> some View {
         HStack(spacing: 24) {
             if let area = listing.areaSqm {
                 FeatureItem(icon: "square.fill", value: "\(area)", unit: "m2")
@@ -183,7 +214,7 @@ struct ListingDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    private func descriptionSection(_ listing: ListingDetail) -> some View {
+    private func descriptionSection(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Description")
                 .font(.headline)
@@ -194,7 +225,7 @@ struct ListingDetailView: View {
         }
     }
 
-    private func amenitiesGrid(_ listing: ListingDetail) -> some View {
+    private func amenitiesGrid(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Amenities")
                 .font(.headline)
@@ -216,7 +247,7 @@ struct ListingDetailView: View {
         }
     }
 
-    private func locationSection(_ listing: ListingDetail) -> some View {
+    private func locationSection(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Location")
                 .font(.headline)
@@ -248,7 +279,7 @@ struct ListingDetailView: View {
         }
     }
 
-    private func agentCard(_ listing: ListingDetail) -> some View {
+    private func agentCard(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Contact Agent")
                 .font(.headline)
@@ -317,10 +348,9 @@ struct ListingDetailView: View {
 
     private var favoriteButton: some View {
         Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                isFavorite.toggle()
+            Task {
+                await toggleFavorite()
             }
-            // TODO: Persist favorite state
         } label: {
             Image(systemName: isFavorite ? "heart.fill" : "heart")
                 .foregroundStyle(isFavorite ? .red : .primary)
@@ -343,12 +373,58 @@ struct ListingDetailView: View {
         isLoading = true
         errorMessage = nil
 
-        // TODO: Integrate with KMP listing use case
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        // Load listing detail from KMP
+        let result = await listingRepository.getListingDetail(listingId: listingId)
 
-        listing = ListingDetail.sample
+        if let kmpListing = result.getOrNull() {
+            listing = KMPBridge.toListingDetail(kmpListing)
+
+            // Check if this listing is favorited
+            if authManager.isAuthenticated {
+                await checkFavoriteStatus()
+            }
+        } else if let error = result.exceptionOrNull() {
+            errorMessage = error.message ?? "Failed to load listing"
+        }
 
         isLoading = false
+    }
+
+    private func checkFavoriteStatus() async {
+        let result = await favoritesRepository.isFavorite(listingId: listingId)
+        if let isFav = result.getOrNull() {
+            isFavorite = isFav.boolValue
+        }
+    }
+
+    private func toggleFavorite() async {
+        guard authManager.isAuthenticated else {
+            // Prompt to sign in
+            coordinator.navigate(to: .login)
+            return
+        }
+
+        let newFavoriteState = !isFavorite
+
+        // Optimistic update
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+            isFavorite = newFavoriteState
+        }
+
+        // Persist change
+        if newFavoriteState {
+            let result = await favoritesRepository.addFavorite(listingId: listingId)
+            if result.exceptionOrNull() != nil {
+                // Revert on error
+                isFavorite = false
+            }
+        } else {
+            let result = await favoritesRepository.removeFavorite(listingId: listingId)
+            if result.exceptionOrNull() != nil {
+                // Revert on error
+                isFavorite = true
+            }
+        }
     }
 }
 
@@ -379,10 +455,18 @@ private struct FeatureItem: View {
 private struct NewInquirySheet: View {
     let listingId: String
     @Environment(\.dismiss) private var dismiss
+    @Environment(AuthManager.self) private var authManager
 
     @State private var message = ""
     @State private var contactPreference = ContactPreference.email
     @State private var isSending = false
+    @State private var errorMessage: String?
+
+    private var inquiryRepository: InquiryRepository {
+        DependencyContainer.shared.makeAuthenticatedInquiryRepository(
+            sessionToken: authManager.getSessionToken()
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -399,6 +483,13 @@ private struct NewInquirySheet: View {
                         Text("Either").tag(ContactPreference.either)
                     }
                 }
+
+                if let error = errorMessage {
+                    Section {
+                        Text(error)
+                            .foregroundStyle(.red)
+                    }
+                }
             }
             .navigationTitle("Send Inquiry")
             .navigationBarTitleDisplayMode(.inline)
@@ -411,17 +502,36 @@ private struct NewInquirySheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Send") {
                         Task {
-                            isSending = true
-                            // TODO: Send inquiry via KMP
-                            try? await Task.sleep(nanoseconds: 1_000_000_000)
-                            isSending = false
-                            dismiss()
+                            await sendInquiry()
                         }
                     }
                     .disabled(message.isEmpty || isSending)
                 }
             }
         }
+    }
+
+    private func sendInquiry() async {
+        isSending = true
+        errorMessage = nil
+
+        let request = CreateInquiryRequest(
+            listingId: listingId,
+            message: message,
+            name: nil,
+            email: nil,
+            phone: nil
+        )
+
+        let result = await inquiryRepository.createInquiry(request: request)
+
+        if result.getOrNull() != nil {
+            dismiss()
+        } else if let error = result.exceptionOrNull() {
+            errorMessage = error.message ?? "Failed to send inquiry"
+        }
+
+        isSending = false
     }
 }
 
@@ -445,14 +555,35 @@ private struct PhotoGalleryView: View {
 
             TabView(selection: $currentIndex) {
                 ForEach(photos.indices, id: \.self) { index in
-                    Rectangle()
-                        .fill(Color(.systemGray5))
-                        .overlay {
-                            Image(systemName: "photo")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
+                    ZStack {
+                        if let url = URL(string: photos[index]) {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                case .failure, .empty:
+                                    Image(systemName: "photo")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(.secondary)
+                                @unknown default:
+                                    Image(systemName: "photo")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        } else {
+                            Rectangle()
+                                .fill(Color(.systemGray5))
+                                .overlay {
+                                    Image(systemName: "photo")
+                                        .font(.largeTitle)
+                                        .foregroundStyle(.secondary)
+                                }
                         }
-                        .tag(index)
+                    }
+                    .tag(index)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
@@ -478,49 +609,8 @@ private struct PhotoGalleryView: View {
 
 // MARK: - Preview Data
 
-struct ListingDetail {
-    let id: String
-    let title: String
-    let price: Int
-    let currency: String
-    let address: String
-    let description: String
-    let areaSqm: Int?
-    let rooms: Int?
-    let bathrooms: Int?
-    let amenities: [String]
-    let photos: [String]
-    let agentName: String
-    let agentPhone: String?
-    let latitude: Double?
-    let longitude: Double?
-
-    var formattedPrice: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = currency
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: price)) ?? "\(price) \(currency)"
-    }
-
-    static let sample = ListingDetail(
-        id: "1",
-        title: "Modern Apartment in City Center",
-        price: 250000,
-        currency: "EUR",
-        address: "Sturova 8, 811 02 Bratislava, Slovakia",
-        description: "Beautiful modern apartment located in the heart of Bratislava. This property features high ceilings, hardwood floors, and large windows that flood the space with natural light. Recently renovated with high-end finishes throughout. Perfect for professionals or small families looking for a city center lifestyle.",
-        areaSqm: 85,
-        rooms: 3,
-        bathrooms: 2,
-        amenities: ["Balcony", "Parking", "Elevator", "Air Conditioning", "Heating", "Storage"],
-        photos: ["photo1", "photo2", "photo3", "photo4"],
-        agentName: "Maria Kovacova",
-        agentPhone: "+421 900 123 456",
-        latitude: 48.1486,
-        longitude: 17.1077
-    )
-}
+/// ListingDetail type alias for backwards compatibility
+typealias ListingDetail = ListingDetailModel
 
 // MARK: - Preview
 

@@ -2,6 +2,8 @@
 //!
 //! Provides endpoints for managing electronic signature workflows on documents.
 
+use std::sync::LazyLock;
+
 use api_core::AuthUser;
 use axum::{
     extract::{Path, State},
@@ -12,13 +14,20 @@ use axum::{
 use common::errors::ErrorResponse;
 use db::models::{
     CancelSignatureRequestRequest, CancelSignatureRequestResponse, CreateSignatureRequest,
-    CreateSignatureRequestResponse, ListSignatureRequestsResponse, SendReminderRequest,
+    CreateSignatureRequestResponse, ListSignatureRequestsResponse, Locale, SendReminderRequest,
     SendReminderResponse, SignatureRequestResponse, SignatureWebhookEvent, WebhookResponse,
 };
 use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::state::AppState;
+
+/// Default base URL for signature links (used in emails).
+const DEFAULT_BASE_URL: &str = "http://localhost:3000";
+
+/// Base URL for signature links, read from environment once.
+static BASE_URL: LazyLock<String> =
+    LazyLock::new(|| std::env::var("BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_string()));
 
 /// Create router for signature endpoints.
 pub fn router() -> Router<AppState> {
@@ -117,7 +126,44 @@ pub async fn create_signature_request(
         "Created signature request"
     );
 
-    // TODO: Send emails to signers via email service
+    // Send invitation emails to signers
+    let subject = signature_request
+        .subject
+        .clone()
+        .unwrap_or_else(|| "You have been requested to sign a document".to_string());
+
+    for signer in &signature_request.signers {
+        let sign_url = format!(
+            "{}/sign?request_id={}&email={}",
+            *BASE_URL, signature_request.id, signer.email
+        );
+        let email_body = format!(
+            "Hello {},\n\nYou have been requested to electronically sign a document.\n\n{}\n\nPlease click the link below to review and sign the document:\n\n{}\n\nIf you have any questions, please contact the person who sent this request.\n\nBest regards,\nProperty Management System",
+            signer.name,
+            signature_request.message.as_deref().unwrap_or(""),
+            sign_url
+        );
+
+        if let Err(e) = state
+            .email_service
+            .send_notification_email(
+                &signer.email,
+                &signer.name,
+                &subject,
+                &email_body,
+                &Locale::English,
+            )
+            .await
+        {
+            warn!(
+                error = %e,
+                email = %signer.email,
+                signature_request_id = %signature_request.id,
+                "Failed to send signature request email to signer"
+            );
+            // Continue sending to other signers even if one fails
+        }
+    }
 
     Ok((
         StatusCode::CREATED,
@@ -264,8 +310,48 @@ pub async fn send_reminder(
         ));
     }
 
-    // TODO: Actually send reminder emails via email service
-    let reminders_sent = pending_signers.len() as i32;
+    // Send reminder emails to pending signers
+    let subject = format!(
+        "Reminder: {}",
+        signature_request
+            .subject
+            .as_deref()
+            .unwrap_or("Signature request pending")
+    );
+    let mut reminders_sent = 0i32;
+
+    for signer in pending_signers {
+        let sign_url = format!(
+            "{}/sign?request_id={}&email={}",
+            *BASE_URL, signature_request.id, signer.email
+        );
+        let email_body = format!(
+            "Hello {},\n\nThis is a reminder that you have a pending signature request.\n\nPlease click the link below to review and sign the document:\n\n{}\n\nIf you have any questions, please contact the person who sent this request.\n\nBest regards,\nProperty Management System",
+            signer.name, sign_url
+        );
+
+        if let Err(e) = state
+            .email_service
+            .send_notification_email(
+                &signer.email,
+                &signer.name,
+                &subject,
+                &email_body,
+                &Locale::English,
+            )
+            .await
+        {
+            warn!(
+                error = %e,
+                email = %signer.email,
+                signature_request_id = %id,
+                "Failed to send reminder email to signer"
+            );
+            // Continue sending to other signers even if one fails
+        } else {
+            reminders_sent += 1;
+        }
+    }
 
     info!(
         signature_request_id = %id,
@@ -313,7 +399,48 @@ pub async fn cancel_signature_request(
         "Cancelled signature request"
     );
 
-    // TODO: Notify signers of cancellation
+    // Notify signers of cancellation
+    let subject = format!(
+        "Signature Request Cancelled: {}",
+        signature_request
+            .subject
+            .as_deref()
+            .unwrap_or("Document signing")
+    );
+    let reason_text = request
+        .reason
+        .as_deref()
+        .map(|r| format!("\n\nReason: {}", r))
+        .unwrap_or_default();
+
+    for signer in &signature_request.signers {
+        // Only notify signers who haven't completed signing yet
+        if !signer.is_complete() {
+            let email_body = format!(
+                "Hello {},\n\nThe signature request you received has been cancelled.{}\n\nNo further action is required.\n\nBest regards,\nProperty Management System",
+                signer.name, reason_text
+            );
+
+            if let Err(e) = state
+                .email_service
+                .send_notification_email(
+                    &signer.email,
+                    &signer.name,
+                    &subject,
+                    &email_body,
+                    &Locale::English,
+                )
+                .await
+            {
+                warn!(
+                    error = %e,
+                    email = %signer.email,
+                    signature_request_id = %id,
+                    "Failed to send cancellation notification to signer"
+                );
+            }
+        }
+    }
 
     Ok(Json(CancelSignatureRequestResponse {
         signature_request,

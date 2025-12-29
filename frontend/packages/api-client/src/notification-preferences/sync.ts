@@ -3,6 +3,22 @@
  *
  * This module handles real-time synchronization of notification preferences
  * across multiple devices and browser tabs.
+ *
+ * DEFERRED: WebSocket-based real-time sync implementation is deferred.
+ *
+ * The WebSocket infrastructure required for real-time preference synchronization
+ * is not yet available. Current implementation relies on:
+ * - Server-side persistence (preferences stored in database)
+ * - Sync on page refresh (preferences fetched on component mount)
+ * - Manual refresh via React Query's refetch mechanism
+ *
+ * When WebSocket infrastructure is implemented:
+ * 1. Connect to the notification WebSocket endpoint
+ * 2. Subscribe to 'preference_changed' events
+ * 3. Update local state via React Query cache invalidation
+ * 4. Handle reconnection and error recovery
+ *
+ * @see backend/src/handlers/notifications.rs for future WebSocket endpoint
  */
 
 import type { NotificationChannel } from './types';

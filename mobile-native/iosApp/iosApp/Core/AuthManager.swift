@@ -1,5 +1,7 @@
 import Foundation
 import Observation
+import Security
+import shared
 
 /// User information from authentication.
 ///
@@ -9,11 +11,28 @@ struct User: Identifiable, Equatable {
     let email: String
     let name: String
     let avatarUrl: String?
+
+    /// Initialize from KMP SsoUserInfo.
+    init(from ssoUser: SsoUserInfo) {
+        self.id = ssoUser.userId
+        self.email = ssoUser.email
+        self.name = ssoUser.name
+        self.avatarUrl = ssoUser.avatarUrl
+    }
+
+    /// Initialize with explicit values.
+    init(id: String, email: String, name: String, avatarUrl: String? = nil) {
+        self.id = id
+        self.email = email
+        self.name = name
+        self.avatarUrl = avatarUrl
+    }
 }
 
 /// Authentication state manager for Reality Portal iOS app.
 ///
 /// Epic 82 - Story 82.5: Inquiries and Account
+/// Integrates with KMP SsoService for SSO authentication and uses iOS Keychain for token storage.
 @Observable
 final class AuthManager {
     // MARK: - Published Properties
@@ -39,12 +58,16 @@ final class AuthManager {
     private var accessToken: String?
     private var refreshToken: String?
     private let configuration = Configuration.shared
+    private let ssoService = SsoService()
+
+    // Keychain keys
+    private let accessTokenKey = "reality_portal_access_token"
+    private let refreshTokenKey = "reality_portal_refresh_token"
 
     // MARK: - Initialization
 
     init() {
-        // Attempt to restore session on initialization
-        restoreSession()
+        // Session will be restored when restoreSession() is called
     }
 
     // MARK: - Public Methods
@@ -53,19 +76,16 @@ final class AuthManager {
     /// - Parameters:
     ///   - email: User email address.
     ///   - password: User password.
+    /// - Note: Reality Portal uses SSO from Property Management app. Direct login is not supported.
     func login(email: String, password: String) async throws {
         isLoading = true
         errorMessage = nil
 
         defer { isLoading = false }
 
-        // TODO: Integrate with KMP AuthUseCase
-        // let authUseCase = AuthUseCase()
-        // let result = try await authUseCase.login(email: email, password: password)
-
-        // Placeholder implementation
-        // In production, this would call the KMP shared module
-        throw AuthError.notImplemented
+        // Reality Portal uses SSO from Property Management app
+        // Direct email/password login is not supported
+        throw AuthError.ssoRequired
     }
 
     /// Login via SSO token from Property Management app.
@@ -76,12 +96,31 @@ final class AuthManager {
 
         defer { isLoading = false }
 
-        // TODO: Integrate with KMP SsoUseCase to validate token
-        throw AuthError.notImplemented
+        let result = try await withCheckedThrowingContinuation { continuation in
+            Task {
+                let validationResult = await ssoService.validateAndLogin(ssoToken: token)
+                if let session = validationResult.getOrNull() {
+                    continuation.resume(returning: session)
+                } else if let error = validationResult.exceptionOrNull() {
+                    continuation.resume(throwing: AuthError.ssoValidationFailed(error.message ?? "Unknown error"))
+                } else {
+                    continuation.resume(throwing: AuthError.ssoValidationFailed("Unknown error"))
+                }
+            }
+        }
+
+        // Store the session token
+        let sessionToken = result.sessionToken
+        storeTokens(accessToken: sessionToken, refreshToken: "")
+
+        // Set current user from SSO response
+        currentUser = User(from: result.user)
+        accessToken = sessionToken
     }
 
     /// Logout the current user.
     func logout() {
+        ssoService.logout()
         accessToken = nil
         refreshToken = nil
         currentUser = nil
@@ -92,46 +131,162 @@ final class AuthManager {
 
     /// Restore session from stored tokens.
     func restoreSession() {
-        // TODO: Load tokens from Keychain
-        // accessToken = try? keychain.get("accessToken")
-        // refreshToken = try? keychain.get("refreshToken")
+        // Load tokens from Keychain
+        guard let storedToken = loadFromKeychain(key: accessTokenKey) else {
+            return
+        }
 
-        if accessToken != nil {
-            Task {
-                await loadCurrentUser()
-            }
+        accessToken = storedToken
+        refreshToken = loadFromKeychain(key: refreshTokenKey)
+
+        // Validate and restore the session using KMP SsoService
+        Task {
+            await loadCurrentUser()
         }
     }
 
     /// Refresh the access token using the refresh token.
     func refreshAccessToken() async throws {
-        guard let refreshToken = refreshToken else {
+        guard accessToken != nil else {
             throw AuthError.noRefreshToken
         }
 
-        // TODO: Integrate with KMP to refresh token
-        _ = refreshToken
-        throw AuthError.notImplemented
+        isLoading = true
+        defer { isLoading = false }
+
+        let result = try await withCheckedThrowingContinuation { continuation in
+            Task {
+                let refreshResult = await ssoService.refreshSession()
+                if let session = refreshResult.getOrNull() {
+                    continuation.resume(returning: session)
+                } else if let error = refreshResult.exceptionOrNull() {
+                    continuation.resume(throwing: AuthError.tokenExpired)
+                } else {
+                    continuation.resume(throwing: AuthError.tokenExpired)
+                }
+            }
+        }
+
+        // Update user info from refreshed session
+        currentUser = User(
+            id: result.userId,
+            email: result.email,
+            name: result.name,
+            avatarUrl: nil
+        )
+    }
+
+    /// Get the current session token for API calls.
+    func getSessionToken() -> String? {
+        return ssoService.getSessionToken()
     }
 
     // MARK: - Private Methods
 
     private func loadCurrentUser() async {
-        // TODO: Load current user from API using stored token
+        guard let token = accessToken else { return }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        // Try to restore the session with stored token
+        let success = await ssoService.restoreSession(token: token)
+
+        if success {
+            // Get session info
+            let result = await ssoService.getSession()
+            if let session = result.getOrNull() {
+                currentUser = User(
+                    id: session.userId,
+                    email: session.email,
+                    name: session.name,
+                    avatarUrl: nil
+                )
+            }
+        } else {
+            // Token is invalid, clear stored credentials
+            clearStoredTokens()
+            accessToken = nil
+            refreshToken = nil
+            currentUser = nil
+        }
     }
 
     private func storeTokens(accessToken: String, refreshToken: String) {
-        // TODO: Store tokens in Keychain using KeychainAccess
-        // try keychain.set(accessToken, key: "accessToken")
-        // try keychain.set(refreshToken, key: "refreshToken")
         self.accessToken = accessToken
         self.refreshToken = refreshToken
+
+        // Store in Keychain
+        saveToKeychain(key: accessTokenKey, value: accessToken)
+        if !refreshToken.isEmpty {
+            saveToKeychain(key: refreshTokenKey, value: refreshToken)
+        }
     }
 
     private func clearStoredTokens() {
-        // TODO: Remove tokens from Keychain
-        // try? keychain.remove("accessToken")
-        // try? keychain.remove("refreshToken")
+        deleteFromKeychain(key: accessTokenKey)
+        deleteFromKeychain(key: refreshTokenKey)
+    }
+
+    // MARK: - Keychain Operations
+
+    private func saveToKeychain(key: String, value: String) {
+        guard let data = value.data(using: .utf8) else { return }
+
+        // Delete existing item first
+        deleteFromKeychain(key: key)
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: configuration.keychainService,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        ]
+
+        let status = SecItemAdd(query as CFDictionary, nil)
+        if status != errSecSuccess {
+            #if DEBUG
+            print("Keychain save failed for key \(key): \(status)")
+            #endif
+        }
+    }
+
+    private func loadFromKeychain(key: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: configuration.keychainService,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let value = String(data: data, encoding: .utf8) else {
+            #if DEBUG
+            // Log non-expected errors for debugging (errSecItemNotFound is expected when key doesn't exist)
+            if status != errSecSuccess && status != errSecItemNotFound {
+                print("Keychain load failed for key \(key): \(status)")
+            }
+            #endif
+            return nil
+        }
+
+        return value
+    }
+
+    private func deleteFromKeychain(key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: configuration.keychainService,
+            kSecAttrAccount as String: key
+        ]
+
+        SecItemDelete(query as CFDictionary)
     }
 }
 
@@ -143,6 +298,8 @@ enum AuthError: LocalizedError {
     case networkError
     case noRefreshToken
     case tokenExpired
+    case ssoRequired
+    case ssoValidationFailed(String)
     case notImplemented
 
     var errorDescription: String? {
@@ -155,6 +312,10 @@ enum AuthError: LocalizedError {
             return "Session expired. Please login again."
         case .tokenExpired:
             return "Session expired. Please login again."
+        case .ssoRequired:
+            return "Please use the Property Management app to sign in."
+        case .ssoValidationFailed(let message):
+            return "SSO login failed: \(message)"
         case .notImplemented:
             return "This feature is not yet implemented."
         }
