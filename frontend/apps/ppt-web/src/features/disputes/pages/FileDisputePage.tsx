@@ -6,20 +6,24 @@
 import { useState } from 'react';
 import { type DisputeCategory, categoryLabels } from '../components/DisputeCard';
 
+/** Form data for creating a dispute */
+export interface DisputeFormData {
+  category: DisputeCategory;
+  title: string;
+  description: string;
+  desiredResolution?: string;
+  respondentIds: string[];
+  buildingId?: string;
+  unitId?: string;
+}
+
 interface FileDisputePageProps {
   buildings?: Array<{ id: string; name: string }>;
   units?: Array<{ id: string; designation: string; buildingId: string }>;
   residents?: Array<{ id: string; name: string; unitId?: string }>;
   isSubmitting?: boolean;
-  onSubmit: (data: {
-    category: DisputeCategory;
-    title: string;
-    description: string;
-    desiredResolution?: string;
-    respondentIds: string[];
-    buildingId?: string;
-    unitId?: string;
-  }) => void;
+  /** onSubmit can be async - component handles loading state via isSubmitting prop */
+  onSubmit: (data: DisputeFormData) => void | Promise<void>;
   onCancel: () => void;
 }
 

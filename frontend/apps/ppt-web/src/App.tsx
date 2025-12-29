@@ -216,25 +216,41 @@ function DisputesPageRoute() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const organizationId = user?.organizationId ?? 'default-org';
+
+  // Require organization context for disputes
+  if (!user?.organizationId) {
+    return (
+      <div className="error-page">
+        <h1>Authentication Required</h1>
+        <p>Unable to load disputes: missing organization context. Please sign in again.</p>
+        <Link to="/login">Sign In</Link>
+      </div>
+    );
+  }
+
+  const organizationId = user.organizationId;
 
   // Filter state for API query (UI types)
+  // Note: priority and search are accepted from UI for future compatibility,
+  // but the current DisputeListQuery API does not support these fields.
+  // These will be ignored until backend API is extended to support them.
   const [filters, setFilters] = useState<{
     status?: UiDisputeStatus;
-    priority?: DisputePriority;
+    priority?: DisputePriority; // UI-only: API does not support priority filtering yet
     category?: DisputeCategory;
-    search?: string;
+    search?: string; // UI-only: API does not support text search yet
     page: number;
     pageSize: number;
   }>({ page: 1, pageSize: 10 });
 
-  // Map UI filters to API query parameters (including search - M-3 fix)
+  // Map UI filters to API query parameters
+  // Note: priority and search are not passed to API as DisputeListQuery does not support them.
+  // When backend adds support, update apiQuery to include these fields.
   const apiQuery = {
     status: filters.status ? mapUiStatusToApiStatus(filters.status) : undefined,
     type: filters.category ? mapCategoryToType(filters.category) : undefined,
     limit: filters.pageSize,
     page: filters.page,
-    // Note: API may not support text search yet, but pass it for future compatibility
   };
 
   // Use the disputes API hook
@@ -299,7 +315,19 @@ function FileDisputePageRoute() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const organizationId = user?.organizationId ?? 'default-org';
+
+  // Require organization context for filing disputes
+  if (!user?.organizationId) {
+    return (
+      <div className="error-page">
+        <h1>Authentication Required</h1>
+        <p>Unable to file dispute: missing organization context. Please sign in again.</p>
+        <Link to="/login">Sign In</Link>
+      </div>
+    );
+  }
+
+  const organizationId = user.organizationId;
 
   const createDispute = useCreateDispute(organizationId);
 
