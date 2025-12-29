@@ -37,12 +37,27 @@ function buildQueryString(params: object): string {
   return queryString ? `?${queryString}` : '';
 }
 
+/**
+ * Get authorization header from stored token.
+ *
+ * SECURITY NOTE: localStorage is vulnerable to XSS attacks. In a production app,
+ * consider using httpOnly cookies for token storage. This implementation uses
+ * localStorage as a temporary solution until the auth context integration is complete.
+ *
+ * TODO: Integrate with auth context for secure token management.
+ */
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // Helper for API requests
 async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...options.headers,
     },
   });
@@ -64,6 +79,9 @@ async function apiFormDataRequest<T>(url: string, formData: FormData): Promise<T
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
 
   if (!response.ok) {

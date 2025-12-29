@@ -1,6 +1,6 @@
 # Story 85.1: Environment Variable Setup
 
-Status: pending
+Status: in-progress
 
 ## Story
 
@@ -62,11 +62,11 @@ So that **mobile apps connect to the correct backend for each environment**.
   - [ ] 3.3 Create Production scheme
   - [ ] 3.4 Add xcconfig files per environment
 
-- [ ] Task 4: Configure KMP Environment (AC: 2, 3, 4, 5)
-  - [ ] 4.1 Update `/mobile-native/shared/src/commonMain/kotlin/.../api/ApiConfig.kt`
-  - [ ] 4.2 Create expect/actual for platform-specific config
-  - [ ] 4.3 Android: Read from BuildConfig
-  - [ ] 4.4 iOS: Read from Info.plist or xcconfig
+- [x] Task 4: Configure KMP Environment (AC: 2, 3, 4, 5)
+  - [x] 4.1 Update `/mobile-native/shared/src/commonMain/kotlin/.../api/ApiConfig.kt`
+  - [x] 4.2 Create expect/actual for platform-specific config
+  - [x] 4.3 Android: Read from BuildConfig
+  - [x] 4.4 iOS: Read from Info.plist (keys added to Info.plist)
 
 - [ ] Task 5: Document Environment Setup (AC: 1, 2, 3, 4, 5)
   - [ ] 5.1 Create environment setup documentation

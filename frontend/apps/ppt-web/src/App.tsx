@@ -1,15 +1,108 @@
+import { useCreateDispute, useDispute, useDisputes } from '@ppt/api-client';
+import type {
+  Dispute as ApiDispute,
+  DisputeStatus as ApiDisputeStatus,
+  DisputeType as ApiDisputeType,
+} from '@ppt/api-client';
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
-import type { ReactNode } from 'react';
-import { BrowserRouter, Link, Route, Routes, useParams } from 'react-router-dom';
-import { ConnectionStatus, OfflineIndicator, ToastProvider } from './components';
+import { type ReactNode, useEffect, useState } from 'react';
+import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { ConnectionStatus, OfflineIndicator, ToastProvider, useToast } from './components';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
 import { DisputesPage, FileDisputePage } from './features/disputes';
+import type {
+  DisputeCategory,
+  DisputePriority,
+  DisputeSummary,
+  DisputeStatus as UiDisputeStatus,
+} from './features/disputes/components/DisputeCard';
 import { DocumentDetailPage, DocumentUploadPage, DocumentsPage } from './features/documents';
 import { EmergencyContactDirectoryPage } from './features/emergency';
 import { ArticleDetailPage, NewsListPage } from './features/news';
 import { PrivacySettingsPage } from './features/privacy';
 import { AccessibilitySettingsPage } from './features/settings';
 import { LoginPage } from './pages/LoginPage';
+
+// ============================================
+// Type Mapping Utilities (API <-> UI)
+// ============================================
+
+/** Map API DisputeType to UI DisputeCategory */
+function mapTypeToCategory(type: ApiDisputeType): DisputeCategory {
+  const mapping: Record<ApiDisputeType, DisputeCategory> = {
+    noise: 'noise',
+    damage: 'damage',
+    payment: 'payment',
+    lease: 'lease_terms',
+    maintenance: 'maintenance',
+    other: 'other',
+  };
+  return mapping[type];
+}
+
+/** Map UI DisputeCategory to API DisputeType */
+function mapCategoryToType(category: DisputeCategory): ApiDisputeType {
+  const mapping: Record<DisputeCategory, ApiDisputeType> = {
+    noise: 'noise',
+    damage: 'damage',
+    payment: 'payment',
+    lease_terms: 'lease',
+    common_area: 'other',
+    parking: 'other',
+    pets: 'other',
+    maintenance: 'maintenance',
+    privacy: 'other',
+    harassment: 'other',
+    other: 'other',
+  };
+  return mapping[category];
+}
+
+/** Map API DisputeStatus to UI DisputeStatus */
+function mapApiStatusToUiStatus(status: ApiDisputeStatus): UiDisputeStatus {
+  const mapping: Record<ApiDisputeStatus, UiDisputeStatus> = {
+    filed: 'filed',
+    under_review: 'under_review',
+    mediation: 'mediation',
+    escalated: 'escalated',
+    resolved: 'resolved',
+    closed: 'closed',
+  };
+  return mapping[status];
+}
+
+/** Map UI DisputeStatus to API DisputeStatus (for filtering) */
+function mapUiStatusToApiStatus(status: UiDisputeStatus): ApiDisputeStatus | undefined {
+  const mapping: Record<UiDisputeStatus, ApiDisputeStatus | undefined> = {
+    filed: 'filed',
+    under_review: 'under_review',
+    mediation: 'mediation',
+    awaiting_response: 'under_review', // No direct mapping, use under_review
+    resolved: 'resolved',
+    escalated: 'escalated',
+    withdrawn: 'closed', // No direct mapping, use closed
+    closed: 'closed',
+  };
+  return mapping[status];
+}
+
+/** Transform API Dispute to UI DisputeSummary */
+function transformDisputeToSummary(dispute: ApiDispute): DisputeSummary {
+  return {
+    id: dispute.id,
+    referenceNumber: `DSP-${dispute.id.toUpperCase()}`,
+    category: mapTypeToCategory(dispute.type),
+    title: dispute.subject,
+    status: mapApiStatusToUiStatus(dispute.status),
+    // Priority is UI-only; API does not support priority field yet
+    priority: 'medium' as DisputePriority,
+    filedByName: dispute.filedBy,
+    assignedToName: dispute.assignedMediator,
+    partyCount: dispute.respondentId || dispute.respondent ? 2 : 1,
+    createdAt: dispute.createdAt,
+    updatedAt: dispute.updatedAt,
+  };
+}
 
 /**
  * WebSocket wrapper that bridges AuthContext to WebSocketProvider.
@@ -83,8 +176,9 @@ function App() {
 
 /** Route wrapper for documents page */
 function DocumentsPageRoute() {
-  // In a real app, organizationId would come from auth context
-  return <DocumentsPage organizationId="default-org" />;
+  const { user } = useAuth();
+  const organizationId = user?.organizationId ?? 'default-org';
+  return <DocumentsPage organizationId={organizationId} />;
 }
 
 /** Route wrapper for document detail page to extract params */
@@ -113,33 +207,96 @@ function ArticleDetailRoute() {
 }
 
 /**
- * Route wrapper for disputes page (Epic 77).
+ * Route wrapper for disputes page (Epic 77, Story 80.1).
  *
- * Note: This component uses empty mock data as intentional placeholders for demonstration.
- * In production, data fetching should be implemented using React Query hooks from @ppt/api-client.
- * The DisputesPage component is a presentational component that receives data via props.
+ * Uses useDisputes hook from @ppt/api-client for data fetching.
+ * Implements real API integration with TanStack Query.
+ * Transforms API types to UI types for component compatibility.
  */
 function DisputesPageRoute() {
-  // Demo mode: Empty data for UI demonstration purposes
-  // Production implementation should use useDisputes() hook from api-client
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  // Require organization context for disputes
+  if (!user?.organizationId) {
+    return (
+      <div className="error-page">
+        <h1>Authentication Required</h1>
+        <p>Unable to load disputes: missing organization context. Please sign in again.</p>
+        <Link to="/login">Sign In</Link>
+      </div>
+    );
+  }
+
+  const organizationId = user.organizationId;
+
+  // Filter state for API query (UI types)
+  // Note: priority and search are accepted from UI for future compatibility,
+  // but the current DisputeListQuery API does not support these fields.
+  // These will be ignored until backend API is extended to support them.
+  const [filters, setFilters] = useState<{
+    status?: UiDisputeStatus;
+    priority?: DisputePriority; // UI-only: API does not support priority filtering yet
+    category?: DisputeCategory;
+    search?: string; // UI-only: API does not support text search yet
+    page: number;
+    pageSize: number;
+  }>({ page: 1, pageSize: 10 });
+
+  // Map UI filters to API query parameters
+  // Note: priority and search are not passed to API as DisputeListQuery does not support them.
+  // When backend adds support, update apiQuery to include these fields.
+  const apiQuery = {
+    status: filters.status ? mapUiStatusToApiStatus(filters.status) : undefined,
+    type: filters.category ? mapCategoryToType(filters.category) : undefined,
+    limit: filters.pageSize,
+    page: filters.page,
+  };
+
+  // Use the disputes API hook
+  const { data, isLoading, error } = useDisputes(organizationId, apiQuery);
+
+  // Show error toast if query fails (use useEffect to prevent toast spam)
+  useEffect(() => {
+    if (error) {
+      showToast({
+        type: 'error',
+        title: 'Failed to load disputes',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    }
+  }, [error, showToast]);
+
+  // Transform API response to match component interface
+  const disputes: DisputeSummary[] = (data?.data ?? []).map(transformDisputeToSummary);
+  const total = data?.total ?? 0;
+
   const handleNavigateToCreate = () => {
-    window.location.href = '/disputes/new';
+    navigate('/disputes/new');
   };
   const handleNavigateToView = (id: string) => {
-    window.location.href = `/disputes/${id}`;
+    navigate(`/disputes/${id}`);
   };
   const handleNavigateToManage = (id: string) => {
-    window.location.href = `/disputes/${id}`;
+    navigate(`/disputes/${id}`);
   };
-  const handleFilterChange = () => {
-    // Filter handling will be implemented with React Query when data fetching is added
+  const handleFilterChange = (newFilters: {
+    status?: UiDisputeStatus;
+    priority?: DisputePriority;
+    category?: DisputeCategory;
+    search?: string;
+    page: number;
+    pageSize: number;
+  }) => {
+    setFilters(newFilters);
   };
 
   return (
     <DisputesPage
-      disputes={[]}
-      total={0}
-      isLoading={false}
+      disputes={disputes}
+      total={total}
+      isLoading={isLoading}
       onNavigateToCreate={handleNavigateToCreate}
       onNavigateToView={handleNavigateToView}
       onNavigateToManage={handleNavigateToManage}
@@ -149,44 +306,212 @@ function DisputesPageRoute() {
 }
 
 /**
- * Route wrapper for file dispute page (Epic 77).
+ * Route wrapper for file dispute page (Epic 77, Story 80.2).
  *
- * Note: Submission handlers are placeholders for demonstration purposes.
- * Production implementation should use useCreateDispute() mutation from api-client.
+ * Uses useCreateDispute mutation from @ppt/api-client for creating disputes.
+ * Implements real API integration with toast notifications.
+ * Transforms UI form data to API CreateDisputeRequest format.
  */
 function FileDisputePageRoute() {
-  // Demo mode: Placeholder handlers for UI demonstration
-  // Production implementation should use useCreateDispute() mutation from api-client
-  const handleSubmit = () => {
-    // Dispute submission will be implemented with React Query mutation
-    window.location.href = '/disputes';
-  };
-  const handleCancel = () => {
-    window.location.href = '/disputes';
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  // Require organization context for filing disputes
+  if (!user?.organizationId) {
+    return (
+      <div className="error-page">
+        <h1>Authentication Required</h1>
+        <p>Unable to file dispute: missing organization context. Please sign in again.</p>
+        <Link to="/login">Sign In</Link>
+      </div>
+    );
+  }
+
+  const organizationId = user.organizationId;
+
+  const createDispute = useCreateDispute(organizationId);
+
+  // Handle form submission - transform UI data to API format
+  const handleSubmit = async (formData: {
+    category: DisputeCategory;
+    title: string;
+    description: string;
+    desiredResolution?: string;
+    respondentIds: string[];
+    buildingId?: string;
+    unitId?: string;
+  }) => {
+    // Validate unitId is provided before submission
+    if (!formData.unitId) {
+      showToast({
+        type: 'error',
+        title: 'Unit required',
+        message: 'Please select a unit for this dispute.',
+      });
+      return;
+    }
+
+    // Warn if multiple respondents selected (API only supports one)
+    if (formData.respondentIds.length > 1) {
+      showToast({
+        type: 'warning',
+        title: 'Multiple respondents',
+        message: `Only the first respondent will be recorded. ${formData.respondentIds.length - 1} additional respondent(s) will not be included.`,
+      });
+    }
+
+    try {
+      // Transform UI form data to API CreateDisputeRequest
+      const apiRequest = {
+        type: mapCategoryToType(formData.category),
+        subject: formData.title,
+        // Combine description and desired resolution with clear delimiters
+        description: formData.desiredResolution
+          ? `Description:\n${formData.description}\n\n---\nDesired Resolution:\n${formData.desiredResolution}`
+          : formData.description,
+        unitId: formData.unitId,
+        respondentId: formData.respondentIds[0],
+      };
+
+      await createDispute.mutateAsync(apiRequest);
+      showToast({
+        type: 'success',
+        title: 'Dispute filed successfully',
+        message: 'Your dispute has been submitted and will be reviewed.',
+      });
+      navigate('/disputes');
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Failed to file dispute',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    }
   };
 
-  return <FileDisputePage onSubmit={handleSubmit} onCancel={handleCancel} />;
+  const handleCancel = () => {
+    navigate('/disputes');
+  };
+
+  return (
+    <FileDisputePage
+      onSubmit={handleSubmit}
+      onCancel={handleCancel}
+      isSubmitting={createDispute.isPending}
+    />
+  );
 }
 
 /**
- * Route wrapper for dispute detail page (Epic 77).
+ * Route wrapper for dispute detail page (Epic 77, Story 80.1).
  *
- * Note: This is a placeholder component. Full implementation requires:
- * 1. useDispute(disputeId) hook from api-client for data fetching
- * 2. DisputeDetailPage component with proper props interface
- * 3. Loading/error states handling
+ * Uses useDispute hook from @ppt/api-client for data fetching.
+ * Implements real API integration with loading/error states.
+ * Maps API DisputeWithDetails to UI-friendly display format.
  */
 function DisputeDetailRoute() {
   const { disputeId } = useParams<{ disputeId: string }>();
-  if (!disputeId) return <div>Dispute not found</div>;
-  // Placeholder: Data fetching will be implemented with useDispute() hook from api-client
+  const { showToast } = useToast();
+
+  const { data: dispute, isLoading, error, refetch } = useDispute(disputeId ?? '');
+
+  // Use useEffect for error toast to prevent spam on re-renders
+  useEffect(() => {
+    if (error) {
+      showToast({
+        type: 'error',
+        title: 'Failed to load dispute',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    }
+  }, [error, showToast]);
+
+  if (!disputeId) {
+    return (
+      <div className="error-page">
+        <h1>Dispute not found</h1>
+        <p>We couldn't find the dispute you're looking for.</p>
+        <Link to="/disputes">Back to disputes</Link>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="loading-page">
+        <h1>Loading dispute...</h1>
+        <p>Please wait while we fetch the dispute details.</p>
+      </div>
+    );
+  }
+
+  // Add retry button for error states
+  if (error) {
+    return (
+      <div className="error-page">
+        <h1>Error loading dispute</h1>
+        <p>We encountered an error while loading the dispute details.</p>
+        <div className="error-actions">
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-2"
+          >
+            Try Again
+          </button>
+          <Link to="/disputes" className="px-4 py-2 border border-gray-300 rounded-lg">
+            Back to disputes
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dispute) {
+    return (
+      <div className="error-page">
+        <h1>Dispute not found</h1>
+        <p>The dispute you're looking for does not exist.</p>
+        <Link to="/disputes">Back to disputes</Link>
+      </div>
+    );
+  }
+
+  // Map API type to UI category for display
+  const category = mapTypeToCategory(dispute.type);
+  const status = mapApiStatusToUiStatus(dispute.status);
+
   return (
-    <div>
-      <h1>Dispute Details</h1>
-      <p>Loading dispute {disputeId}...</p>
-      <p>
-        <em>Note: Container component with data fetching needed for full implementation.</em>
-      </p>
+    <div className="dispute-detail-page">
+      <h1>Dispute: {dispute.subject}</h1>
+      <div className="dispute-meta">
+        <span className={`status status--${status}`}>{status.split('_').join(' ')}</span>
+        <span className="type">{category.split('_').join(' ')}</span>
+      </div>
+      <div className="dispute-description">
+        <h2>Description</h2>
+        <p>{dispute.description}</p>
+      </div>
+      <div className="dispute-timeline">
+        <h2>Timeline</h2>
+        {dispute.timeline && dispute.timeline.length > 0 ? (
+          <ul>
+            {dispute.timeline.map((event) => (
+              <li key={event.id}>
+                <strong>{event.eventType.split('_').join(' ')}</strong>: {event.description}
+                <span className="text-gray-500 ml-2">
+                  ({new Date(event.createdAt).toLocaleDateString()})
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>
+            <em>No timeline events yet.</em>
+          </p>
+        )}
+      </div>
       <Link to="/disputes">Back to disputes</Link>
     </div>
   );
