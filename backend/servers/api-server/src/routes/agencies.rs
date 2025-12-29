@@ -8,8 +8,9 @@ use axum::{
     Json, Router,
 };
 use db::models::{
-    AcceptInvitation, Agency, AgencyBranding, AgencyMember, AgencyMembersResponse, CreateAgency,
-    InviteMember, ListingEditHistory, ListingImportJob, UpdateAgency, UpdateMemberRole,
+    member_role, AcceptInvitation, Agency, AgencyBranding, AgencyMember, AgencyMembersResponse,
+    CreateAgency, InviteMember, ListingEditHistory, ListingImportJob, Locale, UpdateAgency,
+    UpdateMemberRole,
 };
 use uuid::Uuid;
 
@@ -124,11 +125,12 @@ pub async fn get_agency(
 )]
 pub async fn update_agency(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     Path(id): Path<Uuid>,
     Json(data): Json<UpdateAgency>,
 ) -> Result<Json<Agency>, (axum::http::StatusCode, String)> {
-    // TODO: Verify user is agency admin
+    // Verify user is agency admin
+    verify_agency_admin(&state, id, tenant.user_id).await?;
 
     let agency = state
         .agency_repo
@@ -159,11 +161,12 @@ pub async fn update_agency(
 )]
 pub async fn update_branding(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     Path(id): Path<Uuid>,
     Json(data): Json<AgencyBranding>,
 ) -> Result<Json<Agency>, (axum::http::StatusCode, String)> {
-    // TODO: Verify user is agency admin
+    // Verify user is agency admin
+    verify_agency_admin(&state, id, tenant.user_id).await?;
 
     let agency = state
         .agency_repo
@@ -226,12 +229,46 @@ pub async fn invite_member(
     Path(id): Path<Uuid>,
     Json(data): Json<InviteMember>,
 ) -> Result<axum::http::StatusCode, (axum::http::StatusCode, String)> {
-    // TODO: Verify user is agency admin
-    // TODO: Send email invitation
+    // Verify user is agency admin
+    verify_agency_admin(&state, id, tenant.user_id).await?;
 
-    let _invitation = state
+    // Get the agency name for the email
+    let agency = state
         .agency_repo
-        .create_invitation(id, data, tenant.user_id)
+        .find_by_id(id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get agency: {}", e),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                "Agency not found".to_string(),
+            )
+        })?;
+
+    // Get inviter's name for the email
+    let inviter = state
+        .user_repo
+        .find_by_id(tenant.user_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get user: {}", e),
+            )
+        })?;
+
+    let inviter_name = inviter
+        .map(|u| u.name)
+        .unwrap_or_else(|| "An administrator".to_string());
+
+    let invitation = state
+        .agency_repo
+        .create_invitation(id, data.clone(), tenant.user_id)
         .await
         .map_err(|e| {
             (
@@ -239,6 +276,37 @@ pub async fn invite_member(
                 format!("Failed to create invitation: {}", e),
             )
         })?;
+
+    // Send invitation email
+    let email_subject = format!("Invitation to join {} on Property Management", agency.name);
+    let email_body = format!(
+        "{} has invited you to join {} as a {}.\n\nClick the link below to accept the invitation:\n\n{}/accept-agency-invitation?token={}\n\nThis invitation expires in 7 days.",
+        inviter_name,
+        agency.name,
+        data.role,
+        std::env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string()),
+        invitation.token
+    );
+
+    if let Err(e) = state
+        .email_service
+        .send_notification_email(
+            &data.email,
+            &data.email,
+            &email_subject,
+            &email_body,
+            &Locale::English,
+        )
+        .await
+    {
+        tracing::warn!(
+            error = %e,
+            email = %data.email,
+            agency_id = %id,
+            "Failed to send agency invitation email"
+        );
+        // Don't fail the request if email sending fails - the invitation is still created
+    }
 
     Ok(axum::http::StatusCode::CREATED)
 }
@@ -292,11 +360,12 @@ pub async fn accept_invitation(
 )]
 pub async fn update_member_role(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     Path((id, user_id)): Path<(Uuid, Uuid)>,
     Json(data): Json<UpdateMemberRole>,
 ) -> Result<Json<AgencyMember>, (axum::http::StatusCode, String)> {
-    // TODO: Verify caller is agency admin
+    // Verify caller is agency admin
+    verify_agency_admin(&state, id, tenant.user_id).await?;
 
     let member = state
         .agency_repo
@@ -329,10 +398,11 @@ pub async fn update_member_role(
 )]
 pub async fn remove_member(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     Path((id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<axum::http::StatusCode, (axum::http::StatusCode, String)> {
-    // TODO: Verify caller is agency admin
+    // Verify caller is agency admin
+    verify_agency_admin(&state, id, tenant.user_id).await?;
 
     let removed = state
         .agency_repo
@@ -373,10 +443,11 @@ pub async fn remove_member(
 )]
 pub async fn reassign_listings(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
+    TenantExtractor(tenant): TenantExtractor,
     Path((id, user_id, to_user_id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, String)> {
-    // TODO: Verify caller is agency admin
+    // Verify caller is agency admin
+    verify_agency_admin(&state, id, tenant.user_id).await?;
 
     let count = state
         .agency_repo
@@ -410,11 +481,12 @@ pub async fn reassign_listings(
 )]
 pub async fn update_visibility(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
-    Path((_id, listing_id)): Path<(Uuid, Uuid)>,
+    TenantExtractor(tenant): TenantExtractor,
+    Path((id, listing_id)): Path<(Uuid, Uuid)>,
     Json(data): Json<db::models::UpdateListingVisibility>,
 ) -> Result<Json<db::models::AgencyListing>, (axum::http::StatusCode, String)> {
-    // TODO: Verify caller has access to listing
+    // Verify caller has access to listing
+    verify_listing_access(&state, id, listing_id, tenant.user_id).await?;
 
     let listing = state
         .agency_repo
@@ -446,10 +518,11 @@ pub async fn update_visibility(
 )]
 pub async fn get_listing_history(
     State(state): State<AppState>,
-    TenantExtractor(_tenant): TenantExtractor,
-    Path((_id, listing_id)): Path<(Uuid, Uuid)>,
+    TenantExtractor(tenant): TenantExtractor,
+    Path((id, listing_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<Vec<ListingEditHistory>>, (axum::http::StatusCode, String)> {
-    // TODO: Verify caller has access to listing
+    // Verify caller has access to listing
+    verify_listing_access(&state, id, listing_id, tenant.user_id).await?;
 
     let history = state
         .agency_repo
@@ -563,4 +636,87 @@ pub async fn list_import_jobs(
         })?;
 
     Ok(Json(jobs))
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/// Verify that the user is an admin of the specified agency.
+/// Returns Ok(()) if authorized, Err with 403 status if not.
+async fn verify_agency_admin(
+    state: &AppState,
+    agency_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), (axum::http::StatusCode, String)> {
+    let member = state
+        .agency_repo
+        .get_member(agency_id, user_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to check membership: {}", e),
+            )
+        })?;
+
+    match member {
+        Some(m) if m.is_active && m.role == member_role::ADMIN => Ok(()),
+        Some(_) => Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "Only agency admins can perform this action".to_string(),
+        )),
+        None => Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "You are not a member of this agency".to_string(),
+        )),
+    }
+}
+
+/// Verify that the user has access to a listing (is a member of the agency or owns the listing).
+async fn verify_listing_access(
+    state: &AppState,
+    agency_id: Uuid,
+    listing_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), (axum::http::StatusCode, String)> {
+    // First check if user is an agency member
+    let member = state
+        .agency_repo
+        .get_member(agency_id, user_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to check membership: {}", e),
+            )
+        })?;
+
+    if member.is_none() || !member.as_ref().unwrap().is_active {
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "You are not a member of this agency".to_string(),
+        ));
+    }
+
+    // Check listing access based on visibility and role
+    let can_access = state
+        .agency_repo
+        .can_access_listing(listing_id, user_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to check listing access: {}", e),
+            )
+        })?;
+
+    if !can_access {
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            "You do not have access to this listing".to_string(),
+        ));
+    }
+
+    Ok(())
 }

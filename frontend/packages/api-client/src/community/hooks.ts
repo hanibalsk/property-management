@@ -5,27 +5,18 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PaginatedResponse } from '../announcements';
+import * as api from './api';
 import type {
-  CommunityEvent,
-  CommunityGroup,
-  CommunityGroupSummary,
-  CommunityPost,
-  CommunityStats,
   ContactSellerRequest,
   CreateEventRequest,
   CreateGroupRequest,
   CreateItemRequest,
   CreatePostCommentRequest,
   CreatePostRequest,
-  EventAttendee,
-  GroupMember,
   ListEventsParams,
   ListGroupsParams,
   ListItemsParams,
   ListPostsParams,
-  MarketplaceItem,
-  PostComment,
   RsvpRequest,
   UpdateEventRequest,
   UpdateGroupRequest,
@@ -55,30 +46,13 @@ export const communityKeys = {
 };
 
 // ============================================
-// Mock API Functions (replace with actual API calls)
-// ============================================
-
-const mockDelay = () => new Promise((resolve) => setTimeout(resolve, 300));
-
-// ============================================
 // Community Stats
 // ============================================
 
 export function useCommunityStats() {
   return useQuery({
     queryKey: communityKeys.stats(),
-    queryFn: async (): Promise<CommunityStats> => {
-      await mockDelay();
-      return {
-        totalGroups: 12,
-        totalMembers: 156,
-        totalPosts: 89,
-        totalEvents: 8,
-        totalItems: 24,
-        activeListings: 18,
-        upcomingEvents: 3,
-      };
-    },
+    queryFn: () => api.getCommunityStats(),
   });
 }
 
@@ -89,26 +63,14 @@ export function useCommunityStats() {
 export function useGroups(params: ListGroupsParams = {}) {
   return useQuery({
     queryKey: communityKeys.groupList(params),
-    queryFn: async (): Promise<PaginatedResponse<CommunityGroupSummary>> => {
-      await mockDelay();
-      return {
-        items: [],
-        total: 0,
-        page: params.page || 1,
-        pageSize: params.pageSize || 20,
-        totalPages: 0,
-      };
-    },
+    queryFn: () => api.listGroups(params),
   });
 }
 
 export function useGroup(id: string) {
   return useQuery({
     queryKey: communityKeys.groupDetail(id),
-    queryFn: async (): Promise<CommunityGroup> => {
-      await mockDelay();
-      throw new Error('Group not found');
-    },
+    queryFn: () => api.getGroup(id),
     enabled: !!id,
   });
 }
@@ -116,10 +78,7 @@ export function useGroup(id: string) {
 export function useGroupMembers(groupId: string) {
   return useQuery({
     queryKey: communityKeys.groupMembers(groupId),
-    queryFn: async (): Promise<GroupMember[]> => {
-      await mockDelay();
-      return [];
-    },
+    queryFn: () => api.getGroupMembers(groupId),
     enabled: !!groupId,
   });
 }
@@ -128,21 +87,7 @@ export function useCreateGroup() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateGroupRequest): Promise<CommunityGroup> => {
-      await mockDelay();
-      return {
-        id: crypto.randomUUID(),
-        buildingId: 'building-1',
-        ...data,
-        visibility: data.visibility || 'public',
-        memberCount: 1,
-        postCount: 0,
-        isOfficial: false,
-        createdBy: 'current-user',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    },
+    mutationFn: (data: CreateGroupRequest) => api.createGroup(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.groups() });
     },
@@ -153,16 +98,8 @@ export function useUpdateGroup() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id: _id,
-      data: _data,
-    }: {
-      id: string;
-      data: UpdateGroupRequest;
-    }): Promise<CommunityGroup> => {
-      await mockDelay();
-      throw new Error('Not implemented');
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdateGroupRequest }) =>
+      api.updateGroup(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.groupDetail(id) });
       queryClient.invalidateQueries({ queryKey: communityKeys.groups() });
@@ -174,9 +111,7 @@ export function useJoinGroup() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_groupId: string): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: (groupId: string) => api.joinGroup(groupId),
     onSuccess: (_, groupId) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.groupDetail(groupId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.groups() });
@@ -188,9 +123,7 @@ export function useLeaveGroup() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_groupId: string): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: (groupId: string) => api.leaveGroup(groupId),
     onSuccess: (_, groupId) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.groupDetail(groupId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.groups() });
@@ -205,26 +138,14 @@ export function useLeaveGroup() {
 export function usePosts(params: ListPostsParams = {}) {
   return useQuery({
     queryKey: communityKeys.postList(params),
-    queryFn: async (): Promise<PaginatedResponse<CommunityPost>> => {
-      await mockDelay();
-      return {
-        items: [],
-        total: 0,
-        page: params.page || 1,
-        pageSize: params.pageSize || 20,
-        totalPages: 0,
-      };
-    },
+    queryFn: () => api.listPosts(params),
   });
 }
 
 export function usePost(id: string) {
   return useQuery({
     queryKey: communityKeys.postDetail(id),
-    queryFn: async (): Promise<CommunityPost> => {
-      await mockDelay();
-      throw new Error('Post not found');
-    },
+    queryFn: () => api.getPost(id),
     enabled: !!id,
   });
 }
@@ -232,10 +153,7 @@ export function usePost(id: string) {
 export function usePostComments(postId: string) {
   return useQuery({
     queryKey: communityKeys.postComments(postId),
-    queryFn: async (): Promise<PostComment[]> => {
-      await mockDelay();
-      return [];
-    },
+    queryFn: () => api.getPostComments(postId),
     enabled: !!postId,
   });
 }
@@ -244,26 +162,7 @@ export function useCreatePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreatePostRequest): Promise<CommunityPost> => {
-      await mockDelay();
-      return {
-        id: crypto.randomUUID(),
-        groupId: data.groupId,
-        authorId: 'current-user',
-        authorName: 'Current User',
-        type: data.type || 'text',
-        content: data.content,
-        mediaUrls: data.mediaUrls || [],
-        visibility: data.visibility || 'group',
-        likeCount: 0,
-        commentCount: 0,
-        shareCount: 0,
-        isPinned: false,
-        isLikedByUser: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    },
+    mutationFn: (data: CreatePostRequest) => api.createPost(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
     },
@@ -274,16 +173,7 @@ export function useUpdatePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id: _id,
-      data: _data,
-    }: {
-      id: string;
-      data: UpdatePostRequest;
-    }): Promise<CommunityPost> => {
-      await mockDelay();
-      throw new Error('Not implemented');
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdatePostRequest }) => api.updatePost(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.postDetail(id) });
       queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
@@ -295,9 +185,7 @@ export function useDeletePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_id: string): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: (id: string) => api.deletePost(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
     },
@@ -308,9 +196,7 @@ export function useLikePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_postId: string): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: (postId: string) => api.likePost(postId),
     onSuccess: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.postDetail(postId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
@@ -322,9 +208,7 @@ export function useUnlikePost() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_postId: string): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: (postId: string) => api.unlikePost(postId),
     onSuccess: (_, postId) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.postDetail(postId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.posts() });
@@ -336,27 +220,8 @@ export function useCreatePostComment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      postId,
-      data,
-    }: {
-      postId: string;
-      data: CreatePostCommentRequest;
-    }): Promise<PostComment> => {
-      await mockDelay();
-      return {
-        id: crypto.randomUUID(),
-        postId,
-        authorId: 'current-user',
-        authorName: 'Current User',
-        parentId: data.parentId,
-        content: data.content,
-        likeCount: 0,
-        isLikedByUser: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    },
+    mutationFn: ({ postId, data }: { postId: string; data: CreatePostCommentRequest }) =>
+      api.createPostComment(postId, data),
     onSuccess: (_, { postId }) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.postComments(postId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.postDetail(postId) });
@@ -371,26 +236,14 @@ export function useCreatePostComment() {
 export function useEvents(params: ListEventsParams = {}) {
   return useQuery({
     queryKey: communityKeys.eventList(params),
-    queryFn: async (): Promise<PaginatedResponse<CommunityEvent>> => {
-      await mockDelay();
-      return {
-        items: [],
-        total: 0,
-        page: params.page || 1,
-        pageSize: params.pageSize || 20,
-        totalPages: 0,
-      };
-    },
+    queryFn: () => api.listEvents(params),
   });
 }
 
 export function useEvent(id: string) {
   return useQuery({
     queryKey: communityKeys.eventDetail(id),
-    queryFn: async (): Promise<CommunityEvent> => {
-      await mockDelay();
-      throw new Error('Event not found');
-    },
+    queryFn: () => api.getEvent(id),
     enabled: !!id,
   });
 }
@@ -398,10 +251,7 @@ export function useEvent(id: string) {
 export function useEventAttendees(eventId: string) {
   return useQuery({
     queryKey: communityKeys.eventAttendees(eventId),
-    queryFn: async (): Promise<EventAttendee[]> => {
-      await mockDelay();
-      return [];
-    },
+    queryFn: () => api.getEventAttendees(eventId),
     enabled: !!eventId,
   });
 }
@@ -410,29 +260,7 @@ export function useCreateEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateEventRequest): Promise<CommunityEvent> => {
-      await mockDelay();
-      return {
-        id: crypto.randomUUID(),
-        groupId: data.groupId,
-        title: data.title,
-        description: data.description,
-        location: data.location,
-        locationDetails: data.locationDetails,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        allDay: data.allDay || false,
-        coverImageUrl: data.coverImageUrl,
-        status: 'published',
-        maxAttendees: data.maxAttendees,
-        goingCount: 0,
-        maybeCount: 0,
-        notGoingCount: 0,
-        createdBy: 'current-user',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    },
+    mutationFn: (data: CreateEventRequest) => api.createEvent(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.events() });
     },
@@ -443,16 +271,8 @@ export function useUpdateEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id: _id,
-      data: _data,
-    }: {
-      id: string;
-      data: UpdateEventRequest;
-    }): Promise<CommunityEvent> => {
-      await mockDelay();
-      throw new Error('Not implemented');
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdateEventRequest }) =>
+      api.updateEvent(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.eventDetail(id) });
       queryClient.invalidateQueries({ queryKey: communityKeys.events() });
@@ -464,15 +284,8 @@ export function useRsvpEvent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      eventId: _eventId,
-      data: _data,
-    }: {
-      eventId: string;
-      data: RsvpRequest;
-    }): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: ({ eventId, data }: { eventId: string; data: RsvpRequest }) =>
+      api.rsvpEvent(eventId, data),
     onSuccess: (_, { eventId }) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.eventDetail(eventId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.eventAttendees(eventId) });
@@ -485,9 +298,7 @@ export function useCancelRsvp() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_eventId: string): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: (eventId: string) => api.cancelRsvp(eventId),
     onSuccess: (_, eventId) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.eventDetail(eventId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.eventAttendees(eventId) });
@@ -503,26 +314,14 @@ export function useCancelRsvp() {
 export function useMarketplaceItems(params: ListItemsParams = {}) {
   return useQuery({
     queryKey: communityKeys.itemList(params),
-    queryFn: async (): Promise<PaginatedResponse<MarketplaceItem>> => {
-      await mockDelay();
-      return {
-        items: [],
-        total: 0,
-        page: params.page || 1,
-        pageSize: params.pageSize || 20,
-        totalPages: 0,
-      };
-    },
+    queryFn: () => api.listItems(params),
   });
 }
 
 export function useMarketplaceItem(id: string) {
   return useQuery({
     queryKey: communityKeys.itemDetail(id),
-    queryFn: async (): Promise<MarketplaceItem> => {
-      await mockDelay();
-      throw new Error('Item not found');
-    },
+    queryFn: () => api.getItem(id),
     enabled: !!id,
   });
 }
@@ -531,27 +330,7 @@ export function useCreateItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateItemRequest): Promise<MarketplaceItem> => {
-      await mockDelay();
-      return {
-        id: crypto.randomUUID(),
-        sellerId: 'current-user',
-        sellerName: 'Current User',
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        condition: data.condition,
-        listingType: data.listingType,
-        price: data.price,
-        currency: data.currency || 'EUR',
-        imageUrls: data.imageUrls || [],
-        status: 'active',
-        viewCount: 0,
-        messageCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-    },
+    mutationFn: (data: CreateItemRequest) => api.createItem(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.items() });
     },
@@ -562,16 +341,7 @@ export function useUpdateItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id: _id,
-      data: _data,
-    }: {
-      id: string;
-      data: UpdateItemRequest;
-    }): Promise<MarketplaceItem> => {
-      await mockDelay();
-      throw new Error('Not implemented');
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdateItemRequest }) => api.updateItem(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.itemDetail(id) });
       queryClient.invalidateQueries({ queryKey: communityKeys.items() });
@@ -583,9 +353,7 @@ export function useDeleteItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (_id: string): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: (id: string) => api.deleteItem(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.items() });
     },
@@ -594,14 +362,7 @@ export function useDeleteItem() {
 
 export function useContactSeller() {
   return useMutation({
-    mutationFn: async ({
-      itemId: _itemId,
-      data: _data,
-    }: {
-      itemId: string;
-      data: ContactSellerRequest;
-    }): Promise<void> => {
-      await mockDelay();
-    },
+    mutationFn: ({ itemId, data }: { itemId: string; data: ContactSellerRequest }) =>
+      api.contactSeller(itemId, data),
   });
 }

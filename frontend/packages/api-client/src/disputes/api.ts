@@ -4,6 +4,7 @@
  * API functions for Disputes (Epic 80).
  */
 
+import { getToken } from '../auth';
 import type {
   AddMediationNoteRequest,
   AssignMediatorRequest,
@@ -38,16 +39,15 @@ function buildQueryString(params: object): string {
 }
 
 /**
- * Get authorization header from stored token.
+ * Get authorization header from the configured token provider.
  *
- * SECURITY NOTE: localStorage is vulnerable to XSS attacks. In a production app,
- * consider using httpOnly cookies for token storage. This implementation uses
- * localStorage as a temporary solution until the auth context integration is complete.
+ * Uses the centralized token provider which should be configured
+ * during app initialization to integrate with AuthContext.
  *
- * TODO: Integrate with auth context for secure token management.
+ * @see setTokenProvider for configuration
  */
 function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

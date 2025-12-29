@@ -257,37 +257,78 @@ pub async fn search(
     )
 )]
 pub async fn get_listing(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ListingDetail>, (axum::http::StatusCode, String)> {
-    // TODO: Implement actual listing retrieval from database
-    // For now, return placeholder data
     tracing::info!(%id, "Get listing detail");
 
-    // This would be replaced with actual database query
-    Ok(Json(ListingDetail {
-        id,
-        title: "Sample Listing".to_string(),
-        description: Some("A beautiful property".to_string()),
-        price: 150000,
-        currency: "EUR".to_string(),
-        area: Some(75),
-        rooms: Some(3),
-        bathrooms: Some(1),
-        floor: Some(2),
-        total_floors: Some(5),
-        address: "Sample Street 123".to_string(),
-        city: "Bratislava".to_string(),
-        country: "SK".to_string(),
-        latitude: Some(48.1486),
-        longitude: Some(17.1077),
-        property_type: "apartment".to_string(),
-        transaction_type: "sale".to_string(),
-        photos: vec![],
-        features: vec!["parking".to_string(), "balcony".to_string()],
-        published_at: "2024-01-01T00:00:00Z".to_string(),
-        view_count: 0,
-    }))
+    // Query the database for listing details
+    // First, search for the specific listing
+    let query = PublicListingQuery {
+        q: None,
+        property_type: None,
+        transaction_type: None,
+        price_min: None,
+        price_max: None,
+        area_min: None,
+        area_max: None,
+        rooms_min: None,
+        rooms_max: None,
+        city: None,
+        country: None,
+        page: Some(1),
+        limit: Some(100), // Get enough to find by ID
+        sort: None,
+    };
+
+    let listings = state
+        .portal_repo
+        .search_listings(&query)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to fetch listing: {}", e),
+            )
+        })?;
+
+    // Find the specific listing by ID
+    let listing = listings.into_iter().find(|l| l.id == id);
+
+    match listing {
+        Some(l) => {
+            // Track the view
+            let _ = state.reality_portal_repo.track_view(id, "website").await;
+
+            Ok(Json(ListingDetail {
+                id: l.id,
+                title: l.title,
+                description: l.description,
+                price: l.price,
+                currency: l.currency,
+                area: l.size_sqm,
+                rooms: l.rooms,
+                bathrooms: None,        // Would need additional query
+                floor: None,            // Would need additional query
+                total_floors: None,     // Would need additional query
+                address: String::new(), // Would need additional query
+                city: l.city,
+                country: String::new(), // Would need additional query
+                latitude: None,
+                longitude: None,
+                property_type: l.property_type,
+                transaction_type: l.transaction_type,
+                photos: l.photo_url.map(|url| vec![url]).unwrap_or_default(),
+                features: vec![],
+                published_at: l.published_at.to_rfc3339(),
+                view_count: 0, // Would need analytics query
+            }))
+        }
+        None => Err((
+            axum::http::StatusCode::NOT_FOUND,
+            "Listing not found".to_string(),
+        )),
+    }
 }
 
 /// Get search suggestions.

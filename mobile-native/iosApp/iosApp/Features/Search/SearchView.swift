@@ -1,4 +1,5 @@
 import SwiftUI
+import shared
 
 /// Search screen for Reality Portal iOS app.
 ///
@@ -13,6 +14,11 @@ struct SearchView: View {
     @State private var isLoading = false
     @State private var showFilters = false
     @State private var filters = SearchFilters()
+    @State private var currentPage = 1
+    @State private var totalPages = 1
+    @State private var totalCount = 0
+
+    private let listingRepository = DependencyContainer.shared.listingRepository
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,7 +29,7 @@ struct SearchView: View {
             filterBar
 
             // Results
-            if isLoading {
+            if isLoading && results.isEmpty {
                 loadingView
             } else if results.isEmpty && !searchText.isEmpty {
                 emptyResultsView
@@ -195,7 +201,7 @@ struct SearchView: View {
             LazyVStack(spacing: 12) {
                 // Results count
                 HStack {
-                    Text("\(results.count) properties found")
+                    Text("\(totalCount) properties found")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -207,6 +213,15 @@ struct SearchView: View {
                         coordinator.navigate(to: .listingDetail(id: listing.id))
                     }
                 }
+
+                // Load more indicator
+                if currentPage < totalPages {
+                    ProgressView()
+                        .padding()
+                        .onAppear {
+                            Task { await loadMoreResults() }
+                        }
+                }
             }
             .padding(.vertical)
         }
@@ -217,18 +232,102 @@ struct SearchView: View {
     private func performSearch() async {
         guard !searchText.isEmpty || filters.hasActiveFilters else {
             results = []
+            totalCount = 0
             return
         }
 
         isLoading = true
+        currentPage = 1
 
-        // TODO: Integrate with KMP search use case
-        // Placeholder implementation
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        // Build search request from KMP
+        let searchFilters = buildKMPFilters()
+        let request = ListingSearchRequest(
+            query: searchText.isEmpty ? nil : searchText,
+            filters: searchFilters,
+            sort: .newest,
+            page: Int32(currentPage),
+            pageSize: 20
+        )
 
-        results = ListingPreview.sampleFeatured + ListingPreview.sampleRecent
+        let result = await listingRepository.searchListings(request: request)
+
+        if let response = result.getOrNull() {
+            results = response.listings.map { KMPBridge.toListingPreview($0) }
+            totalPages = Int(response.totalPages)
+            totalCount = Int(response.total)
+        } else if let error = result.exceptionOrNull() {
+            #if DEBUG
+            print("Search error: \(error.message ?? "Unknown error")")
+            #endif
+            results = []
+        }
 
         isLoading = false
+    }
+
+    private func loadMoreResults() async {
+        guard currentPage < totalPages, !isLoading else { return }
+
+        currentPage += 1
+
+        let searchFilters = buildKMPFilters()
+        let request = ListingSearchRequest(
+            query: searchText.isEmpty ? nil : searchText,
+            filters: searchFilters,
+            sort: .newest,
+            page: Int32(currentPage),
+            pageSize: 20
+        )
+
+        let result = await listingRepository.searchListings(request: request)
+
+        if let response = result.getOrNull() {
+            let newListings = response.listings.map { KMPBridge.toListingPreview($0) }
+            results.append(contentsOf: newListings)
+        }
+    }
+
+    private func buildKMPFilters() -> ListingSearchFilters? {
+        guard filters.hasActiveFilters else { return nil }
+
+        // Map Swift PropertyType to KMP PropertyCategory
+        var category: PropertyCategory? = nil
+        if let firstType = filters.propertyTypes.first {
+            switch firstType {
+            case .apartment:
+                category = .apartment
+            case .house:
+                category = .house
+            case .land:
+                category = .land
+            case .commercial:
+                category = .commercial
+            case .garage:
+                category = .garage
+            }
+        }
+
+        return ListingSearchFilters(
+            type: nil,
+            category: category,
+            city: nil,
+            district: nil,
+            region: nil,
+            minPrice: filters.priceMin.map { KotlinLong(integerLiteral: $0) },
+            maxPrice: filters.priceMax.map { KotlinLong(integerLiteral: $0) },
+            minArea: nil,
+            maxArea: nil,
+            minRooms: filters.bedroomsMin.map { KotlinInt(integerLiteral: $0) },
+            maxRooms: filters.bedroomsMax.map { KotlinInt(integerLiteral: $0) },
+            bedrooms: filters.bedroomsMin.map { KotlinInt(integerLiteral: $0) },
+            bathrooms: filters.bathroomsMin.map { KotlinInt(integerLiteral: $0) },
+            features: nil,
+            yearBuiltMin: nil,
+            yearBuiltMax: nil,
+            nearLat: filters.latitude.map { KotlinDouble(value: $0) },
+            nearLng: filters.longitude.map { KotlinDouble(value: $0) },
+            radiusKm: filters.radiusKm.map { KotlinDouble(value: $0) }
+        )
     }
 }
 
@@ -264,27 +363,50 @@ private struct SearchResultCard: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
-                // Image placeholder
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.systemGray5))
-                    .frame(height: 180)
-                    .overlay {
+                // Image placeholder or async image
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemGray5))
+                        .frame(height: 180)
+
+                    if let thumbnailUrl = listing.thumbnailUrl,
+                       let url = URL(string: thumbnailUrl) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(height: 180)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                            case .failure, .empty:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                            @unknown default:
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
                         Image(systemName: "photo")
                             .font(.largeTitle)
                             .foregroundStyle(.secondary)
                     }
-                    .overlay(alignment: .topTrailing) {
-                        Button {
-                            // Toggle favorite
-                        } label: {
-                            Image(systemName: "heart")
-                                .font(.title3)
-                                .padding(8)
-                                .background(.ultraThinMaterial)
-                                .clipShape(Circle())
-                        }
-                        .padding(8)
+                }
+                .overlay(alignment: .topTrailing) {
+                    Button {
+                        // Toggle favorite
+                    } label: {
+                        Image(systemName: "heart")
+                            .font(.title3)
+                            .padding(8)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Circle())
                     }
+                    .padding(8)
+                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(listing.formattedPrice)

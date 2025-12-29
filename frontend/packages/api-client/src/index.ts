@@ -9,6 +9,9 @@
 // These will be populated after running `pnpm generate`
 export * from './generated';
 
+// Export auth token provider for secure token management
+export * from './auth';
+
 // Export domain-specific modules
 export * from './advanced-notifications';
 export * from './announcements';
