@@ -251,7 +251,7 @@ impl ListingHandler {
         }
 
         if let Some(limit) = query.limit {
-            if limit < 1 || limit > 100 {
+            if !(1..=100).contains(&limit) {
                 errors.push("Limit must be between 1 and 100".to_string());
             }
         }

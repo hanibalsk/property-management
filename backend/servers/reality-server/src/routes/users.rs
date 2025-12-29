@@ -148,6 +148,13 @@ pub async fn register(
             axum::http::StatusCode::BAD_REQUEST,
             format!("Password requirements not met: {}", issues.join(", ")),
         )),
+        RegistrationResult::CryptoError(e) => {
+            tracing::error!(error = %e, "Registration cryptographic error");
+            Err((
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Registration failed".to_string(),
+            ))
+        }
         RegistrationResult::DatabaseError(e) => {
             tracing::error!(error = %e, "Registration database error");
             Err((

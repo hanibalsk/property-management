@@ -18,6 +18,8 @@ pub enum RegistrationResult {
     InvalidEmail,
     /// Password too weak
     WeakPassword(Vec<String>),
+    /// Cryptographic operation failed (e.g., password hashing)
+    CryptoError(String),
     /// Database error
     DatabaseError(String),
 }
@@ -155,7 +157,7 @@ impl UserHandler {
         // Hash password
         let password_hash = match Self::hash_password(password) {
             Ok(hash) => hash,
-            Err(e) => return RegistrationResult::DatabaseError(e.to_string()),
+            Err(e) => return RegistrationResult::CryptoError(e.to_string()),
         };
 
         // Create user

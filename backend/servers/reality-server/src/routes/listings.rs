@@ -262,38 +262,13 @@ pub async fn get_listing(
 ) -> Result<Json<ListingDetail>, (axum::http::StatusCode, String)> {
     tracing::info!(%id, "Get listing detail");
 
-    // Query the database for listing details
-    // First, search for the specific listing
-    let query = PublicListingQuery {
-        q: None,
-        property_type: None,
-        transaction_type: None,
-        price_min: None,
-        price_max: None,
-        area_min: None,
-        area_max: None,
-        rooms_min: None,
-        rooms_max: None,
-        city: None,
-        country: None,
-        page: Some(1),
-        limit: Some(100), // Get enough to find by ID
-        sort: None,
-    };
-
-    let listings = state
-        .portal_repo
-        .search_listings(&query)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to fetch listing: {}", e),
-            )
-        })?;
-
-    // Find the specific listing by ID
-    let listing = listings.into_iter().find(|l| l.id == id);
+    // Query the database directly for the specific listing by ID
+    let listing = state.portal_repo.get_listing_by_id(id).await.map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to fetch listing: {}", e),
+        )
+    })?;
 
     match listing {
         Some(l) => {

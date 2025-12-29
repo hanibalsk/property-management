@@ -25,7 +25,7 @@ pub struct ValidationError {
 #[derive(Debug)]
 pub enum InquiryResult {
     /// Inquiry created successfully
-    Created(ListingInquiry),
+    Created(Box<ListingInquiry>),
     /// Validation failed
     ValidationFailed(Vec<ValidationError>),
     /// Listing not found
@@ -42,7 +42,7 @@ pub enum InquiryResult {
 #[derive(Debug)]
 pub enum ViewingResult {
     /// Viewing scheduled successfully
-    Scheduled(ViewingSchedule),
+    Scheduled(Box<ViewingSchedule>),
     /// Inquiry not found
     InquiryNotFound,
     /// Time slot unavailable
@@ -214,7 +214,7 @@ impl InquiriesHandler {
             Ok(inquiry) => {
                 // Send notification email (async, don't block)
                 Self::send_inquiry_notification(&inquiry).await;
-                InquiryResult::Created(inquiry)
+                InquiryResult::Created(Box::new(inquiry))
             }
             Err(e) => {
                 let error_str = e.to_string();
@@ -309,7 +309,7 @@ impl InquiriesHandler {
 
         // Validate duration
         let duration = data.duration_minutes.unwrap_or(30);
-        if duration < 15 || duration > 120 {
+        if !(15..=120).contains(&duration) {
             return ViewingResult::ValidationFailed(vec![ValidationError {
                 field: "duration_minutes".to_string(),
                 message: "Duration must be between 15 and 120 minutes".to_string(),

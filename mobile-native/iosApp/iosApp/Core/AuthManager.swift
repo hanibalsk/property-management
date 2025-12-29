@@ -267,6 +267,12 @@ final class AuthManager {
         guard status == errSecSuccess,
               let data = result as? Data,
               let value = String(data: data, encoding: .utf8) else {
+            #if DEBUG
+            // Log non-expected errors for debugging (errSecItemNotFound is expected when key doesn't exist)
+            if status != errSecSuccess && status != errSecItemNotFound {
+                print("Keychain load failed for key \(key): \(status)")
+            }
+            #endif
             return nil
         }
 

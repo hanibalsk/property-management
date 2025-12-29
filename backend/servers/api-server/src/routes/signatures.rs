@@ -2,6 +2,8 @@
 //!
 //! Provides endpoints for managing electronic signature workflows on documents.
 
+use std::sync::LazyLock;
+
 use api_core::AuthUser;
 use axum::{
     extract::{Path, State},
@@ -19,6 +21,13 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::state::AppState;
+
+/// Default base URL for signature links (used in emails).
+const DEFAULT_BASE_URL: &str = "http://localhost:3000";
+
+/// Base URL for signature links, read from environment once.
+static BASE_URL: LazyLock<String> =
+    LazyLock::new(|| std::env::var("BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_string()));
 
 /// Create router for signature endpoints.
 pub fn router() -> Router<AppState> {
@@ -118,8 +127,6 @@ pub async fn create_signature_request(
     );
 
     // Send invitation emails to signers
-    let base_url =
-        std::env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
     let subject = signature_request
         .subject
         .clone()
@@ -128,7 +135,7 @@ pub async fn create_signature_request(
     for signer in &signature_request.signers {
         let sign_url = format!(
             "{}/sign?request_id={}&email={}",
-            base_url, signature_request.id, signer.email
+            *BASE_URL, signature_request.id, signer.email
         );
         let email_body = format!(
             "Hello {},\n\nYou have been requested to electronically sign a document.\n\n{}\n\nPlease click the link below to review and sign the document:\n\n{}\n\nIf you have any questions, please contact the person who sent this request.\n\nBest regards,\nProperty Management System",
@@ -304,8 +311,6 @@ pub async fn send_reminder(
     }
 
     // Send reminder emails to pending signers
-    let base_url =
-        std::env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
     let subject = format!(
         "Reminder: {}",
         signature_request
@@ -318,7 +323,7 @@ pub async fn send_reminder(
     for signer in pending_signers {
         let sign_url = format!(
             "{}/sign?request_id={}&email={}",
-            base_url, signature_request.id, signer.email
+            *BASE_URL, signature_request.id, signer.email
         );
         let email_body = format!(
             "Hello {},\n\nThis is a reminder that you have a pending signature request.\n\nPlease click the link below to review and sign the document:\n\n{}\n\nIf you have any questions, please contact the person who sent this request.\n\nBest regards,\nProperty Management System",
