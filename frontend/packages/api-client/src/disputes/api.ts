@@ -39,10 +39,12 @@ function buildQueryString(params: object): string {
 
 /**
  * Get authorization header from stored token.
- * M-5 fix: Add Authorization header to API requests.
  *
- * Note: In a production app, this would integrate with the auth context
- * or a token storage mechanism. For now, we check localStorage.
+ * SECURITY NOTE: localStorage is vulnerable to XSS attacks. In a production app,
+ * consider using httpOnly cookies for token storage. This implementation uses
+ * localStorage as a temporary solution until the auth context integration is complete.
+ *
+ * TODO: Integrate with auth context for secure token management.
  */
 function getAuthHeaders(): HeadersInit {
   const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;

@@ -37,7 +37,7 @@ function mapTypeToCategory(type: ApiDisputeType): DisputeCategory {
     maintenance: 'maintenance',
     other: 'other',
   };
-  return mapping[type] ?? 'other';
+  return mapping[type];
 }
 
 /** Map UI DisputeCategory to API DisputeType */
@@ -55,7 +55,7 @@ function mapCategoryToType(category: DisputeCategory): ApiDisputeType {
     harassment: 'other',
     other: 'other',
   };
-  return mapping[category] ?? 'other';
+  return mapping[category];
 }
 
 /** Map API DisputeStatus to UI DisputeStatus */
@@ -68,7 +68,7 @@ function mapApiStatusToUiStatus(status: ApiDisputeStatus): UiDisputeStatus {
     resolved: 'resolved',
     closed: 'closed',
   };
-  return mapping[status] ?? 'filed';
+  return mapping[status];
 }
 
 /** Map UI DisputeStatus to API DisputeStatus (for filtering) */
@@ -90,14 +90,15 @@ function mapUiStatusToApiStatus(status: UiDisputeStatus): ApiDisputeStatus | und
 function transformDisputeToSummary(dispute: ApiDispute): DisputeSummary {
   return {
     id: dispute.id,
-    referenceNumber: `DSP-${dispute.id.substring(0, 8).toUpperCase()}`,
+    referenceNumber: `DSP-${dispute.id.toUpperCase()}`,
     category: mapTypeToCategory(dispute.type),
     title: dispute.subject,
     status: mapApiStatusToUiStatus(dispute.status),
-    priority: 'medium' as DisputePriority, // Default priority (not in API type)
+    // Priority is UI-only; API does not support priority field yet
+    priority: 'medium' as DisputePriority,
     filedByName: dispute.filedBy,
     assignedToName: dispute.assignedMediator,
-    partyCount: dispute.respondent ? 2 : 1,
+    partyCount: dispute.respondentId || dispute.respondent ? 2 : 1,
     createdAt: dispute.createdAt,
     updatedAt: dispute.updatedAt,
   };
@@ -256,7 +257,7 @@ function DisputesPageRoute() {
   // Use the disputes API hook
   const { data, isLoading, error } = useDisputes(organizationId, apiQuery);
 
-  // Show error toast if query fails (M-1 fix: use useEffect to prevent spam)
+  // Show error toast if query fails (use useEffect to prevent toast spam)
   useEffect(() => {
     if (error) {
       showToast({
@@ -341,7 +342,7 @@ function FileDisputePageRoute() {
     buildingId?: string;
     unitId?: string;
   }) => {
-    // H-5 fix: Validate unitId is provided
+    // Validate unitId is provided before submission
     if (!formData.unitId) {
       showToast({
         type: 'error',
@@ -351,7 +352,7 @@ function FileDisputePageRoute() {
       return;
     }
 
-    // M-6 fix: Warn if multiple respondents selected (API only supports one)
+    // Warn if multiple respondents selected (API only supports one)
     if (formData.respondentIds.length > 1) {
       showToast({
         type: 'warning',
@@ -365,8 +366,9 @@ function FileDisputePageRoute() {
       const apiRequest = {
         type: mapCategoryToType(formData.category),
         subject: formData.title,
+        // Combine description and desired resolution with clear delimiters
         description: formData.desiredResolution
-          ? `${formData.description}\n\nDesired Resolution: ${formData.desiredResolution}`
+          ? `Description:\n${formData.description}\n\n---\nDesired Resolution:\n${formData.desiredResolution}`
           : formData.description,
         unitId: formData.unitId,
         respondentId: formData.respondentIds[0],
@@ -414,7 +416,7 @@ function DisputeDetailRoute() {
 
   const { data: dispute, isLoading, error, refetch } = useDispute(disputeId ?? '');
 
-  // M-1 fix: Use useEffect for error toast to prevent spam on re-renders
+  // Use useEffect for error toast to prevent spam on re-renders
   useEffect(() => {
     if (error) {
       showToast({
@@ -429,7 +431,7 @@ function DisputeDetailRoute() {
     return (
       <div className="error-page">
         <h1>Dispute not found</h1>
-        <p>We couldn&apos;t find the dispute you&apos;re looking for.</p>
+        <p>We couldn't find the dispute you're looking for.</p>
         <Link to="/disputes">Back to disputes</Link>
       </div>
     );
@@ -444,7 +446,7 @@ function DisputeDetailRoute() {
     );
   }
 
-  // H-4 fix: Add retry button for error states
+  // Add retry button for error states
   if (error) {
     return (
       <div className="error-page">
@@ -470,7 +472,7 @@ function DisputeDetailRoute() {
     return (
       <div className="error-page">
         <h1>Dispute not found</h1>
-        <p>The dispute you&apos;re looking for does not exist.</p>
+        <p>The dispute you're looking for does not exist.</p>
         <Link to="/disputes">Back to disputes</Link>
       </div>
     );

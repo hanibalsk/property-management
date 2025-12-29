@@ -21,8 +21,9 @@ interface FileDisputePageProps {
   buildings?: Array<{ id: string; name: string }>;
   units?: Array<{ id: string; designation: string; buildingId: string }>;
   residents?: Array<{ id: string; name: string; unitId?: string }>;
+  /** Loading state managed by parent - set to true while form is submitting */
   isSubmitting?: boolean;
-  /** onSubmit can be async - component handles loading state via isSubmitting prop */
+  /** Supports async handlers - parent manages loading state via isSubmitting prop */
   onSubmit: (data: DisputeFormData) => void | Promise<void>;
   onCancel: () => void;
 }
