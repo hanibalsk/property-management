@@ -1,35 +1,97 @@
 /**
  * Toast Notification Styles.
+ *
+ * Supports:
+ * - Icon, title, and message layout
+ * - Action buttons
+ * - Copy button for errors
+ * - Slide in/out animations
+ * - Top-right positioning
  */
 
 .toast-container {
   position: fixed;
-  bottom: 1.5rem;
+  top: 1rem;
   right: 1.5rem;
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
   max-width: 24rem;
+  pointer-events: none;
 }
 
 .toast {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   padding: 0.875rem 1rem;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   animation: toast-slide-in 0.2s ease-out;
+  pointer-events: auto;
 }
 
-.toast-message {
+.toast.toast--exiting {
+  animation: toast-slide-out 0.2s ease-in forwards;
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.125rem;
+}
+
+.toast-content {
   flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
 }
 
+.toast-message {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.4;
+  margin-top: 0.25rem;
+  opacity: 0.9;
+  word-break: break-word;
+}
+
+.toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.toast-action-btn {
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.toast-action-btn:hover {
+  opacity: 0.9;
+}
+
+.toast-action-btn:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.toast-copy-btn,
 .toast-close {
   display: flex;
   align-items: center;
@@ -39,14 +101,21 @@
   padding: 0;
   border: none;
   background: transparent;
-  font-size: 1.25rem;
-  line-height: 1;
   cursor: pointer;
   opacity: 0.6;
   transition: opacity 0.15s;
+  border-radius: 0.25rem;
 }
 
+.toast-copy-btn:hover,
 .toast-close:hover {
+  opacity: 1;
+}
+
+.toast-copy-btn:focus,
+.toast-close:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
   opacity: 1;
 }
 
@@ -57,8 +126,13 @@
   color: #065f46;
 }
 
-.toast--success .toast-close {
-  color: #065f46;
+.toast--success .toast-icon svg {
+  stroke: #059669;
+}
+
+.toast--success .toast-action-btn {
+  background-color: #059669;
+  color: #ffffff;
 }
 
 .toast--error {
@@ -67,8 +141,13 @@
   color: #991b1b;
 }
 
-.toast--error .toast-close {
-  color: #991b1b;
+.toast--error .toast-icon svg {
+  stroke: #dc2626;
+}
+
+.toast--error .toast-action-btn {
+  background-color: #dc2626;
+  color: #ffffff;
 }
 
 .toast--warning {
@@ -77,8 +156,13 @@
   color: #92400e;
 }
 
-.toast--warning .toast-close {
-  color: #92400e;
+.toast--warning .toast-icon svg {
+  stroke: #d97706;
+}
+
+.toast--warning .toast-action-btn {
+  background-color: #d97706;
+  color: #ffffff;
 }
 
 .toast--info {
@@ -87,8 +171,13 @@
   color: #1e40af;
 }
 
-.toast--info .toast-close {
-  color: #1e40af;
+.toast--info .toast-icon svg {
+  stroke: #2563eb;
+}
+
+.toast--info .toast-action-btn {
+  background-color: #2563eb;
+  color: #ffffff;
 }
 
 @keyframes toast-slide-in {
@@ -102,10 +191,25 @@
   }
 }
 
+@keyframes toast-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .toast {
     animation: none;
+  }
+  .toast.toast--exiting {
+    animation: none;
+    opacity: 0;
   }
 }
 
@@ -115,5 +219,18 @@
     left: 1rem;
     right: 1rem;
     max-width: none;
+    top: 0.75rem;
+  }
+
+  .toast {
+    padding: 0.75rem;
+  }
+
+  .toast-title {
+    font-size: 0.8125rem;
+  }
+
+  .toast-message {
+    font-size: 0.75rem;
   }
 }

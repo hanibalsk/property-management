@@ -46,9 +46,9 @@ export function WebhookSubscriptionsList({
     if (!webhookToDelete) return;
     try {
       await deleteSubscription.mutateAsync(webhookToDelete.id);
-      showToast('Webhook deleted successfully', 'success');
+      showToast({ title: 'Webhook deleted successfully', type: 'success' });
     } catch {
-      showToast('Failed to delete webhook', 'error');
+      showToast({ title: 'Failed to delete webhook', type: 'error' });
     } finally {
       setDeleteDialogOpen(false);
       setWebhookToDelete(null);
@@ -65,12 +65,12 @@ export function WebhookSubscriptionsList({
         },
       });
       if (result.success) {
-        showToast(`Test successful! Response time: ${result.responseTimeMs}ms`, 'success');
+        showToast({ title: `Test successful! Response time: ${result.responseTimeMs}ms`, type: 'success' });
       } else {
-        showToast(`Test failed: ${result.error}`, 'error');
+        showToast({ title: `Test failed: ${result.error}`, type: 'error' });
       }
     } catch {
-      showToast('Failed to test webhook', 'error');
+      showToast({ title: 'Failed to test webhook', type: 'error' });
     }
   };
 

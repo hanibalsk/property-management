@@ -1,0 +1,458 @@
+/**
+ * WebSocket Service for ppt-web (Story 79.4)
+ *
+ * Provides WebSocket connection management with:
+ * - Authentication via JWT token
+ * - Automatic reconnection with exponential backoff
+ * - Connection state machine
+ * - Heartbeat/ping-pong mechanism
+ * - Event emitter pattern for message handling
+ */
+
+/**
+ * WebSocket message format as defined in story spec.
+ */
+export interface WebSocketMessage {
+  type: string;
+  payload: unknown;
+  timestamp: string;
+  requestId?: string;
+}
+
+/**
+ * WebSocket event types.
+ */
+export type WebSocketEventType =
+  | 'message:new'
+  | 'notification:announcement'
+  | 'notification:fault'
+  | 'notification:vote'
+  | 'entity:updated'
+  | 'entity:created'
+  | 'entity:deleted'
+  | 'connection:authenticated'
+  | 'connection:error';
+
+/**
+ * Connection states for the WebSocket.
+ */
+export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+/**
+ * Event handler type for WebSocket messages.
+ */
+export type MessageHandler = (message: WebSocketMessage) => void;
+
+/**
+ * Event handler type for connection state changes.
+ */
+export type ConnectionStateHandler = (state: ConnectionState, error?: Error) => void;
+
+/**
+ * Configuration options for WebSocketService.
+ */
+export interface WebSocketServiceConfig {
+  /**
+   * WebSocket server URL.
+   * Defaults to VITE_WS_URL env variable or 'ws://localhost:8080/ws'.
+   */
+  url?: string;
+
+  /**
+   * Function to get the current auth token.
+   */
+  getToken: () => string | null;
+
+  /**
+   * Minimum reconnection delay in milliseconds.
+   * @default 1000
+   */
+  minReconnectDelay?: number;
+
+  /**
+   * Maximum reconnection delay in milliseconds.
+   * @default 30000
+   */
+  maxReconnectDelay?: number;
+
+  /**
+   * Heartbeat interval in milliseconds.
+   * @default 30000
+   */
+  heartbeatInterval?: number;
+
+  /**
+   * Pong timeout in milliseconds (how long to wait for pong after ping).
+   * @default 10000
+   */
+  pongTimeout?: number;
+}
+
+/**
+ * WebSocket service that manages connection, reconnection, and message handling.
+ */
+export class WebSocketService {
+  private socket: WebSocket | null = null;
+  private connectionState: ConnectionState = 'disconnected';
+  private lastError: Error | null = null;
+
+  // Configuration
+  private readonly url: string;
+  private readonly getToken: () => string | null;
+  private readonly minReconnectDelay: number;
+  private readonly maxReconnectDelay: number;
+  private readonly heartbeatInterval: number;
+  private readonly pongTimeout: number;
+
+  // Reconnection state
+  private reconnectAttempts = 0;
+  private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private shouldReconnect = true;
+
+  // Heartbeat state
+  private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
+  private pongTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private awaitingPong = false;
+
+  // Event handlers
+  private messageHandlers: Map<string, Set<MessageHandler>> = new Map();
+  private connectionStateHandlers: Set<ConnectionStateHandler> = new Set();
+
+  // Track last event timestamp for gap detection
+  private lastEventTimestamp: string | null = null;
+
+  constructor(config: WebSocketServiceConfig) {
+    this.url = config.url ?? import.meta.env.VITE_WS_URL ?? 'ws://localhost:8080/ws';
+    this.getToken = config.getToken;
+    this.minReconnectDelay = config.minReconnectDelay ?? 1000;
+    this.maxReconnectDelay = config.maxReconnectDelay ?? 30000;
+    this.heartbeatInterval = config.heartbeatInterval ?? 30000;
+    this.pongTimeout = config.pongTimeout ?? 10000;
+  }
+
+  /**
+   * Get the current connection state.
+   */
+  getConnectionState(): ConnectionState {
+    return this.connectionState;
+  }
+
+  /**
+   * Get the last error, if any.
+   */
+  getLastError(): Error | null {
+    return this.lastError;
+  }
+
+  /**
+   * Get the last event timestamp for gap detection.
+   */
+  getLastEventTimestamp(): string | null {
+    return this.lastEventTimestamp;
+  }
+
+  /**
+   * Check if the connection is currently open.
+   */
+  isConnected(): boolean {
+    return this.connectionState === 'connected' && this.socket?.readyState === WebSocket.OPEN;
+  }
+
+  /**
+   * Connect to the WebSocket server.
+   */
+  connect(): void {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      return; // Already connected
+    }
+
+    const token = this.getToken();
+    if (!token) {
+      this.setConnectionState('error', new Error('No auth token available'));
+      return;
+    }
+
+    this.shouldReconnect = true;
+    this.clearReconnectTimeout();
+
+    // Include token in URL as query parameter
+    const urlWithToken = `${this.url}?token=${encodeURIComponent(token)}`;
+
+    this.setConnectionState('connecting');
+
+    try {
+      this.socket = new WebSocket(urlWithToken);
+      this.setupSocketHandlers();
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Failed to create WebSocket');
+      this.setConnectionState('error', err);
+      this.scheduleReconnect();
+    }
+  }
+
+  /**
+   * Disconnect from the WebSocket server.
+   */
+  disconnect(): void {
+    this.shouldReconnect = false;
+    this.clearReconnectTimeout();
+    this.stopHeartbeat();
+
+    if (this.socket) {
+      this.socket.close(1000, 'Client disconnecting');
+      this.socket = null;
+    }
+
+    this.setConnectionState('disconnected');
+  }
+
+  /**
+   * Send a message through the WebSocket.
+   */
+  send(message: WebSocketMessage): boolean {
+    if (!this.isConnected()) {
+      console.warn('[WebSocket] Cannot send message: not connected');
+      return false;
+    }
+
+    try {
+      this.socket!.send(JSON.stringify(message));
+      return true;
+    } catch (error) {
+      console.error('[WebSocket] Failed to send message:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Subscribe to messages of a specific type.
+   *
+   * @param eventType - The event type to subscribe to, or '*' for all events.
+   * @param handler - The handler function to call when a message is received.
+   * @returns An unsubscribe function.
+   */
+  subscribe(eventType: string, handler: MessageHandler): () => void {
+    if (!this.messageHandlers.has(eventType)) {
+      this.messageHandlers.set(eventType, new Set());
+    }
+
+    this.messageHandlers.get(eventType)!.add(handler);
+
+    return () => {
+      this.messageHandlers.get(eventType)?.delete(handler);
+    };
+  }
+
+  /**
+   * Subscribe to connection state changes.
+   *
+   * @param handler - The handler function to call when connection state changes.
+   * @returns An unsubscribe function.
+   */
+  onConnectionStateChange(handler: ConnectionStateHandler): () => void {
+    this.connectionStateHandlers.add(handler);
+
+    // Immediately call with current state
+    handler(this.connectionState, this.lastError ?? undefined);
+
+    return () => {
+      this.connectionStateHandlers.delete(handler);
+    };
+  }
+
+  /**
+   * Reset reconnection attempts (call after successful operations).
+   */
+  resetReconnectAttempts(): void {
+    this.reconnectAttempts = 0;
+  }
+
+  // Private methods
+
+  private setupSocketHandlers(): void {
+    if (!this.socket) return;
+
+    this.socket.onopen = () => {
+      this.reconnectAttempts = 0;
+      this.lastError = null;
+      this.setConnectionState('connected');
+      this.startHeartbeat();
+    };
+
+    this.socket.onclose = (event) => {
+      this.stopHeartbeat();
+
+      if (event.wasClean) {
+        this.setConnectionState('disconnected');
+      } else {
+        this.setConnectionState(
+          'error',
+          new Error(`Connection closed unexpectedly: ${event.code}`)
+        );
+      }
+
+      if (this.shouldReconnect) {
+        this.scheduleReconnect();
+      }
+    };
+
+    this.socket.onerror = () => {
+      // The error event doesn't provide useful info; onclose will follow
+      this.lastError = new Error('WebSocket error occurred');
+    };
+
+    this.socket.onmessage = (event) => {
+      this.handleMessage(event);
+    };
+  }
+
+  private handleMessage(event: MessageEvent): void {
+    try {
+      const data = JSON.parse(event.data as string);
+
+      // Handle pong response
+      if (data.type === 'pong') {
+        this.handlePong();
+        return;
+      }
+
+      const message = data as WebSocketMessage;
+
+      // Track last event timestamp
+      if (message.timestamp) {
+        this.lastEventTimestamp = message.timestamp;
+      }
+
+      // Notify all handlers for this specific event type
+      const typeHandlers = this.messageHandlers.get(message.type);
+      if (typeHandlers) {
+        for (const handler of typeHandlers) {
+          try {
+            handler(message);
+          } catch (handlerError) {
+            console.error(`[WebSocket] Handler error for ${message.type}:`, handlerError);
+          }
+        }
+      }
+
+      // Notify wildcard handlers
+      const wildcardHandlers = this.messageHandlers.get('*');
+      if (wildcardHandlers) {
+        for (const handler of wildcardHandlers) {
+          try {
+            handler(message);
+          } catch (handlerError) {
+            console.error('[WebSocket] Wildcard handler error:', handlerError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[WebSocket] Failed to parse message:', error);
+    }
+  }
+
+  private setConnectionState(state: ConnectionState, error?: Error): void {
+    this.connectionState = state;
+
+    if (error) {
+      this.lastError = error;
+    }
+
+    for (const handler of this.connectionStateHandlers) {
+      try {
+        handler(state, error);
+      } catch (handlerError) {
+        console.error('[WebSocket] Connection state handler error:', handlerError);
+      }
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (!this.shouldReconnect) return;
+
+    this.clearReconnectTimeout();
+
+    // Calculate delay with exponential backoff
+    const delay = Math.min(
+      this.minReconnectDelay * 2 ** this.reconnectAttempts,
+      this.maxReconnectDelay
+    );
+
+    this.reconnectAttempts++;
+
+    this.reconnectTimeoutId = setTimeout(() => {
+      this.connect();
+    }, delay);
+  }
+
+  private clearReconnectTimeout(): void {
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+
+    this.heartbeatIntervalId = setInterval(() => {
+      this.sendPing();
+    }, this.heartbeatInterval);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatIntervalId) {
+      clearInterval(this.heartbeatIntervalId);
+      this.heartbeatIntervalId = null;
+    }
+
+    if (this.pongTimeoutId) {
+      clearTimeout(this.pongTimeoutId);
+      this.pongTimeoutId = null;
+    }
+
+    this.awaitingPong = false;
+  }
+
+  private sendPing(): void {
+    if (!this.isConnected() || this.awaitingPong) {
+      return;
+    }
+
+    const pingMessage: WebSocketMessage = {
+      type: 'ping',
+      payload: null,
+      timestamp: new Date().toISOString(),
+    };
+
+    if (this.send(pingMessage)) {
+      this.awaitingPong = true;
+
+      this.pongTimeoutId = setTimeout(() => {
+        if (this.awaitingPong) {
+          console.warn('[WebSocket] Pong timeout - closing connection');
+          this.socket?.close(4000, 'Pong timeout');
+        }
+      }, this.pongTimeout);
+    }
+  }
+
+  private handlePong(): void {
+    this.awaitingPong = false;
+
+    if (this.pongTimeoutId) {
+      clearTimeout(this.pongTimeoutId);
+      this.pongTimeoutId = null;
+    }
+  }
+}
+
+/**
+ * Create a WebSocket service instance.
+ *
+ * @param config - Configuration options.
+ * @returns A new WebSocketService instance.
+ */
+export function createWebSocketService(config: WebSocketServiceConfig): WebSocketService {
+  return new WebSocketService(config);
+}

@@ -28,20 +28,72 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = calculatedVersionCode
         versionName = appVersion
+    }
 
-        // API base URL - use emulator localhost for debug, configure for production
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8081\"")
+    // Epic 85 - Story 85.2: Build Configuration by Environment
+    // Signing configuration for release builds
+    signingConfigs {
+        create("release") {
+            storeFile = file(System.getenv("KEYSTORE_FILE") ?: "../keystore/release.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: "release"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
+    // Epic 85 - Story 85.2: Build Configuration by Environment
+    // Product flavors for different environments
+    flavorDimensions += "environment"
+    productFlavors {
+        create("development") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            resValue("string", "app_name", "Reality (Dev)")
+            // Android emulator uses 10.0.2.2 to reach host localhost
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8081\"")
+            buildConfigField("String", "ENVIRONMENT", "\"development\"")
+            buildConfigField("Boolean", "ENABLE_LOGGING", "true")
+        }
+        create("staging") {
+            dimension = "environment"
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            resValue("string", "app_name", "Reality (Staging)")
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"https://staging-reality.ppt.example.com\""
+            )
+            buildConfigField("String", "ENVIRONMENT", "\"staging\"")
+            buildConfigField("Boolean", "ENABLE_LOGGING", "true")
+        }
+        create("production") {
+            dimension = "environment"
+            resValue("string", "app_name", "Reality Portal")
+            buildConfigField("String", "API_BASE_URL", "\"https://reality.ppt.example.com\"")
+            buildConfigField("String", "ENVIRONMENT", "\"production\"")
+            buildConfigField("Boolean", "ENABLE_LOGGING", "false")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Production API URL - must use HTTPS
-            buildConfigField("String", "API_BASE_URL", "\"https://api.realityportal.example.com\"")
+            // Use release signing config if keystore exists
+            val keystoreFile = file(System.getenv("KEYSTORE_FILE") ?: "../keystore/release.jks")
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+        debug {
+            isDebuggable = true
+            applicationIdSuffix = ".debug"
         }
     }
 

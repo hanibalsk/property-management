@@ -1,0 +1,100 @@
+/**
+ * Offline Indicator Styles.
+ *
+ * Displays a banner when the user is offline.
+ * Animates smoothly in and out.
+ */
+
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: offline-indicator-slide-in 0.3s ease-out;
+}
+
+.offline-indicator--offline {
+  background-color: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.offline-indicator--reconnected {
+  background-color: #ecfdf5;
+  border-bottom: 1px solid #a7f3d0;
+  color: #065f46;
+  animation: offline-indicator-slide-in 0.3s ease-out, offline-indicator-fade-out 0.5s ease-in 4.5s
+    forwards;
+}
+
+.offline-indicator__content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 1200px;
+}
+
+.offline-indicator__icon {
+  flex-shrink: 0;
+}
+
+.offline-indicator--offline .offline-indicator__icon {
+  stroke: #dc2626;
+}
+
+.offline-indicator--reconnected .offline-indicator__icon {
+  stroke: #059669;
+}
+
+.offline-indicator__text {
+  line-height: 1.4;
+}
+
+@keyframes offline-indicator-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes offline-indicator-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .offline-indicator {
+    animation: none;
+  }
+  .offline-indicator--reconnected {
+    animation: offline-indicator-fade-out 0.5s ease-in 4.5s forwards;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .offline-indicator {
+    padding: 0.625rem 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .offline-indicator__icon {
+    width: 18px;
+    height: 18px;
+  }
+}

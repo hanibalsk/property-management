@@ -169,6 +169,76 @@ export async function listScheduleRuns(scheduleId: string, limit?: number): Prom
 }
 
 // ============================================================================
+// EPIC 81: SCHEDULE MANAGEMENT
+// ============================================================================
+
+/**
+ * Pause a report schedule (Story 81.1).
+ */
+export async function pauseSchedule(id: string): Promise<ReportSchedule> {
+  return fetchApi(`${API_BASE}/schedules/${id}/pause`, { method: 'PUT' });
+}
+
+/**
+ * Resume a paused report schedule (Story 81.1).
+ */
+export async function resumeSchedule(id: string): Promise<ReportSchedule> {
+  return fetchApi(`${API_BASE}/schedules/${id}/resume`, { method: 'PUT' });
+}
+
+// ============================================================================
+// EPIC 81: EXECUTION HISTORY
+// ============================================================================
+
+import type {
+  ReportDownloadUrlResponse,
+  ReportExecution,
+  ReportExecutionHistoryParams,
+  ReportExecutionHistoryResponse,
+} from './types';
+
+/**
+ * Get execution history for a schedule (Story 81.2).
+ */
+export async function getReportExecutionHistory(
+  params: ReportExecutionHistoryParams
+): Promise<ReportExecutionHistoryResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.status) searchParams.set('status', params.status);
+  if (params.dateFrom) searchParams.set('date_from', params.dateFrom);
+  if (params.dateTo) searchParams.set('date_to', params.dateTo);
+  if (params.limit) searchParams.set('limit', String(params.limit));
+  if (params.offset) searchParams.set('offset', String(params.offset));
+
+  const queryString = searchParams.toString();
+  const url = `${API_BASE}/schedules/${params.scheduleId}/executions${queryString ? `?${queryString}` : ''}`;
+  return fetchApi(url);
+}
+
+/**
+ * Get a single execution details (Story 81.2).
+ */
+export async function getExecution(executionId: string): Promise<ReportExecution> {
+  return fetchApi(`${API_BASE}/executions/${executionId}`);
+}
+
+/**
+ * Get download URL for a completed execution (Story 81.2).
+ */
+export async function getReportExecutionDownloadUrl(
+  executionId: string
+): Promise<ReportDownloadUrlResponse> {
+  return fetchApi(`${API_BASE}/executions/${executionId}/download`);
+}
+
+/**
+ * Retry a failed report execution (Story 81.2).
+ */
+export async function retryReportExecution(executionId: string): Promise<ReportExecution> {
+  return fetchApi(`${API_BASE}/executions/${executionId}/retry`, { method: 'POST' });
+}
+
+// ============================================================================
 // ANALYTICS
 // ============================================================================
 

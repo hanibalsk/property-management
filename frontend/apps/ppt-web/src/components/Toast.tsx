@@ -1,7 +1,14 @@
 /**
  * Toast Notification Component.
  *
- * Provides a simple, accessible toast notification system.
+ * Provides an accessible toast notification system with support for:
+ * - Multiple toast types (success, error, warning, info)
+ * - Title and message fields
+ * - Optional action buttons
+ * - Configurable duration (0 = persistent)
+ * - Copy button for error messages
+ * - Maximum 3 visible toasts
+ *
  * Uses aria-live for screen reader announcements.
  */
 
@@ -11,14 +18,25 @@ import './Toast.css';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface Toast {
   id: string;
-  message: string;
   type: ToastType;
+  title: string;
+  message?: string;
+  duration?: number; // 0 = persistent
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
-  showToast: (message: string, type?: ToastType) => void;
+  showToast: (toast: Omit<Toast, 'id'>) => void;
+  /** @deprecated Use showToast with toast object instead */
+  addToast: (message: string, type?: ToastType) => void;
+  removeToast: (id: string) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -33,6 +51,27 @@ export function useToast(): ToastContextValue {
     throw new Error('useToast must be used within a ToastProvider');
   }
   return context;
+}
+
+const MAX_VISIBLE_TOASTS = 3;
+const DEFAULT_SUCCESS_DURATION = 5000;
+const DEFAULT_INFO_DURATION = 5000;
+const DEFAULT_WARNING_DURATION = 7000;
+const ERROR_DURATION = 0; // Persistent
+
+function getDefaultDuration(type: ToastType): number {
+  switch (type) {
+    case 'success':
+      return DEFAULT_SUCCESS_DURATION;
+    case 'info':
+      return DEFAULT_INFO_DURATION;
+    case 'warning':
+      return DEFAULT_WARNING_DURATION;
+    case 'error':
+      return ERROR_DURATION;
+    default:
+      return DEFAULT_INFO_DURATION;
+  }
 }
 
 interface ToastProviderProps {
@@ -58,20 +97,6 @@ export function ToastProvider({ children }: ToastProviderProps) {
     };
   }, []);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-    const toast: Toast = { id, message, type };
-
-    setToasts((prev) => [...prev, toast]);
-
-    // Auto-dismiss after 4 seconds, with proper cleanup tracking
-    const timeoutId = setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-      timeoutRefs.current.delete(id);
-    }, 4000);
-    timeoutRefs.current.set(id, timeoutId);
-  }, []);
-
   const removeToast = useCallback((id: string) => {
     // Clear the timeout when manually dismissed
     const timeoutId = timeoutRefs.current.get(id);
@@ -82,22 +107,45 @@ export function ToastProvider({ children }: ToastProviderProps) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const showToast = useCallback((toastInput: Omit<Toast, 'id'>) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const duration = toastInput.duration ?? getDefaultDuration(toastInput.type);
+
+    const toast: Toast = {
+      ...toastInput,
+      id,
+      duration,
+    };
+
+    setToasts((prev) => [...prev, toast]);
+
+    // Only set auto-dismiss if duration > 0
+    if (duration > 0) {
+      const timeoutId = setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+        timeoutRefs.current.delete(id);
+      }, duration);
+      timeoutRefs.current.set(id, timeoutId);
+    }
+  }, []);
+
+  // Legacy API for backwards compatibility
+  const addToast = useCallback(
+    (message: string, type: ToastType = 'info') => {
+      showToast({ title: message, type });
+    },
+    [showToast]
+  );
+
+  // Get visible toasts (limited to MAX_VISIBLE_TOASTS)
+  const visibleToasts = toasts.slice(-MAX_VISIBLE_TOASTS);
+
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, addToast, removeToast }}>
       {children}
-      <div className="toast-container" aria-live="polite" aria-atomic="true">
-        {toasts.map((toast) => (
-          <output key={toast.id} className={`toast toast--${toast.type}`}>
-            <span className="toast-message">{toast.message}</span>
-            <button
-              type="button"
-              className="toast-close"
-              onClick={() => removeToast(toast.id)}
-              aria-label="Dismiss notification"
-            >
-              &times;
-            </button>
-          </output>
+      <div className="toast-container" role="region" aria-label="Notifications">
+        {visibleToasts.map((toast) => (
+          <ToastItem key={toast.id} toast={toast} onDismiss={() => removeToast(toast.id)} />
         ))}
       </div>
     </ToastContext.Provider>
@@ -105,3 +153,169 @@ export function ToastProvider({ children }: ToastProviderProps) {
 }
 
 ToastProvider.displayName = 'ToastProvider';
+
+interface ToastItemProps {
+  toast: Toast;
+  onDismiss: () => void;
+}
+
+/**
+ * Individual toast item component.
+ */
+function ToastItem({ toast, onDismiss }: ToastItemProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    const textToCopy = toast.message ? `${toast.title}: ${toast.message}` : toast.title;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = textToCopy;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [toast.title, toast.message]);
+
+  const ariaLive = toast.type === 'error' ? 'assertive' : 'polite';
+
+  return (
+    <output className={`toast toast--${toast.type}`} role="alert" aria-live={ariaLive}>
+      <div className="toast-icon">{getIcon(toast.type)}</div>
+      <div className="toast-content">
+        <div className="toast-title">{toast.title}</div>
+        {toast.message && <div className="toast-message">{toast.message}</div>}
+      </div>
+      <div className="toast-actions">
+        {toast.action && (
+          <button type="button" className="toast-action-btn" onClick={toast.action.onClick}>
+            {toast.action.label}
+          </button>
+        )}
+        {toast.type === 'error' && (
+          <button
+            type="button"
+            className="toast-copy-btn"
+            onClick={handleCopy}
+            aria-label={copied ? 'Copied' : 'Copy error message'}
+            title={copied ? 'Copied!' : 'Copy error details'}
+          >
+            {copied ? (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+          </button>
+        )}
+        <button
+          type="button"
+          className="toast-close"
+          onClick={onDismiss}
+          aria-label="Dismiss notification"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+    </output>
+  );
+}
+
+function getIcon(type: ToastType): React.ReactNode {
+  switch (type) {
+    case 'success':
+      return (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="9 12 12 15 16 10" />
+        </svg>
+      );
+    case 'error':
+      return (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" y1="9" x2="9" y2="15" />
+          <line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
+      );
+    case 'warning':
+      return (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      );
+    default:
+      return (
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+      );
+  }
+}

@@ -37,9 +37,9 @@ export function VideoMeetingsList({ organizationId, onCreateMeeting }: VideoMeet
     if (!meetingToDelete) return;
     try {
       await deleteMeeting.mutateAsync(meetingToDelete.id);
-      showToast('Meeting cancelled successfully', 'success');
+      showToast({ title: 'Meeting cancelled successfully', type: 'success' });
     } catch {
-      showToast('Failed to cancel meeting', 'error');
+      showToast({ title: 'Failed to cancel meeting', type: 'error' });
     } finally {
       setDeleteDialogOpen(false);
       setMeetingToDelete(null);
@@ -49,9 +49,9 @@ export function VideoMeetingsList({ organizationId, onCreateMeeting }: VideoMeet
   const handleStart = async (id: string) => {
     try {
       await startMeeting.mutateAsync(id);
-      showToast('Meeting started', 'success');
+      showToast({ title: 'Meeting started', type: 'success' });
     } catch {
-      showToast('Failed to start meeting', 'error');
+      showToast({ title: 'Failed to start meeting', type: 'error' });
     }
   };
 

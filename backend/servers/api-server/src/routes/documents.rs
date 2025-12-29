@@ -1055,10 +1055,39 @@ async fn get_download_url(
         }
     };
 
-    // TODO: Generate actual S3 presigned URL
-    // For now, return a placeholder
-    let expires_at = chrono::Utc::now() + chrono::Duration::minutes(15);
-    let url = format!("/api/v1/storage/{}", document.file_key);
+    // Story 84.1: Generate S3 presigned URL for download
+    // Use storage service if available, otherwise fall back to placeholder
+    let (url, expires_at) = match integrations::StorageService::from_env() {
+        Ok(storage) => {
+            match storage.generate_download_url(
+                &document.file_key,
+                &document.file_name,
+                &document.mime_type,
+                None, // Use default 15 minute expiration
+            ) {
+                Ok(presigned) => (presigned.url, presigned.expires_at),
+                Err(e) => {
+                    tracing::warn!(
+                        error = %e,
+                        file_key = %document.file_key,
+                        "Failed to generate presigned URL, using placeholder"
+                    );
+                    // Fallback to placeholder URL
+                    let expires = chrono::Utc::now() + chrono::Duration::minutes(15);
+                    (format!("/api/v1/storage/{}", document.file_key), expires)
+                }
+            }
+        }
+        Err(e) => {
+            tracing::debug!(
+                error = %e,
+                "Storage service not configured, using placeholder URL"
+            );
+            // Fallback when storage is not configured
+            let expires = chrono::Utc::now() + chrono::Duration::minutes(15);
+            (format!("/api/v1/storage/{}", document.file_key), expires)
+        }
+    };
 
     Ok(Json(UrlResponse { url, expires_at }))
 }
@@ -1113,9 +1142,44 @@ async fn get_preview_url(
         ));
     }
 
-    // TODO: Generate actual S3 presigned URL for inline viewing
-    let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
-    let url = format!("/api/v1/storage/preview/{}", document.file_key);
+    // Story 84.1: Generate S3 presigned URL for inline preview
+    // Preview URLs use longer expiration (1 hour) and inline content disposition
+    let (url, expires_at) = match integrations::StorageService::from_env() {
+        Ok(storage) => {
+            // For preview, we use a longer expiration time
+            match storage.generate_download_url(
+                &document.file_key,
+                &document.file_name,
+                &document.mime_type,
+                Some(3600), // 1 hour for preview
+            ) {
+                Ok(presigned) => (presigned.url, presigned.expires_at),
+                Err(e) => {
+                    tracing::warn!(
+                        error = %e,
+                        file_key = %document.file_key,
+                        "Failed to generate presigned preview URL, using placeholder"
+                    );
+                    let expires = chrono::Utc::now() + chrono::Duration::hours(1);
+                    (
+                        format!("/api/v1/storage/preview/{}", document.file_key),
+                        expires,
+                    )
+                }
+            }
+        }
+        Err(e) => {
+            tracing::debug!(
+                error = %e,
+                "Storage service not configured, using placeholder URL"
+            );
+            let expires = chrono::Utc::now() + chrono::Duration::hours(1);
+            (
+                format!("/api/v1/storage/preview/{}", document.file_key),
+                expires,
+            )
+        }
+    };
 
     Ok(Json(UrlResponse { url, expires_at }))
 }

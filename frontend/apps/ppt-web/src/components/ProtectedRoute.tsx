@@ -1,0 +1,139 @@
+/**
+ * Protected Route Component.
+ *
+ * Wraps routes that require authentication.
+ * Redirects to login if the user is not authenticated,
+ * storing the current location for redirect after login.
+ *
+ * @see Story 79.2 - Authentication Flow Implementation
+ */
+
+import type React from 'react';
+import { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import './ProtectedRoute.css';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const RETURN_URL_KEY = 'ppt_return_url';
+const LOGIN_PATH = '/login';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface ProtectedRouteProps {
+  /** The content to render when authenticated */
+  children: React.ReactNode;
+  /** Optional redirect path override (defaults to /login) */
+  redirectTo?: string;
+  /** Optional roles required to access the route */
+  requiredRoles?: string[];
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Stores the current location as the return URL in sessionStorage.
+ */
+function storeReturnUrl(pathname: string, search: string): void {
+  try {
+    const returnUrl = `${pathname}${search}`;
+    // Don't store the login page as return URL
+    if (returnUrl !== LOGIN_PATH && !returnUrl.startsWith(`${LOGIN_PATH}?`)) {
+      sessionStorage.setItem(RETURN_URL_KEY, returnUrl);
+    }
+  } catch {
+    // Session storage unavailable
+  }
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
+/**
+ * Protected Route Component.
+ *
+ * Checks authentication status and redirects to login if not authenticated.
+ * Shows a loading spinner while checking authentication state.
+ *
+ * @example
+ * ```tsx
+ * <Route
+ *   path="/dashboard"
+ *   element={
+ *     <ProtectedRoute>
+ *       <DashboardPage />
+ *     </ProtectedRoute>
+ *   }
+ * />
+ * ```
+ *
+ * @example With role requirement
+ * ```tsx
+ * <Route
+ *   path="/admin"
+ *   element={
+ *     <ProtectedRoute requiredRoles={['admin']}>
+ *       <AdminPage />
+ *     </ProtectedRoute>
+ *   }
+ * />
+ * ```
+ */
+export function ProtectedRoute({
+  children,
+  redirectTo = LOGIN_PATH,
+  requiredRoles,
+}: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
+
+  // Store return URL when redirecting to login
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      storeReturnUrl(location.pathname, location.search);
+    }
+  }, [isLoading, isAuthenticated, location.pathname, location.search]);
+
+  // Show loading spinner while checking auth state
+  if (isLoading) {
+    return (
+      <div className="protected-route-loading">
+        <div className="protected-route-spinner" aria-label="Checking authentication" />
+        <span className="protected-route-loading-text">Loading...</span>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  // Check role requirements if specified
+  if (requiredRoles && requiredRoles.length > 0 && user?.role) {
+    const hasRequiredRole = requiredRoles.includes(user.role);
+    if (!hasRequiredRole) {
+      // User is authenticated but lacks required role
+      // Redirect to unauthorized page or show error
+      return (
+        <div className="protected-route-unauthorized">
+          <h1>Access Denied</h1>
+          <p>You do not have permission to access this page.</p>
+        </div>
+      );
+    }
+  }
+
+  // User is authenticated (and has required role if specified)
+  return <>{children}</>;
+}
+
+ProtectedRoute.displayName = 'ProtectedRoute';

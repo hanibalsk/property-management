@@ -3,34 +3,41 @@ package three.two.bit.ppt.reality.api
 /**
  * API configuration for Reality Portal.
  *
- * This object provides centralized configuration for API endpoints. The baseUrl should be set at
- * application startup based on build configuration.
+ * This object provides centralized configuration for API endpoints using the expect/actual pattern
+ * for platform-specific implementations.
  *
- * Epic 48 - Code Review Fix: Remove hardcoded localhost URL
+ * Epic 48 - Code Review Fix: Remove hardcoded localhost URL Epic 85 - Story 85.1: Environment
+ * Variable Setup
  */
 object ApiConfig {
     /**
      * Base URL for the Reality Portal API.
      *
-     * IMPORTANT: This must be set at application startup before making API calls. In production,
-     * this should use HTTPS.
-     *
-     * Example:
-     * - Development: "http://10.0.2.2:8081" (Android emulator)
-     * - Production: "https://api.realityportal.example.com"
+     * This is provided by the platform-specific implementation: - Android: Read from BuildConfig -
+     * iOS: Read from Info.plist
      */
-    var baseUrl: String = ""
-        private set
+    val baseUrl: String
+        get() = PlatformConfig.baseUrl
 
     /**
-     * Initialize the API configuration.
+     * WebSocket URL for real-time communication.
      *
-     * @param baseUrl The base URL for the Reality Portal API (must use HTTPS in production)
+     * Derived from baseUrl by replacing http(s) with ws(s).
      */
-    fun initialize(baseUrl: String) {
-        require(baseUrl.isNotBlank()) { "baseUrl must not be blank" }
-        this.baseUrl = baseUrl
-    }
+    val wsUrl: String
+        get() = baseUrl.replace("http", "ws")
+
+    /** Current environment: development, staging, or production. */
+    val environment: String
+        get() = PlatformConfig.environment
+
+    /** Whether debug mode is enabled. */
+    val isDebug: Boolean
+        get() = PlatformConfig.isDebug
+
+    /** Whether logging is enabled. */
+    val enableLogging: Boolean
+        get() = PlatformConfig.enableLogging
 
     /** Check if the API configuration has been initialized. */
     val isInitialized: Boolean
@@ -38,7 +45,27 @@ object ApiConfig {
 
     /** Get the base URL, throwing if not initialized. */
     fun requireBaseUrl(): String {
-        check(isInitialized) { "ApiConfig not initialized. Call ApiConfig.initialize() first." }
+        check(isInitialized) { "ApiConfig not initialized. baseUrl is blank." }
         return baseUrl
     }
+}
+
+/**
+ * Platform-specific configuration provider.
+ *
+ * This uses the expect/actual pattern to provide configuration values from: - Android: BuildConfig
+ * fields set by Gradle product flavors - iOS: Info.plist values set by xcconfig files
+ */
+expect object PlatformConfig {
+    /** Base URL for the Reality Portal API. */
+    val baseUrl: String
+
+    /** Current environment: development, staging, or production. */
+    val environment: String
+
+    /** Whether debug mode is enabled. */
+    val isDebug: Boolean
+
+    /** Whether logging is enabled. */
+    val enableLogging: Boolean
 }
