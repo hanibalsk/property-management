@@ -36,6 +36,14 @@ use state::AppState;
 
 /// Default CORS allowed origins for reality-server.
 /// Includes development origins and production domains for all regional portals.
+///
+/// # Production Deployment
+/// In production, set the `CORS_ALLOWED_ORIGINS` environment variable to
+/// restrict origins to only the necessary production domains:
+/// ```bash
+/// CORS_ALLOWED_ORIGINS=https://reality-portal.sk,https://reality-portal.cz,https://reality-portal.eu
+/// ```
+/// This prevents localhost origins from being accepted in production.
 const DEFAULT_CORS_ORIGINS: &[&str] = &[
     "http://localhost:3000",             // ppt-web dev
     "http://localhost:3001",             // reality-web dev
@@ -48,10 +56,21 @@ const DEFAULT_CORS_ORIGINS: &[&str] = &[
     "https://reality-portal.eu",         // EU portal
 ];
 
+/// Check if an origin string contains a wildcard pattern.
+/// Wildcards are not allowed with allow_credentials(true).
+fn is_wildcard_origin(origin: &str) -> bool {
+    origin == "*" || origin.contains("*.")
+}
+
 /// Parse CORS allowed origins from environment variable.
 ///
 /// Reads `CORS_ALLOWED_ORIGINS` environment variable as a comma-separated list of origins.
 /// Falls back to default origins if not set.
+///
+/// # Security Note
+/// Wildcard origins ("*" or "*.example.com") are explicitly rejected when
+/// credentials are enabled. This prevents security vulnerabilities where
+/// any origin could access authenticated resources.
 ///
 /// # Example
 /// ```bash
@@ -65,6 +84,14 @@ fn get_cors_allowed_origins() -> Vec<HeaderValue> {
                 .map(|s| s.trim())
                 .filter(|s| !s.is_empty())
                 .filter_map(|origin| {
+                    // Security: Reject wildcard origins when credentials are enabled
+                    if is_wildcard_origin(origin) {
+                        tracing::error!(
+                            "Wildcard CORS origin '{}' rejected - not allowed with credentials",
+                            origin
+                        );
+                        return None;
+                    }
                     origin.parse::<HeaderValue>().ok().or_else(|| {
                         tracing::warn!("Invalid CORS origin '{}', skipping", origin);
                         None

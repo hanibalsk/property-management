@@ -86,7 +86,9 @@ export const ContentModerationPage: React.FC = () => {
     };
 
     loadData();
-  }, [statusFilter, contentTypeFilter, violationTypeFilter, priorityFilter, unassignedOnly]);
+    // Note: Filters are not in deps because filtering is done client-side after data load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAssign = useCallback((caseId: string) => {
     console.log('Assign case:', caseId);

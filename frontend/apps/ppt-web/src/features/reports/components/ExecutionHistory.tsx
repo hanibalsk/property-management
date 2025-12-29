@@ -118,21 +118,32 @@ export function ExecutionHistory({
     [onRetry]
   );
 
+  // Helper function to check if a date is within a range
+  const isDateInRange = (date: Date, fromDate?: Date, toDate?: Date): boolean => {
+    if (fromDate && date < fromDate) {
+      return false;
+    }
+    if (toDate && date > toDate) {
+      return false;
+    }
+    return true;
+  };
+
   // Filter executions based on filters
   const filteredExecutions = executions.filter((execution) => {
     if (filters.status && execution.status !== filters.status) {
       return false;
     }
-    if (filters.dateFrom) {
-      const fromDate = new Date(filters.dateFrom);
-      const executionDate = new Date(execution.startedAt);
-      if (executionDate < fromDate) return false;
-    }
-    if (filters.dateTo) {
-      const toDate = new Date(filters.dateTo);
+
+    const executionDate = new Date(execution.startedAt);
+    const fromDate = filters.dateFrom ? new Date(filters.dateFrom) : undefined;
+    const toDate = filters.dateTo ? new Date(filters.dateTo) : undefined;
+    if (toDate) {
       toDate.setHours(23, 59, 59, 999);
-      const executionDate = new Date(execution.startedAt);
-      if (executionDate > toDate) return false;
+    }
+
+    if (!isDateInRange(executionDate, fromDate, toDate)) {
+      return false;
     }
     return true;
   });

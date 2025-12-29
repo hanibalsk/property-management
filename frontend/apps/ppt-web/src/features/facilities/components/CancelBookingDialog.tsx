@@ -43,13 +43,11 @@ export function CancelBookingDialog({
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto"
-      // biome-ignore lint/a11y/useSemanticElements: custom modal pattern with full ARIA support
       role="dialog"
       aria-modal="true"
       aria-labelledby="dialog-title"
     >
-      {/* Backdrop */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click-to-close is intentional, keyboard users use ESC or cancel button */}
+      {/* Backdrop - click handler for dismiss, keyboard users use ESC or Cancel button */}
       <div
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={onCancel}

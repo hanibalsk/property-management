@@ -129,13 +129,13 @@ export function DisputeCard({ dispute, onView, onManage }: DisputeCardProps) {
               {statusLabels[dispute.status]}
             </span>
           </div>
-          <h3
-            className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-pointer"
+          <button
+            type="button"
+            className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-pointer text-left"
             onClick={() => onView(dispute.id)}
-            onKeyDown={(e) => e.key === 'Enter' && onView(dispute.id)}
           >
             {dispute.title}
-          </h3>
+          </button>
           <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
             <span>{categoryLabels[dispute.category]}</span>
             <span className={priorityColors[dispute.priority]}>

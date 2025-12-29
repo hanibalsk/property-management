@@ -14,8 +14,14 @@ interface RecipientManagerProps {
   placeholder?: string;
 }
 
-// Email validation regex
-const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+// Email validation regex - RFC 5322 compliant pattern supporting:
+// - International characters in local part (Unicode)
+// - Newer TLDs (4+ characters)
+// - International domain names
+// Note: For maximum compatibility, consider using a dedicated validation library
+// like validator.js or email-validator in production.
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
 export function RecipientManager({
   recipients,

@@ -97,7 +97,8 @@ export class AuthError extends Error {
 // Constants
 // ============================================================================
 
-const API_BASE_URL = '/api/v1';
+// API base URL - prefer environment configuration for different environments (dev/staging/prod)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 const ACCESS_TOKEN_KEY = 'ppt_access_token';
 const REFRESH_TOKEN_KEY = 'ppt_refresh_token';
 const USER_KEY = 'ppt_user';

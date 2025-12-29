@@ -34,8 +34,6 @@ export interface Toast {
 
 interface ToastContextValue {
   showToast: (toast: Omit<Toast, 'id'>) => void;
-  /** @deprecated Use showToast with toast object instead */
-  addToast: (message: string, type?: ToastType) => void;
   removeToast: (id: string) => void;
 }
 
@@ -53,11 +51,20 @@ export function useToast(): ToastContextValue {
   return context;
 }
 
+/**
+ * Maximum number of toasts visible at once.
+ * When exceeded, only the most recent toasts are shown.
+ */
 const MAX_VISIBLE_TOASTS = 3;
 const DEFAULT_SUCCESS_DURATION = 5000;
 const DEFAULT_INFO_DURATION = 5000;
 const DEFAULT_WARNING_DURATION = 7000;
-const ERROR_DURATION = 0; // Persistent
+/**
+ * Error toasts are persistent (duration = 0) by design.
+ * This ensures users see and acknowledge errors before dismissing them.
+ * Users can still manually dismiss error toasts via the close button.
+ */
+const ERROR_DURATION = 0;
 
 function getDefaultDuration(type: ToastType): number {
   switch (type) {
@@ -129,19 +136,13 @@ export function ToastProvider({ children }: ToastProviderProps) {
     }
   }, []);
 
-  // Legacy API for backwards compatibility
-  const addToast = useCallback(
-    (message: string, type: ToastType = 'info') => {
-      showToast({ title: message, type });
-    },
-    [showToast]
-  );
-
   // Get visible toasts (limited to MAX_VISIBLE_TOASTS)
+  // Note: When more than 3 toasts exist, only the 3 most recent are displayed.
+  // Older toasts are hidden but still tracked; they will auto-dismiss if they have a duration.
   const visibleToasts = toasts.slice(-MAX_VISIBLE_TOASTS);
 
   return (
-    <ToastContext.Provider value={{ showToast, addToast, removeToast }}>
+    <ToastContext.Provider value={{ showToast, removeToast }}>
       {children}
       <div className="toast-container" role="region" aria-label="Notifications">
         {visibleToasts.map((toast) => (
