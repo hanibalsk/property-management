@@ -283,7 +283,6 @@ function RealtorCard({
       onClick={onSelect}
       onKeyDown={(e) => e.key === 'Enter' && onSelect()}
       tabIndex={0}
-      // biome-ignore lint/a11y/useSemanticElements: Using div for complex card layout with styled-jsx
       role="button"
     >
       <div className="avatar">
@@ -539,7 +538,6 @@ function InviteRealtorModal({
         className="modal"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
-        // biome-ignore lint/a11y/useSemanticElements: Using div with ARIA for styled-jsx compatibility
         role="dialog"
         aria-modal="true"
         aria-labelledby="invite-modal-title"
@@ -785,7 +783,6 @@ function RealtorDetailModal({
         className="modal"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
-        // biome-ignore lint/a11y/useSemanticElements: Using div with ARIA for styled-jsx compatibility
         role="dialog"
         aria-modal="true"
         aria-labelledby="detail-modal-title"
@@ -865,7 +862,6 @@ function RealtorDetailModal({
 
           {/* Status Actions */}
           {realtor.status !== 'invited' && (
-            // biome-ignore lint/a11y/useSemanticElements: Using div with ARIA to avoid fieldset styling issues
             <div className="status-section" role="group" aria-labelledby="status-label-text">
               <span id="status-label-text" className="status-label-text">
                 Status

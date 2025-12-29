@@ -133,8 +133,6 @@ export function DisputeCard({ dispute, onView, onManage }: DisputeCardProps) {
             className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-pointer"
             onClick={() => onView(dispute.id)}
             onKeyDown={(e) => e.key === 'Enter' && onView(dispute.id)}
-            role="button"
-            tabIndex={0}
           >
             {dispute.title}
           </h3>

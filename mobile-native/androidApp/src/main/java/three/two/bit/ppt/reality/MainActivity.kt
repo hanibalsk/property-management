@@ -4,9 +4,12 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
@@ -27,14 +30,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize API configuration from BuildConfig.
-        // The API_BASE_URL is configured in androidApp/build.gradle.kts:
-        // - Debug: http://10.0.2.2:8081 (Android emulator localhost)
-        // - Release: https://api.realityportal.example.com (production HTTPS)
-        // For production deployments, update the release buildConfigField in build.gradle.kts.
-        if (!ApiConfig.isInitialized) {
-            ApiConfig.initialize(BuildConfig.API_BASE_URL)
-        }
+        // API configuration is now provided by PlatformConfig using expect/actual pattern.
+        // See: shared/src/androidMain/kotlin/.../api/PlatformConfig.kt
+        // The API_BASE_URL is configured via Gradle product flavors in shared/build.gradle.kts:
+        // - Development: http://10.0.2.2:8081 (Android emulator localhost)
+        // - Staging: https://staging-api.realityportal.example.com
+        // - Production: https://api.realityportal.example.com
+        require(ApiConfig.isInitialized) { "ApiConfig not initialized - check PlatformConfig" }
 
         // Handle deep-link on initial launch
         handleDeepLink(intent)

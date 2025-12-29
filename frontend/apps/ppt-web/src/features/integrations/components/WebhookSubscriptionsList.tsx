@@ -65,7 +65,10 @@ export function WebhookSubscriptionsList({
         },
       });
       if (result.success) {
-        showToast({ title: `Test successful! Response time: ${result.responseTimeMs}ms`, type: 'success' });
+        showToast({
+          title: `Test successful! Response time: ${result.responseTimeMs}ms`,
+          type: 'success',
+        });
       } else {
         showToast({ title: `Test failed: ${result.error}`, type: 'error' });
       }

@@ -102,8 +102,6 @@ export function VirtualTourViewer({
             </video>
           </div>
         );
-
-      case TOUR_TYPES.PHOTO_360:
       default:
         return (
           <div className="relative w-full h-full">

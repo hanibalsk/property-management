@@ -84,6 +84,7 @@ pub enum PortalType {
 
 impl PortalType {
     /// Get portal type from string.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "sreality" => Some(Self::Sreality),
@@ -234,10 +235,11 @@ impl Default for PortalInquiry {
 }
 
 /// Inquiry status.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InquiryStatus {
     /// New, unread inquiry.
+    #[default]
     New,
     /// Inquiry has been read.
     Read,
@@ -245,12 +247,6 @@ pub enum InquiryStatus {
     Replied,
     /// Inquiry has been archived.
     Archived,
-}
-
-impl Default for InquiryStatus {
-    fn default() -> Self {
-        Self::New
-    }
 }
 
 // ============================================
