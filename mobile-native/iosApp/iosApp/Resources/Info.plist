@@ -89,5 +89,16 @@
     </dict>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <!-- API Configuration (Epic 85 - Story 85.1) -->
+    <!-- These values are typically set by xcconfig files per build scheme -->
+    <!-- Development: http://localhost:8081 -->
+    <!-- Staging: https://staging-reality.ppt.example.com -->
+    <!-- Production: https://reality.ppt.example.com -->
+    <key>API_BASE_URL</key>
+    <string>$(API_BASE_URL)</string>
+    <key>ENVIRONMENT</key>
+    <string>$(ENVIRONMENT)</string>
+    <key>ENABLE_LOGGING</key>
+    <string>$(ENABLE_LOGGING)</string>
 </dict>
 </plist>
