@@ -29,6 +29,7 @@ export * from './packages';
 export * from './emergency';
 export * from './news';
 export * from './integrations';
+export * from './disputes';
 
 // API client configuration
 export interface ApiConfig {

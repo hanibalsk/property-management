@@ -55,7 +55,7 @@ export function FileUploader({
       const extension = `.${f.name.split('.').pop()?.toLowerCase()}`;
       const isValidType = acceptedTypes.includes(f.type) || acceptedTypes.includes(extension);
       if (!isValidType) {
-        return `Invalid file type. Accepted: CSV, Excel (.xlsx, .xls)`;
+        return 'Invalid file type. Accepted: CSV, Excel (.xlsx, .xls)';
       }
 
       // Check file size

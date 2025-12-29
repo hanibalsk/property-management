@@ -37,9 +37,9 @@ export function CalendarConnectionsList({ organizationId }: CalendarConnectionsL
   const handleSync = async (id: string) => {
     try {
       await syncCalendar.mutateAsync({ id });
-      showToast('Calendar synced successfully', 'success');
+      showToast({ title: 'Calendar synced successfully', type: 'success' });
     } catch {
-      showToast('Failed to sync calendar', 'error');
+      showToast({ title: 'Failed to sync calendar', type: 'error' });
     }
   };
 
@@ -57,9 +57,9 @@ export function CalendarConnectionsList({ organizationId }: CalendarConnectionsL
     if (!connectionToDelete) return;
     try {
       await deleteConnection.mutateAsync(connectionToDelete.id);
-      showToast('Calendar disconnected successfully', 'success');
+      showToast({ title: 'Calendar disconnected successfully', type: 'success' });
     } catch {
-      showToast('Failed to disconnect calendar', 'error');
+      showToast({ title: 'Failed to disconnect calendar', type: 'error' });
     } finally {
       setDeleteDialogOpen(false);
       setConnectionToDelete(null);

@@ -57,4 +57,37 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    // Epic 85 - Story 85.2: Build Configuration by Environment
+    // Enable BuildConfig generation for shared module
+    buildFeatures { buildConfig = true }
+
+    // Epic 85 - Story 85.2: Build Configuration by Environment
+    // Product flavors matching the app module
+    flavorDimensions += "environment"
+    productFlavors {
+        create("development") {
+            dimension = "environment"
+            // Android emulator uses 10.0.2.2 to reach host localhost
+            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8081\"")
+            buildConfigField("String", "ENVIRONMENT", "\"development\"")
+            buildConfigField("Boolean", "ENABLE_LOGGING", "true")
+        }
+        create("staging") {
+            dimension = "environment"
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"https://staging-reality.ppt.example.com\""
+            )
+            buildConfigField("String", "ENVIRONMENT", "\"staging\"")
+            buildConfigField("Boolean", "ENABLE_LOGGING", "true")
+        }
+        create("production") {
+            dimension = "environment"
+            buildConfigField("String", "API_BASE_URL", "\"https://reality.ppt.example.com\"")
+            buildConfigField("String", "ENVIRONMENT", "\"production\"")
+            buildConfigField("Boolean", "ENABLE_LOGGING", "false")
+        }
+    }
 }

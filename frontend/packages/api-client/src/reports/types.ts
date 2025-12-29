@@ -130,6 +130,73 @@ export interface ReportRun {
 }
 
 // ============================================================================
+// EPIC 81: EXECUTION HISTORY
+// ============================================================================
+
+export type ReportExecutionStatus =
+  | 'pending'
+  | 'running'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'skipped';
+
+export interface ReportExecutionError {
+  code: string;
+  message: string;
+  details?: string;
+}
+
+export interface ReportExecution {
+  id: string;
+  scheduleId: string;
+  status: ReportExecutionStatus;
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+  fileKey?: string;
+  fileName?: string;
+  fileSize?: number;
+  error?: ReportExecutionError;
+  createdAt: string;
+}
+
+export interface ReportExecutionHistoryParams {
+  scheduleId: string;
+  status?: ReportExecutionStatus;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ReportExecutionHistoryResponse {
+  executions: ReportExecution[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface ReportDownloadUrlResponse {
+  url: string;
+  expiresAt: string;
+  fileName: string;
+  contentType: string;
+}
+
+export interface UpdateScheduleRequest {
+  name?: string;
+  report_id?: string;
+  frequency?: ScheduleFrequency;
+  day_of_week?: number;
+  day_of_month?: number;
+  time?: string;
+  timezone?: string;
+  format?: ReportFormat;
+  recipients?: string[];
+  is_active?: boolean;
+}
+
+// ============================================================================
 // DASHBOARD ANALYTICS
 // ============================================================================
 

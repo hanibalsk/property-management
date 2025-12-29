@@ -51,7 +51,6 @@ export function ComparisonTray() {
         ))}
         {/* Empty slots */}
         {Array.from({ length: 4 - listings.length }).map((_, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static empty slots
           <div key={`empty-${i}`} className="preview-item empty">
             <div className="preview-image empty-slot">
               <span>+</span>

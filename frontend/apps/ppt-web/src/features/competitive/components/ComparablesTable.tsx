@@ -190,7 +190,7 @@ export function ComparablesTable({
               <tr key={comp.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    <div className={`w-10 h-2 rounded-full overflow-hidden bg-gray-200`}>
+                    <div className={'w-10 h-2 rounded-full overflow-hidden bg-gray-200'}>
                       <div
                         className={`h-full rounded-full ${
                           comp.similarityScore >= 80

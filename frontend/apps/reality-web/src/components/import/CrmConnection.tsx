@@ -398,7 +398,6 @@ function AddConnectionModal({
       className="modal-overlay"
       onClick={onClose}
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
-      // biome-ignore lint/a11y/useSemanticElements: Modal overlay requires div for click handling
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"

@@ -1,23 +1,27 @@
 /**
  * ReportsPage - Main reports and analytics page.
  *
- * Combines all Story 53.x components into a unified reports interface.
+ * Combines all Story 53.x and Epic 81 components into a unified reports interface.
  */
 
 import type {
   BuildingAnalytics,
+  CreateReportSchedule,
   DataSource,
   KPIMetric,
   PeriodComparison,
   ReportDefinition,
+  ReportExecution,
   ReportSchedule,
   TrendAnalysis,
   TrendLine,
 } from '@ppt/api-client';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   AnalyticsChart,
   BuildingMetricsCard,
+  EditScheduleModal,
+  ExecutionHistory,
   KPICard,
   PeriodComparisonChart,
   ReportBuilder,
@@ -40,10 +44,21 @@ interface ReportsPageProps {
   onCreateReport?: (data: unknown) => Promise<void>;
   onPreviewReport?: (data: unknown) => Promise<unknown>;
   onCreateSchedule?: (data: unknown) => Promise<void>;
+  onUpdateSchedule?: (id: string, data: Partial<CreateReportSchedule>) => Promise<void>;
   onDeleteSchedule?: (id: string) => Promise<void>;
   onToggleSchedule?: (id: string, isActive: boolean) => Promise<void>;
+  onPauseSchedule?: (id: string) => Promise<void>;
+  onResumeSchedule?: (id: string) => Promise<void>;
   onRunScheduleNow?: (id: string) => Promise<void>;
   onPeriodChange?: (period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly') => void;
+  // Execution history props
+  executions?: ReportExecution[];
+  executionsLoading?: boolean;
+  executionsHasMore?: boolean;
+  onLoadMoreExecutions?: () => void;
+  onDownloadReport?: (executionId: string) => void;
+  onRetryExecution?: (executionId: string) => Promise<void>;
+  onFetchExecutions?: (scheduleId: string) => void;
 }
 
 type Tab = 'dashboard' | 'reports' | 'schedules';
@@ -61,10 +76,20 @@ export function ReportsPage({
   onCreateReport,
   onPreviewReport,
   onCreateSchedule,
+  onUpdateSchedule,
   onDeleteSchedule,
   onToggleSchedule,
+  onPauseSchedule,
+  onResumeSchedule,
   onRunScheduleNow,
   onPeriodChange,
+  executions,
+  executionsLoading,
+  executionsHasMore,
+  onLoadMoreExecutions,
+  onDownloadReport,
+  onRetryExecution,
+  onFetchExecutions,
 }: ReportsPageProps) {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [showReportBuilder, setShowReportBuilder] = useState(false);
@@ -73,10 +98,62 @@ export function ReportsPage({
     'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
   >('monthly');
 
+  // Epic 81: Schedule editing state
+  const [editingSchedule, setEditingSchedule] = useState<ReportSchedule | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUpdatingSchedule, setIsUpdatingSchedule] = useState(false);
+
+  // Epic 81: Execution history state
+  const [viewingHistorySchedule, setViewingHistorySchedule] = useState<ReportSchedule | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
   const handlePeriodChange = (period: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly') => {
     setSelectedPeriod(period);
     onPeriodChange?.(period);
   };
+
+  // Epic 81.1: Handle schedule editing
+  const handleEditSchedule = useCallback((schedule: ReportSchedule) => {
+    setEditingSchedule(schedule);
+    setIsEditModalOpen(true);
+  }, []);
+
+  const handleCloseEditModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    setEditingSchedule(null);
+  }, []);
+
+  const handleSaveSchedule = useCallback(
+    async (id: string, data: Partial<CreateReportSchedule>) => {
+      if (!onUpdateSchedule) return;
+      setIsUpdatingSchedule(true);
+      try {
+        await onUpdateSchedule(id, data);
+        handleCloseEditModal();
+      } finally {
+        setIsUpdatingSchedule(false);
+      }
+    },
+    [onUpdateSchedule, handleCloseEditModal]
+  );
+
+  // Epic 81.2: Handle execution history
+  const handleViewHistory = useCallback(
+    (scheduleId: string) => {
+      const schedule = schedules.find((s) => s.id === scheduleId);
+      if (schedule) {
+        setViewingHistorySchedule(schedule);
+        setIsHistoryOpen(true);
+        onFetchExecutions?.(scheduleId);
+      }
+    },
+    [schedules, onFetchExecutions]
+  );
+
+  const handleCloseHistory = useCallback(() => {
+    setIsHistoryOpen(false);
+    setViewingHistorySchedule(null);
+  }, []);
 
   const tabs = [
     { id: 'dashboard' as Tab, label: 'Dashboard', icon: '📊' },
@@ -301,14 +378,7 @@ export function ReportsPage({
               <ScheduleList
                 schedules={schedules}
                 isLoading={isLoading}
-                onEdit={(schedule) => {
-                  // TODO(Epic 53): Implement schedule editing - open ScheduleForm in edit mode
-                  // with pre-populated data from the schedule object. This requires:
-                  // 1. Adding an 'editingSchedule' state to track the schedule being edited
-                  // 2. Passing initialData prop to ScheduleForm when editing
-                  // 3. Using onUpdateSchedule callback instead of onCreateSchedule
-                  void schedule.id;
-                }}
+                onEdit={handleEditSchedule}
                 onDelete={async (id) => {
                   await onDeleteSchedule?.(id);
                 }}
@@ -318,20 +388,41 @@ export function ReportsPage({
                 onRunNow={async (id) => {
                   await onRunScheduleNow?.(id);
                 }}
-                onViewHistory={(id) => {
-                  // TODO(Epic 53): Implement schedule execution history view
-                  // This should navigate to a history page or open a modal showing:
-                  // 1. Past execution times and statuses (success/failure)
-                  // 2. Generated reports from each execution
-                  // 3. Error logs for failed executions
-                  // Consider: GET /api/v1/reports/schedules/{id}/history endpoint
-                  void id;
-                }}
+                onViewHistory={handleViewHistory}
               />
             )}
           </div>
         )}
       </div>
+
+      {/* Epic 81.1: Edit Schedule Modal */}
+      {editingSchedule && (
+        <EditScheduleModal
+          schedule={editingSchedule}
+          reports={reports}
+          isOpen={isEditModalOpen}
+          isSubmitting={isUpdatingSchedule}
+          onClose={handleCloseEditModal}
+          onSave={handleSaveSchedule}
+          onPause={onPauseSchedule}
+          onResume={onResumeSchedule}
+        />
+      )}
+
+      {/* Epic 81.2: Execution History Modal */}
+      {viewingHistorySchedule && isHistoryOpen && (
+        <ExecutionHistory
+          scheduleId={viewingHistorySchedule.id}
+          scheduleName={viewingHistorySchedule.name}
+          executions={executions ?? []}
+          isLoading={executionsLoading}
+          hasMore={executionsHasMore}
+          onLoadMore={onLoadMoreExecutions}
+          onDownload={onDownloadReport}
+          onRetry={onRetryExecution}
+          onClose={handleCloseHistory}
+        />
+      )}
     </div>
   );
 }

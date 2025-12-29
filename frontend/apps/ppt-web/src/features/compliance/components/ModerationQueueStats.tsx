@@ -157,8 +157,6 @@ export const ModerationQueueStats: React.FC<ModerationQueueStatsProps> = ({
                 onKeyDown={(e) =>
                   e.key === 'Enter' && onFilterByViolationType?.(item.violation_type)
                 }
-                role="button"
-                tabIndex={0}
               >
                 <span className="moderation-violation-type">
                   {formatViolationType(item.violation_type)}

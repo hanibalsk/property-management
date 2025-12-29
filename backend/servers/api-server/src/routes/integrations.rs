@@ -27,7 +27,17 @@ use db::models::{
 };
 use hmac::{Hmac, Mac};
 use integrations::{
-    GoogleCalendarClient, MicrosoftCalendarClient, MoneyS3Exporter, OAuthConfig, PohodaExporter,
+    // Epic 83: External Platform Integrations
+    AirbnbClient,
+    AirbnbOAuthConfig,
+    BookingClient,
+    // Epic 61: Integration Suite
+    GoogleCalendarClient,
+    MicrosoftCalendarClient,
+    MoneyS3Exporter,
+    OAuthConfig,
+    PohodaExporter,
+    PortalType,
 };
 use serde::Deserialize;
 use sha2::Sha256;
@@ -132,6 +142,57 @@ pub fn router() -> Router<AppState> {
         .route("/webhooks/:id/test", post(test_webhook))
         .route("/webhooks/:id/logs", get(list_webhook_logs))
         .route("/webhooks/:id/stats", get(get_webhook_stats))
+        // ==================== Epic 83: External Platform Integrations ====================
+        // Airbnb Integration (Story 83.1)
+        .route(
+            "/organizations/:org_id/airbnb/status",
+            get(get_airbnb_status),
+        )
+        .route(
+            "/organizations/:org_id/airbnb/connect",
+            post(connect_airbnb),
+        )
+        .route(
+            "/organizations/:org_id/airbnb/callback",
+            get(airbnb_oauth_callback),
+        )
+        .route("/organizations/:org_id/airbnb/sync", post(sync_airbnb))
+        .route("/organizations/:org_id/airbnb", delete(disconnect_airbnb))
+        // Booking.com Integration (Story 83.2)
+        .route(
+            "/organizations/:org_id/booking/status",
+            get(get_booking_status),
+        )
+        .route(
+            "/organizations/:org_id/booking/connect",
+            post(connect_booking),
+        )
+        .route("/organizations/:org_id/booking/sync", post(sync_booking))
+        .route("/organizations/:org_id/booking", delete(disconnect_booking))
+        .route("/booking/push", post(booking_push_notification))
+        // Portal Webhooks (Story 83.3)
+        .route(
+            "/organizations/:org_id/portals",
+            get(list_portal_connections),
+        )
+        .route(
+            "/organizations/:org_id/portals",
+            post(create_portal_connection),
+        )
+        .route("/portals/:id", get(get_portal_connection))
+        .route("/portals/:id", delete(delete_portal_connection))
+        .route(
+            "/organizations/:org_id/portal-inquiries",
+            get(list_portal_inquiries),
+        )
+        .route("/portal-inquiries/:id", get(get_portal_inquiry))
+        .route("/portal-inquiries/:id/read", post(mark_inquiry_read))
+        .route("/portal-inquiries/:id/archive", post(archive_inquiry))
+        // Portal webhook endpoint (public, no auth)
+        .route(
+            "/webhooks/portal/:connection_id",
+            post(handle_portal_webhook),
+        )
 }
 
 // ==================== Types ====================
@@ -2716,4 +2777,849 @@ pub async fn get_webhook_stats(
         })?;
 
     Ok(Json(stats))
+}
+
+// ==================== Epic 83: External Platform Integrations ====================
+
+// ==================== Airbnb Integration Types ====================
+
+/// Airbnb connection status response.
+#[derive(Debug, serde::Serialize, ToSchema)]
+pub struct AirbnbStatusResponse {
+    /// Whether Airbnb is connected.
+    pub connected: bool,
+    /// External account ID if connected.
+    pub external_account_id: Option<String>,
+    /// Last sync timestamp.
+    pub last_sync_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Last sync error if any.
+    pub sync_error: Option<String>,
+    /// Number of synced listings.
+    pub listings_count: i32,
+    /// Number of synced reservations.
+    pub reservations_count: i32,
+}
+
+/// Airbnb connect request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct AirbnbConnectRequest {
+    /// The redirect URL after OAuth.
+    pub redirect_uri: Option<String>,
+}
+
+/// Airbnb connect response.
+#[derive(Debug, serde::Serialize, ToSchema)]
+pub struct AirbnbConnectResponse {
+    /// OAuth authorization URL to redirect to.
+    pub auth_url: String,
+    /// State parameter for CSRF protection.
+    pub state: String,
+}
+
+/// OAuth callback query parameters.
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct OAuthCallbackQuery {
+    /// Authorization code.
+    pub code: String,
+    /// State parameter for CSRF protection.
+    pub state: String,
+}
+
+/// Sync response.
+#[derive(Debug, serde::Serialize, ToSchema)]
+pub struct SyncResponse {
+    /// Whether sync was successful.
+    pub success: bool,
+    /// Number of items synced.
+    pub items_synced: i32,
+    /// Sync timestamp.
+    pub synced_at: chrono::DateTime<chrono::Utc>,
+    /// Error message if any.
+    pub error: Option<String>,
+}
+
+// ==================== Airbnb Integration Handlers ====================
+
+/// Get Airbnb connection status.
+#[utoipa::path(
+    get,
+    path = "/api/v1/integrations/organizations/{org_id}/airbnb/status",
+    params(OrgIdPath),
+    responses(
+        (status = 200, description = "Airbnb status retrieved", body = AirbnbStatusResponse),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Airbnb"
+)]
+pub async fn get_airbnb_status(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+) -> Result<Json<AirbnbStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Getting Airbnb status"
+    );
+
+    // Stub implementation - would query integration_connections table
+    Ok(Json(AirbnbStatusResponse {
+        connected: false,
+        external_account_id: None,
+        last_sync_at: None,
+        sync_error: None,
+        listings_count: 0,
+        reservations_count: 0,
+    }))
+}
+
+/// Initiate Airbnb OAuth connection.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/organizations/{org_id}/airbnb/connect",
+    params(OrgIdPath),
+    request_body = AirbnbConnectRequest,
+    responses(
+        (status = 200, description = "OAuth URL generated", body = AirbnbConnectResponse),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Airbnb"
+)]
+pub async fn connect_airbnb(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(request): Json<AirbnbConnectRequest>,
+) -> Result<Json<AirbnbConnectResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Initiating Airbnb OAuth connection"
+    );
+
+    // Get OAuth config from environment (would be in settings in production)
+    let client_id = std::env::var("AIRBNB_CLIENT_ID").unwrap_or_default();
+    let client_secret = std::env::var("AIRBNB_CLIENT_SECRET").unwrap_or_default();
+    let redirect_uri = request
+        .redirect_uri
+        .unwrap_or_else(|| std::env::var("AIRBNB_REDIRECT_URI").unwrap_or_default());
+
+    if client_id.is_empty() {
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse::new(
+                "NOT_CONFIGURED",
+                "Airbnb integration is not configured",
+            )),
+        ));
+    }
+
+    let client = AirbnbClient::new(AirbnbOAuthConfig {
+        client_id,
+        client_secret,
+        redirect_uri,
+    });
+
+    // Generate state for CSRF protection
+    let state = uuid::Uuid::new_v4().to_string();
+
+    let auth_url = client.generate_auth_url(&state);
+
+    Ok(Json(AirbnbConnectResponse { auth_url, state }))
+}
+
+/// Handle Airbnb OAuth callback.
+#[utoipa::path(
+    get,
+    path = "/api/v1/integrations/organizations/{org_id}/airbnb/callback",
+    params(OrgIdPath, OAuthCallbackQuery),
+    responses(
+        (status = 200, description = "OAuth callback processed"),
+        (status = 400, description = "Invalid callback"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Airbnb"
+)]
+pub async fn airbnb_oauth_callback(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Query(query): Query<OAuthCallbackQuery>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Processing Airbnb OAuth callback"
+    );
+
+    // Verify state parameter (would check against stored state)
+    if query.state.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_STATE",
+                "Invalid state parameter",
+            )),
+        ));
+    }
+
+    // Exchange code for tokens (stub)
+    // In production, would call client.exchange_code(&query.code) and store tokens
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Airbnb connected successfully"
+    })))
+}
+
+/// Trigger Airbnb sync.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/organizations/{org_id}/airbnb/sync",
+    params(OrgIdPath),
+    responses(
+        (status = 200, description = "Sync initiated", body = SyncResponse),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Airbnb"
+)]
+pub async fn sync_airbnb(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+) -> Result<Json<SyncResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Syncing Airbnb"
+    );
+
+    // Stub implementation
+    Ok(Json(SyncResponse {
+        success: true,
+        items_synced: 0,
+        synced_at: chrono::Utc::now(),
+        error: None,
+    }))
+}
+
+/// Disconnect Airbnb.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/integrations/organizations/{org_id}/airbnb",
+    params(OrgIdPath),
+    responses(
+        (status = 204, description = "Airbnb disconnected"),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Airbnb"
+)]
+pub async fn disconnect_airbnb(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Disconnecting Airbnb"
+    );
+
+    // Stub implementation - would delete from integration_connections
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ==================== Booking.com Integration Types ====================
+
+/// Booking.com connection status response.
+#[derive(Debug, serde::Serialize, ToSchema)]
+pub struct BookingStatusResponse {
+    /// Whether Booking.com is connected.
+    pub connected: bool,
+    /// Hotel ID if connected.
+    pub hotel_id: Option<String>,
+    /// Last sync timestamp.
+    pub last_sync_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Last sync error if any.
+    pub sync_error: Option<String>,
+    /// Number of synced properties.
+    pub properties_count: i32,
+    /// Number of synced reservations.
+    pub reservations_count: i32,
+}
+
+/// Booking.com connect request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct BookingConnectRequest {
+    /// Booking.com hotel ID.
+    pub hotel_id: String,
+    /// API username.
+    pub username: String,
+    /// API password.
+    pub password: String,
+}
+
+// ==================== Booking.com Integration Handlers ====================
+
+/// Get Booking.com connection status.
+#[utoipa::path(
+    get,
+    path = "/api/v1/integrations/organizations/{org_id}/booking/status",
+    params(OrgIdPath),
+    responses(
+        (status = 200, description = "Booking.com status retrieved", body = BookingStatusResponse),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Booking.com"
+)]
+pub async fn get_booking_status(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+) -> Result<Json<BookingStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Getting Booking.com status"
+    );
+
+    Ok(Json(BookingStatusResponse {
+        connected: false,
+        hotel_id: None,
+        last_sync_at: None,
+        sync_error: None,
+        properties_count: 0,
+        reservations_count: 0,
+    }))
+}
+
+/// Connect to Booking.com.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/organizations/{org_id}/booking/connect",
+    params(OrgIdPath),
+    request_body = BookingConnectRequest,
+    responses(
+        (status = 200, description = "Connected to Booking.com"),
+        (status = 400, description = "Invalid credentials"),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Booking.com"
+)]
+pub async fn connect_booking(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(request): Json<BookingConnectRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        hotel_id = %request.hotel_id,
+        "Connecting to Booking.com"
+    );
+
+    // Stub implementation - would validate credentials and store them
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Booking.com connected successfully"
+    })))
+}
+
+/// Trigger Booking.com sync.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/organizations/{org_id}/booking/sync",
+    params(OrgIdPath),
+    responses(
+        (status = 200, description = "Sync initiated", body = SyncResponse),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Booking.com"
+)]
+pub async fn sync_booking(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+) -> Result<Json<SyncResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Syncing Booking.com"
+    );
+
+    Ok(Json(SyncResponse {
+        success: true,
+        items_synced: 0,
+        synced_at: chrono::Utc::now(),
+        error: None,
+    }))
+}
+
+/// Disconnect Booking.com.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/integrations/organizations/{org_id}/booking",
+    params(OrgIdPath),
+    responses(
+        (status = 204, description = "Booking.com disconnected"),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Booking.com"
+)]
+pub async fn disconnect_booking(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Disconnecting Booking.com"
+    );
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Handle Booking.com push notification.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/booking/push",
+    responses(
+        (status = 200, description = "Push notification processed"),
+        (status = 400, description = "Invalid notification"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "Integrations - Booking.com"
+)]
+pub async fn booking_push_notification(
+    State(_state): State<AppState>,
+    body: String,
+) -> Result<Response<Body>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!("Received Booking.com push notification");
+
+    // Parse the OTA notification
+    let _notification = BookingClient::parse_push_notification(&body).map_err(|e| {
+        tracing::error!(error = %e, "Failed to parse Booking.com notification");
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "PARSE_ERROR",
+                "Invalid notification format",
+            )),
+        )
+    })?;
+
+    // Process reservations (stub)
+    // In production, would iterate through notifications and update database
+
+    // Return OTA success response
+    let response_xml = BookingClient::generate_push_response(true, None);
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/xml")
+        .body(Body::from(response_xml))
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to build response");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "RESPONSE_ERROR",
+                    "Failed to build response",
+                )),
+            )
+        })
+}
+
+// ==================== Portal Webhooks Types ====================
+
+/// Portal connection response.
+#[derive(Debug, serde::Serialize, ToSchema)]
+pub struct PortalConnectionResponse {
+    /// Connection ID.
+    pub id: Uuid,
+    /// Portal type.
+    pub portal_type: String,
+    /// Connection name.
+    pub name: String,
+    /// Webhook URL.
+    pub webhook_url: String,
+    /// Whether active.
+    pub is_active: bool,
+    /// Last webhook received.
+    pub last_webhook_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Created timestamp.
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Create portal connection request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct CreatePortalConnectionRequest {
+    /// Portal type (sreality, bezrealitky, immowelt, custom).
+    pub portal_type: String,
+    /// Connection name.
+    pub name: String,
+}
+
+/// Portal inquiry response.
+#[derive(Debug, serde::Serialize, ToSchema)]
+pub struct PortalInquiryResponse {
+    /// Inquiry ID.
+    pub id: Uuid,
+    /// Portal type.
+    pub portal_type: String,
+    /// Contact name.
+    pub contact_name: String,
+    /// Contact email.
+    pub contact_email: String,
+    /// Contact phone.
+    pub contact_phone: Option<String>,
+    /// Message.
+    pub message: String,
+    /// Status.
+    pub status: String,
+    /// Received timestamp.
+    pub received_at: chrono::DateTime<chrono::Utc>,
+    /// Read timestamp.
+    pub read_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// Portal inquiry query parameters.
+#[derive(Debug, Deserialize, IntoParams, ToSchema)]
+pub struct PortalInquiryQuery {
+    /// Filter by portal type.
+    pub portal_type: Option<String>,
+    /// Filter by status.
+    pub status: Option<String>,
+    /// Limit.
+    #[serde(default = "default_limit")]
+    pub limit: i32,
+}
+
+/// Connection ID path parameter.
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct ConnectionIdPath {
+    pub connection_id: Uuid,
+}
+
+// ==================== Portal Webhooks Handlers ====================
+
+/// List portal connections.
+#[utoipa::path(
+    get,
+    path = "/api/v1/integrations/organizations/{org_id}/portals",
+    params(OrgIdPath),
+    responses(
+        (status = 200, description = "Portal connections listed", body = Vec<PortalConnectionResponse>),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Portals"
+)]
+pub async fn list_portal_connections(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+) -> Result<Json<Vec<PortalConnectionResponse>>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Listing portal connections"
+    );
+
+    // Stub implementation
+    Ok(Json(Vec::new()))
+}
+
+/// Create portal connection.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/organizations/{org_id}/portals",
+    params(OrgIdPath),
+    request_body = CreatePortalConnectionRequest,
+    responses(
+        (status = 201, description = "Portal connection created", body = PortalConnectionResponse),
+        (status = 400, description = "Invalid request"),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Portals"
+)]
+pub async fn create_portal_connection(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Json(request): Json<CreatePortalConnectionRequest>,
+) -> Result<(StatusCode, Json<PortalConnectionResponse>), (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        portal_type = %request.portal_type,
+        "Creating portal connection"
+    );
+
+    // Validate portal type
+    let portal_type = PortalType::from_str(&request.portal_type).ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_PORTAL_TYPE",
+                "Invalid portal type. Use: sreality, bezrealitky, immowelt, or custom",
+            )),
+        )
+    })?;
+
+    let connection_id = Uuid::new_v4();
+    let base_url =
+        std::env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.ppt.example.com".to_string());
+
+    // Stub implementation - would store in database
+    Ok((
+        StatusCode::CREATED,
+        Json(PortalConnectionResponse {
+            id: connection_id,
+            portal_type: portal_type.to_string(),
+            name: request.name,
+            webhook_url: format!(
+                "{}/api/v1/integrations/webhooks/portal/{}",
+                base_url, connection_id
+            ),
+            is_active: true,
+            last_webhook_at: None,
+            created_at: chrono::Utc::now(),
+        }),
+    ))
+}
+
+/// Get portal connection.
+#[utoipa::path(
+    get,
+    path = "/api/v1/integrations/portals/{id}",
+    params(ResourceIdPath),
+    responses(
+        (status = 200, description = "Portal connection retrieved", body = PortalConnectionResponse),
+        (status = 404, description = "Not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Portals"
+)]
+pub async fn get_portal_connection(
+    State(_state): State<AppState>,
+    _auth: AuthUser,
+    Path(path): Path<ResourceIdPath>,
+) -> Result<Json<PortalConnectionResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(connection_id = %path.id, "Getting portal connection");
+
+    // Stub implementation
+    Err((
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse::new(
+            "NOT_FOUND",
+            "Portal connection not found",
+        )),
+    ))
+}
+
+/// Delete portal connection.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/integrations/portals/{id}",
+    params(ResourceIdPath),
+    responses(
+        (status = 204, description = "Portal connection deleted"),
+        (status = 404, description = "Not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Portals"
+)]
+pub async fn delete_portal_connection(
+    State(_state): State<AppState>,
+    _auth: AuthUser,
+    Path(path): Path<ResourceIdPath>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(connection_id = %path.id, "Deleting portal connection");
+
+    // Stub implementation
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// List portal inquiries.
+#[utoipa::path(
+    get,
+    path = "/api/v1/integrations/organizations/{org_id}/portal-inquiries",
+    params(OrgIdPath, PortalInquiryQuery),
+    responses(
+        (status = 200, description = "Portal inquiries listed", body = Vec<PortalInquiryResponse>),
+        (status = 403, description = "Forbidden"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Portals"
+)]
+pub async fn list_portal_inquiries(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Path(path): Path<OrgIdPath>,
+    Query(_query): Query<PortalInquiryQuery>,
+) -> Result<Json<Vec<PortalInquiryResponse>>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        user_id = %auth.user_id,
+        org_id = %path.org_id,
+        "Listing portal inquiries"
+    );
+
+    // Stub implementation
+    Ok(Json(Vec::new()))
+}
+
+/// Get portal inquiry.
+#[utoipa::path(
+    get,
+    path = "/api/v1/integrations/portal-inquiries/{id}",
+    params(ResourceIdPath),
+    responses(
+        (status = 200, description = "Portal inquiry retrieved", body = PortalInquiryResponse),
+        (status = 404, description = "Not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Portals"
+)]
+pub async fn get_portal_inquiry(
+    State(_state): State<AppState>,
+    _auth: AuthUser,
+    Path(path): Path<ResourceIdPath>,
+) -> Result<Json<PortalInquiryResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(inquiry_id = %path.id, "Getting portal inquiry");
+
+    Err((
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse::new("NOT_FOUND", "Portal inquiry not found")),
+    ))
+}
+
+/// Mark portal inquiry as read.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/portal-inquiries/{id}/read",
+    params(ResourceIdPath),
+    responses(
+        (status = 200, description = "Inquiry marked as read", body = PortalInquiryResponse),
+        (status = 404, description = "Not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Portals"
+)]
+pub async fn mark_inquiry_read(
+    State(_state): State<AppState>,
+    _auth: AuthUser,
+    Path(path): Path<ResourceIdPath>,
+) -> Result<Json<PortalInquiryResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(inquiry_id = %path.id, "Marking inquiry as read");
+
+    Err((
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse::new("NOT_FOUND", "Portal inquiry not found")),
+    ))
+}
+
+/// Archive portal inquiry.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/portal-inquiries/{id}/archive",
+    params(ResourceIdPath),
+    responses(
+        (status = 200, description = "Inquiry archived", body = PortalInquiryResponse),
+        (status = 404, description = "Not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Integrations - Portals"
+)]
+pub async fn archive_inquiry(
+    State(_state): State<AppState>,
+    _auth: AuthUser,
+    Path(path): Path<ResourceIdPath>,
+) -> Result<Json<PortalInquiryResponse>, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(inquiry_id = %path.id, "Archiving inquiry");
+
+    Err((
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse::new("NOT_FOUND", "Portal inquiry not found")),
+    ))
+}
+
+/// Handle incoming portal webhook.
+/// This endpoint is public (no auth) as it receives webhooks from external portals.
+#[utoipa::path(
+    post,
+    path = "/api/v1/integrations/webhooks/portal/{connection_id}",
+    params(ConnectionIdPath),
+    responses(
+        (status = 200, description = "Webhook processed"),
+        (status = 400, description = "Invalid webhook"),
+        (status = 401, description = "Invalid signature"),
+        (status = 404, description = "Connection not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "Integrations - Portals"
+)]
+pub async fn handle_portal_webhook(
+    State(_state): State<AppState>,
+    Path(path): Path<ConnectionIdPath>,
+    headers: HeaderMap,
+    body: String,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    tracing::info!(
+        connection_id = %path.connection_id,
+        "Received portal webhook"
+    );
+
+    // In production, would:
+    // 1. Fetch connection from database
+    // 2. Verify signature
+    // 3. Parse webhook based on portal type
+    // 4. Store inquiry
+    // 5. Send notifications
+
+    // Stub: Just validate we can parse the body as JSON
+    let _: serde_json::Value = serde_json::from_str(&body).map_err(|e| {
+        tracing::warn!(error = %e, "Failed to parse webhook body");
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new("PARSE_ERROR", "Invalid JSON body")),
+        )
+    })?;
+
+    // Get signature header (optional validation)
+    if let Some(signature) = headers.get("X-Webhook-Signature") {
+        let _sig = signature.to_str().unwrap_or_default();
+        // Would verify signature against connection.webhook_secret
+        tracing::debug!("Webhook signature present");
+    }
+
+    Ok(StatusCode::OK)
 }

@@ -824,14 +824,43 @@ async fn publish_announcement(
 
     match state.announcement_repo.publish(id).await {
         Ok(announcement) => {
-            // TODO(Epic-2B): Trigger notifications here when notification infrastructure is ready
-            // Integration point: notification_service.send_announcement_notification(&announcement)
-            // This should notify all targeted users based on announcement.target_type and target_ids
+            // Story 84.4: Trigger notification event for announcement publish
+            let target_type = parse_target_type(&announcement.target_type);
+
+            // Parse target_ids from JSON value
+            let target_ids: Vec<Uuid> = announcement
+                .target_ids
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().and_then(|s| Uuid::parse_str(s).ok()))
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let notification_event = common::NotificationEvent::AnnouncementPublished {
+                announcement_id: announcement.id,
+                organization_id: announcement.organization_id,
+                target_type,
+                target_ids: target_ids.clone(),
+                title: announcement.title.clone(),
+            };
+
+            // Log the notification event (actual dispatch will be handled by notification service)
             tracing::info!(
                 announcement_id = %announcement.id,
+                organization_id = %announcement.organization_id,
                 target_type = %announcement.target_type,
-                "Announcement published - notification integration pending Epic 2B"
+                target_ids_count = %target_ids.len(),
+                notification_title = %notification_event.title(),
+                notification_category = %notification_event.category(),
+                notification_priority = ?notification_event.priority(),
+                "Announcement published - notification event created"
             );
+
+            // TODO(Epic-2B): Dispatch to notification service when fully implemented
+            // state.notification_service.dispatch(notification_event).await;
+
             Ok(Json(AnnouncementActionResponse {
                 message: "Announcement published".to_string(),
                 announcement,
@@ -1512,6 +1541,19 @@ async fn validate_target_ids(
     }
 
     Ok(())
+}
+
+/// Parse target type string to notification TargetType enum.
+///
+/// Used for converting database target_type values to notification event types.
+fn parse_target_type(target_type: &str) -> common::notifications::TargetType {
+    match target_type {
+        target_type::ALL => common::notifications::TargetType::All,
+        target_type::BUILDING => common::notifications::TargetType::Building,
+        target_type::UNITS => common::notifications::TargetType::Units,
+        target_type::ROLES => common::notifications::TargetType::Roles,
+        _ => common::notifications::TargetType::All, // Default fallback
+    }
 }
 
 /// Sanitize markdown/HTML content using ammonia.

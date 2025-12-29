@@ -21,3 +21,12 @@ export { KPICard } from './KPICard';
 // Story 53.4 - Trend Analysis
 export { PeriodComparisonChart } from './PeriodComparisonChart';
 export { TrendChart } from './TrendChart';
+
+// Story 81.1 - Report Schedule Editing
+export { EditScheduleModal } from './EditScheduleModal';
+export { RecipientManager } from './RecipientManager';
+
+// Story 81.2 - Report Execution History
+export { ExecutionHistory } from './ExecutionHistory';
+export { HistoryFilters } from './HistoryFilters';
+export type { ExecutionFilters } from './HistoryFilters';

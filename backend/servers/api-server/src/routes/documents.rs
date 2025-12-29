@@ -1055,10 +1055,47 @@ async fn get_download_url(
         }
     };
 
-    // TODO: Generate actual S3 presigned URL
-    // For now, return a placeholder
-    let expires_at = chrono::Utc::now() + chrono::Duration::minutes(15);
-    let url = format!("/api/v1/storage/{}", document.file_key);
+    // Story 84.1: Generate S3 presigned URL for download
+    // Security: Storage service must be configured to serve documents
+    let (url, expires_at) = match integrations::StorageService::from_env() {
+        Ok(storage) => {
+            match storage.generate_download_url(
+                &document.file_key,
+                &document.file_name,
+                &document.mime_type,
+                None, // Use default 15 minute expiration
+            ) {
+                Ok(presigned) => (presigned.url, presigned.expires_at),
+                Err(e) => {
+                    tracing::error!(
+                        error = %e,
+                        file_key = %document.file_key,
+                        "Failed to generate presigned URL"
+                    );
+                    return Err((
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        Json(ErrorResponse::new(
+                            "STORAGE_ERROR",
+                            "Unable to generate download URL. Please try again later.",
+                        )),
+                    ));
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                "Storage service not configured - document downloads unavailable"
+            );
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ErrorResponse::new(
+                    "STORAGE_NOT_CONFIGURED",
+                    "Document storage is not configured. Please contact support.",
+                )),
+            ));
+        }
+    };
 
     Ok(Json(UrlResponse { url, expires_at }))
 }
@@ -1113,9 +1150,48 @@ async fn get_preview_url(
         ));
     }
 
-    // TODO: Generate actual S3 presigned URL for inline viewing
-    let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
-    let url = format!("/api/v1/storage/preview/{}", document.file_key);
+    // Story 84.1: Generate S3 presigned URL for inline preview
+    // Security: Storage service must be configured to serve previews
+    let (url, expires_at) = match integrations::StorageService::from_env() {
+        Ok(storage) => {
+            // For preview, we use a longer expiration time
+            match storage.generate_download_url(
+                &document.file_key,
+                &document.file_name,
+                &document.mime_type,
+                Some(3600), // 1 hour for preview
+            ) {
+                Ok(presigned) => (presigned.url, presigned.expires_at),
+                Err(e) => {
+                    tracing::error!(
+                        error = %e,
+                        file_key = %document.file_key,
+                        "Failed to generate presigned preview URL"
+                    );
+                    return Err((
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        Json(ErrorResponse::new(
+                            "STORAGE_ERROR",
+                            "Unable to generate preview URL. Please try again later.",
+                        )),
+                    ));
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!(
+                error = %e,
+                "Storage service not configured - document previews unavailable"
+            );
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ErrorResponse::new(
+                    "STORAGE_NOT_CONFIGURED",
+                    "Document storage is not configured. Please contact support.",
+                )),
+            ));
+        }
+    };
 
     Ok(Json(UrlResponse { url, expires_at }))
 }

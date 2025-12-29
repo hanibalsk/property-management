@@ -1,0 +1,136 @@
+import Foundation
+
+/// Navigation routes for Reality Portal iOS app.
+///
+/// Epic 82 - Story 82.2: Navigation and Routing
+enum Route: Hashable {
+    // MARK: - Home Tab
+
+    /// Home screen with featured listings.
+    case home
+
+    /// Featured listings section.
+    case featuredListings
+
+    // MARK: - Search Tab
+
+    /// Search screen.
+    case search
+
+    /// Search results with query and optional filters.
+    case searchResults(query: String, filters: SearchFilters?)
+
+    // MARK: - Listing
+
+    /// Listing detail screen.
+    case listingDetail(id: String)
+
+    /// Full-screen photo gallery for a listing.
+    case listingGallery(id: String)
+
+    /// Map view for a listing location.
+    case listingMap(id: String)
+
+    // MARK: - Favorites Tab
+
+    /// Favorites list screen.
+    case favorites
+
+    // MARK: - Inquiries Tab
+
+    /// Inquiries list screen.
+    case inquiries
+
+    /// Inquiry conversation detail.
+    case inquiryDetail(id: String)
+
+    /// New inquiry form for a listing.
+    case newInquiry(listingId: String)
+
+    // MARK: - Account Tab
+
+    /// Account screen.
+    case account
+
+    /// Profile editing screen.
+    case profile
+
+    /// Settings screen.
+    case settings
+
+    /// Login screen.
+    case login
+
+    /// Registration screen.
+    case register
+}
+
+// MARK: - Search Filters
+
+/// Search filter options.
+///
+/// Epic 82 - Story 82.3: Home and Search Screens
+struct SearchFilters: Hashable {
+    var priceMin: Int?
+    var priceMax: Int?
+    var propertyTypes: Set<PropertyType> = []
+    var bedroomsMin: Int?
+    var bedroomsMax: Int?
+    var bathroomsMin: Int?
+    var radiusKm: Double?
+    var latitude: Double?
+    var longitude: Double?
+
+    /// Whether any filters are active.
+    var hasActiveFilters: Bool {
+        priceMin != nil ||
+        priceMax != nil ||
+        !propertyTypes.isEmpty ||
+        bedroomsMin != nil ||
+        bedroomsMax != nil ||
+        bathroomsMin != nil ||
+        radiusKm != nil
+    }
+
+    /// Reset all filters to default values.
+    mutating func reset() {
+        priceMin = nil
+        priceMax = nil
+        propertyTypes = []
+        bedroomsMin = nil
+        bedroomsMax = nil
+        bathroomsMin = nil
+        radiusKm = nil
+        latitude = nil
+        longitude = nil
+    }
+}
+
+/// Property types for filtering.
+enum PropertyType: String, CaseIterable, Hashable {
+    case apartment
+    case house
+    case land
+    case commercial
+    case garage
+
+    var displayName: String {
+        switch self {
+        case .apartment: return "Apartment"
+        case .house: return "House"
+        case .land: return "Land"
+        case .commercial: return "Commercial"
+        case .garage: return "Garage"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .apartment: return "building.2"
+        case .house: return "house"
+        case .land: return "leaf"
+        case .commercial: return "building"
+        case .garage: return "car"
+        }
+    }
+}

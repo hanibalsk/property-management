@@ -1,0 +1,344 @@
+/**
+ * WebSocket Context and Provider for ppt-web (Story 79.4)
+ *
+ * Provides WebSocket connectivity to the application with:
+ * - Connection state management
+ * - Subscribe/unsubscribe methods for events
+ * - Integration with authentication for token
+ * - Query invalidation on server push
+ */
+
+import type { ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  type ConnectionState,
+  type MessageHandler,
+  type WebSocketMessage,
+  WebSocketService,
+} from '../lib/websocket';
+
+/**
+ * Query key mapping for entity events.
+ * Used to invalidate TanStack Query caches when entities change.
+ */
+export const eventToQueryKeys: Record<string, string[]> = {
+  'entity:announcement': ['announcements'],
+  'entity:fault': ['faults'],
+  'entity:vote': ['votes'],
+  'entity:document': ['documents'],
+  'entity:message': ['messages'],
+  'entity:neighbor': ['neighbors'],
+};
+
+/**
+ * Auth context interface that WebSocketContext expects.
+ * This allows flexible integration with different auth implementations.
+ */
+export interface AuthContextForWebSocket {
+  accessToken: string | null;
+  isAuthenticated: boolean;
+}
+
+/**
+ * Value provided by the WebSocket context.
+ */
+export interface WebSocketContextValue {
+  /**
+   * Whether the WebSocket is currently connected.
+   */
+  isConnected: boolean;
+
+  /**
+   * Whether the WebSocket is currently connecting.
+   */
+  isConnecting: boolean;
+
+  /**
+   * The current connection state.
+   */
+  connectionState: ConnectionState;
+
+  /**
+   * The last connection error, if any.
+   */
+  error: Error | null;
+
+  /**
+   * Subscribe to WebSocket events of a specific type.
+   *
+   * @param eventType - The event type to subscribe to, or '*' for all events.
+   * @param handler - The handler function.
+   * @returns An unsubscribe function.
+   */
+  subscribe: (eventType: string, handler: MessageHandler) => () => void;
+
+  /**
+   * Send a message through the WebSocket.
+   *
+   * @param message - The message to send.
+   * @returns true if the message was sent successfully.
+   */
+  send: (message: WebSocketMessage) => boolean;
+
+  /**
+   * Get the last event timestamp for gap detection.
+   */
+  getLastEventTimestamp: () => string | null;
+
+  /**
+   * Manually reconnect to the WebSocket server.
+   */
+  reconnect: () => void;
+}
+
+const WebSocketContext = createContext<WebSocketContextValue | null>(null);
+
+/**
+ * Hook to access the WebSocket context.
+ *
+ * @throws Error if used outside of WebSocketProvider.
+ */
+export function useWebSocketContext(): WebSocketContextValue {
+  const context = useContext(WebSocketContext);
+
+  if (!context) {
+    throw new Error('useWebSocketContext must be used within a WebSocketProvider');
+  }
+
+  return context;
+}
+
+/**
+ * Props for WebSocketProvider.
+ */
+export interface WebSocketProviderProps {
+  children: ReactNode;
+
+  /**
+   * Auth context value. Provide accessToken and isAuthenticated.
+   */
+  auth: AuthContextForWebSocket;
+
+  /**
+   * WebSocket server URL.
+   * Defaults to VITE_WS_URL env variable or 'ws://localhost:8080/ws'.
+   */
+  wsUrl?: string;
+
+  /**
+   * Optional callback when an entity event is received.
+   * Can be used to invalidate queries.
+   */
+  onEntityEvent?: (eventType: string, queryKeys: string[], message: WebSocketMessage) => void;
+
+  /**
+   * Optional callback when the connection is established.
+   */
+  onConnected?: () => void;
+
+  /**
+   * Optional callback when the connection is lost.
+   */
+  onDisconnected?: () => void;
+
+  /**
+   * Optional callback when reconnection occurs.
+   */
+  onReconnected?: () => void;
+}
+
+/**
+ * WebSocket provider component.
+ *
+ * Wrap your app with this to enable WebSocket connectivity.
+ * Requires auth context to be provided.
+ */
+export function WebSocketProvider({
+  children,
+  auth,
+  wsUrl,
+  onEntityEvent,
+  onConnected,
+  onDisconnected,
+  onReconnected,
+}: WebSocketProviderProps) {
+  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
+  const [error, setError] = useState<Error | null>(null);
+  const serviceRef = useRef<WebSocketService | null>(null);
+  const wasConnectedRef = useRef(false);
+  const previousStateRef = useRef<ConnectionState>('disconnected');
+
+  // Store callbacks in refs to avoid re-creating the service on callback changes
+  const onConnectedRef = useRef(onConnected);
+  const onDisconnectedRef = useRef(onDisconnected);
+  const onReconnectedRef = useRef(onReconnected);
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onConnectedRef.current = onConnected;
+    onDisconnectedRef.current = onDisconnected;
+    onReconnectedRef.current = onReconnected;
+  }, [onConnected, onDisconnected, onReconnected]);
+
+  // Store auth token getter in ref
+  const authRef = useRef(auth);
+  useEffect(() => {
+    authRef.current = auth;
+  }, [auth]);
+
+  // Store wsUrl in ref
+  const wsUrlRef = useRef(wsUrl);
+  useEffect(() => {
+    wsUrlRef.current = wsUrl;
+  }, [wsUrl]);
+
+  // Create WebSocket service on mount
+  useEffect(() => {
+    const service = new WebSocketService({
+      url: wsUrlRef.current,
+      getToken: () => authRef.current.accessToken,
+    });
+
+    serviceRef.current = service;
+
+    // Subscribe to connection state changes
+    const unsubscribe = service.onConnectionStateChange((state, err) => {
+      const previousState = previousStateRef.current;
+      previousStateRef.current = state;
+      setConnectionState(state);
+      setError(err ?? null);
+
+      if (state === 'connected') {
+        if (wasConnectedRef.current) {
+          // This is a reconnection
+          onReconnectedRef.current?.();
+        } else {
+          onConnectedRef.current?.();
+        }
+        wasConnectedRef.current = true;
+      } else if (state === 'disconnected' || state === 'error') {
+        if (wasConnectedRef.current && previousState === 'connected') {
+          onDisconnectedRef.current?.();
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      service.disconnect();
+    };
+  }, []);
+
+  // Handle auth changes - connect when authenticated, disconnect when not
+  useEffect(() => {
+    const service = serviceRef.current;
+    if (!service) return;
+
+    if (auth.isAuthenticated && auth.accessToken) {
+      service.connect();
+    } else {
+      service.disconnect();
+      wasConnectedRef.current = false;
+    }
+  }, [auth.isAuthenticated, auth.accessToken]);
+
+  // Set up entity event handler for query invalidation
+  useEffect(() => {
+    const service = serviceRef.current;
+    if (!service || !onEntityEvent) return;
+
+    const unsubscribers: (() => void)[] = [];
+
+    // Subscribe to all entity events
+    for (const [eventType, queryKeys] of Object.entries(eventToQueryKeys)) {
+      const unsubscribe = service.subscribe(eventType, (message) => {
+        onEntityEvent(eventType, queryKeys, message);
+      });
+      unsubscribers.push(unsubscribe);
+    }
+
+    // Also subscribe to the generic entity events
+    const entityEvents = ['entity:updated', 'entity:created', 'entity:deleted'] as const;
+    for (const eventType of entityEvents) {
+      const unsubscribe = service.subscribe(eventType, (message) => {
+        // Try to extract entity type from payload
+        const payload = message.payload as { entityType?: string } | null;
+        const entityType = payload?.entityType;
+
+        if (entityType) {
+          const mappedKey = `entity:${entityType}`;
+          const queryKeys = eventToQueryKeys[mappedKey];
+
+          if (queryKeys) {
+            onEntityEvent(eventType, queryKeys, message);
+          }
+        }
+      });
+      unsubscribers.push(unsubscribe);
+    }
+
+    return () => {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe();
+      }
+    };
+  }, [onEntityEvent]);
+
+  const subscribe = useCallback((eventType: string, handler: MessageHandler): (() => void) => {
+    const service = serviceRef.current;
+    if (!service) {
+      return () => {
+        // noop
+      };
+    }
+
+    return service.subscribe(eventType, handler);
+  }, []);
+
+  const send = useCallback((message: WebSocketMessage): boolean => {
+    const service = serviceRef.current;
+    if (!service) {
+      return false;
+    }
+
+    return service.send(message);
+  }, []);
+
+  const getLastEventTimestamp = useCallback((): string | null => {
+    return serviceRef.current?.getLastEventTimestamp() ?? null;
+  }, []);
+
+  const reconnect = useCallback((): void => {
+    const service = serviceRef.current;
+    if (!service) return;
+
+    service.disconnect();
+    service.connect();
+  }, []);
+
+  const value = useMemo<WebSocketContextValue>(
+    () => ({
+      isConnected: connectionState === 'connected',
+      isConnecting: connectionState === 'connecting',
+      connectionState,
+      error,
+      subscribe,
+      send,
+      getLastEventTimestamp,
+      reconnect,
+    }),
+    [connectionState, error, subscribe, send, getLastEventTimestamp, reconnect]
+  );
+
+  return <WebSocketContext.Provider value={value}>{children}</WebSocketContext.Provider>;
+}
+
+WebSocketProvider.displayName = 'WebSocketProvider';

@@ -10,9 +10,8 @@ import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RegistryRulesForm } from '../components/RegistryRulesForm';
 
-// API base URL - in production, this would come from environment configuration
-// For now, use localhost as the default for development
-const API_BASE_URL = 'http://localhost:8080';
+// API base URL - prefer environment configuration for different environments (dev/staging/prod)
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
 // Create API instance - in production, this would come from a context with auth tokens
 const registryApi = createRegistryApi({
