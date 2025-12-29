@@ -37,12 +37,25 @@ function buildQueryString(params: object): string {
   return queryString ? `?${queryString}` : '';
 }
 
+/**
+ * Get authorization header from stored token.
+ * M-5 fix: Add Authorization header to API requests.
+ *
+ * Note: In a production app, this would integrate with the auth context
+ * or a token storage mechanism. For now, we check localStorage.
+ */
+function getAuthHeaders(): HeadersInit {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // Helper for API requests
 async function apiRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...options.headers,
     },
   });
@@ -64,6 +77,9 @@ async function apiFormDataRequest<T>(url: string, formData: FormData): Promise<T
   const response = await fetch(url, {
     method: 'POST',
     body: formData,
+    headers: {
+      ...getAuthHeaders(),
+    },
   });
 
   if (!response.ok) {

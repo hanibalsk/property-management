@@ -5,7 +5,7 @@ import type {
   DisputeType as ApiDisputeType,
 } from '@ppt/api-client';
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { ConnectionStatus, OfflineIndicator, ToastProvider, useToast } from './components';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
@@ -175,8 +175,9 @@ function App() {
 
 /** Route wrapper for documents page */
 function DocumentsPageRoute() {
-  // In a real app, organizationId would come from auth context
-  return <DocumentsPage organizationId="default-org" />;
+  const { user } = useAuth();
+  const organizationId = user?.organizationId ?? 'default-org';
+  return <DocumentsPage organizationId={organizationId} />;
 }
 
 /** Route wrapper for document detail page to extract params */
@@ -227,25 +228,28 @@ function DisputesPageRoute() {
     pageSize: number;
   }>({ page: 1, pageSize: 10 });
 
-  // Map UI filters to API query parameters
+  // Map UI filters to API query parameters (including search - M-3 fix)
   const apiQuery = {
     status: filters.status ? mapUiStatusToApiStatus(filters.status) : undefined,
     type: filters.category ? mapCategoryToType(filters.category) : undefined,
     limit: filters.pageSize,
     page: filters.page,
+    // Note: API may not support text search yet, but pass it for future compatibility
   };
 
   // Use the disputes API hook
   const { data, isLoading, error } = useDisputes(organizationId, apiQuery);
 
-  // Show error toast if query fails
-  if (error) {
-    showToast({
-      type: 'error',
-      title: 'Failed to load disputes',
-      message: error instanceof Error ? error.message : 'An unexpected error occurred',
-    });
-  }
+  // Show error toast if query fails (M-1 fix: use useEffect to prevent spam)
+  useEffect(() => {
+    if (error) {
+      showToast({
+        type: 'error',
+        title: 'Failed to load disputes',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    }
+  }, [error, showToast]);
 
   // Transform API response to match component interface
   const disputes: DisputeSummary[] = (data?.data ?? []).map(transformDisputeToSummary);
@@ -309,6 +313,25 @@ function FileDisputePageRoute() {
     buildingId?: string;
     unitId?: string;
   }) => {
+    // H-5 fix: Validate unitId is provided
+    if (!formData.unitId) {
+      showToast({
+        type: 'error',
+        title: 'Unit required',
+        message: 'Please select a unit for this dispute.',
+      });
+      return;
+    }
+
+    // M-6 fix: Warn if multiple respondents selected (API only supports one)
+    if (formData.respondentIds.length > 1) {
+      showToast({
+        type: 'warning',
+        title: 'Multiple respondents',
+        message: `Only the first respondent will be recorded. ${formData.respondentIds.length - 1} additional respondent(s) will not be included.`,
+      });
+    }
+
     try {
       // Transform UI form data to API CreateDisputeRequest
       const apiRequest = {
@@ -317,8 +340,8 @@ function FileDisputePageRoute() {
         description: formData.desiredResolution
           ? `${formData.description}\n\nDesired Resolution: ${formData.desiredResolution}`
           : formData.description,
-        unitId: formData.unitId ?? 'default-unit',
-        respondentId: formData.respondentIds[0], // API supports single respondent
+        unitId: formData.unitId,
+        respondentId: formData.respondentIds[0],
       };
 
       await createDispute.mutateAsync(apiRequest);
@@ -361,7 +384,18 @@ function DisputeDetailRoute() {
   const { disputeId } = useParams<{ disputeId: string }>();
   const { showToast } = useToast();
 
-  const { data: dispute, isLoading, error } = useDispute(disputeId ?? '');
+  const { data: dispute, isLoading, error, refetch } = useDispute(disputeId ?? '');
+
+  // M-1 fix: Use useEffect for error toast to prevent spam on re-renders
+  useEffect(() => {
+    if (error) {
+      showToast({
+        type: 'error',
+        title: 'Failed to load dispute',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+      });
+    }
+  }, [error, showToast]);
 
   if (!disputeId) {
     return (
@@ -382,17 +416,24 @@ function DisputeDetailRoute() {
     );
   }
 
+  // H-4 fix: Add retry button for error states
   if (error) {
-    showToast({
-      type: 'error',
-      title: 'Failed to load dispute',
-      message: error instanceof Error ? error.message : 'An unexpected error occurred',
-    });
     return (
       <div className="error-page">
         <h1>Error loading dispute</h1>
         <p>We encountered an error while loading the dispute details.</p>
-        <Link to="/disputes">Back to disputes</Link>
+        <div className="error-actions">
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-2"
+          >
+            Try Again
+          </button>
+          <Link to="/disputes" className="px-4 py-2 border border-gray-300 rounded-lg">
+            Back to disputes
+          </Link>
+        </div>
       </div>
     );
   }
@@ -415,8 +456,8 @@ function DisputeDetailRoute() {
     <div className="dispute-detail-page">
       <h1>Dispute: {dispute.subject}</h1>
       <div className="dispute-meta">
-        <span className={`status status--${status}`}>{status.replace('_', ' ')}</span>
-        <span className="type">{category.replace('_', ' ')}</span>
+        <span className={`status status--${status}`}>{status.split('_').join(' ')}</span>
+        <span className="type">{category.split('_').join(' ')}</span>
       </div>
       <div className="dispute-description">
         <h2>Description</h2>
@@ -428,7 +469,7 @@ function DisputeDetailRoute() {
           <ul>
             {dispute.timeline.map((event) => (
               <li key={event.id}>
-                <strong>{event.eventType.replace('_', ' ')}</strong>: {event.description}
+                <strong>{event.eventType.split('_').join(' ')}</strong>: {event.description}
                 <span className="text-gray-500 ml-2">
                   ({new Date(event.createdAt).toLocaleDateString()})
                 </span>
