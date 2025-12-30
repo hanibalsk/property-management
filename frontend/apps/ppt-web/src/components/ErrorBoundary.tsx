@@ -123,14 +123,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     try {
       await navigator.clipboard.writeText(errorDetails);
-    } catch {
-      // Fallback for browsers without clipboard API
-      const textArea = document.createElement('textarea');
-      textArea.value = errorDetails;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
+    } catch (copyError) {
+      // Clipboard API failed (e.g., permissions denied, insecure context)
+      // Modern browsers (Chrome 63+, Firefox 53+, Safari 13.1+) all support Clipboard API
+      // We log the error for debugging rather than using deprecated fallbacks
+      console.error('Failed to copy error details to clipboard:', copyError);
     }
   };
 
