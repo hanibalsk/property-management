@@ -270,10 +270,15 @@ async fn main() -> anyhow::Result<()> {
         std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
     let email_service = EmailService::new(base_url, email_enabled);
 
-    // Create JWT service
+    // Create JWT service - JWT_SECRET is required
     let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| {
-        tracing::warn!("JWT_SECRET not set, using development default (NOT FOR PRODUCTION)");
-        "development-secret-key-that-is-at-least-32-characters-long".to_string()
+        // Only allow dev fallback when explicitly running in development mode
+        if std::env::var("RUST_ENV").unwrap_or_default() == "development" {
+            tracing::warn!("JWT_SECRET not set, using development default (DEVELOPMENT MODE ONLY)");
+            "development-secret-key-that-is-at-least-32-characters-long".to_string()
+        } else {
+            panic!("JWT_SECRET environment variable is required. Set RUST_ENV=development to use dev defaults.");
+        }
     });
     let jwt_service = JwtService::new(&jwt_secret)
         .expect("Failed to create JWT service - secret must be at least 32 characters");

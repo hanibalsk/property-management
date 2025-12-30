@@ -39,24 +39,26 @@ where
                 "Missing or invalid X-Tenant-ID header",
             ))?;
 
-        // In a real implementation, we would:
-        // 1. Validate the tenant exists
-        // 2. Get the user's role in this tenant from the JWT
-        // 3. Check if the user has access to this tenant
+        // SECURITY: User ID must come from authenticated JWT (stored in extensions by AuthUser extractor)
+        // Never fall back to a placeholder - this prevents unauthorized access
+        let user_id = parts.extensions.get::<Uuid>().copied().ok_or((
+            StatusCode::UNAUTHORIZED,
+            "Authentication required for tenant access",
+        ))?;
 
-        // For now, we'll use placeholder values
-        // The actual user_id and role should come from the JWT token
-        let user_id = parts
-            .extensions
-            .get::<Uuid>()
-            .copied()
-            .unwrap_or_else(Uuid::nil);
-
+        // SECURITY: Role must come from JWT or be validated against database
+        // Fall back to Guest only if no role is present (most restrictive)
         let role = parts
             .extensions
             .get::<TenantRole>()
             .copied()
             .unwrap_or(TenantRole::Guest);
+
+        // TODO: For production, add database validation:
+        // 1. Verify tenant_id exists in database
+        // 2. Verify user has membership in the tenant
+        // 3. Verify the role matches their actual permissions
+        // This requires access to the database pool via State
 
         Ok(TenantExtractor(TenantContext::new(
             tenant_id, user_id, role,

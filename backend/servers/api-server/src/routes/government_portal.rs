@@ -408,8 +408,9 @@ async fn create_submission(
             )
         })?;
 
-    // Create audit entry
-    let _ = state
+    // Create audit entry - log errors but don't fail the request
+    // Compliance audit is critical so we log at error level
+    if let Err(e) = state
         .government_portal_repo
         .create_audit(CreateSubmissionAudit {
             submission_id: submission.id,
@@ -421,7 +422,15 @@ async fn create_submission(
             details: None,
             error_message: None,
         })
-        .await;
+        .await
+    {
+        tracing::error!(
+            submission_id = %submission.id,
+            user_id = %auth.user_id,
+            error = %e,
+            "COMPLIANCE: Failed to create audit entry for regulatory submission"
+        );
+    }
 
     info!(
         user_id = %auth.user_id,

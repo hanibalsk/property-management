@@ -2285,15 +2285,23 @@ async fn access_shared_document(
         }
     };
 
-    // Log access
-    let _ = state
+    // Log access - important for audit trail but shouldn't fail the request
+    if let Err(e) = state
         .document_repo
         .log_share_access(LogShareAccess {
             share_id: share.id,
             accessed_by: None,
-            ip_address: Some(ip_address),
+            ip_address: Some(ip_address.clone()),
         })
-        .await;
+        .await
+    {
+        tracing::warn!(
+            share_id = %share.id,
+            ip_address = %ip_address,
+            error = %e,
+            "Failed to log share access"
+        );
+    }
 
     // Generate URLs
     let download_url = format!("/api/v1/storage/{}", document.file_key);
@@ -2399,15 +2407,23 @@ async fn access_protected_share(
         }
     };
 
-    // Log access
-    let _ = state
+    // Log access - important for audit trail but shouldn't fail the request
+    if let Err(e) = state
         .document_repo
         .log_share_access(LogShareAccess {
             share_id: share.id,
             accessed_by: None,
-            ip_address: Some(ip_address),
+            ip_address: Some(ip_address.clone()),
         })
-        .await;
+        .await
+    {
+        tracing::warn!(
+            share_id = %share.id,
+            ip_address = %ip_address,
+            error = %e,
+            "Failed to log share access"
+        );
+    }
 
     // Generate URLs
     let download_url = format!("/api/v1/storage/{}", document.file_key);

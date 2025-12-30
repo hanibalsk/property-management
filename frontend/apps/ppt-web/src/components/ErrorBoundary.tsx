@@ -1,0 +1,209 @@
+/**
+ * Global Error Boundary Component.
+ *
+ * Catches JavaScript errors anywhere in the child component tree,
+ * logs those errors, and displays a fallback UI instead of crashing.
+ *
+ * Features:
+ * - Catches render errors, lifecycle errors, and errors in constructors
+ * - Displays user-friendly error message with retry option
+ * - Logs error details for debugging
+ * - Optional error reporting callback for external services
+ * - Supports custom fallback UI
+ *
+ * @see https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
+ */
+
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+import './ErrorBoundary.css';
+
+/** Props for the ErrorBoundary component */
+export interface ErrorBoundaryProps {
+  /** Child components to render */
+  children: ReactNode;
+  /** Optional custom fallback UI to display on error */
+  fallback?: ReactNode;
+  /** Optional callback for error reporting (e.g., to Sentry) */
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  /** Optional title for the error message */
+  title?: string;
+}
+
+/** State for the ErrorBoundary component */
+interface ErrorBoundaryState {
+  /** Whether an error has been caught */
+  hasError: boolean;
+  /** The caught error */
+  error: Error | null;
+  /** Additional error info from React */
+  errorInfo: ErrorInfo | null;
+}
+
+/**
+ * Error Boundary component for catching and handling React errors.
+ *
+ * @example
+ * ```tsx
+ * // Basic usage
+ * <ErrorBoundary>
+ *   <App />
+ * </ErrorBoundary>
+ *
+ * // With custom fallback
+ * <ErrorBoundary fallback={<div>Custom error message</div>}>
+ *   <App />
+ * </ErrorBoundary>
+ *
+ * // With error reporting
+ * <ErrorBoundary onError={(error) => reportToSentry(error)}>
+ *   <App />
+ * </ErrorBoundary>
+ * ```
+ */
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  static displayName = 'ErrorBoundary';
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+    };
+  }
+
+  /**
+   * Update state to render fallback UI on next render.
+   */
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error };
+  }
+
+  /**
+   * Log error information and call optional error handler.
+   */
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // Log to console for development
+    console.error('ErrorBoundary caught an error:', error);
+    console.error('Component stack:', errorInfo.componentStack);
+
+    // Update state with error info
+    this.setState({ errorInfo });
+
+    // Call optional error handler (e.g., for Sentry reporting)
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo);
+    }
+  }
+
+  /**
+   * Reset error state to allow retry.
+   */
+  handleRetry = (): void => {
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+    });
+  };
+
+  /**
+   * Copy error details to clipboard for support.
+   */
+  handleCopyError = async (): Promise<void> => {
+    const { error, errorInfo } = this.state;
+    const errorDetails = [
+      `Error: ${error?.message || 'Unknown error'}`,
+      `Stack: ${error?.stack || 'No stack trace'}`,
+      `Component Stack: ${errorInfo?.componentStack || 'No component stack'}`,
+      `Timestamp: ${new Date().toISOString()}`,
+      `URL: ${window.location.href}`,
+      `User Agent: ${navigator.userAgent}`,
+    ].join('\n\n');
+
+    try {
+      await navigator.clipboard.writeText(errorDetails);
+    } catch {
+      // Fallback for browsers without clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = errorDetails;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+  };
+
+  render(): ReactNode {
+    const { hasError, error } = this.state;
+    const { children, fallback, title = 'Something went wrong' } = this.props;
+
+    if (hasError) {
+      // Use custom fallback if provided
+      if (fallback) {
+        return fallback;
+      }
+
+      // Default error UI
+      return (
+        <div className="error-boundary" role="alert">
+          <div className="error-boundary-content">
+            <div className="error-boundary-icon">
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <h1 className="error-boundary-title">{title}</h1>
+            <p className="error-boundary-message">
+              We apologize for the inconvenience. An unexpected error has occurred.
+            </p>
+            {error && (
+              <p className="error-boundary-details">
+                <code>{error.message}</code>
+              </p>
+            )}
+            <div className="error-boundary-actions">
+              <button
+                type="button"
+                className="error-boundary-button error-boundary-button--primary"
+                onClick={this.handleRetry}
+              >
+                Try Again
+              </button>
+              <button
+                type="button"
+                className="error-boundary-button error-boundary-button--secondary"
+                onClick={() => window.location.reload()}
+              >
+                Reload Page
+              </button>
+              <button
+                type="button"
+                className="error-boundary-button error-boundary-button--tertiary"
+                onClick={this.handleCopyError}
+                title="Copy error details for support"
+              >
+                Copy Error Details
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return children;
+  }
+}
+
+export default ErrorBoundary;

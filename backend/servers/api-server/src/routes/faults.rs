@@ -1218,11 +1218,19 @@ async fn get_ai_suggestion(
         None
     };
 
-    // Update fault with AI suggestion
-    let _ = state
+    // Update fault with AI suggestion - log failures for debugging
+    if let Err(e) = state
         .fault_repo
         .update_ai_suggestion(id, category, priority.as_deref(), confidence)
-        .await;
+        .await
+    {
+        tracing::warn!(
+            fault_id = %id,
+            category = %category,
+            error = %e,
+            "Failed to persist AI suggestion for fault"
+        );
+    }
 
     Ok(Json(AiSuggestionResponse {
         suggestion: AiSuggestion {

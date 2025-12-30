@@ -96,26 +96,32 @@ final class AuthManager {
 
         defer { isLoading = false }
 
-        let result = try await withCheckedThrowingContinuation { continuation in
-            Task {
-                let validationResult = await ssoService.validateAndLogin(ssoToken: token)
-                if let session = validationResult.getOrNull() {
-                    continuation.resume(returning: session)
-                } else if let error = validationResult.exceptionOrNull() {
-                    continuation.resume(throwing: AuthError.ssoValidationFailed(error.message ?? "Unknown error"))
-                } else {
-                    continuation.resume(throwing: AuthError.ssoValidationFailed("Unknown error"))
+        do {
+            let result = try await withCheckedThrowingContinuation { continuation in
+                Task {
+                    let validationResult = await ssoService.validateAndLogin(ssoToken: token)
+                    if let session = validationResult.getOrNull() {
+                        continuation.resume(returning: session)
+                    } else if let error = validationResult.exceptionOrNull() {
+                        continuation.resume(throwing: AuthError.ssoValidationFailed(error.message ?? "Unknown error"))
+                    } else {
+                        continuation.resume(throwing: AuthError.ssoValidationFailed("Unknown error"))
+                    }
                 }
             }
+
+            // Store the session token
+            let sessionToken = result.sessionToken
+            storeTokens(accessToken: sessionToken, refreshToken: "")
+
+            // Set current user from SSO response
+            currentUser = User(from: result.user)
+            accessToken = sessionToken
+        } catch {
+            // Set error message so UI can display it to the user
+            errorMessage = error.localizedDescription
+            throw error
         }
-
-        // Store the session token
-        let sessionToken = result.sessionToken
-        storeTokens(accessToken: sessionToken, refreshToken: "")
-
-        // Set current user from SSO response
-        currentUser = User(from: result.user)
-        accessToken = sessionToken
     }
 
     /// Logout the current user.
