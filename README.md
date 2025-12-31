@@ -1,6 +1,6 @@
 # Property Management System (PPT)
 
-![Version](https://img.shields.io/badge/version-0.2.194-blue)
+![Version](https://img.shields.io/badge/version-0.2.201-blue)
 ![Rust](https://img.shields.io/badge/rust-1.75+-orange)
 ![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue)
 

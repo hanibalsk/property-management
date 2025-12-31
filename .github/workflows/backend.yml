@@ -115,6 +115,9 @@ jobs:
             backend/target/release/reality-server
 
   # Story 80.1: RLS Security Penetration Tests
+  # NOTE: Security tests depend on 'check' job to ensure code quality before running
+  # expensive security tests. This is intentional - we want to catch basic issues first.
+  # For scheduled runs, both jobs run in sequence.
   security-tests:
     runs-on: ubuntu-latest
     needs: check

@@ -225,9 +225,14 @@ impl TestDb {
         sqlx::query("DELETE FROM email_verification_tokens WHERE TRUE")
             .execute(&self.pool)
             .await?;
-        sqlx::query("DELETE FROM users WHERE email LIKE '%@test.%' OR email LIKE '%@repo-test.%'")
-            .execute(&self.pool)
-            .await?;
+        // SAFETY: Only delete users with emails ending in exact test domains
+        // This prevents accidental deletion of production users whose email might
+        // contain 'test' as a substring (e.g., user@contest.com, user@attestation.org)
+        sqlx::query(
+            "DELETE FROM users WHERE email LIKE '%@test.com' OR email LIKE '%@repo-test.com'",
+        )
+        .execute(&self.pool)
+        .await?;
 
         self.clear_context().await?;
 
