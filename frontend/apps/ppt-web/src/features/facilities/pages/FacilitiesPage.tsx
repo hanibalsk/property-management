@@ -102,7 +102,9 @@ export function FacilitiesPage() {
         pageSize={PAGE_SIZE}
         isLoading={isLoading}
         isManager={isManager}
-        onPageChange={() => {}}
+        onPageChange={(_page) => {
+          // TODO: Implement pagination for facilities
+        }}
         onTypeFilter={handleTypeFilter}
         onBookableFilter={handleBookableFilter}
         onView={handleView}
