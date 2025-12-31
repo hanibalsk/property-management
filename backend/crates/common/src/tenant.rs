@@ -29,10 +29,51 @@ impl TenantContext {
         self.role.level() >= required.level()
     }
 
-    /// Check if user can access a specific building.
+    /// Check if user can access a specific building based on role.
+    ///
+    /// This performs a synchronous role-based check. For complete building access
+    /// verification (including unit ownership/residency), use the async method
+    /// `BuildingRepository::can_user_access_building()` which performs database queries.
+    ///
+    /// # Access Rules (synchronous check only)
+    /// - SuperAdmin, PlatformAdmin, OrgAdmin: Full access to all buildings in org
+    /// - Manager, TechnicalManager: Full access to all buildings in org
+    /// - Other roles: Require async database check via BuildingRepository
+    ///
+    /// # Returns
+    /// - `Some(true)` if role grants unconditional access
+    /// - `Some(false)` if role denies access (Guest role)
+    /// - `None` if access cannot be determined without database query
+    pub fn can_access_building_by_role(&self, _building_id: Uuid) -> Option<bool> {
+        match self.role {
+            // Admin and manager roles have access to all buildings in the organization
+            TenantRole::SuperAdmin
+            | TenantRole::PlatformAdmin
+            | TenantRole::OrgAdmin
+            | TenantRole::Manager
+            | TenantRole::TechnicalManager => Some(true),
+            // Guest role has no building access
+            TenantRole::Guest => Some(false),
+            // Other roles (Owner, Tenant, Resident, etc.) require database check
+            // to verify unit ownership/residency in the specific building
+            _ => None,
+        }
+    }
+
+    /// Check if user can access a specific building (legacy method).
+    ///
+    /// **DEPRECATED**: This method always returns `true` for backward compatibility.
+    /// Use `can_access_building_by_role()` for synchronous role-based checks, or
+    /// `BuildingRepository::can_user_access_building()` for complete access verification.
+    #[deprecated(
+        since = "0.2.207",
+        note = "Use can_access_building_by_role() or BuildingRepository::can_user_access_building()"
+    )]
     pub fn can_access_building(&self, _building_id: Uuid) -> bool {
-        // TODO: Implement building-level access control
-        true
+        // For backward compatibility, delegate to role-based check
+        // Returns true if role grants access or if undetermined (requires DB check)
+        self.can_access_building_by_role(_building_id)
+            .unwrap_or(true)
     }
 }
 

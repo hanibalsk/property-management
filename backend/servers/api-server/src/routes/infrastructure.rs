@@ -619,18 +619,43 @@ pub async fn evaluate_feature_flag(
     tag = "Infrastructure - Background Jobs"
 )]
 pub async fn list_jobs(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Query(query): Query<JobQueryParams>,
 ) -> Result<Json<PaginatedResponse<BackgroundJob>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement job storage and retrieval
-    let response = PaginatedResponse {
-        items: Vec::new(),
-        total: 0,
-        limit: query.limit,
-        offset: query.offset,
+    use db::models::infrastructure::{BackgroundJobQuery, BackgroundJobStatus};
+
+    let job_query = BackgroundJobQuery {
+        job_type: query.job_type,
+        status: query
+            .status
+            .as_ref()
+            .and_then(|s| s.parse::<BackgroundJobStatus>().ok()),
+        queue: query.queue,
+        org_id: query.org_id,
+        from_time: None,
+        to_time: None,
+        limit: Some(query.limit),
+        offset: Some(query.offset),
     };
 
-    Ok(Json(response))
+    match state.background_job_repo.list(job_query).await {
+        Ok((jobs, total)) => {
+            let response = PaginatedResponse {
+                items: jobs,
+                total,
+                limit: query.limit,
+                offset: query.offset,
+            };
+            Ok(Json(response))
+        }
+        Err(e) => {
+            tracing::error!("Failed to list jobs: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to list jobs")),
+            ))
+        }
+    }
 }
 
 /// Create a new background job.
@@ -647,17 +672,19 @@ pub async fn list_jobs(
     tag = "Infrastructure - Background Jobs"
 )]
 pub async fn create_job(
-    State(_state): State<AppState>,
-    Json(_data): Json<CreateBackgroundJob>,
+    State(state): State<AppState>,
+    Json(data): Json<CreateBackgroundJob>,
 ) -> Result<(StatusCode, Json<BackgroundJob>), (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement job creation
-    Err((
-        StatusCode::UNAUTHORIZED,
-        Json(ErrorResponse::new(
-            "UNAUTHORIZED",
-            "Authentication required",
-        )),
-    ))
+    match state.background_job_repo.create(data, None).await {
+        Ok(job) => Ok((StatusCode::CREATED, Json(job))),
+        Err(e) => {
+            tracing::error!("Failed to create job: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to create job")),
+            ))
+        }
+    }
 }
 
 /// Get a background job by ID.
@@ -674,13 +701,23 @@ pub async fn create_job(
     tag = "Infrastructure - Background Jobs"
 )]
 pub async fn get_job(
-    State(_state): State<AppState>,
-    Path(_path): Path<JobIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<JobIdPath>,
 ) -> Result<Json<BackgroundJob>, (StatusCode, Json<ErrorResponse>)> {
-    Err((
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Job not found")),
-    ))
+    match state.background_job_repo.find_by_id(path.id).await {
+        Ok(Some(job)) => Ok(Json(job)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Job not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to get job: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to get job")),
+            ))
+        }
+    }
 }
 
 /// Retry a failed background job.
@@ -699,14 +736,35 @@ pub async fn get_job(
     tag = "Infrastructure - Background Jobs"
 )]
 pub async fn retry_job(
-    State(_state): State<AppState>,
-    Path(_path): Path<JobIdPath>,
-    Json(_data): Json<RetryBackgroundJob>,
+    State(state): State<AppState>,
+    Path(path): Path<JobIdPath>,
+    Json(data): Json<RetryBackgroundJob>,
 ) -> Result<Json<BackgroundJob>, (StatusCode, Json<ErrorResponse>)> {
-    Err((
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Job not found")),
-    ))
+    match state
+        .background_job_repo
+        .retry_job(
+            path.id,
+            data.scheduled_at,
+            data.reset_attempts.unwrap_or(false),
+        )
+        .await
+    {
+        Ok(Some(job)) => Ok(Json(job)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new(
+                "NOT_FOUND",
+                "Job not found or cannot be retried",
+            )),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to retry job: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to retry job")),
+            ))
+        }
+    }
 }
 
 /// Cancel a pending or running background job.
@@ -724,13 +782,26 @@ pub async fn retry_job(
     tag = "Infrastructure - Background Jobs"
 )]
 pub async fn cancel_job(
-    State(_state): State<AppState>,
-    Path(_path): Path<JobIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<JobIdPath>,
 ) -> Result<Json<BackgroundJob>, (StatusCode, Json<ErrorResponse>)> {
-    Err((
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Job not found")),
-    ))
+    match state.background_job_repo.cancel_job(path.id).await {
+        Ok(Some(job)) => Ok(Json(job)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new(
+                "NOT_FOUND",
+                "Job not found or cannot be cancelled",
+            )),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to cancel job: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to cancel job")),
+            ))
+        }
+    }
 }
 
 /// Get execution history for a background job.
@@ -747,10 +818,22 @@ pub async fn cancel_job(
     tag = "Infrastructure - Background Jobs"
 )]
 pub async fn get_job_executions(
-    State(_state): State<AppState>,
-    Path(_path): Path<JobIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<JobIdPath>,
 ) -> Result<Json<Vec<BackgroundJobExecution>>, (StatusCode, Json<ErrorResponse>)> {
-    Ok(Json(Vec::new()))
+    match state.background_job_repo.get_executions(path.id).await {
+        Ok(executions) => Ok(Json(executions)),
+        Err(e) => {
+            tracing::error!("Failed to get job executions: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get job executions",
+                )),
+            ))
+        }
+    }
 }
 
 /// Get statistics for all job queues.
@@ -765,35 +848,21 @@ pub async fn get_job_executions(
     tag = "Infrastructure - Background Jobs"
 )]
 pub async fn get_queue_stats(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<BackgroundJobQueueStats>>, (StatusCode, Json<ErrorResponse>)> {
-    // Return mock queue stats
-    let stats = vec![
-        BackgroundJobQueueStats {
-            queue: "default".to_string(),
-            pending_count: 5,
-            running_count: 2,
-            failed_count_24h: 1,
-            completed_count_24h: 150,
-            avg_duration_ms: Some(250.5),
-            p95_duration_ms: Some(800.0),
-            retrying_count: 0,
-            oldest_pending_age_seconds: Some(30),
-        },
-        BackgroundJobQueueStats {
-            queue: "high".to_string(),
-            pending_count: 0,
-            running_count: 0,
-            failed_count_24h: 0,
-            completed_count_24h: 25,
-            avg_duration_ms: Some(150.0),
-            p95_duration_ms: Some(400.0),
-            retrying_count: 0,
-            oldest_pending_age_seconds: None,
-        },
-    ];
-
-    Ok(Json(stats))
+    match state.background_job_repo.get_all_queue_stats().await {
+        Ok(stats) => Ok(Json(stats)),
+        Err(e) => {
+            tracing::error!("Failed to get queue stats: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get queue stats",
+                )),
+            ))
+        }
+    }
 }
 
 /// Get statistics grouped by job type.

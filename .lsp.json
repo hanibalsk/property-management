@@ -1,0 +1,10 @@
+{
+  "rust": {
+    "command": "rust-analyzer",
+    "args": [],
+    "rootPath": "backend",
+    "extensionToLanguage": {
+      ".rs": "rust"
+    }
+  }
+}

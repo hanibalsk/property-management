@@ -5,14 +5,14 @@ use api_core::TenantMembershipProvider;
 use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
-        AutomationRepository, BudgetRepository, BuildingRepository, CommunityRepository,
-        CriticalNotificationRepository, DataExportRepository, DelegationRepository,
-        DisputeRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
-        EnergyRepository, EquipmentRepository, FacilityRepository, FaultRepository,
-        FeatureFlagRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
-        GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        InsuranceRepository, IntegrationRepository, LeaseRepository, LegalRepository,
-        ListingRepository, LlmDocumentRepository, MeterRepository,
+        AutomationRepository, BackgroundJobRepository, BudgetRepository, BuildingRepository,
+        CommunityRepository, CriticalNotificationRepository, DataExportRepository,
+        DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
+        EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
+        FaultRepository, FeatureFlagRepository, FinancialRepository, FormRepository,
+        GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
+        HelpRepository, InsuranceRepository, IntegrationRepository, LeaseRepository,
+        LegalRepository, ListingRepository, LlmDocumentRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OwnerAnalyticsRepository, PackageVisitorRepository, PasswordResetRepository,
@@ -115,6 +115,8 @@ pub struct AppState {
     pub owner_analytics_repo: OwnerAnalyticsRepository,
     // Epic 77: Dispute Resolution
     pub dispute_repo: DisputeRepository,
+    // Epic 71: Background Jobs Infrastructure (Phase 1.3)
+    pub background_job_repo: BackgroundJobRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -211,6 +213,8 @@ impl AppState {
         let owner_analytics_repo = OwnerAnalyticsRepository::new(db.clone());
         // Epic 77: Dispute Resolution
         let dispute_repo = DisputeRepository::new(db.clone());
+        // Epic 71: Background Jobs Infrastructure (Phase 1.3)
+        let background_job_repo = BackgroundJobRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -278,6 +282,7 @@ impl AppState {
             operations_repo,
             owner_analytics_repo,
             dispute_repo,
+            background_job_repo,
             auth_service,
             email_service,
             jwt_service,
