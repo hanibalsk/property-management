@@ -11,9 +11,9 @@ use db::{
         EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
         FaultRepository, FeatureFlagRepository, FinancialRepository, FormRepository,
         GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
-        HelpRepository, InsuranceRepository, IntegrationRepository, LeaseRepository,
-        LegalRepository, ListingRepository, LlmDocumentRepository, MeterRepository,
-        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
+        LeaseRepository, LegalRepository, ListingRepository, LlmDocumentRepository,
+        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OwnerAnalyticsRepository, PackageVisitorRepository, PasswordResetRepository,
         PersonMonthRepository, PlatformAdminRepository, RegistryRepository, RentalRepository,
@@ -117,6 +117,8 @@ pub struct AppState {
     pub dispute_repo: DisputeRepository,
     // Epic 71: Background Jobs Infrastructure (Phase 1.3)
     pub background_job_repo: BackgroundJobRepository,
+    // Epic 89: Feature Flags & Health Monitoring
+    pub infrastructure_repo: InfrastructureRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -215,6 +217,8 @@ impl AppState {
         let dispute_repo = DisputeRepository::new(db.clone());
         // Epic 71: Background Jobs Infrastructure (Phase 1.3)
         let background_job_repo = BackgroundJobRepository::new(db.clone());
+        // Epic 89: Feature Flags & Health Monitoring
+        let infrastructure_repo = InfrastructureRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -283,6 +287,7 @@ impl AppState {
             owner_analytics_repo,
             dispute_repo,
             background_job_repo,
+            infrastructure_repo,
             auth_service,
             email_service,
             jwt_service,

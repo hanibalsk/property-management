@@ -572,7 +572,8 @@ pub struct DependencyHealth {
 }
 
 /// Health status.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[sqlx(type_name = "health_status", rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum HealthStatus {
     /// Healthy and operational

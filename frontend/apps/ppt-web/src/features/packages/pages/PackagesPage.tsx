@@ -2,69 +2,112 @@
  * PackagesPage
  *
  * Main page for package management (Epic 58, Story 58.1-58.3).
+ * Epic 90, Story 90.1: Wire up package handlers to API.
  */
 
-import type { PackageStatus } from '@ppt/api-client';
-import { useState } from 'react';
+import {
+  type ApiConfig,
+  type PackageStatus,
+  getToken,
+  usePackages,
+  usePickupPackage,
+  useReceivePackage,
+} from '@ppt/api-client';
+import { useCallback, useMemo, useState } from 'react';
 import { PackageCard } from '../components/PackageCard';
 
-// Mock data for development - will be replaced with API calls
-const mockPackages = [
-  {
-    id: '1',
-    unitId: 'unit-1',
-    unitNumber: '101',
-    residentId: 'user-1',
-    residentName: 'John Doe',
-    trackingNumber: '1Z999AA10123456784',
-    carrier: 'ups' as const,
-    status: 'expected' as PackageStatus,
-    expectedDate: '2024-01-15',
-    createdAt: '2024-01-10T10:00:00Z',
-  },
-  {
-    id: '2',
-    unitId: 'unit-2',
-    unitNumber: '205',
-    residentId: 'user-2',
-    residentName: 'Jane Smith',
-    trackingNumber: '9400111899223534567890',
-    carrier: 'usps' as const,
-    status: 'received' as PackageStatus,
-    receivedAt: '2024-01-12T14:30:00Z',
-    createdAt: '2024-01-10T10:00:00Z',
-  },
-  {
-    id: '3',
-    unitId: 'unit-3',
-    unitNumber: '310',
-    residentId: 'user-3',
-    residentName: 'Bob Johnson',
-    carrier: 'amazon' as const,
-    status: 'picked_up' as PackageStatus,
-    receivedAt: '2024-01-11T09:00:00Z',
-    createdAt: '2024-01-09T10:00:00Z',
-  },
-];
+// API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 type FilterStatus = 'all' | PackageStatus;
 
 export function PackagesPage() {
   const [filter, setFilter] = useState<FilterStatus>('all');
 
-  const filteredPackages = mockPackages.filter((pkg) => filter === 'all' || pkg.status === filter);
+  // API configuration
+  const apiConfig: ApiConfig = useMemo(
+    () => ({
+      baseUrl: API_BASE_URL,
+      accessToken: getToken() ?? undefined,
+    }),
+    []
+  );
 
-  const handleView = (_id: string) => {
-    // TODO: Navigate to package detail page
-  };
+  // Fetch packages from API
+  const { data: packagesData, isLoading, error } = usePackages(apiConfig);
 
-  const handleReceive = (_id: string) => {
-    // TODO: API call to mark package as received
-  };
+  // Mutations for package status updates
+  const receivePackage = useReceivePackage(apiConfig);
+  const pickupPackage = usePickupPackage(apiConfig);
 
-  const handlePickup = (_id: string) => {
-    // TODO: API call to mark package as picked up
-  };
+  // Get packages from API response or use empty array
+  const packages = packagesData?.packages ?? [];
+  const filteredPackages = packages.filter((pkg) => filter === 'all' || pkg.status === filter);
+
+  const handleView = useCallback((_id: string) => {
+    // Navigate to package detail page
+    window.location.href = `/packages/${_id}`;
+  }, []);
+
+  const handleReceive = useCallback(
+    (id: string) => {
+      receivePackage.mutate(
+        { id, data: {} },
+        {
+          onError: (err) => {
+            console.error('Failed to mark package as received:', err);
+            alert('Failed to mark package as received. Please try again.');
+          },
+        }
+      );
+    },
+    [receivePackage]
+  );
+
+  const handlePickup = useCallback(
+    (id: string) => {
+      pickupPackage.mutate(
+        { id, data: {} },
+        {
+          onError: (err) => {
+            console.error('Failed to mark package as picked up:', err);
+            alert('Failed to mark package as picked up. Please try again.');
+          },
+        }
+      );
+    },
+    [pickupPackage]
+  );
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="text-gray-500 mt-4">Loading packages...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12 bg-red-50 rounded-lg">
+          <p className="text-red-600">Failed to load packages: {error.message}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
