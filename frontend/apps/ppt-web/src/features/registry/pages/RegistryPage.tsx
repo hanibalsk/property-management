@@ -26,68 +26,69 @@ export function RegistryPage() {
     pageSize: 10,
   };
 
-  const handlePetPageChange = (page: number) => {
-    console.log('Pet page changed:', page);
+  // TODO: Wire up to API when registry endpoints are implemented
+  const handlePetPageChange = (_page: number) => {
+    // API: GET /api/v1/registrations/pets?page={page}
   };
 
-  const handlePetStatusFilter = (status?: string) => {
-    console.log('Pet status filter:', status);
+  const handlePetStatusFilter = (_status?: string) => {
+    // API: GET /api/v1/registrations/pets?status={status}
   };
 
-  const handlePetSearchChange = (search: string) => {
-    console.log('Pet search:', search);
+  const handlePetSearchChange = (_search: string) => {
+    // API: GET /api/v1/registrations/pets?search={search}
   };
 
-  const handlePetView = (id: string) => {
-    console.log('View pet:', id);
+  const handlePetView = (_id: string) => {
+    // Navigate to pet detail page
   };
 
-  const handlePetEdit = (id: string) => {
-    console.log('Edit pet:', id);
+  const handlePetEdit = (_id: string) => {
+    // Navigate to pet edit page
   };
 
-  const handlePetDelete = (id: string) => {
-    console.log('Delete pet:', id);
+  const handlePetDelete = (_id: string) => {
+    // API: DELETE /api/v1/registrations/pets/{id}
   };
 
-  const handlePetReview = (id: string) => {
-    console.log('Review pet:', id);
+  const handlePetReview = (_id: string) => {
+    // API: PATCH /api/v1/registrations/pets/{id}/review
   };
 
   const handlePetCreate = () => {
-    console.log('Create pet');
+    // Navigate to pet create page
   };
 
-  const handleVehiclePageChange = (page: number) => {
-    console.log('Vehicle page changed:', page);
+  const handleVehiclePageChange = (_page: number) => {
+    // API: GET /api/v1/registrations/vehicles?page={page}
   };
 
-  const handleVehicleStatusFilter = (status?: string) => {
-    console.log('Vehicle status filter:', status);
+  const handleVehicleStatusFilter = (_status?: string) => {
+    // API: GET /api/v1/registrations/vehicles?status={status}
   };
 
-  const handleVehicleSearchChange = (search: string) => {
-    console.log('Vehicle search:', search);
+  const handleVehicleSearchChange = (_search: string) => {
+    // API: GET /api/v1/registrations/vehicles?search={search}
   };
 
-  const handleVehicleView = (id: string) => {
-    console.log('View vehicle:', id);
+  const handleVehicleView = (_id: string) => {
+    // Navigate to vehicle detail page
   };
 
-  const handleVehicleEdit = (id: string) => {
-    console.log('Edit vehicle:', id);
+  const handleVehicleEdit = (_id: string) => {
+    // Navigate to vehicle edit page
   };
 
-  const handleVehicleDelete = (id: string) => {
-    console.log('Delete vehicle:', id);
+  const handleVehicleDelete = (_id: string) => {
+    // API: DELETE /api/v1/registrations/vehicles/{id}
   };
 
-  const handleVehicleReview = (id: string) => {
-    console.log('Review vehicle:', id);
+  const handleVehicleReview = (_id: string) => {
+    // API: PATCH /api/v1/registrations/vehicles/{id}/review
   };
 
   const handleVehicleCreate = () => {
-    console.log('Create vehicle');
+    // Navigate to vehicle create page
   };
 
   return (

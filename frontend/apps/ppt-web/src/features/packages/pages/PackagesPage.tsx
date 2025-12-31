@@ -54,16 +54,16 @@ export function PackagesPage() {
 
   const filteredPackages = mockPackages.filter((pkg) => filter === 'all' || pkg.status === filter);
 
-  const handleView = (id: string) => {
-    console.log('View package:', id);
+  const handleView = (_id: string) => {
+    // TODO: Navigate to package detail page
   };
 
-  const handleReceive = (id: string) => {
-    console.log('Receive package:', id);
+  const handleReceive = (_id: string) => {
+    // TODO: API call to mark package as received
   };
 
-  const handlePickup = (id: string) => {
-    console.log('Pickup package:', id);
+  const handlePickup = (_id: string) => {
+    // TODO: API call to mark package as picked up
   };
 
   return (

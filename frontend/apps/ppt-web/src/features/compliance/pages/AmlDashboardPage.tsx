@@ -80,7 +80,7 @@ export const AmlDashboardPage: React.FC = () => {
         setAssessments([]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load AML data');
-        console.error('Failed to load AML data:', err);
+        // Error is shown to user via setError, logging handled by error boundary
       } finally {
         setIsLoading(false);
       }
@@ -91,14 +91,12 @@ export const AmlDashboardPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleInitiateEdd = useCallback((assessmentId: string) => {
-    console.log('Initiate EDD for assessment:', assessmentId);
-    // Navigate to EDD initiation
+  const handleInitiateEdd = useCallback((_assessmentId: string) => {
+    // TODO: Navigate to EDD initiation
   }, []);
 
-  const handleReview = useCallback((assessmentId: string) => {
-    console.log('Review assessment:', assessmentId);
-    // Open review modal
+  const handleReview = useCallback((_assessmentId: string) => {
+    // TODO: Open review modal
   }, []);
 
   const filteredAssessments = assessments.filter((a) => {

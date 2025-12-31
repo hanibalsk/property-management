@@ -368,8 +368,8 @@ export function CompetitiveAnalysisPage({ listingId }: CompetitiveAnalysisPagePr
               <div className="bg-white rounded-lg shadow-sm border p-6">
                 <h3 className="text-lg font-medium mb-4">Add Virtual Tour</h3>
                 <VirtualTourForm
-                  onSubmit={async (data) => {
-                    console.log('Creating tour:', data);
+                  onSubmit={async (_data) => {
+                    // TODO: API call to create tour
                     setShowTourForm(false);
                   }}
                   onCancel={() => setShowTourForm(false)}
@@ -379,7 +379,9 @@ export function CompetitiveAnalysisPage({ listingId }: CompetitiveAnalysisPagePr
 
             <VirtualTourViewer
               tour={mockTour}
-              onHotspotClick={(hotspot) => console.log('Hotspot clicked:', hotspot)}
+              onHotspotClick={(_hotspot) => {
+                // TODO: Handle hotspot click - show info panel
+              }}
               className="h-[500px]"
             />
           </div>
@@ -400,7 +402,9 @@ export function CompetitiveAnalysisPage({ listingId }: CompetitiveAnalysisPagePr
                 {showPricingDetails ? (
                   <PricingAnalysisPanel
                     analysis={mockPricingAnalysis}
-                    onRefresh={() => console.log('Refreshing pricing...')}
+                    onRefresh={() => {
+                      // TODO: API call to refresh pricing analysis
+                    }}
                   />
                 ) : (
                   <div className="bg-white rounded-lg shadow-sm border p-6 flex items-center justify-center h-full">
@@ -430,7 +434,9 @@ export function CompetitiveAnalysisPage({ listingId }: CompetitiveAnalysisPagePr
               <div className="lg:col-span-1">
                 <NeighborhoodInsightsCard
                   insights={mockNeighborhoodInsights}
-                  onRefresh={() => console.log('Refreshing insights...')}
+                  onRefresh={() => {
+                    // TODO: API call to refresh neighborhood insights
+                  }}
                   onViewAmenities={() => setShowAmenities(true)}
                 />
               </div>
@@ -495,7 +501,9 @@ export function CompetitiveAnalysisPage({ listingId }: CompetitiveAnalysisPagePr
                     pricePerSqm: 2785,
                     currency: 'EUR',
                   }}
-                  onViewDetails={(comp) => console.log('View comparable:', comp)}
+                  onViewDetails={(_comp) => {
+                    // TODO: Navigate to comparable property detail
+                  }}
                 />
               </div>
               <div className="lg:col-span-1 space-y-6">

@@ -291,9 +291,15 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
           <ApiKeysList
             apiKeys={apiKeys}
             onCreateKey={() => setShowCreateKeyDialog(true)}
-            onRotateKey={(id) => console.log('Rotate key:', id)}
-            onRevokeKey={(id) => console.log('Revoke key:', id)}
-            onViewUsage={(id) => console.log('View usage:', id)}
+            onRotateKey={(_id) => {
+              // TODO: API call to rotate key
+            }}
+            onRevokeKey={(_id) => {
+              // TODO: API call to revoke key
+            }}
+            onViewUsage={(_id) => {
+              // TODO: Navigate to usage analytics
+            }}
           />
         )}
 
@@ -301,12 +307,24 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
           <WebhooksList
             webhooks={webhooks}
             onCreateWebhook={() => setShowCreateWebhookDialog(true)}
-            onEditWebhook={(id) => console.log('Edit webhook:', id)}
-            onDeleteWebhook={(id) => console.log('Delete webhook:', id)}
-            onTestWebhook={(id) => console.log('Test webhook:', id)}
-            onViewDeliveries={(id) => console.log('View deliveries:', id)}
-            onRotateSecret={(id) => console.log('Rotate secret:', id)}
-            onToggleActive={(id, active) => console.log('Toggle active:', id, active)}
+            onEditWebhook={(_id) => {
+              // TODO: Navigate to webhook edit
+            }}
+            onDeleteWebhook={(_id) => {
+              // TODO: API call to delete webhook
+            }}
+            onTestWebhook={(_id) => {
+              // TODO: API call to test webhook
+            }}
+            onViewDeliveries={(_id) => {
+              // TODO: Navigate to delivery logs
+            }}
+            onRotateSecret={(_id) => {
+              // TODO: API call to rotate secret
+            }}
+            onToggleActive={(_id, _active) => {
+              // TODO: API call to toggle active state
+            }}
           />
         )}
 
@@ -315,7 +333,9 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
             <ApiDocumentation
               endpoints={[]}
               changelog={[]}
-              onTestEndpoint={(endpoint) => console.log('Test endpoint:', endpoint)}
+              onTestEndpoint={(_endpoint) => {
+                // TODO: Open API tester modal
+              }}
             />
             <ApiChangelogList changelog={[]} />
           </div>
@@ -327,7 +347,9 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
             <RateLimitTierComparison
               tiers={rateLimitTiers}
               currentTier={account.tier}
-              onSelectTier={(tier) => console.log('Select tier:', tier)}
+              onSelectTier={(_tier) => {
+                // TODO: Navigate to tier upgrade flow
+              }}
             />
           </div>
         )}
@@ -335,8 +357,12 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
         {activeTab === 'sdks' && (
           <SdkDownloadList
             languages={sdkLanguages}
-            onDownload={(lang) => console.log('Download SDK:', lang)}
-            onViewVersions={(lang) => console.log('View versions:', lang)}
+            onDownload={(_lang) => {
+              // TODO: Trigger SDK download
+            }}
+            onViewVersions={(_lang) => {
+              // TODO: Navigate to version history
+            }}
           />
         )}
       </div>

@@ -91,7 +91,9 @@ export function PendingBookingsPage() {
         isLoading={isLoading || isProcessing}
         isManager={true}
         title="Pending Booking Approvals"
-        onPageChange={() => {}}
+        onPageChange={(_page) => {
+          // TODO: Implement pagination for pending bookings
+        }}
         onView={handleView}
         onApprove={handleApprove}
         onReject={handleRejectClick}

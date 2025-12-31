@@ -344,6 +344,15 @@ impl TotpService {
             encryption_key: Some(key),
         }
     }
+
+    /// Create a test instance with default settings and test encryption key.
+    /// Use this in tests instead of `default()` to avoid environment variable requirements.
+    pub fn test_default() -> Self {
+        Self::with_encryption_key(
+            "Property Management".to_string(),
+            Self::insecure_dev_fallback_key(),
+        )
+    }
 }
 
 #[cfg(test)]
@@ -352,7 +361,7 @@ mod tests {
 
     #[test]
     fn test_generate_secret() {
-        let service = TotpService::default();
+        let service = TotpService::test_default();
         let secret = service.generate_secret().unwrap();
         assert!(!secret.is_empty());
         // Base32 encoded secrets should only contain valid chars
@@ -363,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_generate_qr_uri() {
-        let service = TotpService::default();
+        let service = TotpService::test_default();
         let secret = service.generate_secret().unwrap();
         let uri = service
             .generate_qr_uri("test@example.com", &secret)
@@ -376,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_generate_backup_codes() {
-        let service = TotpService::default();
+        let service = TotpService::test_default();
         let (plain, hashed) = service.generate_backup_codes().unwrap();
 
         assert_eq!(plain.len(), 10);
@@ -395,7 +404,7 @@ mod tests {
 
     #[test]
     fn test_verify_backup_code() {
-        let service = TotpService::default();
+        let service = TotpService::test_default();
         let (plain, hashed) = service.generate_backup_codes().unwrap();
 
         // Should find the first code
@@ -413,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_verify_backup_code_with_dashes() {
-        let service = TotpService::default();
+        let service = TotpService::test_default();
         let (plain, hashed) = service.generate_backup_codes().unwrap();
 
         // Should work with dashes
@@ -463,16 +472,16 @@ mod tests {
 
     #[test]
     fn test_encryption_in_development_mode() {
-        // In development mode (RUST_ENV=development), TotpService::default()
-        // should use the development fallback key and encryption should succeed.
-        // This test verifies that the dev mode fallback works correctly.
-        let service = TotpService::default();
+        // Using test_default() to get a service with the development fallback key.
+        // This test verifies that the dev mode fallback key works correctly for
+        // encryption and decryption.
+        let service = TotpService::test_default();
 
-        // In dev mode, encryption should succeed with the fallback key
+        // Encryption should succeed with the fallback key
         let result = service.encrypt_secret("test-secret");
         assert!(
             result.is_ok(),
-            "Encryption should succeed in development mode"
+            "Encryption should succeed with test default key"
         );
 
         // Verify we can decrypt what we encrypted

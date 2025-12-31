@@ -79,7 +79,7 @@ export const ContentModerationPage: React.FC = () => {
         setCases([]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load moderation data');
-        console.error('Failed to load moderation data:', err);
+        // Error is shown to user via setError, logging handled by error boundary
       } finally {
         setIsLoading(false);
       }
@@ -90,24 +90,20 @@ export const ContentModerationPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleAssign = useCallback((caseId: string) => {
-    console.log('Assign case:', caseId);
-    // API call to assign case
+  const handleAssign = useCallback((_caseId: string) => {
+    // TODO: API call to assign case to current user
   }, []);
 
-  const handleTakeAction = useCallback((caseId: string) => {
-    console.log('Take action on case:', caseId);
-    // Open action modal
+  const handleTakeAction = useCallback((_caseId: string) => {
+    // TODO: Open action modal
   }, []);
 
-  const handleViewContent = useCallback((caseId: string) => {
-    console.log('View content for case:', caseId);
-    // Navigate to content view
+  const handleViewContent = useCallback((_caseId: string) => {
+    // TODO: Navigate to content view
   }, []);
 
-  const handleDecideAppeal = useCallback((caseId: string) => {
-    console.log('Decide appeal for case:', caseId);
-    // Open appeal decision modal
+  const handleDecideAppeal = useCallback((_caseId: string) => {
+    // TODO: Open appeal decision modal
   }, []);
 
   const handleFilterByPriority = useCallback((priority: number) => {
@@ -121,7 +117,7 @@ export const ContentModerationPage: React.FC = () => {
   const handleShowOverdue = useCallback(() => {
     // Filter to show overdue cases
     setStatusFilter('pending');
-    console.log('Show overdue cases');
+    // TODO: Add overdue filter parameter when API supports it
   }, []);
 
   const filteredCases = cases.filter((c) => {

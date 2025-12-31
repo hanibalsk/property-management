@@ -205,10 +205,18 @@ export function ViewFormPage({
         <FormBuilder
           fields={form.fields}
           isEditing={false}
-          onAddField={() => {}}
-          onUpdateField={() => {}}
-          onDeleteField={() => {}}
-          onReorderFields={() => {}}
+          onAddField={() => {
+            // Read-only preview mode - editing disabled
+          }}
+          onUpdateField={() => {
+            // Read-only preview mode - editing disabled
+          }}
+          onDeleteField={() => {
+            // Read-only preview mode - editing disabled
+          }}
+          onReorderFields={() => {
+            // Read-only preview mode - editing disabled
+          }}
         />
       ) : (
         <>

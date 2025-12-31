@@ -175,9 +175,8 @@ export function ImportPage() {
 
   // Handle template download
   const handleDownloadTemplate = useCallback(
-    (template: ImportTemplateSummary, format: 'csv' | 'xlsx') => {
-      console.log('Downloading template:', template.name, 'as', format);
-      // In real implementation, trigger download
+    (_template: ImportTemplateSummary, _format: 'csv' | 'xlsx') => {
+      // TODO: API call to download template
     },
     []
   );
@@ -250,11 +249,19 @@ export function ImportPage() {
           <ImportTemplateList
             templates={MOCK_TEMPLATES}
             onSelect={handleSelectTemplate}
-            onEdit={() => {}}
+            onEdit={(_template) => {
+              // Not available in import flow - use Templates page to edit
+            }}
             onDownload={handleDownloadTemplate}
-            onDuplicate={() => {}}
-            onDelete={() => {}}
-            onCreate={() => {}}
+            onDuplicate={(_template) => {
+              // Not available in import flow - use Templates page to duplicate
+            }}
+            onDelete={(_template) => {
+              // Not available in import flow - use Templates page to delete
+            }}
+            onCreate={() => {
+              // Not available in import flow - use Templates page to create
+            }}
           />
         )}
 
@@ -322,9 +329,15 @@ export function ImportPage() {
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <ImportJobList
             jobs={MOCK_JOB_HISTORY}
-            onViewJob={() => {}}
-            onRetryJob={() => {}}
-            onViewErrors={() => {}}
+            onViewJob={(_jobId) => {
+              // TODO: Navigate to job details view
+            }}
+            onRetryJob={(_jobId) => {
+              // TODO: API call to retry failed job
+            }}
+            onViewErrors={(_jobId) => {
+              // TODO: Navigate to job errors view
+            }}
           />
         </div>
       )}

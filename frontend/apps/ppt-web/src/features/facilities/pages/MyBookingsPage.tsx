@@ -88,7 +88,9 @@ export function MyBookingsPage() {
         isLoading={isLoading}
         isManager={false}
         title="My Bookings"
-        onPageChange={() => {}}
+        onPageChange={(_page) => {
+          // TODO: Implement pagination for bookings
+        }}
         onStatusFilter={handleStatusFilter}
         onView={handleView}
         onCancel={handleCancelClick}

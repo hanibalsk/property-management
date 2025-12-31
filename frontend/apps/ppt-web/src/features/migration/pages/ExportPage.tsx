@@ -173,7 +173,9 @@ export function ExportPage() {
           <ExportCategorySelector
             categories={MOCK_CATEGORIES}
             onExport={handleExport}
-            onCancel={() => {}}
+            onCancel={() => {
+              // Cancel returns to previous page or does nothing (no modal to close)
+            }}
           />
         )}
 
