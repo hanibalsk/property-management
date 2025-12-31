@@ -1582,10 +1582,149 @@ pub async fn void_esignature_workflow(
     tag = "Integrations"
 )]
 pub async fn send_esignature_reminder(
-    State(_state): State<AppState>,
-    Path(_path): Path<ResourceIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<ResourceIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement reminder sending
+    use db::models::signature_request::SignatureRequestStatus;
+
+    // Get the signature request
+    let request = state
+        .signature_request_repo
+        .find_by_id(path.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, request_id = %path.id, "Failed to find signature request");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DB_ERROR",
+                    "Failed to find signature request",
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "NOT_FOUND",
+                    "Signature request not found",
+                )),
+            )
+        })?;
+
+    // Verify the request is in a state where reminders can be sent
+    let can_send_reminder = matches!(
+        request.status,
+        SignatureRequestStatus::Pending | SignatureRequestStatus::InProgress
+    );
+
+    if !can_send_reminder {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_STATUS",
+                "Cannot send reminder for completed or cancelled requests",
+            )),
+        ));
+    }
+
+    // Check if request has expired
+    if request.is_expired() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "REQUEST_EXPIRED",
+                "Cannot send reminder for expired requests",
+            )),
+        ));
+    }
+
+    // Get signers who haven't signed yet (using signers embedded in request)
+    let unsigned_signers: Vec<_> = request.signers.iter().filter(|s| !s.has_signed()).collect();
+
+    if unsigned_signers.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "NO_PENDING_SIGNERS",
+                "All signers have already signed",
+            )),
+        ));
+    }
+
+    // Get document name for the email (use subject as fallback)
+    let document_name = request.subject.as_deref().unwrap_or("Document");
+
+    // Send reminder emails to unsigned signers
+    let mut reminders_sent = 0;
+    for signer in &unsigned_signers {
+        let email_result = state
+            .email_service
+            .send_template_email(
+                &signer.email,
+                "signature_reminder",
+                serde_json::json!({
+                    "signer_name": signer.name,
+                    "document_name": document_name,
+                    "request_id": request.id.to_string(),
+                    "expires_at": request.expires_at.map(|e| e.to_rfc3339()),
+                }),
+            )
+            .await;
+
+        match email_result {
+            Ok(_) => {
+                reminders_sent += 1;
+                tracing::info!(
+                    signer_email = %signer.email,
+                    request_id = %path.id,
+                    "Signature reminder sent successfully"
+                );
+            }
+            Err(e) => {
+                tracing::error!(
+                    error = %e,
+                    signer_email = %signer.email,
+                    request_id = %path.id,
+                    "Failed to send signature reminder email"
+                );
+                // Continue sending to other signers even if one fails
+            }
+        }
+    }
+
+    // Record the reminder in the audit log
+    if let Err(e) = state
+        .audit_log_repo
+        .create(db::models::audit_log::CreateAuditLog {
+            user_id: None, // System action
+            action: db::models::audit_log::AuditAction::ResourceUpdated,
+            resource_type: Some("signature_request".to_string()),
+            resource_id: Some(path.id),
+            org_id: Some(request.organization_id),
+            details: Some(serde_json::json!({
+                "event": "esignature_reminder_sent",
+                "document_name": document_name,
+                "reminders_sent": reminders_sent,
+                "total_unsigned": unsigned_signers.len(),
+            })),
+            old_values: None,
+            new_values: None,
+            ip_address: None,
+            user_agent: None,
+        })
+        .await
+    {
+        tracing::error!(error = %e, "Failed to create audit log for reminder");
+        // Don't fail the request for audit log failure
+    }
+
+    tracing::info!(
+        request_id = %path.id,
+        reminders_sent = %reminders_sent,
+        "E-signature reminders processed"
+    );
+
     Ok(StatusCode::OK)
 }
 

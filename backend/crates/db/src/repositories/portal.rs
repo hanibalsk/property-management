@@ -310,18 +310,25 @@ impl PortalRepository {
     // Favorites (Story 16.2)
     // ========================================================================
 
-    /// Add listing to favorites.
+    /// Add listing to favorites with price tracking (Story 84.6).
+    ///
+    /// When a listing is added to favorites, the current price is stored as
+    /// original_price. This enables price change notifications when the listing
+    /// price changes.
     pub async fn add_favorite(
         &self,
         user_id: Uuid,
         listing_id: Uuid,
         notes: Option<String>,
     ) -> Result<Favorite, SqlxError> {
-        // Store original price for tracking price changes
+        // Store original price from the listing at the time of favoriting
+        // This enables price change detection later
         let favorite = sqlx::query_as::<_, Favorite>(
             r#"
-            INSERT INTO favorites (user_id, listing_id, notes)
-            VALUES ($1, $2, $3)
+            INSERT INTO favorites (user_id, listing_id, notes, original_price)
+            SELECT $1, $2, $3, l.price
+            FROM listings l
+            WHERE l.id = $2
             ON CONFLICT (user_id, listing_id) DO UPDATE SET
                 notes = COALESCE($3, favorites.notes),
                 created_at = favorites.created_at
@@ -352,12 +359,18 @@ impl PortalRepository {
         Ok(result.rows_affected() > 0)
     }
 
-    /// Get user's favorites with listing details.
+    /// Get user's favorites with listing details and price change tracking (Story 84.6).
+    ///
+    /// Returns favorites with price change detection. If the listing's current price
+    /// differs from the price when it was favorited (stored in original_price),
+    /// the price_changed flag is set to true.
     pub async fn get_favorites(
         &self,
         user_id: Uuid,
     ) -> Result<Vec<FavoriteWithListing>, SqlxError> {
-        // TODO: Add original_price column to favorites table for price change tracking
+        // Query favorites with original_price for price change tracking
+        // The original_price column stores the price at the time the favorite was added
+        // Note: original_price column should be added to favorites table via migration
         let rows = sqlx::query_as::<_, FavoriteWithListingRow>(
             r#"
             SELECT
@@ -365,7 +378,7 @@ impl PortalRepository {
                 l.property_type, l.transaction_type,
                 (SELECT url FROM listing_photos WHERE listing_id = l.id ORDER BY display_order LIMIT 1) as photo_url,
                 l.status,
-                NULL::bigint as original_price,
+                COALESCE(f.original_price, l.price) as original_price,
                 f.created_at
             FROM favorites f
             JOIN listings l ON l.id = f.listing_id
@@ -377,23 +390,31 @@ impl PortalRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        // Convert to FavoriteWithListing
+        // Convert to FavoriteWithListing with price change detection
         let favorites = rows
             .into_iter()
-            .map(|r| FavoriteWithListing {
-                id: r.id,
-                listing_id: r.listing_id,
-                title: r.title,
-                price: r.price,
-                currency: r.currency,
-                city: r.city,
-                property_type: r.property_type,
-                transaction_type: r.transaction_type,
-                photo_url: r.photo_url,
-                status: r.status,
-                price_changed: false, // TODO: Implement price tracking
-                original_price: r.original_price,
-                created_at: r.created_at,
+            .map(|r| {
+                // Detect price change by comparing current price with original price
+                // Price changed if original_price exists and differs from current price
+                let price_changed = r
+                    .original_price
+                    .map_or(false, |original| r.price != original);
+
+                FavoriteWithListing {
+                    id: r.id,
+                    listing_id: r.listing_id,
+                    title: r.title,
+                    price: r.price,
+                    currency: r.currency,
+                    city: r.city,
+                    property_type: r.property_type,
+                    transaction_type: r.transaction_type,
+                    photo_url: r.photo_url,
+                    status: r.status,
+                    price_changed,
+                    original_price: r.original_price,
+                    created_at: r.created_at,
+                }
             })
             .collect();
 

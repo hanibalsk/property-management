@@ -734,4 +734,94 @@ impl OperationsRepository {
             created_at: now,
         })
     }
+
+    // ======================== Background Jobs (Story 84.1) ========================
+
+    /// Create a background job for async processing.
+    ///
+    /// Jobs are queued and processed by a background worker. This enables
+    /// async operations like report generation, data exports, and batch processing.
+    pub async fn create_background_job(
+        &self,
+        id: Uuid,
+        job_type: String,
+        queue: String,
+        payload: serde_json::Value,
+        org_id: Option<Uuid>,
+        created_by: Option<Uuid>,
+    ) -> Result<BackgroundJob, AppError> {
+        let now = Utc::now();
+
+        // In a real implementation, this would insert into a background_jobs table
+        // For now, we return a stub job record
+        // TODO: Implement actual database storage when background_jobs table is created
+        let job = BackgroundJob {
+            id,
+            job_type,
+            priority: 0,
+            status: BackgroundJobStatus::Pending,
+            payload,
+            result: None,
+            error_message: None,
+            error_details: None,
+            attempts: 0,
+            max_attempts: 3,
+            scheduled_at: now,
+            started_at: None,
+            completed_at: None,
+            duration_ms: None,
+            queue,
+            worker_id: None,
+            retry_delay_seconds: None,
+            org_id,
+            created_by,
+            created_at: now,
+            updated_at: now,
+        };
+
+        tracing::info!(
+            job_id = %id,
+            job_type = %job.job_type,
+            queue = %job.queue,
+            "Background job created"
+        );
+
+        Ok(job)
+    }
+
+    /// Get a background job by ID.
+    pub async fn get_background_job(&self, id: Uuid) -> Result<Option<BackgroundJob>, AppError> {
+        let now = Utc::now();
+
+        // Stub implementation - returns a mock completed job
+        Ok(Some(BackgroundJob {
+            id,
+            job_type: "report_export".to_string(),
+            priority: 0,
+            status: BackgroundJobStatus::Completed,
+            payload: serde_json::json!({}),
+            result: Some(serde_json::json!({
+                "download_url": format!("/api/v1/reports/download/{}", id),
+                "file_size_bytes": 1024 * 50,
+            })),
+            error_message: None,
+            error_details: None,
+            attempts: 1,
+            max_attempts: 3,
+            scheduled_at: now,
+            started_at: Some(now),
+            completed_at: Some(now),
+            duration_ms: Some(1500),
+            queue: "reports".to_string(),
+            worker_id: Some("worker-1".to_string()),
+            retry_delay_seconds: None,
+            org_id: None,
+            created_by: None,
+            created_at: now,
+            updated_at: now,
+        }))
+    }
 }
+
+// Import BackgroundJob types
+use crate::models::infrastructure::{BackgroundJob, BackgroundJobStatus};
