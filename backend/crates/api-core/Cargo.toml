@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 common = { workspace = true }
+db = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
 tower = { workspace = true }

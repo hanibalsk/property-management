@@ -52,17 +52,32 @@ impl AppConfig {
                 .unwrap_or_else(|_| "reality-portal-secret".to_string()),
             sso_callback_url: std::env::var("SSO_CALLBACK_URL")
                 .unwrap_or_else(|_| "http://localhost:8081/api/v1/sso/callback".to_string()),
-            jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| {
-                // Only allow dev fallback when explicitly running in development mode
-                if std::env::var("RUST_ENV").unwrap_or_default() == "development" {
-                    tracing::warn!(
-                        "JWT_SECRET not set, using development default (DEVELOPMENT MODE ONLY)"
-                    );
-                    "development-secret-change-in-production".to_string()
-                } else {
-                    panic!("JWT_SECRET environment variable is required. Set RUST_ENV=development to use dev defaults.");
+            jwt_secret: {
+                // SECURITY: JWT secret validation with strict production requirements
+                let is_development = std::env::var("RUST_ENV").unwrap_or_default() == "development";
+                let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| {
+                    if is_development {
+                        tracing::warn!(
+                            "JWT_SECRET not set, using development default (DEVELOPMENT MODE ONLY)"
+                        );
+                        "development-secret-key-that-is-at-least-64-characters-long-for-testing".to_string()
+                    } else {
+                        panic!("JWT_SECRET environment variable is required. Set RUST_ENV=development to use dev defaults.");
+                    }
+                });
+
+                // SECURITY: Validate secret strength
+                if secret.len() < 32 {
+                    panic!("JWT_SECRET must be at least 32 characters long for minimum security");
                 }
-            }),
+                if !is_development && secret.len() < 64 {
+                    tracing::warn!(
+                        "JWT_SECRET is {} characters (minimum 64 recommended for production security)",
+                        secret.len()
+                    );
+                }
+                secret
+            },
         }
     }
 }

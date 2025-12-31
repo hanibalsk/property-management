@@ -270,18 +270,33 @@ async fn main() -> anyhow::Result<()> {
         std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
     let email_service = EmailService::new(base_url, email_enabled);
 
-    // Create JWT service - JWT_SECRET is required
+    // SECURITY: Create JWT service with strict secret validation
+    // - Production: JWT_SECRET required with minimum 64 characters (recommended)
+    // - Development: Falls back to dev default when RUST_ENV=development
+    let is_development = std::env::var("RUST_ENV").unwrap_or_default() == "development";
     let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| {
-        // Only allow dev fallback when explicitly running in development mode
-        if std::env::var("RUST_ENV").unwrap_or_default() == "development" {
+        if is_development {
             tracing::warn!("JWT_SECRET not set, using development default (DEVELOPMENT MODE ONLY)");
-            "development-secret-key-that-is-at-least-32-characters-long".to_string()
+            "development-secret-key-that-is-at-least-64-characters-long-for-testing".to_string()
         } else {
             panic!("JWT_SECRET environment variable is required. Set RUST_ENV=development to use dev defaults.");
         }
     });
-    let jwt_service = JwtService::new(&jwt_secret)
-        .expect("Failed to create JWT service - secret must be at least 32 characters");
+
+    // SECURITY: Validate JWT secret strength
+    // Production: Warn if less than 64 characters (security best practice)
+    // All environments: Fail if less than 32 characters (minimum security)
+    if jwt_secret.len() < 32 {
+        panic!("JWT_SECRET must be at least 32 characters long for minimum security");
+    }
+    if !is_development && jwt_secret.len() < 64 {
+        tracing::warn!(
+            "JWT_SECRET is {} characters (minimum 64 recommended for production security)",
+            jwt_secret.len()
+        );
+    }
+
+    let jwt_service = JwtService::new(&jwt_secret).expect("Failed to create JWT service");
 
     // Create application state
     let state = AppState::new(db_pool.clone(), email_service, jwt_service);
