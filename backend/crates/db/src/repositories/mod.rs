@@ -233,3 +233,8 @@ pub use owner_analytics::OwnerAnalyticsRepository;
 pub mod dispute;
 
 pub use dispute::{DisputeRepository, UpdateAttendanceData, UpdateSessionData};
+
+// Epic 71: Background Jobs Infrastructure (Phase 1.3)
+pub mod background_jobs;
+
+pub use background_jobs::BackgroundJobRepository;
