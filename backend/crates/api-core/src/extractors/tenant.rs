@@ -149,7 +149,7 @@ where
         if auth_user.is_platform_admin() {
             let role = auth_user.role.unwrap_or(TenantRole::SuperAdmin);
             // Insert role into extensions for authorization middleware
-            parts.extensions.insert(role.clone());
+            parts.extensions.insert(role);
             return Ok(ValidatedTenantExtractor(TenantContext::new(
                 tenant_id, user_id, role,
             )));
@@ -243,7 +243,7 @@ where
         // SECURITY: Insert database-validated role into extensions for authorization middleware.
         // This overwrites any role from the JWT, ensuring authorization uses the current
         // database role rather than potentially stale JWT claims.
-        parts.extensions.insert(role.clone());
+        parts.extensions.insert(role);
 
         Ok(ValidatedTenantExtractor(TenantContext::new(
             tenant_id, user_id, role,
