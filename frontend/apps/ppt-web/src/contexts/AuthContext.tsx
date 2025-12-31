@@ -4,7 +4,11 @@
  * Provides authentication state and methods throughout the application.
  * Handles login, logout, token refresh, and session management.
  *
+ * Uses @ppt/api-client for API communication and integrates with
+ * the token provider for secure token management across all API modules.
+ *
  * @see Story 79.2 - Authentication Flow Implementation
+ * @see Story 81.1 - Wire AuthContext to API client
  */
 
 import type React from 'react';
@@ -17,21 +21,22 @@ import {
   useRef,
   useState,
 } from 'react';
+import {
+  createAuthApi,
+  setTokenProvider,
+  clearTokenProvider,
+  AuthError,
+  type AuthUser,
+  type AuthErrorCode,
+} from '@ppt/api-client';
+
+// Re-export types from api-client for convenience
+export { AuthError };
+export type { AuthUser, AuthErrorCode };
 
 // ============================================================================
 // Types
 // ============================================================================
-
-/** User information returned from authentication */
-export interface AuthUser {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  role?: string;
-  organizationId?: string;
-  organizationName?: string;
-}
 
 /** Authentication state */
 export interface AuthState {
@@ -49,19 +54,6 @@ export interface LoginCredentials {
   password: string;
 }
 
-/** Login response from the API */
-interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: AuthUser;
-}
-
-/** Token refresh response from the API */
-interface RefreshResponse {
-  accessToken: string;
-  refreshToken: string;
-}
-
 /** Authentication context value */
 export interface AuthContextValue extends AuthState {
   /** Log in with email and password */
@@ -74,31 +66,12 @@ export interface AuthContextValue extends AuthState {
   getAccessToken: () => string | null;
 }
 
-/** Auth provider error types */
-export type AuthErrorCode =
-  | 'INVALID_CREDENTIALS'
-  | 'ACCOUNT_LOCKED'
-  | 'ACCOUNT_DISABLED'
-  | 'SESSION_EXPIRED'
-  | 'NETWORK_ERROR'
-  | 'UNKNOWN_ERROR';
-
-export class AuthError extends Error {
-  constructor(
-    message: string,
-    public readonly code: AuthErrorCode
-  ) {
-    super(message);
-    this.name = 'AuthError';
-  }
-}
-
 // ============================================================================
 // Constants
 // ============================================================================
 
 // API base URL - prefer environment configuration for different environments (dev/staging/prod)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 const ACCESS_TOKEN_KEY = 'ppt_access_token';
 const REFRESH_TOKEN_KEY = 'ppt_refresh_token';
 const USER_KEY = 'ppt_user';
@@ -175,35 +148,18 @@ const tokenStorage = {
 };
 
 // ============================================================================
-// API Helper
+// API Client Instance
 // ============================================================================
 
-async function authFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+/**
+ * Create a function that returns a configured auth API client.
+ * The accessToken is dynamically retrieved from storage.
+ */
+const getAuthApi = () =>
+  createAuthApi({
+    baseUrl: API_BASE_URL,
+    accessToken: tokenStorage.getAccessToken() ?? undefined,
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const message = errorData.message || 'Authentication request failed';
-
-    // Map HTTP status codes to error codes
-    let code: AuthErrorCode = 'UNKNOWN_ERROR';
-    if (response.status === 401) {
-      code = errorData.code === 'ACCOUNT_LOCKED' ? 'ACCOUNT_LOCKED' : 'INVALID_CREDENTIALS';
-    } else if (response.status === 403) {
-      code = 'ACCOUNT_DISABLED';
-    }
-
-    throw new AuthError(message, code);
-  }
-
-  return response.json();
-}
 
 // ============================================================================
 // Provider Component
@@ -218,6 +174,9 @@ interface AuthProviderProps {
  *
  * Wraps the application to provide authentication context.
  * Handles token storage, refresh, and session management.
+ *
+ * Integrates with @ppt/api-client's token provider to ensure
+ * all API modules can access the current authentication token.
  */
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -229,6 +188,53 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Derived state
   const isAuthenticated = user !== null;
+
+  /**
+   * Get the current access token.
+   * This is also used as the token provider for all API modules.
+   */
+  const getAccessToken = useCallback((): string | null => {
+    return tokenStorage.getAccessToken();
+  }, []);
+
+  /**
+   * Set up the token provider for all API modules.
+   * This ensures that all API calls automatically include the auth token.
+   */
+  useEffect(() => {
+    // Register the token provider with the api-client
+    setTokenProvider(getAccessToken);
+
+    // Clean up on unmount
+    return () => {
+      clearTokenProvider();
+    };
+  }, [getAccessToken]);
+
+  /**
+   * Internal token refresh implementation using the API client.
+   */
+  const refreshTokenInternal = useCallback(async (): Promise<string | null> => {
+    const refreshTokenValue = tokenStorage.getRefreshToken();
+    if (!refreshTokenValue) {
+      return null;
+    }
+
+    try {
+      const authApi = getAuthApi();
+      const response = await authApi.refreshToken({ refreshToken: refreshTokenValue });
+
+      tokenStorage.setAccessToken(response.accessToken);
+      tokenStorage.setRefreshToken(response.refreshToken);
+
+      return response.accessToken;
+    } catch (error) {
+      // Refresh failed, clear auth state
+      tokenStorage.clear();
+      setUser(null);
+      throw error;
+    }
+  }, []);
 
   /**
    * Initialize auth state from storage on mount.
@@ -246,14 +252,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // In production, we might verify with the server
           setUser(storedUser);
         } else if (refreshTokenValue) {
-          // Try to refresh the token - inline implementation to avoid dependency
+          // Try to refresh the token using the API client
           try {
-            const response = await authFetch<RefreshResponse>('/auth/refresh', {
-              method: 'POST',
-              body: JSON.stringify({ refreshToken: refreshTokenValue }),
-            });
+            const authApi = getAuthApi();
+            const response = await authApi.refreshToken({ refreshToken: refreshTokenValue });
             tokenStorage.setAccessToken(response.accessToken);
             tokenStorage.setRefreshToken(response.refreshToken);
+            // Note: refresh doesn't return user, so we keep stored user if available
+            if (storedUser) {
+              setUser(storedUser);
+            }
           } catch {
             tokenStorage.clear();
           }
@@ -267,33 +275,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     initializeAuth();
-  }, []);
-
-  /**
-   * Internal token refresh implementation.
-   */
-  const refreshTokenInternal = useCallback(async (): Promise<string | null> => {
-    const refreshTokenValue = tokenStorage.getRefreshToken();
-    if (!refreshTokenValue) {
-      return null;
-    }
-
-    try {
-      const response = await authFetch<RefreshResponse>('/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify({ refreshToken: refreshTokenValue }),
-      });
-
-      tokenStorage.setAccessToken(response.accessToken);
-      tokenStorage.setRefreshToken(response.refreshToken);
-
-      return response.accessToken;
-    } catch (error) {
-      // Refresh failed, clear auth state
-      tokenStorage.clear();
-      setUser(null);
-      throw error;
-    }
   }, []);
 
   /**
@@ -316,23 +297,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [refreshTokenInternal]);
 
   /**
-   * Get the current access token.
-   */
-  const getAccessToken = useCallback((): string | null => {
-    return tokenStorage.getAccessToken();
-  }, []);
-
-  /**
-   * Log in with email and password.
+   * Log in with email and password using the API client.
    */
   const login = useCallback(async (credentials: LoginCredentials): Promise<void> => {
     setIsLoading(true);
 
     try {
-      const response = await authFetch<LoginResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(credentials),
-      });
+      const authApi = getAuthApi();
+      const response = await authApi.login(credentials);
 
       // Store tokens and user
       tokenStorage.setAccessToken(response.accessToken);
@@ -346,26 +318,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   /**
-   * Log out the current user.
+   * Log out the current user using the API client.
    */
   const logout = useCallback(async (): Promise<void> => {
     const refreshTokenValue = tokenStorage.getRefreshToken();
-    const accessToken = tokenStorage.getAccessToken();
 
     // Clear local state first for immediate UI feedback
     tokenStorage.clear();
     setUser(null);
 
     // Attempt to invalidate the refresh token on the server
-    if (refreshTokenValue && accessToken) {
+    if (refreshTokenValue) {
       try {
-        await authFetch('/auth/logout', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ refreshToken: refreshTokenValue }),
-        });
+        const authApi = getAuthApi();
+        await authApi.logout({ refreshToken: refreshTokenValue });
       } catch {
         // Ignore errors - we've already cleared local state
       }

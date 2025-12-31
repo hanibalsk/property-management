@@ -5,7 +5,7 @@
 use crate::state::AppState;
 use api_core::{AuthUser, TenantExtractor};
 use axum::{
-    extract::{Path, Query, State},
+    extract::{ConnectInfo, Path, Query, State},
     http::StatusCode,
     routing::{delete, get, post, put},
     Json, Router,
@@ -1420,9 +1420,24 @@ async fn submit_form(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    headers: axum::http::HeaderMap,
+    ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
     Path(id): Path<Uuid>,
     Json(req): Json<SubmitFormRequest>,
 ) -> Result<(StatusCode, Json<SubmitFormResponse>), (StatusCode, Json<ErrorResponse>)> {
+    // Extract IP from X-Forwarded-For header or connection address
+    let ip_address = headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(',').next())
+        .map(|s| s.trim().to_string())
+        .or_else(|| Some(addr.ip().to_string()));
+
+    // Extract User-Agent from headers
+    let user_agent = headers
+        .get(axum::http::header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
     let repo = &state.form_repo;
 
     // Get form details
@@ -1547,8 +1562,8 @@ async fn submit_form(
                 Some(db::models::SignatureData {
                     signature_image: s.signature_image,
                     signed_at: chrono::Utc::now(),
-                    ip_address: None,
-                    user_agent: None,
+                    ip_address: ip_address.clone(),
+                    user_agent: user_agent.clone(),
                 })
             }
             None => None,
@@ -1563,8 +1578,8 @@ async fn submit_form(
             building_id: None, // could be extracted from user context if needed
             unit_id: None,     // could be extracted from user context if needed
             data: submit_data,
-            ip_address: None, // TODO: Get IP from request
-            user_agent: None, // TODO: Get User-Agent from request
+            ip_address: ip_address.clone(),
+            user_agent: user_agent.clone(),
         })
         .await
         .map_err(|e| {
