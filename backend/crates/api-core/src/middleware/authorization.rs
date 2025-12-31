@@ -14,14 +14,64 @@ use std::collections::HashSet;
 
 /// Permission requirements for route access.
 ///
-/// Use this to define what roles can access specific routes.
+/// Defines what roles can access specific routes using either hierarchical levels
+/// or explicit role allowlists.
+///
+/// # Authorization Modes
+///
+/// This struct supports two mutually exclusive authorization modes:
+///
+/// ## 1. Hierarchical Mode (default)
+///
+/// When `allowed_roles` is `None`, authorization uses `min_role_level`.
+/// Any role with `TenantRole::level() >= min_role_level` is granted access.
+///
+/// ```text
+/// SuperAdmin (100) -> PlatformAdmin (95) -> OrgAdmin (90) -> Manager (80)
+///     -> TechnicalManager (75) -> Owner (60) -> OwnerDelegate (55)
+///     -> PropertyManager (50) -> RealEstateAgent (45) -> Tenant (40)
+///     -> Resident (30) -> Guest (10)
+/// ```
+///
+/// ## 2. Allowlist Mode (override)
+///
+/// When `allowed_roles` is `Some(...)`, the role hierarchy is **completely ignored**.
+/// Only the explicitly listed roles are granted access, regardless of their level.
+///
+/// # Precedence Rule
+///
+/// **`allowed_roles` takes precedence over `min_role_level` when specified.**
+///
+/// This allows for non-hierarchical permissions like "only Owner and Manager"
+/// without including higher-level admins, or specific cross-cutting permissions.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// // Hierarchical: Manager (level 80) and above
+/// Permission::min_level(80, "Manager access")
+///
+/// // Allowlist: Only these specific roles, ignoring hierarchy
+/// Permission {
+///     min_role_level: 0, // ignored when allowed_roles is Some
+///     allowed_roles: Some(HashSet::from([TenantRole::Owner, TenantRole::Manager])),
+///     description: "Owner or Manager only",
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Permission {
-    /// Minimum role level required (based on TenantRole hierarchy)
+    /// Minimum role level required (based on TenantRole hierarchy).
+    ///
+    /// Only used when `allowed_roles` is `None`. Higher values are more restrictive.
+    /// See `TenantRole::level()` for the complete hierarchy.
     pub min_role_level: u8,
-    /// Specific roles allowed (if Some, overrides min_role_level)
+    /// Explicit set of allowed roles.
+    ///
+    /// **When `Some`: Completely overrides `min_role_level`.**
+    /// Only roles in this set are granted access, regardless of their hierarchy level.
+    /// When `None`: Falls back to hierarchical authorization using `min_role_level`.
     pub allowed_roles: Option<HashSet<TenantRole>>,
-    /// Description for logging/documentation
+    /// Human-readable description for logging and documentation.
     pub description: &'static str,
 }
 
@@ -36,6 +86,12 @@ impl Permission {
     }
 
     /// Check if a role satisfies this permission.
+    ///
+    /// # Evaluation Order
+    ///
+    /// 1. If `allowed_roles` is `Some`, checks if `role` is in the allowlist.
+    ///    The role hierarchy (`min_role_level`) is **not consulted**.
+    /// 2. If `allowed_roles` is `None`, checks if `role.level() >= min_role_level`.
     pub fn is_satisfied_by(&self, role: &TenantRole) -> bool {
         if let Some(ref allowed) = self.allowed_roles {
             allowed.contains(role)
