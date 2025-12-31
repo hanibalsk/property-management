@@ -261,7 +261,10 @@ CREATE POLICY background_jobs_org_insert ON background_jobs
 -- Policy: Only system can update jobs (workers use service account)
 CREATE POLICY background_jobs_system_update ON background_jobs
     FOR UPDATE
-    USING (is_current_user_super_admin() OR current_setting('app.is_system', true) = 'true');
+    USING (
+        is_current_user_super_admin()
+        OR COALESCE(NULLIF(current_setting('app.is_system', true), ''), 'false') = 'true'
+    );
 
 -- Grant permissions for service role to manage jobs
 -- (Assuming a service role exists for background workers)

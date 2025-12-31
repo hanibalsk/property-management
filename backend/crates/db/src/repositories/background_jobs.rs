@@ -232,15 +232,20 @@ impl BackgroundJobRepository {
 
         let total = count_q.fetch_one(&self.pool).await?;
 
-        // Data query
+        // Data query - use parameterized LIMIT/OFFSET for safety
+        param_idx += 1;
+        let limit_param = param_idx;
+        param_idx += 1;
+        let offset_param = param_idx;
+
         let data_query = format!(
             r#"
             SELECT * FROM background_jobs
             WHERE {}
             ORDER BY priority DESC, created_at DESC
-            LIMIT {} OFFSET {}
+            LIMIT ${} OFFSET ${}
             "#,
-            where_clause, limit, offset
+            where_clause, limit_param, offset_param
         );
 
         let mut data_q = sqlx::query_as::<_, BackgroundJob>(&data_query);
@@ -263,6 +268,10 @@ impl BackgroundJobRepository {
         if let Some(to_time) = query.to_time {
             data_q = data_q.bind(to_time);
         }
+
+        // Bind LIMIT and OFFSET parameters
+        data_q = data_q.bind(limit);
+        data_q = data_q.bind(offset);
 
         let jobs = data_q.fetch_all(&self.pool).await?;
 

@@ -622,11 +622,14 @@ pub async fn list_jobs(
     State(state): State<AppState>,
     Query(query): Query<JobQueryParams>,
 ) -> Result<Json<PaginatedResponse<BackgroundJob>>, (StatusCode, Json<ErrorResponse>)> {
-    use db::models::infrastructure::BackgroundJobQuery;
+    use db::models::infrastructure::{BackgroundJobQuery, BackgroundJobStatus};
 
     let job_query = BackgroundJobQuery {
         job_type: query.job_type,
-        status: None, // Would need to parse status string
+        status: query
+            .status
+            .as_ref()
+            .and_then(|s| s.parse::<BackgroundJobStatus>().ok()),
         queue: query.queue,
         org_id: query.org_id,
         from_time: None,

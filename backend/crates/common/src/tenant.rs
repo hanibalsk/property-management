@@ -66,7 +66,7 @@ impl TenantContext {
     /// Use `can_access_building_by_role()` for synchronous role-based checks, or
     /// `BuildingRepository::can_user_access_building()` for complete access verification.
     #[deprecated(
-        since = "0.2.186",
+        since = "0.2.207",
         note = "Use can_access_building_by_role() or BuildingRepository::can_user_access_building()"
     )]
     pub fn can_access_building(&self, _building_id: Uuid) -> bool {

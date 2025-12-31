@@ -420,6 +420,24 @@ pub enum BackgroundJobStatus {
     TimedOut,
 }
 
+impl std::str::FromStr for BackgroundJobStatus {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "pending" => Ok(BackgroundJobStatus::Pending),
+            "scheduled" => Ok(BackgroundJobStatus::Scheduled),
+            "running" => Ok(BackgroundJobStatus::Running),
+            "completed" => Ok(BackgroundJobStatus::Completed),
+            "failed" => Ok(BackgroundJobStatus::Failed),
+            "retrying" => Ok(BackgroundJobStatus::Retrying),
+            "cancelled" => Ok(BackgroundJobStatus::Cancelled),
+            "timed_out" | "timedout" => Ok(BackgroundJobStatus::TimedOut),
+            _ => Err(format!("Invalid status: {}", s)),
+        }
+    }
+}
+
 /// Background job execution history entry.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct BackgroundJobExecution {
