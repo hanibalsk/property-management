@@ -81,10 +81,13 @@ struct RealityPortalApp: App {
     private func handleSsoCallback(_ url: URL) {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
               let token = components.queryItems?.first(where: { $0.name == "token" })?.value else {
+            #if DEBUG
+            print("SSO callback missing token parameter")
+            #endif
             return
         }
 
-        Task {
+        Task { @MainActor in
             do {
                 try await authManager.loginWithSsoToken(token)
 
@@ -94,8 +97,14 @@ struct RealityPortalApp: App {
                     navigationCoordinator.pendingDestination = nil
                 }
             } catch {
-                // Handle SSO login error
+                // Log error for debugging
+                #if DEBUG
                 print("SSO login failed: \(error.localizedDescription)")
+                #endif
+
+                // Navigate to login with error state so user sees feedback
+                // The AuthManager.errorMessage will be set by the login method
+                navigationCoordinator.navigate(to: .login)
             }
         }
     }

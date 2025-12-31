@@ -1,5 +1,6 @@
 //! Tenant context extractor.
 
+use crate::AuthUser;
 use axum::{
     async_trait,
     extract::FromRequestParts,
@@ -9,6 +10,10 @@ use common::{TenantContext, TenantRole};
 use uuid::Uuid;
 
 /// Extractor for tenant context from X-Tenant-ID header.
+///
+/// SECURITY: This extractor automatically validates JWT authentication by extracting
+/// AuthUser first. Routes using TenantExtractor do NOT need to also extract AuthUser.
+/// The user_id and role are populated from the JWT claims.
 #[derive(Debug, Clone)]
 pub struct TenantExtractor(pub TenantContext);
 
@@ -27,7 +32,11 @@ where
 {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        // SECURITY: Always extract and validate JWT authentication first
+        // This ensures user_id and role are populated in extensions
+        let auth_user = AuthUser::from_request_parts(parts, state).await?;
+
         // Get X-Tenant-ID header
         let tenant_id = parts
             .headers
@@ -39,24 +48,17 @@ where
                 "Missing or invalid X-Tenant-ID header",
             ))?;
 
-        // In a real implementation, we would:
-        // 1. Validate the tenant exists
-        // 2. Get the user's role in this tenant from the JWT
-        // 3. Check if the user has access to this tenant
+        // User ID comes from authenticated JWT (validated above)
+        let user_id = auth_user.user_id;
 
-        // For now, we'll use placeholder values
-        // The actual user_id and role should come from the JWT token
-        let user_id = parts
-            .extensions
-            .get::<Uuid>()
-            .copied()
-            .unwrap_or_else(Uuid::nil);
+        // Role comes from JWT claims, fall back to Guest (most restrictive)
+        let role = auth_user.role.unwrap_or(TenantRole::Guest);
 
-        let role = parts
-            .extensions
-            .get::<TenantRole>()
-            .copied()
-            .unwrap_or(TenantRole::Guest);
+        // TODO: For production, add database validation:
+        // 1. Verify tenant_id exists in database
+        // 2. Verify user has membership in the tenant
+        // 3. Verify the role matches their actual permissions
+        // This requires access to the database pool via State
 
         Ok(TenantExtractor(TenantContext::new(
             tenant_id, user_id, role,
@@ -65,6 +67,9 @@ where
 }
 
 /// Optional tenant extractor (for endpoints that work with or without tenant context).
+///
+/// Returns None if authentication fails or tenant header is missing.
+/// Useful for public endpoints that benefit from tenant context when available.
 #[derive(Debug, Clone)]
 pub struct OptionalTenant(pub Option<TenantContext>);
 
