@@ -1,6 +1,6 @@
 # Property Management System (PPT)
 
-![Version](https://img.shields.io/badge/version-0.1.67-blue)
+![Version](https://img.shields.io/badge/version-0.2.194-blue)
 ![Rust](https://img.shields.io/badge/rust-1.75+-orange)
 ![TypeScript](https://img.shields.io/badge/typescript-5.0+-blue)
 
@@ -40,7 +40,12 @@ pnpm dev:reality  # Reality Portal web (:3001)
 
 ```bash
 cd mobile-native
+
+# Android
 ./gradlew :androidApp:assembleDebug
+
+# iOS (requires Xcode)
+cd iosApp && open iosApp.xcodeproj
 ```
 
 ## Architecture
@@ -91,7 +96,8 @@ property-management/
 │       └── ui-kit/       # UI components
 ├── mobile-native/        # Kotlin Multiplatform
 │   ├── shared/           # Shared KMP code
-│   └── androidApp/       # Android application
+│   ├── androidApp/       # Android application
+│   └── iosApp/           # iOS application (SwiftUI)
 └── docs/                 # Documentation
     ├── use-cases.md      # 508 use cases catalog
     ├── api/              # API specifications

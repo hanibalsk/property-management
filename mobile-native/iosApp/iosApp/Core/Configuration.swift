@@ -36,6 +36,18 @@ enum Environment: String {
             return "reality.example.com"
         }
     }
+
+    /// Web URL base for sharing links (Story 85.3).
+    var webBaseUrl: String {
+        switch self {
+        case .development:
+            return "http://localhost:3000"
+        case .staging:
+            return "https://staging.reality.example.com"
+        case .production:
+            return "https://reality.example.com"
+        }
+    }
 }
 
 /// App configuration singleton.
@@ -60,9 +72,31 @@ final class Configuration {
         environment.apiBaseUrl
     }
 
+    /// Web base URL for sharing (Story 85.3).
+    var webBaseUrl: String {
+        environment.webBaseUrl
+    }
+
     /// Keychain service identifier.
     var keychainService: String {
         bundleIdentifier
+    }
+
+    // MARK: - Version Information (Story 85.2)
+
+    /// App version from Info.plist (e.g., "0.2.194")
+    var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+    }
+
+    /// App build number from Info.plist (e.g., "2194")
+    var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
+    }
+
+    /// Full version string combining version and build (e.g., "0.2.194 (2194)")
+    var fullVersionString: String {
+        "\(version) (\(buildNumber))"
     }
 
     private init() {}

@@ -163,7 +163,7 @@ struct AccountView: View {
                 HStack {
                     Label("Version", systemImage: "info.circle.fill")
                     Spacer()
-                    Text("0.1.0")
+                    Text(Configuration.shared.version)
                         .foregroundStyle(.secondary)
                 }
 
@@ -278,7 +278,7 @@ struct AccountView: View {
                 }
                 .foregroundStyle(.secondary)
 
-                Text("Version 0.1.0")
+                Text("Version \(Configuration.shared.version)")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
