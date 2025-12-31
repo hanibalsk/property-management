@@ -119,7 +119,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: check
     # Run weekly or on PRs touching RLS-related files
-    if: github.event_name == 'schedule' || contains(github.event.pull_request.title, 'security') || contains(github.event.pull_request.title, 'rls')
+    if: github.event_name == 'schedule' || contains(toLower(github.event.pull_request.title), 'security') || contains(toLower(github.event.pull_request.title), 'rls')
 
     services:
       postgres:

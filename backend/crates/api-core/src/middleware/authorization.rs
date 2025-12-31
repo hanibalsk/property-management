@@ -70,11 +70,14 @@ pub mod permissions {
     /// Owner delegate and above (level 55+)
     pub const OWNER_DELEGATE: Permission = Permission::min_level(55, "Owner delegate access");
 
-    /// Tenant/Resident and above (level 40+)
-    pub const RESIDENT: Permission = Permission::min_level(40, "Resident access");
+    /// Property manager and above (level 50+)
+    pub const PROPERTY_MANAGER: Permission = Permission::min_level(50, "Property manager access");
 
-    /// Property manager and above (level 30+)
-    pub const PROPERTY_MANAGER: Permission = Permission::min_level(30, "Property manager access");
+    /// Tenant and above (level 40+)
+    pub const TENANT: Permission = Permission::min_level(40, "Tenant access");
+
+    /// Resident and above (level 30+)
+    pub const RESIDENT: Permission = Permission::min_level(30, "Resident access");
 
     /// Any authenticated user (level 1+)
     pub const AUTHENTICATED: Permission = Permission::min_level(1, "Any authenticated user");

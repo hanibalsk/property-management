@@ -66,7 +66,37 @@ where
 }
 
 /// Trait for providing tenant membership validation capability.
-/// Implement this trait on your application state to enable `ValidatedTenantExtractor`.
+///
+/// Implement this trait on your application state to enable `ValidatedTenantExtractor`,
+/// which validates that users are active members of the tenant they're trying to access.
+///
+/// # Security Implications
+///
+/// - The `ValidatedTenantExtractor` uses this trait to query the database and verify
+///   that the authenticated user has an active membership in the requested tenant.
+/// - This prevents cross-tenant access attacks where a user might try to access
+///   another tenant's data by manipulating the tenant ID header.
+/// - The validated role from the database is used for authorization decisions,
+///   not the role from the JWT, providing defense in depth.
+///
+/// # Example Implementation
+///
+/// ```rust,ignore
+/// use api_core::extractors::TenantMembershipProvider;
+/// use db::DbPool;
+///
+/// #[derive(Clone)]
+/// pub struct AppState {
+///     pub db_pool: DbPool,
+///     // ... other fields
+/// }
+///
+/// impl TenantMembershipProvider for AppState {
+///     fn db_pool(&self) -> &DbPool {
+///         &self.db_pool
+///     }
+/// }
+/// ```
 pub trait TenantMembershipProvider: Clone + Send + Sync + 'static {
     /// Get the database pool for membership queries.
     fn db_pool(&self) -> &DbPool;
@@ -118,6 +148,8 @@ where
         // They can access any tenant for administrative purposes
         if auth_user.is_platform_admin() {
             let role = auth_user.role.unwrap_or(TenantRole::SuperAdmin);
+            // Insert role into extensions for authorization middleware
+            parts.extensions.insert(role.clone());
             return Ok(ValidatedTenantExtractor(TenantContext::new(
                 tenant_id, user_id, role,
             )));
@@ -169,23 +201,35 @@ where
                 )
             })?;
 
-        // Parse role from database, fall back to Guest if unknown
+        // Parse role from database, fall back to Guest if unknown.
+        // Uses case-insensitive matching to handle variations in database storage.
         let role = role_type
             .as_deref()
-            .and_then(|r| match r {
-                "super_admin" => Some(TenantRole::SuperAdmin),
-                "platform_admin" => Some(TenantRole::PlatformAdmin),
-                "org_admin" => Some(TenantRole::OrgAdmin),
-                "manager" => Some(TenantRole::Manager),
-                "technical_manager" => Some(TenantRole::TechnicalManager),
-                "owner" => Some(TenantRole::Owner),
-                "owner_delegate" => Some(TenantRole::OwnerDelegate),
-                "tenant" => Some(TenantRole::Tenant),
-                "resident" => Some(TenantRole::Resident),
-                "property_manager" => Some(TenantRole::PropertyManager),
-                "real_estate_agent" => Some(TenantRole::RealEstateAgent),
-                "guest" => Some(TenantRole::Guest),
-                _ => None,
+            .and_then(|r| {
+                let r_lower = r.to_lowercase();
+                match r_lower.as_str() {
+                    "super_admin" | "superadmin" => Some(TenantRole::SuperAdmin),
+                    "platform_admin" | "platformadmin" => Some(TenantRole::PlatformAdmin),
+                    "org_admin" | "orgadmin" => Some(TenantRole::OrgAdmin),
+                    "manager" => Some(TenantRole::Manager),
+                    "technical_manager" | "technicalmanager" => Some(TenantRole::TechnicalManager),
+                    "owner" => Some(TenantRole::Owner),
+                    "owner_delegate" | "ownerdelegate" => Some(TenantRole::OwnerDelegate),
+                    "tenant" => Some(TenantRole::Tenant),
+                    "resident" => Some(TenantRole::Resident),
+                    "property_manager" | "propertymanager" => Some(TenantRole::PropertyManager),
+                    "real_estate_agent" | "realestateagent" => Some(TenantRole::RealEstateAgent),
+                    "guest" => Some(TenantRole::Guest),
+                    other => {
+                        tracing::warn!(
+                            user_id = %user_id,
+                            tenant_id = %tenant_id,
+                            role = %other,
+                            "Unknown role type in database, defaulting to Guest"
+                        );
+                        None
+                    }
+                }
             })
             .unwrap_or(TenantRole::Guest);
 
@@ -195,6 +239,11 @@ where
             role = ?role,
             "Validated tenant membership"
         );
+
+        // SECURITY: Insert database-validated role into extensions for authorization middleware.
+        // This overwrites any role from the JWT, ensuring authorization uses the current
+        // database role rather than potentially stale JWT claims.
+        parts.extensions.insert(role.clone());
 
         Ok(ValidatedTenantExtractor(TenantContext::new(
             tenant_id, user_id, role,

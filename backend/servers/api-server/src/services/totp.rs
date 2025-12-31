@@ -71,7 +71,7 @@ impl TotpService {
                                 "TOTP_ENCRYPTION_KEY has invalid hex, using dev key: {}",
                                 e
                             );
-                            Some(Self::dev_encryption_key())
+                            Some(Self::insecure_dev_fallback_key())
                         } else {
                             panic!(
                                 "TOTP_ENCRYPTION_KEY has invalid hex format: {}. \
@@ -89,7 +89,7 @@ impl TotpService {
                         "TOTP_ENCRYPTION_KEY is {} chars (expected 64), using dev key",
                         key.len()
                     );
-                    Some(Self::dev_encryption_key())
+                    Some(Self::insecure_dev_fallback_key())
                 } else {
                     panic!(
                         "TOTP_ENCRYPTION_KEY must be exactly 64 hex characters (got {}). \
@@ -104,7 +104,7 @@ impl TotpService {
                         "TOTP_ENCRYPTION_KEY not set, using development key \
                         (DEVELOPMENT MODE ONLY - MFA secrets will not be secure)"
                     );
-                    Some(Self::dev_encryption_key())
+                    Some(Self::insecure_dev_fallback_key())
                 } else {
                     panic!(
                         "TOTP_ENCRYPTION_KEY environment variable is required for production. \
@@ -123,9 +123,10 @@ impl TotpService {
         }
     }
 
-    /// Development-only encryption key.
-    /// This is NOT secure and should NEVER be used in production.
-    fn dev_encryption_key() -> [u8; 32] {
+    /// INSECURE development-only fallback encryption key.
+    /// WARNING: This is a hardcoded key and should NEVER be used in production.
+    /// It exists only for local development when TOTP_ENCRYPTION_KEY is not set.
+    fn insecure_dev_fallback_key() -> [u8; 32] {
         // Fixed dev key - predictable for development/testing
         [
             0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xba, 0xbe, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
