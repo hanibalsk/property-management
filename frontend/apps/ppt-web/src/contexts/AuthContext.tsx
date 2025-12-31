@@ -11,6 +11,14 @@
  * @see Story 81.1 - Wire AuthContext to API client
  */
 
+import {
+  AuthError,
+  type AuthErrorCode,
+  type AuthUser,
+  clearTokenProvider,
+  createAuthApi,
+  setTokenProvider,
+} from '@ppt/api-client';
 import type React from 'react';
 import {
   createContext,
@@ -21,14 +29,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  createAuthApi,
-  setTokenProvider,
-  clearTokenProvider,
-  AuthError,
-  type AuthUser,
-  type AuthErrorCode,
-} from '@ppt/api-client';
 
 // Re-export types from api-client for convenience
 export { AuthError };

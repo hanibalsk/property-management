@@ -38,9 +38,7 @@ const TYPE_LABELS: Record<BuildingType, string> = {
 export function BuildingCard({ building, onView, onEdit }: BuildingCardProps) {
   const { id, name, address, type, status, unitCount, floorCount, photoUrl } = building;
 
-  const addressLine = [address.street, address.city, address.postalCode]
-    .filter(Boolean)
-    .join(', ');
+  const addressLine = [address.street, address.city, address.postalCode].filter(Boolean).join(', ');
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">

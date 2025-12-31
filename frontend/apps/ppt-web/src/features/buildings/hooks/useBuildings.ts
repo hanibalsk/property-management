@@ -6,13 +6,13 @@
  * @see Story 81.2 - Wire buildings page to API
  */
 
-import { useMemo } from 'react';
 import {
-  createBuildingsApi,
-  createBuildingHooks,
-  getToken,
   type ListBuildingsParams,
+  createBuildingHooks,
+  createBuildingsApi,
+  getToken,
 } from '@ppt/api-client';
+import { useMemo } from 'react';
 
 // API base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';

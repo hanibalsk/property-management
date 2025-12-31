@@ -134,9 +134,7 @@ export function BuildingList({
             />
           </svg>
           <h3 className="mt-2 text-sm font-medium text-gray-900">No buildings</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by adding your first building.
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Get started by adding your first building.</p>
           {onCreate && (
             <div className="mt-6">
               <button
@@ -155,12 +153,7 @@ export function BuildingList({
       {!isLoading && buildings.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {buildings.map((building) => (
-            <BuildingCard
-              key={building.id}
-              building={building}
-              onView={onView}
-              onEdit={onEdit}
-            />
+            <BuildingCard key={building.id} building={building} onView={onView} onEdit={onEdit} />
           ))}
         </div>
       )}

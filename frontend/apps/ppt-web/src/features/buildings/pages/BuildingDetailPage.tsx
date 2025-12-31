@@ -6,9 +6,9 @@
  * @see Story 81.2 - Wire buildings page to API
  */
 
-import { Link } from 'react-router-dom';
 import type { BuildingStatus, BuildingType } from '@ppt/api-client';
-import { useBuilding, useBuildingFloors, useBuildingCommonAreas } from '../hooks';
+import { Link } from 'react-router-dom';
+import { useBuilding, useBuildingCommonAreas, useBuildingFloors } from '../hooks';
 
 interface BuildingDetailPageProps {
   buildingId: string;
@@ -36,9 +36,16 @@ const TYPE_LABELS: Record<BuildingType, string> = {
 };
 
 export function BuildingDetailPage({ buildingId }: BuildingDetailPageProps) {
-  const { data: building, isLoading: buildingLoading, error: buildingError } = useBuilding(buildingId);
+  const {
+    data: building,
+    isLoading: buildingLoading,
+    error: buildingError,
+  } = useBuilding(buildingId);
   const { data: floors, isLoading: floorsLoading } = useBuildingFloors(buildingId, !!building);
-  const { data: commonAreas, isLoading: areasLoading } = useBuildingCommonAreas(buildingId, !!building);
+  const { data: commonAreas, isLoading: areasLoading } = useBuildingCommonAreas(
+    buildingId,
+    !!building
+  );
 
   if (buildingLoading) {
     return (
@@ -56,9 +63,14 @@ export function BuildingDetailPage({ buildingId }: BuildingDetailPageProps) {
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <h3 className="text-sm font-medium text-red-800">Building not found</h3>
           <p className="mt-2 text-sm text-red-700">
-            {buildingError instanceof Error ? buildingError.message : 'The requested building could not be found.'}
+            {buildingError instanceof Error
+              ? buildingError.message
+              : 'The requested building could not be found.'}
           </p>
-          <Link to="/buildings" className="mt-4 inline-block text-sm text-blue-600 hover:text-blue-800">
+          <Link
+            to="/buildings"
+            className="mt-4 inline-block text-sm text-blue-600 hover:text-blue-800"
+          >
             Back to buildings
           </Link>
         </div>
@@ -94,7 +106,11 @@ export function BuildingDetailPage({ buildingId }: BuildingDetailPageProps) {
         {/* Building Image */}
         <div className="h-64 bg-gray-200 relative">
           {building.photoUrl ? (
-            <img src={building.photoUrl} alt={building.name} className="w-full h-full object-cover" />
+            <img
+              src={building.photoUrl}
+              alt={building.name}
+              className="w-full h-full object-cover"
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-gray-400">
               <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,14 +132,14 @@ export function BuildingDetailPage({ buildingId }: BuildingDetailPageProps) {
               <h1 className="text-2xl font-bold text-gray-900">{building.name}</h1>
               <p className="text-gray-500 mt-1">{addressLine}</p>
             </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[building.status]}`}>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[building.status]}`}
+            >
               {STATUS_LABELS[building.status]}
             </span>
           </div>
 
-          {building.description && (
-            <p className="mt-4 text-gray-600">{building.description}</p>
-          )}
+          {building.description && <p className="mt-4 text-gray-600">{building.description}</p>}
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
@@ -148,7 +164,9 @@ export function BuildingDetailPage({ buildingId }: BuildingDetailPageProps) {
             {building.totalAreaM2 && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-sm text-gray-500">Total Area</p>
-                <p className="text-lg font-semibold text-gray-900">{building.totalAreaM2.toLocaleString()} m2</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {building.totalAreaM2.toLocaleString()} m2
+                </p>
               </div>
             )}
           </div>
@@ -165,14 +183,13 @@ export function BuildingDetailPage({ buildingId }: BuildingDetailPageProps) {
         ) : floors && floors.length > 0 ? (
           <div className="space-y-2">
             {floors.map((floor) => (
-              <div key={floor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={floor.id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
-                  <span className="font-medium">
-                    {floor.name || `Floor ${floor.number}`}
-                  </span>
-                  <span className="text-gray-500 text-sm ml-2">
-                    ({floor.unitCount} units)
-                  </span>
+                  <span className="font-medium">{floor.name || `Floor ${floor.number}`}</span>
+                  <span className="text-gray-500 text-sm ml-2">({floor.unitCount} units)</span>
                 </div>
               </div>
             ))}
@@ -198,9 +215,7 @@ export function BuildingDetailPage({ buildingId }: BuildingDetailPageProps) {
                 {area.description && (
                   <p className="text-sm text-gray-600 mt-1">{area.description}</p>
                 )}
-                {area.areaM2 && (
-                  <p className="text-sm text-gray-500 mt-1">{area.areaM2} m2</p>
-                )}
+                {area.areaM2 && <p className="text-sm text-gray-500 mt-1">{area.areaM2} m2</p>}
               </div>
             ))}
           </div>

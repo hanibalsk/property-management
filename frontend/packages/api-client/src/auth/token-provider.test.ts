@@ -8,12 +8,7 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  clearTokenProvider,
-  getToken,
-  hasTokenProvider,
-  setTokenProvider,
-} from './token-provider';
+import { clearTokenProvider, getToken, hasTokenProvider, setTokenProvider } from './token-provider';
 
 describe('Token Provider', () => {
   afterEach(() => {
