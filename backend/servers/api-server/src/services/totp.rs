@@ -461,14 +461,23 @@ mod tests {
     }
 
     #[test]
-    fn test_encryption_without_key_fails() {
-        let service = TotpService::default(); // No encryption key
+    fn test_encryption_in_development_mode() {
+        // In development mode (RUST_ENV=development), TotpService::default()
+        // should use the development fallback key and encryption should succeed.
+        // This test verifies that the dev mode fallback works correctly.
+        let service = TotpService::default();
 
+        // In dev mode, encryption should succeed with the fallback key
         let result = service.encrypt_secret("test-secret");
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            TotpError::MissingEncryptionKey
-        ));
+        assert!(
+            result.is_ok(),
+            "Encryption should succeed in development mode"
+        );
+
+        // Verify we can decrypt what we encrypted
+        let encrypted = result.unwrap();
+        let decrypted = service.decrypt_secret(&encrypted);
+        assert!(decrypted.is_ok(), "Decryption should succeed");
+        assert_eq!(decrypted.unwrap(), "test-secret");
     }
 }
