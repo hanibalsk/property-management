@@ -227,6 +227,123 @@ impl EmailService {
         self.send_email(email, subject, &body).await
     }
 
+    /// Send a template-based email (Story 84.4: Reminder sending).
+    ///
+    /// This method sends emails using predefined templates. The template is
+    /// selected by name and populated with the provided data.
+    ///
+    /// Supported templates:
+    /// - `signature_reminder`: E-signature reminder with signer_name, document_name, request_id
+    /// - `payment_reminder`: Payment reminder
+    /// - `meeting_reminder`: Meeting reminder
+    ///
+    pub async fn send_template_email(
+        &self,
+        to: &str,
+        template: &str,
+        data: serde_json::Value,
+    ) -> Result<(), EmailError> {
+        let (subject, body) = match template {
+            "signature_reminder" => {
+                let signer_name = data
+                    .get("signer_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("there");
+                let document_name = data
+                    .get("document_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Document");
+                let request_id = data
+                    .get("request_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let expires_at = data.get("expires_at").and_then(|v| v.as_str());
+
+                let subject = format!("Reminder: Please sign \"{}\"", document_name);
+                let body = format!(
+                    "Hello {},\n\n\
+                    This is a friendly reminder that your signature is still needed on \"{}\".\n\n\
+                    Please sign the document at your earliest convenience.\n\n\
+                    {}\n\n\
+                    Request ID: {}\n\n\
+                    If you have any questions, please contact the document sender.\n\n\
+                    Best regards,\n\
+                    Property Management System",
+                    signer_name,
+                    document_name,
+                    expires_at
+                        .map(|e| format!("This request expires on: {}", e))
+                        .unwrap_or_default(),
+                    request_id
+                );
+                (subject, body)
+            }
+            "payment_reminder" => {
+                let amount = data
+                    .get("amount")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("pending");
+                let due_date = data
+                    .get("due_date")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("soon");
+
+                let subject = "Reminder: Payment Due".to_string();
+                let body = format!(
+                    "Hello,\n\n\
+                    This is a reminder that you have a payment of {} due on {}.\n\n\
+                    Please ensure payment is made on time to avoid any late fees.\n\n\
+                    Best regards,\n\
+                    Property Management System",
+                    amount, due_date
+                );
+                (subject, body)
+            }
+            "meeting_reminder" => {
+                let title = data
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Meeting");
+                let date_time = data
+                    .get("date_time")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("scheduled time");
+
+                let subject = format!("Reminder: {} tomorrow", title);
+                let body = format!(
+                    "Hello,\n\n\
+                    This is a reminder that \"{}\" is scheduled for {}.\n\n\
+                    Please make sure to attend.\n\n\
+                    Best regards,\n\
+                    Property Management System",
+                    title, date_time
+                );
+                (subject, body)
+            }
+            _ => {
+                tracing::warn!(template = %template, "Unknown email template, using generic message");
+                let subject = "Notification".to_string();
+                let body = format!(
+                    "Hello,\n\n\
+                    You have a new notification.\n\n\
+                    Details: {:?}\n\n\
+                    Best regards,\n\
+                    Property Management System",
+                    data
+                );
+                (subject, body)
+            }
+        };
+
+        tracing::info!(
+            to = %to,
+            template = %template,
+            "Sending template email"
+        );
+
+        self.send_email(to, &subject, &body).await
+    }
+
     /// Internal send method supporting both SMTP and logging modes.
     async fn send_email(&self, to: &str, subject: &str, body: &str) -> Result<(), EmailError> {
         match self.transport.as_ref() {

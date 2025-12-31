@@ -15,6 +15,7 @@ export * from './auth';
 // Export domain-specific modules
 export * from './advanced-notifications';
 export * from './announcements';
+export * from './buildings';
 export * from './critical-notifications';
 export * from './documents';
 export * from './government-portal';

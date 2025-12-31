@@ -359,7 +359,7 @@ struct ListingDetailView: View {
 
     private var shareButton: some View {
         ShareLink(
-            item: URL(string: "https://reality.example.com/listing/\(listingId)")!,
+            item: URL(string: "\(Configuration.shared.webBaseUrl)/listing/\(listingId)")!,
             subject: Text(listing?.title ?? "Property"),
             message: Text(listing?.formattedPrice ?? "")
         ) {

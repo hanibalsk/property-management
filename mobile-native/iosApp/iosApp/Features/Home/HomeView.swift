@@ -509,17 +509,21 @@ struct ListingPreview: Identifiable {
         self.thumbnailUrl = thumbnailUrl
     }
 
+    #if DEBUG
+    /// Sample data for SwiftUI previews only - excluded from production builds (Story 85.1)
     static let sampleFeatured: [ListingPreview] = [
         ListingPreview(id: "1", title: "Modern Apartment in City Center", price: 250000, currency: "EUR", location: "Bratislava", areaSqm: 85, rooms: 3),
         ListingPreview(id: "2", title: "Family House with Garden", price: 450000, currency: "EUR", location: "Bratislava", areaSqm: 180, rooms: 5),
         ListingPreview(id: "3", title: "Cozy Studio Near Park", price: 120000, currency: "EUR", location: "Kosice", areaSqm: 35, rooms: 1),
     ]
 
+    /// Sample data for SwiftUI previews only - excluded from production builds (Story 85.1)
     static let sampleRecent: [ListingPreview] = [
         ListingPreview(id: "4", title: "Renovated Apartment", price: 180000, currency: "EUR", location: "Bratislava", areaSqm: 65, rooms: 2),
         ListingPreview(id: "5", title: "Penthouse with Terrace", price: 520000, currency: "EUR", location: "Bratislava", areaSqm: 120, rooms: 4),
         ListingPreview(id: "6", title: "Investment Property", price: 95000, currency: "EUR", location: "Zilina", areaSqm: 45, rooms: 2),
     ]
+    #endif
 }
 
 // MARK: - Preview

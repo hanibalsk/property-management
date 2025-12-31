@@ -1,6 +1,7 @@
 //! Application state.
 
 use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpService};
+use api_core::TenantMembershipProvider;
 use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
@@ -283,5 +284,12 @@ impl AppState {
             totp_service,
             oauth_service,
         }
+    }
+}
+
+// SECURITY: Implement TenantMembershipProvider to enable ValidatedTenantExtractor
+impl TenantMembershipProvider for AppState {
+    fn db_pool(&self) -> &DbPool {
+        &self.db
     }
 }

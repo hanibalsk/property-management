@@ -132,7 +132,10 @@ impl TestDb {
         sqlx::query("DELETE FROM organizations WHERE name LIKE '%Test%'")
             .execute(&self.pool)
             .await?;
-        sqlx::query("DELETE FROM users WHERE email LIKE '%@test.%'")
+        // SAFETY: Only delete users with emails ending in @test.com (exact test domain)
+        // This prevents accidental deletion of production users whose email might
+        // contain 'test' as a substring (e.g., user@contest.com, user@attestation.org)
+        sqlx::query("DELETE FROM users WHERE email LIKE '%@test.com'")
             .execute(&self.pool)
             .await?;
 

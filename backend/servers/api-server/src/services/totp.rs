@@ -48,21 +48,72 @@ pub struct TotpService {
 
 impl TotpService {
     /// Create a new TOTP service.
+    ///
+    /// # Security
+    /// - Production (RUST_ENV != "development"): TOTP_ENCRYPTION_KEY is REQUIRED
+    /// - Development: Falls back to a dev key with warning
+    ///
+    /// The encryption key must be 64 hex characters (32 bytes for AES-256).
     pub fn new(issuer: String) -> Self {
-        // Try to load encryption key from environment
-        let encryption_key = std::env::var("TOTP_ENCRYPTION_KEY").ok().and_then(|key| {
-            // Key should be 32 bytes hex-encoded (64 characters)
-            if key.len() == 64 {
+        let is_development = std::env::var("RUST_ENV").unwrap_or_default() == "development";
+
+        let encryption_key = match std::env::var("TOTP_ENCRYPTION_KEY") {
+            Ok(key) if key.len() == 64 => {
                 let mut bytes = [0u8; 32];
-                if hex::decode_to_slice(&key, &mut bytes).is_ok() {
-                    return Some(bytes);
+                match hex::decode_to_slice(&key, &mut bytes) {
+                    Ok(()) => {
+                        tracing::info!("TOTP encryption enabled with configured key");
+                        Some(bytes)
+                    }
+                    Err(e) => {
+                        if is_development {
+                            tracing::warn!(
+                                "TOTP_ENCRYPTION_KEY has invalid hex, using dev key: {}",
+                                e
+                            );
+                            Some(Self::insecure_dev_fallback_key())
+                        } else {
+                            panic!(
+                                "TOTP_ENCRYPTION_KEY has invalid hex format: {}. \
+                                Key must be 64 hex characters (32 bytes). \
+                                Set RUST_ENV=development to use dev defaults.",
+                                e
+                            );
+                        }
+                    }
                 }
             }
-            tracing::warn!(
-                "TOTP_ENCRYPTION_KEY is invalid or not set, TOTP secrets will not be encrypted"
-            );
-            None
-        });
+            Ok(key) => {
+                if is_development {
+                    tracing::warn!(
+                        "TOTP_ENCRYPTION_KEY is {} chars (expected 64), using dev key",
+                        key.len()
+                    );
+                    Some(Self::insecure_dev_fallback_key())
+                } else {
+                    panic!(
+                        "TOTP_ENCRYPTION_KEY must be exactly 64 hex characters (got {}). \
+                        Set RUST_ENV=development to use dev defaults.",
+                        key.len()
+                    );
+                }
+            }
+            Err(_) => {
+                if is_development {
+                    tracing::warn!(
+                        "TOTP_ENCRYPTION_KEY not set, using development key \
+                        (DEVELOPMENT MODE ONLY - MFA secrets will not be secure)"
+                    );
+                    Some(Self::insecure_dev_fallback_key())
+                } else {
+                    panic!(
+                        "TOTP_ENCRYPTION_KEY environment variable is required for production. \
+                        Generate a 64-character hex key (32 bytes) for AES-256 encryption. \
+                        Set RUST_ENV=development to use dev defaults."
+                    );
+                }
+            }
+        };
 
         Self {
             issuer,
@@ -70,6 +121,18 @@ impl TotpService {
             backup_code_length: 8,
             encryption_key,
         }
+    }
+
+    /// INSECURE development-only fallback encryption key.
+    /// WARNING: This is a hardcoded key and should NEVER be used in production.
+    /// It exists only for local development when TOTP_ENCRYPTION_KEY is not set.
+    fn insecure_dev_fallback_key() -> [u8; 32] {
+        // Fixed dev key - predictable for development/testing
+        [
+            0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe, 0xba, 0xbe, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55,
+            0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x01, 0x02, 0x03, 0x04,
+            0x05, 0x06, 0x07, 0x08,
+        ]
     }
 
     /// Encrypt a TOTP secret for storage.
@@ -399,14 +462,23 @@ mod tests {
     }
 
     #[test]
-    fn test_encryption_without_key_fails() {
-        let service = TotpService::default(); // No encryption key
+    fn test_encryption_in_development_mode() {
+        // In development mode (RUST_ENV=development), TotpService::default()
+        // should use the development fallback key and encryption should succeed.
+        // This test verifies that the dev mode fallback works correctly.
+        let service = TotpService::default();
 
+        // In dev mode, encryption should succeed with the fallback key
         let result = service.encrypt_secret("test-secret");
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            TotpError::MissingEncryptionKey
-        ));
+        assert!(
+            result.is_ok(),
+            "Encryption should succeed in development mode"
+        );
+
+        // Verify we can decrypt what we encrypted
+        let encrypted = result.unwrap();
+        let decrypted = service.decrypt_secret(&encrypted);
+        assert!(decrypted.is_ok(), "Decryption should succeed");
+        assert_eq!(decrypted.unwrap(), "test-secret");
     }
 }

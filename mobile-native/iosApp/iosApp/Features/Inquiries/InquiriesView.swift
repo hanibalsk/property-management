@@ -241,6 +241,8 @@ struct InquiryPreview: Identifiable {
         return formatter.localizedString(for: date, relativeTo: Date())
     }
 
+    #if DEBUG
+    /// Sample data for SwiftUI previews only - excluded from production builds (Story 85.1)
     static let samples: [InquiryPreview] = [
         InquiryPreview(
             id: "1",
@@ -270,6 +272,7 @@ struct InquiryPreview: Identifiable {
             hasUnread: false
         ),
     ]
+    #endif
 }
 
 enum InquiryStatus: String {

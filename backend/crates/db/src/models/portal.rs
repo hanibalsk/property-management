@@ -60,13 +60,15 @@ pub struct PortalSession {
 // Favorites (Story 16.2)
 // ============================================
 
-/// Favorite listing entity.
+/// Favorite listing entity with price tracking (Story 84.6).
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
 pub struct Favorite {
     pub id: Uuid,
     pub user_id: Uuid,
     pub listing_id: Uuid,
     pub notes: Option<String>,
+    /// Original price when the listing was favorited (for price change detection)
+    pub original_price: Option<i64>,
     pub created_at: DateTime<Utc>,
 }
 

@@ -231,7 +231,8 @@ struct ListingDetailModel {
         return formatter.string(from: NSNumber(value: price)) ?? "\(price) \(currency)"
     }
 
-    /// Sample data for previews
+    #if DEBUG
+    /// Sample data for SwiftUI previews only - excluded from production builds (Story 85.1)
     static let sample = ListingDetailModel(
         id: "1",
         title: "Modern Apartment in City Center",
@@ -249,6 +250,7 @@ struct ListingDetailModel {
         latitude: 48.1486,
         longitude: 17.1077
     )
+    #endif
 }
 
 /// Swift enum for inquiry status, used in views.
