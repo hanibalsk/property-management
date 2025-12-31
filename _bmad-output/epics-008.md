@@ -53,15 +53,14 @@ So that **CI tests pass reliably**.
 **Given** the test suite runs
 **When** TOTP tests execute
 **Then**:
-  - RUST_ENV=development is set in test fixtures
-  - All 6 TOTP tests pass
+  - All 8 TOTP tests pass
   - No panic on missing environment variables
 **And** tests work in CI without additional setup
 
 **Technical Notes:**
-- Add `#[ctor::ctor]` or test setup to set RUST_ENV=development
-- Alternative: Use `temp_env` crate for test env management
-- Ensure CI workflow doesn't need changes
+- Use a `test_default()` constructor in TOTP tests to set up required environment (including `RUST_ENV=development`)
+- Keep environment setup local to tests (no global `#[ctor::ctor]` or external `temp_env` dependency)
+- Confirm existing CI workflow passes all 8 TOTP tests without additional configuration
 
 **Files to Modify:**
 - `backend/servers/api-server/src/services/totp.rs` (tests module)
@@ -136,7 +135,7 @@ So that **production bundles are clean**.
 ##### Story 86.4: Wire Empty Frontend Handlers
 
 As a **user**,
-I want to **buttons that do something when clicked**,
+I want **buttons that do something when clicked**,
 So that **the UI is functional**.
 
 **Acceptance Criteria:**
