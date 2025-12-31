@@ -1,9 +1,17 @@
 /**
  * Import Page (Epic 66, Stories 66.2, 66.4).
+ * Epic 90, Story 90.3: Wire up template download, import, retry handlers to API.
  *
  * Main page for bulk data import workflow.
  */
 
+import {
+  useDownloadTemplate,
+  useImportJobs,
+  useImportTemplates,
+  useRetryImport,
+  useStartImport,
+} from '@ppt/api-client';
 import { useCallback, useState } from 'react';
 import { FileUploader } from '../components/FileUploader';
 import { type ImportJobHistoryItem, ImportJobList } from '../components/ImportJobList';
@@ -13,146 +21,68 @@ import { ImportTemplateList, type ImportTemplateSummary } from '../components/Im
 
 type ImportStep = 'select_template' | 'upload' | 'preview' | 'importing' | 'complete';
 
-// Mock data for demonstration
-const MOCK_TEMPLATES: ImportTemplateSummary[] = [
-  {
-    id: '1',
-    name: 'Buildings Import',
-    dataType: 'buildings',
-    description: 'Import building master data including address and details',
-    isSystemTemplate: true,
-    fieldCount: 12,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    name: 'Units Import',
-    dataType: 'units',
-    description: 'Import unit data with building references',
-    isSystemTemplate: true,
-    fieldCount: 15,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    name: 'Residents Import',
-    dataType: 'residents',
-    description: 'Import resident and owner information',
-    isSystemTemplate: true,
-    fieldCount: 18,
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-const MOCK_JOB_HISTORY: ImportJobHistoryItem[] = [
-  {
-    id: '1',
-    status: 'completed',
-    filename: 'buildings_2024.csv',
-    dataType: 'buildings',
-    recordsImported: 45,
-    recordsFailed: 0,
-    createdByName: 'John Manager',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    completedAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: '2',
-    status: 'partially_completed',
-    filename: 'residents_import.xlsx',
-    dataType: 'residents',
-    recordsImported: 120,
-    recordsFailed: 5,
-    createdByName: 'John Manager',
-    createdAt: new Date(Date.now() - 21600000).toISOString(),
-    completedAt: new Date(Date.now() - 21600000).toISOString(),
-  },
-];
-
 export function ImportPage() {
   const [step, setStep] = useState<ImportStep>('select_template');
   const [selectedTemplate, setSelectedTemplate] = useState<ImportTemplateSummary | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<ImportPreviewData | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  // Fetch templates from API
+  const { data: templatesData, isLoading: templatesLoading } = useImportTemplates();
+
+  // Fetch job history from API
+  const { data: jobsData, isLoading: jobsLoading, refetch: refetchJobs } = useImportJobs();
+
+  // Mutations
+  const downloadTemplate = useDownloadTemplate();
+  const startImport = useStartImport();
+  const retryImport = useRetryImport();
+
+  // Get data from API responses - cast to component types
+  const templates = (templatesData?.templates ?? []) as ImportTemplateSummary[];
+  const jobs = (jobsData?.jobs ?? []) as ImportJobHistoryItem[];
 
   // Handle template selection
   const handleSelectTemplate = useCallback((template: ImportTemplateSummary) => {
     setSelectedTemplate(template);
     setStep('upload');
+    setImportError(null);
   }, []);
 
   // Handle file upload completion
-  const handleUploadComplete = useCallback((jobId: string) => {
+  const handleUploadComplete = useCallback((jobId: string, preview?: ImportPreviewData) => {
     setCurrentJobId(jobId);
-    // Simulate fetching preview data
-    setPreviewData({
-      jobId,
-      isValid: true,
-      totalRows: 150,
-      importableRows: 145,
-      errorRows: 3,
-      warningRows: 7,
-      recordCounts: {
-        newRecords: 120,
-        updates: 25,
-        skipped: 5,
-      },
-      issues: [
-        {
-          rowNumber: 23,
-          column: 'email',
-          severity: 'error',
-          code: 'INVALID_EMAIL',
-          message: 'Invalid email format',
-          originalValue: 'not.an',
-        },
-        {
-          rowNumber: 45,
-          column: 'phone',
-          severity: 'warning',
-          code: 'PHONE_FORMAT',
-          message: 'Phone number missing country code',
-          originalValue: '0901234567',
-          suggestedValue: '+421901234567',
-        },
-      ],
-      totalIssueCount: 10,
-      sampleRecords: [
-        { name: 'Building A', address: '123 Main St', units: 24 },
-        { name: 'Building B', address: '456 Oak Ave', units: 36 },
-      ],
-      columnMapping: [
-        {
-          sourceColumn: 'Building Name',
-          targetField: 'name',
-          isMapped: true,
-          isRequired: true,
-          sampleValues: ['Building A', 'Building B'],
-        },
-        {
-          sourceColumn: 'Street Address',
-          targetField: 'address',
-          isMapped: true,
-          isRequired: true,
-          sampleValues: ['123 Main St', '456 Oak Ave'],
-        },
-      ],
-    });
+    if (preview) {
+      setPreviewData(preview);
+    }
     setStep('preview');
   }, []);
 
   // Handle import approval
-  const handleApproveImport = useCallback((_acknowledgeWarnings: boolean) => {
-    // In real implementation, use acknowledgeWarnings to confirm import with warnings
-    setStep('importing');
-  }, []);
+  const handleApproveImport = useCallback(
+    (acknowledgeWarnings: boolean) => {
+      if (!currentJobId) return;
+      startImport.mutate(
+        { jobId: currentJobId, acknowledgeWarnings },
+        {
+          onSuccess: () => setStep('importing'),
+          onError: (err) => setImportError(err.message || 'Failed to start import'),
+        }
+      );
+    },
+    [currentJobId, startImport]
+  );
 
   // Handle import completion
-  const handleImportComplete = useCallback((_status: ImportJobStatusData) => {
-    // In real implementation, use status to show import results
-    setStep('complete');
-  }, []);
+  const handleImportComplete = useCallback(
+    (_status: ImportJobStatusData) => {
+      setStep('complete');
+      refetchJobs();
+    },
+    [refetchJobs]
+  );
 
   // Handle starting a new import
   const handleStartNew = useCallback(() => {
@@ -160,6 +90,7 @@ export function ImportPage() {
     setSelectedTemplate(null);
     setCurrentJobId(null);
     setPreviewData(null);
+    setImportError(null);
   }, []);
 
   // Handle cancel
@@ -171,15 +102,68 @@ export function ImportPage() {
       setStep('upload');
       setPreviewData(null);
     }
+    setImportError(null);
   }, [step]);
 
   // Handle template download
   const handleDownloadTemplate = useCallback(
-    (_template: ImportTemplateSummary, _format: 'csv' | 'xlsx') => {
-      // TODO: API call to download template
+    (template: ImportTemplateSummary, format: 'csv' | 'xlsx') => {
+      downloadTemplate.mutate(
+        { id: template.id, format },
+        {
+          onError: (err) => alert(`Failed to download template: ${err.message}`),
+        }
+      );
     },
-    []
+    [downloadTemplate]
   );
+
+  // Handle view job details
+  const handleViewJob = useCallback((job: ImportJobHistoryItem) => {
+    window.location.href = `/import/jobs/${job.id}`;
+  }, []);
+
+  // Handle retry job
+  const handleRetryJob = useCallback(
+    (job: ImportJobHistoryItem) => {
+      retryImport.mutate(
+        { jobId: job.id },
+        {
+          onSuccess: () => {
+            refetchJobs();
+            alert('Import retry started');
+          },
+          onError: (err) => alert(`Failed to retry import: ${err.message}`),
+        }
+      );
+    },
+    [retryImport, refetchJobs]
+  );
+
+  // Handle view job errors
+  const handleViewErrors = useCallback((job: ImportJobHistoryItem) => {
+    window.location.href = `/import/jobs/${job.id}/errors`;
+  }, []);
+
+  // Loading state for templates
+  if (templatesLoading && step === 'select_template') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Import Data</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Upload spreadsheets to import data into your organization.
+            </p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-500">Loading templates...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -199,6 +183,20 @@ export function ImportPage() {
           {showHistory ? 'Hide History' : 'View History'}
         </button>
       </div>
+
+      {/* Error Display */}
+      {importError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+          <p className="text-sm text-red-700">{importError}</p>
+          <button
+            type="button"
+            onClick={() => setImportError(null)}
+            className="mt-2 text-sm text-red-600 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Progress Steps */}
       <div className="flex items-center gap-2">
@@ -247,7 +245,7 @@ export function ImportPage() {
         {/* Step 1: Select Template */}
         {step === 'select_template' && (
           <ImportTemplateList
-            templates={MOCK_TEMPLATES}
+            templates={templates}
             onSelect={handleSelectTemplate}
             onEdit={(_template) => {
               // Not available in import flow - use Templates page to edit
@@ -327,18 +325,19 @@ export function ImportPage() {
       {/* Import History */}
       {showHistory && (
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <ImportJobList
-            jobs={MOCK_JOB_HISTORY}
-            onViewJob={(_jobId) => {
-              // TODO: Navigate to job details view
-            }}
-            onRetryJob={(_jobId) => {
-              // TODO: API call to retry failed job
-            }}
-            onViewErrors={(_jobId) => {
-              // TODO: Navigate to job errors view
-            }}
-          />
+          {jobsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
+              <p className="mt-2 text-sm text-gray-500">Loading history...</p>
+            </div>
+          ) : (
+            <ImportJobList
+              jobs={jobs}
+              onViewJob={handleViewJob}
+              onRetryJob={handleRetryJob}
+              onViewErrors={handleViewErrors}
+            />
+          )}
         </div>
       )}
     </div>
