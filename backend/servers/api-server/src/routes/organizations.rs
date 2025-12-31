@@ -346,34 +346,42 @@ pub async fn list_organizations(
         }
     };
 
-    // Only super admins can list all organizations
-    // For now, check if user has is_super_admin status (if field exists) or is_active
-    // TODO: Add proper is_super_admin field to users table
-    let _is_super_admin = user.status == "super_admin";
+    // Only super admins can list all organizations (Phase 1.2)
+    if !user.is_super_administrator() {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "PERMISSION_DENIED",
+                "This endpoint is restricted to super administrators. Use GET /api/v1/organizations/my to list your organizations.",
+            )),
+        ));
+    }
 
-    // For security, restrict this endpoint to super admins only
-    // Regular users should use /my to get their organizations
-    Err((
-        StatusCode::FORBIDDEN,
-        Json(ErrorResponse::new(
-            "PERMISSION_DENIED",
-            "This endpoint is restricted to super administrators. Use GET /api/v1/organizations/my to list your organizations.",
-        )),
-    ))
+    // Super admin can list all organizations
+    let (orgs, total) = match state
+        .org_repo
+        .list_full(0, DEFAULT_ORG_LIST_LIMIT, None, None)
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::error!(error = %e, user_id = %user_id, "Failed to list organizations");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to list organizations",
+                )),
+            ));
+        }
+    };
 
-    // Note: When super admin support is added, uncomment this:
-    // let (orgs, total) = match state.org_repo.list_full(0, DEFAULT_ORG_LIST_LIMIT, None, None).await {
-    //     Ok(result) => result,
-    //     Err(e) => {
-    //         tracing::error!(error = %e, user_id = %user_id, "Failed to list organizations");
-    //         return Err((
-    //             StatusCode::INTERNAL_SERVER_ERROR,
-    //             Json(ErrorResponse::new("DATABASE_ERROR", "Failed to list organizations")),
-    //         ));
-    //     }
-    // };
-    // let organizations: Vec<OrganizationResponse> = orgs.into_iter().map(OrganizationResponse::from).collect();
-    // Ok(Json(ListOrganizationsResponse { organizations, total }))
+    let organizations: Vec<OrganizationResponse> =
+        orgs.into_iter().map(OrganizationResponse::from).collect();
+    Ok(Json(ListOrganizationsResponse {
+        organizations,
+        total,
+    }))
 }
 
 // ==================== List My Organizations ====================

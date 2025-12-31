@@ -346,6 +346,119 @@ impl BuildingRepository {
 
         Ok(count > 0)
     }
+
+    /// Check if user can access a specific building.
+    ///
+    /// Access is granted if:
+    /// 1. User is an organization member with manager-level role (org_admin, manager, technical_manager)
+    /// 2. User is an owner of a unit in the building
+    /// 3. User is a current resident of a unit in the building
+    ///
+    /// This implements building-level access control for multi-tenant security.
+    pub async fn can_user_access_building(
+        &self,
+        user_id: Uuid,
+        building_id: Uuid,
+    ) -> Result<bool, SqlxError> {
+        // Check if user has access via organization membership (manager-level roles)
+        // or via unit ownership/residency in this building
+        let has_access: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+                -- Check 1: Organization manager/admin access
+                SELECT 1 FROM organization_members om
+                JOIN buildings b ON b.organization_id = om.organization_id
+                WHERE b.id = $2
+                  AND om.user_id = $1
+                  AND om.status = 'active'
+                  AND om.role_type IN ('super_admin', 'platform_admin', 'org_admin', 'manager', 'technical_manager')
+
+                UNION ALL
+
+                -- Check 2: Unit owner access
+                SELECT 1 FROM unit_owners uo
+                JOIN units u ON u.id = uo.unit_id
+                WHERE u.building_id = $2
+                  AND uo.user_id = $1
+                  AND uo.status = 'active'
+
+                UNION ALL
+
+                -- Check 3: Unit resident access (current residents only)
+                SELECT 1 FROM unit_residents ur
+                JOIN units u ON u.id = ur.unit_id
+                WHERE u.building_id = $2
+                  AND ur.user_id = $1
+                  AND ur.end_date IS NULL
+            )
+            "#,
+        )
+        .bind(user_id)
+        .bind(building_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(has_access)
+    }
+
+    /// Check if user can access building with a specific minimum role level.
+    ///
+    /// This is useful for operations that require specific permissions,
+    /// e.g., only managers can modify building settings.
+    pub async fn can_user_access_building_with_role(
+        &self,
+        user_id: Uuid,
+        building_id: Uuid,
+        min_role_type: &str,
+    ) -> Result<bool, SqlxError> {
+        // Define role hierarchy for comparison
+        let role_hierarchy = match min_role_type {
+            "super_admin" => vec!["super_admin"],
+            "platform_admin" => vec!["super_admin", "platform_admin"],
+            "org_admin" => vec!["super_admin", "platform_admin", "org_admin"],
+            "manager" => vec!["super_admin", "platform_admin", "org_admin", "manager"],
+            "technical_manager" => vec![
+                "super_admin",
+                "platform_admin",
+                "org_admin",
+                "manager",
+                "technical_manager",
+            ],
+            _ => vec![
+                "super_admin",
+                "platform_admin",
+                "org_admin",
+                "manager",
+                "technical_manager",
+                "owner",
+                "tenant",
+                "resident",
+            ],
+        };
+
+        let roles_json =
+            serde_json::to_string(&role_hierarchy).unwrap_or_else(|_| "[]".to_string());
+
+        let has_access: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM organization_members om
+                JOIN buildings b ON b.organization_id = om.organization_id
+                WHERE b.id = $2
+                  AND om.user_id = $1
+                  AND om.status = 'active'
+                  AND om.role_type = ANY(ARRAY(SELECT jsonb_array_elements_text($3::jsonb)))
+            )
+            "#,
+        )
+        .bind(user_id)
+        .bind(building_id)
+        .bind(&roles_json)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(has_access)
+    }
 }
 
 /// Internal struct for fetching building statistics.
