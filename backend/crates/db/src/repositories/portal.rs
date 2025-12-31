@@ -396,9 +396,7 @@ impl PortalRepository {
             .map(|r| {
                 // Detect price change by comparing current price with original price
                 // Price changed if original_price exists and differs from current price
-                let price_changed = r
-                    .original_price
-                    .map_or(false, |original| r.price != original);
+                let price_changed = r.original_price.is_some_and(|original| r.price != original);
 
                 FavoriteWithListing {
                     id: r.id,
