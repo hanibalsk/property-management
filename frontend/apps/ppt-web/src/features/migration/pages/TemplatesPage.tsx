@@ -139,16 +139,17 @@ export function TemplatesPage() {
   }, []);
 
   // Handle template selection (for use)
-  const handleSelect = useCallback((template: ImportTemplateSummary) => {
-    // Navigate to import page with template
-    console.log('Selected template for import:', template);
+  const handleSelect = useCallback((_template: ImportTemplateSummary) => {
+    // TODO: Navigate to import page with template
   }, []);
 
   // Handle download
-  const handleDownload = useCallback((template: ImportTemplateSummary, format: 'csv' | 'xlsx') => {
-    console.log('Downloading template:', template.name, 'as', format);
-    // In real implementation, trigger file download
-  }, []);
+  const handleDownload = useCallback(
+    (_template: ImportTemplateSummary, _format: 'csv' | 'xlsx') => {
+      // TODO: Trigger file download from API
+    },
+    []
+  );
 
   // Handle duplicate
   const handleDuplicate = useCallback((template: ImportTemplateSummary) => {

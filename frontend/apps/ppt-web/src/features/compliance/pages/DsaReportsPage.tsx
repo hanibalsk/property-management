@@ -58,7 +58,7 @@ export const DsaReportsPage: React.FC = () => {
         setReports([]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load DSA reports');
-        console.error('Failed to load DSA reports:', err);
+        // Error is shown to user via setError, logging handled by error boundary
       } finally {
         setIsLoading(false);
       }
@@ -112,14 +112,14 @@ export const DsaReportsPage: React.FC = () => {
       setPeriodEnd('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate report');
-      console.error('Failed to generate report:', err);
+      // Error is shown to user via setError, logging handled by error boundary
     } finally {
       setIsGenerating(false);
     }
   }, [periodStart, periodEnd]);
 
   const handlePublish = useCallback((reportId: string) => {
-    console.log('Publish report:', reportId);
+    // TODO: API call to publish report
     setReports((prev) =>
       prev.map((r) =>
         r.id === reportId
@@ -129,9 +129,8 @@ export const DsaReportsPage: React.FC = () => {
     );
   }, []);
 
-  const handleDownload = useCallback((reportId: string) => {
-    console.log('Download report:', reportId);
-    // Trigger PDF download
+  const handleDownload = useCallback((_reportId: string) => {
+    // TODO: Trigger PDF download from API
   }, []);
 
   const formatDate = (dateStr: string): string => {

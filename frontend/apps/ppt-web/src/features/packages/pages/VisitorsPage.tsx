@@ -66,20 +66,20 @@ export function VisitorsPage() {
     return visitor.status === filter;
   });
 
-  const handleView = (id: string) => {
-    console.log('View visitor:', id);
+  const handleView = (_id: string) => {
+    // TODO: Navigate to visitor detail page
   };
 
-  const handleCheckIn = (id: string) => {
-    console.log('Check in visitor:', id);
+  const handleCheckIn = (_id: string) => {
+    // TODO: API call to check in visitor
   };
 
-  const handleCheckOut = (id: string) => {
-    console.log('Check out visitor:', id);
+  const handleCheckOut = (_id: string) => {
+    // TODO: API call to check out visitor
   };
 
-  const handleCancel = (id: string) => {
-    console.log('Cancel visitor:', id);
+  const handleCancel = (_id: string) => {
+    // TODO: API call to cancel visitor registration
   };
 
   return (

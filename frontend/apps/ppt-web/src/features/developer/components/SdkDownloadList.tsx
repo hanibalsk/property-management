@@ -21,8 +21,8 @@ export function SdkDownloadList({ languages, onDownload, onViewVersions }: SdkDo
       await navigator.clipboard.writeText(command);
       setCopiedCommand(language);
       setTimeout(() => setCopiedCommand(null), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
+    } catch {
+      // Silently fail - clipboard access may be denied
     }
   };
 

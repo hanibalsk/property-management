@@ -175,9 +175,8 @@ export function ImportPage() {
 
   // Handle template download
   const handleDownloadTemplate = useCallback(
-    (template: ImportTemplateSummary, format: 'csv' | 'xlsx') => {
-      console.log('Downloading template:', template.name, 'as', format);
-      // In real implementation, trigger download
+    (_template: ImportTemplateSummary, _format: 'csv' | 'xlsx') => {
+      // TODO: API call to download template
     },
     []
   );
