@@ -82,6 +82,7 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+          RUST_ENV: development
         run: cargo test --workspace
 
   build:
@@ -150,7 +151,7 @@ jobs:
         run: cargo install sqlx-cli --no-default-features --features native-tls,postgres
 
       - name: Run database migrations
-        working-directory: backend
+        working-directory: backend/crates/db
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/ppt_test
         run: sqlx database create && sqlx migrate run

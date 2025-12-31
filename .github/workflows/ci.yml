@@ -63,6 +63,8 @@ jobs:
 
       - name: Run unit tests
         working-directory: backend
+        env:
+          RUST_ENV: development
         run: cargo test --workspace
 
   integration-tests:
