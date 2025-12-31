@@ -17,31 +17,39 @@ export function MyBookingsPage() {
 
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<BookingStatus | undefined>();
 
   const [cancelDialogBooking, setCancelDialogBooking] = useState<BookingWithDetails | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  useEffect(() => {
-    const fetchBookings = async () => {
-      setIsLoading(true);
-      try {
-        const response = await getMyBookings();
-        setBookings(response.items);
-        setTotal(response.total);
-      } catch (error) {
-        console.error('Failed to fetch bookings:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchBookings = async (currentPage: number = page, status?: BookingStatus) => {
+    setIsLoading(true);
+    try {
+      const offset = (currentPage - 1) * PAGE_SIZE;
+      const response = await getMyBookings({
+        status,
+        limit: PAGE_SIZE,
+        offset,
+      });
+      setBookings(response.items);
+      setTotal(response.total);
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchBookings();
-  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger on page/statusFilter change
+  useEffect(() => {
+    fetchBookings(page, statusFilter);
+  }, [page, statusFilter]);
 
   const handleStatusFilter = (status?: BookingStatus) => {
     setStatusFilter(status);
+    setPage(1); // Reset to first page when filter changes
   };
 
   const handleView = (id: string) => {
@@ -61,10 +69,8 @@ export function MyBookingsPage() {
     setIsCancelling(true);
     try {
       await cancelBooking(cancelDialogBooking.id, reason ? { reason } : undefined);
-      // Refresh bookings
-      const response = await getMyBookings();
-      setBookings(response.items);
-      setTotal(response.total);
+      // Refresh bookings with current page and filter
+      await fetchBookings(page, statusFilter);
       setCancelDialogBooking(null);
     } catch (error) {
       console.error('Failed to cancel booking:', error);
@@ -73,24 +79,21 @@ export function MyBookingsPage() {
     }
   };
 
-  // Filter bookings for display (client-side only for UI filtering)
-  const displayedBookings = statusFilter
-    ? bookings.filter((b) => b.status === statusFilter)
-    : bookings;
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <BookingList
-        bookings={displayedBookings}
+        bookings={bookings}
         total={total}
-        page={1}
+        page={page}
         pageSize={PAGE_SIZE}
         isLoading={isLoading}
         isManager={false}
         title="My Bookings"
-        onPageChange={(_page) => {
-          // TODO: Implement pagination for bookings
-        }}
+        onPageChange={handlePageChange}
         onStatusFilter={handleStatusFilter}
         onView={handleView}
         onCancel={handleCancelClick}

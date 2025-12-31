@@ -18,17 +18,22 @@ export function PendingBookingsPage() {
 
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
   const [rejectDialogBooking, setRejectDialogBooking] = useState<BookingWithDetails | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const refreshBookings = async () => {
+  const refreshBookings = async (currentPage: number = page) => {
     if (!buildingId) return;
 
     setIsLoading(true);
     try {
-      const response = await listPendingBookings(buildingId);
+      const offset = (currentPage - 1) * PAGE_SIZE;
+      const response = await listPendingBookings(buildingId, {
+        limit: PAGE_SIZE,
+        offset,
+      });
       setBookings(response.items);
       setTotal(response.total);
     } catch (error) {
@@ -38,10 +43,10 @@ export function PendingBookingsPage() {
     }
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger on buildingId change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional trigger on buildingId/page change
   useEffect(() => {
-    refreshBookings();
-  }, [buildingId]);
+    refreshBookings(page);
+  }, [buildingId, page]);
 
   const handleView = (id: string) => {
     navigate(`/bookings/${id}`);
@@ -81,19 +86,21 @@ export function PendingBookingsPage() {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <BookingList
         bookings={bookings}
         total={total}
-        page={1}
+        page={page}
         pageSize={PAGE_SIZE}
         isLoading={isLoading || isProcessing}
         isManager={true}
         title="Pending Booking Approvals"
-        onPageChange={(_page) => {
-          // TODO: Implement pagination for pending bookings
-        }}
+        onPageChange={handlePageChange}
         onView={handleView}
         onApprove={handleApprove}
         onReject={handleRejectClick}

@@ -468,4 +468,24 @@ impl UnitRepository {
         let count = q.fetch_one(&self.pool).await?;
         Ok(count > 0)
     }
+
+    /// Count units by organization (Story 88.5: Report Export Fallback).
+    ///
+    /// Counts all active units in all buildings belonging to an organization.
+    /// Used for estimating report size to decide sync vs async processing.
+    pub async fn count_by_organization(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+        let count: (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*)
+            FROM units u
+            JOIN buildings b ON u.building_id = b.id
+            WHERE b.organization_id = $1 AND u.status = 'active'
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count.0)
+    }
 }

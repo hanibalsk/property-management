@@ -1,5 +1,7 @@
 //! Application state.
 
+use std::time::Instant;
+
 use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpService};
 use api_core::TenantMembershipProvider;
 use db::{
@@ -28,6 +30,8 @@ use db::{
 /// Application state shared across all handlers.
 #[derive(Clone)]
 pub struct AppState {
+    /// Boot time for uptime tracking (Story 88.1)
+    pub boot_time: Instant,
     pub db: DbPool,
     pub user_repo: UserRepository,
     pub session_repo: SessionRepository,
@@ -220,6 +224,7 @@ impl AppState {
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
 
         Self {
+            boot_time: Instant::now(),
             db,
             user_repo,
             session_repo,

@@ -196,15 +196,18 @@ fn default_limit() -> i64 {
     tag = "Infrastructure"
 )]
 pub async fn get_dashboard(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<InfrastructureDashboard>, (StatusCode, Json<ErrorResponse>)> {
+    // Calculate actual uptime (Story 88.1)
+    let uptime_seconds = state.boot_time.elapsed().as_secs() as i64;
+
     // Return mock dashboard data for now
     let dashboard = InfrastructureDashboard {
         health: SystemHealth {
             status: HealthStatus::Healthy,
             version: env!("CARGO_PKG_VERSION").to_string(),
             service: "api-server".to_string(),
-            uptime_seconds: 0,
+            uptime_seconds,
             dependencies: vec![
                 DependencyHealth {
                     name: "database".to_string(),
@@ -915,14 +918,17 @@ pub async fn get_job_type_stats(
     tag = "Infrastructure - Health"
 )]
 pub async fn get_detailed_health(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<SystemHealth>, (StatusCode, Json<ErrorResponse>)> {
+    // Calculate actual uptime (Story 88.1)
+    let uptime_seconds = state.boot_time.elapsed().as_secs() as i64;
+
     // Perform actual health checks
     let health = SystemHealth {
         status: HealthStatus::Healthy,
         version: env!("CARGO_PKG_VERSION").to_string(),
         service: "api-server".to_string(),
-        uptime_seconds: 0, // TODO: Track actual uptime
+        uptime_seconds,
         dependencies: vec![
             DependencyHealth {
                 name: "database".to_string(),
