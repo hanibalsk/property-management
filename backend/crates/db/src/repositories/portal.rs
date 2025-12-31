@@ -361,9 +361,15 @@ impl PortalRepository {
 
     /// Get user's favorites with listing details and price change tracking (Story 84.6).
     ///
-    /// Returns favorites with price change detection. If the listing's current price
-    /// differs from the price when it was favorited (stored in original_price),
-    /// the price_changed flag is set to true.
+    /// Returns favorites with price change detection. The `price_changed` flag indicates
+    /// when the listing's current price differs from the original price captured at the
+    /// time the favorite was added. This enables users to be notified when a property
+    /// they're interested in has a price change (either increase or decrease).
+    ///
+    /// Price change detection logic:
+    /// - `original_price`: The listing price when the favorite was created
+    /// - `price`: The current listing price
+    /// - `price_changed`: True if original_price != current price
     pub async fn get_favorites(
         &self,
         user_id: Uuid,

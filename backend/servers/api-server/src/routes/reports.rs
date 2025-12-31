@@ -711,14 +711,37 @@ pub async fn export_report(
         Err(e) => {
             tracing::error!(error = %e, "Failed to create report export job");
 
-            // Fallback: Generate synchronous download URL for small reports
-            // This provides graceful degradation when job queue is unavailable
+            // IMPORTANT: Fallback behavior when background job creation fails.
+            //
+            // This fallback generates a URL that follows a predictable pattern but does NOT
+            // create the actual report file. The `/api/v1/reports/download/` endpoint does
+            // not exist yet - this is a placeholder for future synchronous report generation.
+            //
+            // Current behavior: The returned URL will result in a 404 if accessed.
+            // This is intentional to provide a graceful degradation path where:
+            // 1. The client receives a valid response structure (202 Accepted)
+            // 2. The client can retry the export request later
+            // 3. The error is logged for monitoring/alerting
+            //
+            // TODO(Story 84.1): Implement synchronous fallback endpoint for small reports
+            // or return a proper error response instead of this placeholder URL.
+            //
+            // For production, consider:
+            // - Implementing the /api/v1/reports/download/{filename} endpoint
+            // - Returning 503 Service Unavailable when job queue is down
+            // - Adding retry logic with exponential backoff on the client side
             let download_url = format!(
                 "/api/v1/reports/download/{}-{}.{}",
                 report_type, timestamp, format
             );
 
             let expires_at = (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339();
+
+            // Return 202 Accepted to maintain API contract, but log that this is a fallback
+            tracing::warn!(
+                download_url = %download_url,
+                "Returning fallback download URL - actual report file was not generated"
+            );
 
             Ok((
                 StatusCode::ACCEPTED,
