@@ -238,3 +238,8 @@ pub use dispute::{DisputeRepository, UpdateAttendanceData, UpdateSessionData};
 pub mod background_jobs;
 
 pub use background_jobs::BackgroundJobRepository;
+
+// Epic 89: Feature Flags & Health Monitoring
+pub mod infrastructure;
+
+pub use infrastructure::InfrastructureRepository;
