@@ -208,6 +208,8 @@ export interface ListBookingsQuery {
   from_date?: string;
   to_date?: string;
   status?: BookingStatus;
+  limit?: number;
+  offset?: number;
 }
 
 /** List facilities query parameters. */
@@ -215,6 +217,21 @@ export interface ListFacilitiesQuery {
   facility_type?: FacilityType;
   is_bookable?: boolean;
   is_active?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+/** Pending bookings query parameters. */
+export interface ListPendingBookingsQuery {
+  limit?: number;
+  offset?: number;
+}
+
+/** My bookings query parameters. */
+export interface MyBookingsQuery {
+  status?: BookingStatus;
+  limit?: number;
+  offset?: number;
 }
 
 /** Paginated response for facilities. */

@@ -47,8 +47,9 @@ export function FacilitiesPage() {
 
   const [facilities, setFacilities] = useState<FacilitySummary[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState<ListFacilitiesQuery>({});
+  const [filters, setFilters] = useState<Omit<ListFacilitiesQuery, 'limit' | 'offset'>>({});
 
   useEffect(() => {
     if (!buildingId) return;
@@ -56,7 +57,12 @@ export function FacilitiesPage() {
     const fetchFacilities = async () => {
       setIsLoading(true);
       try {
-        const response = await listFacilities(buildingId, filters);
+        const offset = (page - 1) * PAGE_SIZE;
+        const response = await listFacilities(buildingId, {
+          ...filters,
+          limit: PAGE_SIZE,
+          offset,
+        });
         setFacilities(response.items);
         setTotal(response.total);
       } catch (error) {
@@ -67,14 +73,16 @@ export function FacilitiesPage() {
     };
 
     fetchFacilities();
-  }, [buildingId, filters]);
+  }, [buildingId, filters, page]);
 
   const handleTypeFilter = (type?: FacilityType) => {
     setFilters((prev) => ({ ...prev, facility_type: type }));
+    setPage(1); // Reset to first page when filter changes
   };
 
   const handleBookableFilter = (bookable?: boolean) => {
     setFilters((prev) => ({ ...prev, is_bookable: bookable }));
+    setPage(1); // Reset to first page when filter changes
   };
 
   const handleView = (id: string) => {
@@ -93,18 +101,20 @@ export function FacilitiesPage() {
     navigate(`/buildings/${buildingId}/facilities/new`);
   };
 
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <FacilityList
         facilities={facilities}
         total={total}
-        page={1}
+        page={page}
         pageSize={PAGE_SIZE}
         isLoading={isLoading}
         isManager={isManager}
-        onPageChange={(_page) => {
-          // TODO: Implement pagination for facilities
-        }}
+        onPageChange={handlePageChange}
         onTypeFilter={handleTypeFilter}
         onBookableFilter={handleBookableFilter}
         onView={handleView}

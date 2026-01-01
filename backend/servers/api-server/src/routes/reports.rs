@@ -28,6 +28,15 @@ use uuid::Uuid;
 use crate::state::AppState;
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/// Maximum row count for synchronous report generation (Story 88.5).
+/// Reports with fewer rows than this threshold are generated immediately.
+/// Larger reports use async background job processing.
+const SYNC_REPORT_ROW_THRESHOLD: i64 = 1000;
+
+// ============================================================================
 // Response Types
 // ============================================================================
 
@@ -80,6 +89,19 @@ pub struct ExportReportResponse {
     pub download_url: String,
     pub format: String,
     pub expires_at: String,
+}
+
+/// Synchronous export response with inline data (Story 88.5).
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct SyncExportReportResponse {
+    /// Base64-encoded file content for immediate download
+    pub data: String,
+    /// Suggested filename for the download
+    pub filename: String,
+    /// MIME type for the content
+    pub content_type: String,
+    /// Export format used
+    pub format: String,
 }
 
 // ============================================================================
@@ -190,7 +212,7 @@ pub fn router() -> Router<AppState> {
 }
 
 // ============================================================================
-// Helper function
+// Helper functions
 // ============================================================================
 
 /// Get building name by ID if provided.
@@ -205,6 +227,267 @@ async fn get_building_name(state: &AppState, building_id: Option<Uuid>) -> Optio
             .and_then(|b| b.name)
     } else {
         None
+    }
+}
+
+/// Estimate row count for a report based on type and parameters (Story 88.5).
+///
+/// Returns an estimated row count to decide between sync and async processing.
+/// For sync generation, we want reports with less than SYNC_REPORT_ROW_THRESHOLD rows.
+async fn estimate_report_row_count(
+    state: &AppState,
+    report_type: &str,
+    organization_id: Uuid,
+    building_id: Option<Uuid>,
+    from_date: Option<NaiveDate>,
+    to_date: Option<NaiveDate>,
+) -> i64 {
+    // Default date range for estimation
+    let to = to_date.unwrap_or_else(|| chrono::Utc::now().date_naive());
+    let from = from_date.unwrap_or_else(|| to - chrono::Duration::days(DEFAULT_FAULT_REPORT_DAYS));
+
+    match report_type {
+        "faults" => {
+            // Estimate based on fault count for the organization/building
+            state
+                .fault_repo
+                .count_by_organization(organization_id)
+                .await
+                .unwrap_or(0)
+        }
+        "voting" => {
+            // Get count of votes in the date range
+            state
+                .vote_repo
+                .get_participation_report(organization_id, building_id, from, to)
+                .await
+                .map(|v| v.len() as i64)
+                .unwrap_or(0)
+        }
+        "occupancy" => {
+            // Estimate based on unit count (one row per unit in the report)
+            state
+                .unit_repo
+                .count_by_organization(organization_id)
+                .await
+                .unwrap_or(0)
+        }
+        "consumption" => {
+            // Estimate based on meter count (consumption data per meter)
+            // This is a rough estimate; actual rows depend on date range granularity
+            state
+                .meter_repo
+                .list_meters_for_building(building_id.unwrap_or(Uuid::nil()), 1, 0)
+                .await
+                .map(|r| r.total)
+                .unwrap_or(0)
+        }
+        _ => 0,
+    }
+}
+
+/// Generate CSV content for a report synchronously (Story 88.5).
+///
+/// Generates report data in CSV format for immediate download.
+/// Only called for small reports (below SYNC_REPORT_ROW_THRESHOLD).
+async fn generate_sync_csv_report(
+    state: &AppState,
+    report_type: &str,
+    organization_id: Uuid,
+    building_id: Option<Uuid>,
+    from_date: Option<NaiveDate>,
+    to_date: Option<NaiveDate>,
+) -> Result<String, (StatusCode, Json<ErrorResponse>)> {
+    let to = to_date.unwrap_or_else(|| chrono::Utc::now().date_naive());
+    let from = from_date.unwrap_or_else(|| to - chrono::Duration::days(DEFAULT_FAULT_REPORT_DAYS));
+
+    match report_type {
+        "faults" => {
+            // Get fault statistics
+            let stats = state
+                .fault_repo
+                .get_statistics(organization_id, building_id)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "Failed to get fault statistics for sync export");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ErrorResponse::new(
+                            "REPORT_GENERATION_FAILED",
+                            "Failed to generate fault report",
+                        )),
+                    )
+                })?;
+
+            // Generate CSV
+            let mut csv = String::from(
+                "Category,Status,Priority,Count,Average Resolution Hours,Average Rating\n",
+            );
+            csv.push_str(&format!(
+                "Total,All,All,{},{},{}\n",
+                stats.total_count,
+                stats
+                    .average_resolution_time_hours
+                    .map_or("N/A".to_string(), |h| format!("{:.1}", h)),
+                stats
+                    .average_rating
+                    .map_or("N/A".to_string(), |r| format!("{:.1}", r))
+            ));
+            csv.push_str(&format!("Open,All,All,{},N/A,N/A\n", stats.open_count));
+            csv.push_str(&format!("Closed,All,All,{},N/A,N/A\n", stats.closed_count));
+
+            // Add by status breakdown
+            for status in &stats.by_status {
+                csv.push_str(&format!(
+                    "By Status,{},All,{},N/A,N/A\n",
+                    status.status, status.count
+                ));
+            }
+
+            // Add by category breakdown
+            for cat in &stats.by_category {
+                csv.push_str(&format!(
+                    "By Category,All,{},{},N/A,N/A\n",
+                    cat.category, cat.count
+                ));
+            }
+
+            // Add by priority breakdown
+            for priority in &stats.by_priority {
+                csv.push_str(&format!(
+                    "By Priority,All,{},{},N/A,N/A\n",
+                    priority.priority, priority.count
+                ));
+            }
+
+            Ok(csv)
+        }
+        "voting" => {
+            // Get voting participation data
+            let votes = state
+                .vote_repo
+                .get_participation_report(organization_id, building_id, from, to)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "Failed to get voting participation for sync export");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ErrorResponse::new("REPORT_GENERATION_FAILED", "Failed to generate voting report")),
+                    )
+                })?;
+
+            // Generate CSV
+            let mut csv = String::from("Vote ID,Title,Status,Start Date,End Date,Eligible Count,Response Count,Participation Rate,Quorum Required,Quorum Reached\n");
+            for v in &votes {
+                csv.push_str(&format!(
+                    "{},{},{},{},{},{},{},{:.1}%,{},{}\n",
+                    v.vote_id,
+                    v.title.replace(',', ";"),
+                    v.status,
+                    v.start_at.as_deref().unwrap_or("N/A"),
+                    v.end_at,
+                    v.eligible_count,
+                    v.response_count,
+                    v.participation_rate,
+                    v.quorum_required
+                        .map_or("N/A".to_string(), |q| format!("{:.0}%", q)),
+                    if v.quorum_reached { "Yes" } else { "No" }
+                ));
+            }
+
+            Ok(csv)
+        }
+        "occupancy" => {
+            // Get occupancy data
+            let data = state
+                .person_month_repo
+                .get_occupancy_report(organization_id, building_id, from, to)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "Failed to get occupancy data for sync export");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ErrorResponse::new(
+                            "REPORT_GENERATION_FAILED",
+                            "Failed to generate occupancy report",
+                        )),
+                    )
+                })?;
+
+            // Generate CSV
+            let mut csv = String::from("Metric,Value\n");
+            csv.push_str(&format!("Total Units,{}\n", data.summary.total_units));
+            csv.push_str(&format!("Occupied Units,{}\n", data.summary.occupied_units));
+            csv.push_str(&format!("Vacant Units,{}\n", data.summary.vacant_units));
+            csv.push_str(&format!(
+                "Occupancy Rate,{:.1}%\n",
+                data.summary.occupancy_rate
+            ));
+            csv.push_str(&format!(
+                "Total Person Months,{}\n",
+                data.summary.total_person_months
+            ));
+
+            // Add monthly breakdown
+            csv.push_str("\nMonth,Person Months\n");
+            for monthly in &data.monthly_totals {
+                csv.push_str(&format!(
+                    "{}/{},{}\n",
+                    monthly.year, monthly.month, monthly.count
+                ));
+            }
+
+            Ok(csv)
+        }
+        "consumption" => {
+            // Get consumption data
+            let data = state
+                .meter_repo
+                .get_consumption_report(organization_id, building_id, None, from, to)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "Failed to get consumption data for sync export");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ErrorResponse::new(
+                            "REPORT_GENERATION_FAILED",
+                            "Failed to generate consumption report",
+                        )),
+                    )
+                })?;
+
+            // Generate CSV
+            let mut csv = String::from("Metric,Value\n");
+            csv.push_str(&format!(
+                "Total Consumption,{}\n",
+                data.summary.total_consumption
+            ));
+            csv.push_str(&format!("Total Cost,{}\n", data.summary.total_cost));
+            csv.push_str(&format!("Meter Count,{}\n", data.summary.meter_count));
+            csv.push_str(&format!(
+                "Average Consumption Per Unit,{}\n",
+                data.summary.average_consumption_per_unit
+            ));
+
+            Ok(csv)
+        }
+        _ => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_REPORT_TYPE",
+                "Unsupported report type",
+            )),
+        )),
+    }
+}
+
+/// Get MIME type for export format.
+fn get_content_type_for_format(format: &str) -> &'static str {
+    match format {
+        "pdf" => "application/pdf",
+        "excel" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "csv" => "text/csv",
+        _ => "application/octet-stream",
     }
 }
 
@@ -603,19 +886,37 @@ pub struct ExportJobStatusResponse {
     pub progress_percent: Option<i32>,
 }
 
-/// Export report to PDF/Excel (Story 55.5).
+/// Export report response union type for OpenAPI (Story 88.5).
 ///
-/// Creates a background job to generate the report. The job will:
-/// 1. Fetch the report data based on type and parameters
-/// 2. Generate the file in the requested format (PDF/Excel/CSV)
-/// 3. Upload to S3 storage
-/// 4. Return a presigned download URL
+/// This enum represents the two possible response types:
+/// - Async: Returns job ID for large reports (202 Accepted)
+/// - Sync: Returns inline data for small reports (200 OK)
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(untagged)]
+pub enum ExportReportResponseUnion {
+    /// Async response with job tracking URL
+    Async(ExportReportResponse),
+    /// Sync response with inline data
+    Sync(SyncExportReportResponse),
+}
+
+/// Export report to PDF/Excel/CSV (Story 55.5 + Story 88.5).
+///
+/// For small reports (< 1000 rows), generates synchronously and returns inline data.
+/// For large reports, creates a background job and returns a tracking URL.
+///
+/// The decision is made based on estimated row count:
+/// - Faults: Total fault count for organization
+/// - Voting: Number of votes in date range
+/// - Occupancy: Number of units
+/// - Consumption: Number of meters
 #[utoipa::path(
     post,
     path = "/api/v1/reports/export",
     request_body = ExportReportRequest,
     responses(
-        (status = 202, description = "Report export job created", body = ExportReportResponse),
+        (status = 200, description = "Report generated synchronously (small report)", body = SyncExportReportResponse),
+        (status = 202, description = "Report export job created (large report)", body = ExportReportResponse),
         (status = 400, description = "Invalid request", body = ErrorResponse),
         (status = 401, description = "Unauthorized", body = ErrorResponse),
     ),
@@ -625,7 +926,7 @@ pub async fn export_report(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(req): Json<ExportReportRequest>,
-) -> Result<(StatusCode, Json<ExportReportResponse>), (StatusCode, Json<ErrorResponse>)> {
+) -> Result<(StatusCode, Json<ExportReportResponseUnion>), (StatusCode, Json<ErrorResponse>)> {
     // Validate format
     let format = req.format.to_lowercase();
     if !["pdf", "excel", "csv"].contains(&format.as_str()) {
@@ -650,6 +951,67 @@ pub async fn export_report(
         ));
     }
 
+    // Story 88.5: Estimate row count to decide sync vs async processing
+    let estimated_rows = estimate_report_row_count(
+        &state,
+        &report_type,
+        req.organization_id,
+        req.building_id,
+        req.from_date,
+        req.to_date,
+    )
+    .await;
+
+    tracing::debug!(
+        report_type = %report_type,
+        estimated_rows = %estimated_rows,
+        threshold = %SYNC_REPORT_ROW_THRESHOLD,
+        "Estimating report size for sync/async decision"
+    );
+
+    // Story 88.5: For small reports, generate synchronously
+    // Note: Currently only CSV format is supported for sync generation
+    // PDF and Excel require additional libraries and are always async
+    if estimated_rows < SYNC_REPORT_ROW_THRESHOLD && format == "csv" {
+        tracing::info!(
+            report_type = %report_type,
+            format = %format,
+            estimated_rows = %estimated_rows,
+            organization_id = %req.organization_id,
+            "Generating small report synchronously (Story 88.5)"
+        );
+
+        // Generate CSV content synchronously
+        let csv_content = generate_sync_csv_report(
+            &state,
+            &report_type,
+            req.organization_id,
+            req.building_id,
+            req.from_date,
+            req.to_date,
+        )
+        .await?;
+
+        // Encode content as base64 for JSON response
+        use base64::{engine::general_purpose::STANDARD, Engine};
+        let encoded_data = STANDARD.encode(csv_content.as_bytes());
+
+        // Generate filename
+        let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let filename = format!("{}_{}.csv", report_type, timestamp);
+
+        return Ok((
+            StatusCode::OK,
+            Json(ExportReportResponseUnion::Sync(SyncExportReportResponse {
+                data: encoded_data,
+                filename,
+                content_type: get_content_type_for_format(&format).to_string(),
+                format,
+            })),
+        ));
+    }
+
+    // For large reports or non-CSV formats, use async processing
     // Build job payload with all export parameters
     let job_payload = serde_json::json!({
         "report_type": report_type,
@@ -689,8 +1051,9 @@ pub async fn export_report(
                 job_id = %job_id,
                 report_type = %report_type,
                 format = %format,
+                estimated_rows = %estimated_rows,
                 organization_id = %req.organization_id,
-                "Report export job created"
+                "Report export job created for large report"
             );
 
             // Return accepted status with job tracking URL
@@ -701,35 +1064,66 @@ pub async fn export_report(
 
             Ok((
                 StatusCode::ACCEPTED,
-                Json(ExportReportResponse {
+                Json(ExportReportResponseUnion::Async(ExportReportResponse {
                     download_url,
                     format,
                     expires_at,
-                }),
+                })),
             ))
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to create report export job");
 
-            // IMPORTANT: Fallback behavior when background job creation fails.
-            //
-            // This fallback generates a URL that follows a predictable pattern but does NOT
-            // create the actual report file. The `/api/v1/reports/download/` endpoint does
-            // not exist yet - this is a placeholder for future synchronous report generation.
-            //
-            // Current behavior: The returned URL will result in a 404 if accessed.
-            // This is intentional to provide a graceful degradation path where:
-            // 1. The client receives a valid response structure (202 Accepted)
-            // 2. The client can retry the export request later
-            // 3. The error is logged for monitoring/alerting
-            //
-            // TODO(Story 84.1): Implement synchronous fallback endpoint for small reports
-            // or return a proper error response instead of this placeholder URL.
-            //
-            // For production, consider:
-            // - Implementing the /api/v1/reports/download/{filename} endpoint
-            // - Returning 503 Service Unavailable when job queue is down
-            // - Adding retry logic with exponential backoff on the client side
+            // Story 88.5: Try synchronous generation as fallback when job creation fails
+            // This provides better UX than returning an error for small reports
+            if format == "csv" {
+                tracing::info!(
+                    report_type = %report_type,
+                    "Attempting synchronous CSV generation as fallback after job creation failure"
+                );
+
+                match generate_sync_csv_report(
+                    &state,
+                    &report_type,
+                    req.organization_id,
+                    req.building_id,
+                    req.from_date,
+                    req.to_date,
+                )
+                .await
+                {
+                    Ok(csv_content) => {
+                        use base64::{engine::general_purpose::STANDARD, Engine};
+                        let encoded_data = STANDARD.encode(csv_content.as_bytes());
+
+                        let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+                        let filename = format!("{}_{}.csv", report_type, timestamp);
+
+                        tracing::info!(
+                            report_type = %report_type,
+                            "Synchronous fallback generation succeeded"
+                        );
+
+                        return Ok((
+                            StatusCode::OK,
+                            Json(ExportReportResponseUnion::Sync(SyncExportReportResponse {
+                                data: encoded_data,
+                                filename,
+                                content_type: get_content_type_for_format(&format).to_string(),
+                                format,
+                            })),
+                        ));
+                    }
+                    Err(sync_err) => {
+                        tracing::error!(
+                            "Synchronous fallback also failed, returning original error"
+                        );
+                        return Err(sync_err);
+                    }
+                }
+            }
+
+            // For PDF/Excel, we cannot generate synchronously, return job URL as placeholder
             let download_url = format!(
                 "/api/v1/reports/download/{}-{}.{}",
                 report_type, timestamp, format
@@ -737,7 +1131,6 @@ pub async fn export_report(
 
             let expires_at = (chrono::Utc::now() + chrono::Duration::hours(24)).to_rfc3339();
 
-            // Return 202 Accepted to maintain API contract, but log that this is a fallback
             tracing::warn!(
                 download_url = %download_url,
                 "Returning fallback download URL - actual report file was not generated"
@@ -745,11 +1138,11 @@ pub async fn export_report(
 
             Ok((
                 StatusCode::ACCEPTED,
-                Json(ExportReportResponse {
+                Json(ExportReportResponseUnion::Async(ExportReportResponse {
                     download_url,
                     format,
                     expires_at,
-                }),
+                })),
             ))
         }
     }

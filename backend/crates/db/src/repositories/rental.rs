@@ -1,5 +1,8 @@
 //! Rental repository (Epic 18: Short-Term Rental Integration).
 
+use std::collections::HashMap;
+use std::sync::LazyLock;
+
 use crate::models::rental::{
     block_reason, booking_status, guest_status, report_status, BookingListQuery, BookingSummary,
     BookingWithGuests, CalendarBlock, CalendarEvent, CheckInReminder, ConnectionStatus,
@@ -14,6 +17,91 @@ use chrono::{Datelike, Duration, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use sqlx::Error as SqlxError;
 use uuid::Uuid;
+
+/// Static mapping of ISO 3166-1 alpha-2 country codes to country names.
+/// Includes EU countries and common destinations for short-term rentals.
+static COUNTRY_NAMES: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
+    let mut m = HashMap::new();
+    // Central Europe
+    m.insert("SK", "Slovakia");
+    m.insert("CZ", "Czech Republic");
+    m.insert("AT", "Austria");
+    m.insert("DE", "Germany");
+    m.insert("HU", "Hungary");
+    m.insert("PL", "Poland");
+    m.insert("CH", "Switzerland");
+    m.insert("SI", "Slovenia");
+    // Eastern Europe
+    m.insert("UA", "Ukraine");
+    m.insert("RO", "Romania");
+    m.insert("BG", "Bulgaria");
+    m.insert("MD", "Moldova");
+    m.insert("BY", "Belarus");
+    m.insert("RU", "Russia");
+    // Western Europe
+    m.insert("GB", "United Kingdom");
+    m.insert("FR", "France");
+    m.insert("NL", "Netherlands");
+    m.insert("BE", "Belgium");
+    m.insert("LU", "Luxembourg");
+    m.insert("IE", "Ireland");
+    // Southern Europe
+    m.insert("ES", "Spain");
+    m.insert("IT", "Italy");
+    m.insert("PT", "Portugal");
+    m.insert("GR", "Greece");
+    m.insert("HR", "Croatia");
+    m.insert("RS", "Serbia");
+    m.insert("ME", "Montenegro");
+    m.insert("MK", "North Macedonia");
+    m.insert("AL", "Albania");
+    m.insert("BA", "Bosnia and Herzegovina");
+    m.insert("XK", "Kosovo");
+    m.insert("MT", "Malta");
+    m.insert("CY", "Cyprus");
+    // Northern Europe
+    m.insert("SE", "Sweden");
+    m.insert("NO", "Norway");
+    m.insert("FI", "Finland");
+    m.insert("DK", "Denmark");
+    m.insert("IS", "Iceland");
+    m.insert("EE", "Estonia");
+    m.insert("LV", "Latvia");
+    m.insert("LT", "Lithuania");
+    // Americas
+    m.insert("US", "United States");
+    m.insert("CA", "Canada");
+    m.insert("MX", "Mexico");
+    m.insert("BR", "Brazil");
+    m.insert("AR", "Argentina");
+    // Asia & Middle East
+    m.insert("CN", "China");
+    m.insert("JP", "Japan");
+    m.insert("KR", "South Korea");
+    m.insert("IN", "India");
+    m.insert("TR", "Turkey");
+    m.insert("IL", "Israel");
+    m.insert("AE", "United Arab Emirates");
+    // Oceania
+    m.insert("AU", "Australia");
+    m.insert("NZ", "New Zealand");
+    // Africa
+    m.insert("ZA", "South Africa");
+    m.insert("EG", "Egypt");
+    m.insert("MA", "Morocco");
+    // Special
+    m.insert("UNK", "Unknown");
+    m
+});
+
+/// Get country name from ISO 3166-1 alpha-2 code.
+/// Returns the country name if found, otherwise returns the code itself.
+fn get_country_name(code: &str) -> String {
+    COUNTRY_NAMES
+        .get(code.to_uppercase().as_str())
+        .map(|name| (*name).to_string())
+        .unwrap_or_else(|| code.to_string())
+}
 
 /// Repository for rental operations.
 #[derive(Clone)]
@@ -1042,7 +1130,7 @@ impl RentalRepository {
                 let nat = nationality.unwrap_or_else(|| "UNK".to_string());
                 NationalityStats {
                     nationality: nat.clone(),
-                    country_name: nat, // TODO: Map to country name
+                    country_name: get_country_name(&nat),
                     count: count as i32,
                     percentage: if total_guests > 0 {
                         (count as f64 / total_guests as f64) * 100.0
