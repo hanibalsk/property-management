@@ -1,5 +1,6 @@
 /**
  * Compliance React Hooks (Epic 90 - Frontend API Integration).
+ * Originally from Epic 67, integrated as part of Epic 90.
  *
  * TanStack Query hooks for AML, content moderation, and DSA compliance.
  */

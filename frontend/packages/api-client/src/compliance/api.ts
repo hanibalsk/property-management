@@ -1,5 +1,6 @@
 /**
  * Compliance API Client (Epic 90 - Frontend API Integration).
+ * Originally from Epic 67, integrated as part of Epic 90.
  *
  * API functions for AML, content moderation, and DSA compliance.
  */
