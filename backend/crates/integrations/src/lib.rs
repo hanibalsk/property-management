@@ -9,6 +9,9 @@ pub mod accounting;
 pub mod calendar;
 pub mod crypto;
 
+// Epic 96: OAuth Phase 2 Integrations
+pub mod oauth;
+
 // Epic 84: S3 Storage Integration
 pub mod storage;
 
@@ -59,6 +62,14 @@ pub use accounting::{
 // Encryption utilities for sensitive integration data
 pub use crypto::{
     decrypt_if_available, encrypt_if_available, CryptoError, IntegrationCrypto, ENCRYPTION_KEY_ENV,
+};
+
+// Story 96.1: OAuth Token Management
+pub use oauth::{
+    create_revocation_result, ConnectionsNeedingRefresh, DecryptedTokens, OAuthError,
+    OAuthProvider, OAuthTokenManager, ProviderConfigs, RefreshResult, RevocationResult,
+    StoredToken, TokenRefreshConfig, TokenRefreshScheduler, DEFAULT_REFRESH_BUFFER_SECS,
+    MAX_REFRESH_BUFFER_SECS, MIN_REFRESH_BUFFER_SECS,
 };
 
 // Story 64.1-64.4: LLM Integration

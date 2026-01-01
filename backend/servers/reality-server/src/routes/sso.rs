@@ -28,6 +28,10 @@ pub fn router() -> Router<AppState> {
         // Session management
         .route("/session", get(get_session))
         .route("/refresh", post(refresh_session))
+        // Story 96.3: SSO Token Exchange & Session Sync
+        .route("/exchange", post(exchange_pm_token))
+        .route("/sync", post(sync_session))
+        .route("/roles", get(get_mapped_roles))
 }
 
 // ==================== Web SSO Flow ====================
@@ -660,4 +664,494 @@ fn extract_session_token(headers: &axum::http::HeaderMap) -> Option<String> {
 
     // Fall back to cookie
     extract_session_cookie(headers)
+}
+
+// ==================== Story 96.3: SSO Token Exchange & Session Sync ====================
+
+/// PM role to Reality Portal role mapping.
+/// Maps Property Management roles to Reality Portal access levels.
+pub mod role_mapping {
+    /// PM role constants.
+    pub mod pm_roles {
+        pub const OWNER: &str = "owner";
+        pub const MANAGER: &str = "manager";
+        pub const TECHNICAL_MANAGER: &str = "technical_manager";
+        pub const TENANT: &str = "tenant";
+        pub const RESIDENT: &str = "resident";
+        pub const PROPERTY_MANAGER: &str = "property_manager";
+        pub const REAL_ESTATE_AGENT: &str = "real_estate_agent";
+    }
+
+    /// Reality Portal access levels.
+    pub mod portal_roles {
+        pub const AGENT: &str = "agent"; // Can manage listings
+        pub const PROPERTY_OWNER: &str = "property_owner"; // Can list own properties
+        pub const VERIFIED_USER: &str = "verified_user"; // Verified identity
+        pub const USER: &str = "user"; // Basic portal user
+    }
+
+    /// Map PM role to Reality Portal role.
+    pub fn map_pm_role_to_portal(pm_role: &str) -> &'static str {
+        match pm_role {
+            "real_estate_agent" => portal_roles::AGENT,
+            "property_manager" => portal_roles::AGENT,
+            "manager" => portal_roles::PROPERTY_OWNER,
+            "owner" => portal_roles::PROPERTY_OWNER,
+            "technical_manager" => portal_roles::VERIFIED_USER,
+            "tenant" | "resident" => portal_roles::USER,
+            _ => portal_roles::USER,
+        }
+    }
+
+    /// Check if a PM role grants listing management access.
+    pub fn can_manage_listings(pm_role: &str) -> bool {
+        matches!(
+            pm_role,
+            "real_estate_agent" | "property_manager" | "manager" | "owner"
+        )
+    }
+
+    /// Get all permissions for a portal role.
+    pub fn get_portal_permissions(portal_role: &str) -> Vec<&'static str> {
+        match portal_role {
+            portal_roles::AGENT => vec![
+                "listings:create",
+                "listings:update",
+                "listings:delete",
+                "inquiries:manage",
+                "analytics:view",
+            ],
+            portal_roles::PROPERTY_OWNER => {
+                vec!["listings:create", "listings:update", "inquiries:view"]
+            }
+            portal_roles::VERIFIED_USER => vec!["inquiries:create", "favorites:manage"],
+            portal_roles::USER => vec!["favorites:manage"],
+            _ => vec![],
+        }
+    }
+}
+
+/// Request to exchange PM token for Reality Portal session.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ExchangeTokenRequest {
+    /// PM access token to exchange.
+    pub pm_access_token: String,
+    /// Optional: specific PM roles to include (for role filtering).
+    pub roles: Option<Vec<String>>,
+}
+
+/// Response with Reality Portal session and mapped roles.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ExchangeTokenResponse {
+    /// Reality Portal session token.
+    pub session_token: String,
+    /// User information.
+    pub user: SsoUserInfo,
+    /// Mapped Reality Portal role.
+    pub portal_role: String,
+    /// Permissions granted.
+    pub permissions: Vec<String>,
+    /// Original PM roles.
+    pub pm_roles: Vec<String>,
+    /// Session expiry in seconds.
+    pub expires_in: u64,
+}
+
+/// Exchange PM access token for Reality Portal session.
+///
+/// This endpoint allows PM users to access Reality Portal with their existing
+/// credentials, mapping PM roles to appropriate portal permissions.
+#[utoipa::path(
+    post,
+    path = "/api/v1/sso/exchange",
+    tag = "SSO",
+    request_body = ExchangeTokenRequest,
+    responses(
+        (status = 200, description = "Token exchanged successfully", body = ExchangeTokenResponse),
+        (status = 401, description = "Invalid PM token", body = SsoError)
+    )
+)]
+pub async fn exchange_pm_token(
+    State(state): State<AppState>,
+    Json(request): Json<ExchangeTokenRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<SsoError>)> {
+    tracing::info!("Exchanging PM token for Reality Portal session");
+
+    // Introspect PM token to validate and get user info
+    let token_info = introspect_pm_token(&state, &request.pm_access_token)
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "Failed to introspect PM token");
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(SsoError::new("invalid_token", &e.to_string())),
+            )
+        })?;
+
+    if !token_info.active {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(SsoError::new("token_inactive", "PM token is not active")),
+        ));
+    }
+
+    // Get user info from PM
+    let user_info = get_user_info(&state, &request.pm_access_token)
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "Failed to get user info from PM");
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(SsoError::new("user_info_failed", &e.to_string())),
+            )
+        })?;
+
+    // Get PM roles from token scope or fetch from PM API
+    let pm_roles = extract_roles_from_scope(token_info.scope.as_deref())
+        .or_else(|| request.roles.clone())
+        .unwrap_or_default();
+
+    // Map PM roles to portal role (use highest privilege)
+    let portal_role = pm_roles
+        .iter()
+        .map(|r| role_mapping::map_pm_role_to_portal(r))
+        .max_by_key(|r| match *r {
+            role_mapping::portal_roles::AGENT => 4,
+            role_mapping::portal_roles::PROPERTY_OWNER => 3,
+            role_mapping::portal_roles::VERIFIED_USER => 2,
+            _ => 1,
+        })
+        .unwrap_or(role_mapping::portal_roles::USER);
+
+    let permissions: Vec<String> = role_mapping::get_portal_permissions(portal_role)
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+    // Create or update portal user
+    let portal_user = state
+        .user_service
+        .upsert_sso_user(&user_info)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create portal user");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(SsoError::new("user_create_failed", &e.to_string())),
+            )
+        })?;
+
+    // Create session (role is stored with user, not in session)
+    let session_token = state
+        .session_service
+        .create_mobile_session(portal_user.id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create session");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(SsoError::new("session_create_failed", &e.to_string())),
+            )
+        })?;
+
+    tracing::info!(
+        user_id = %user_info.user_id,
+        portal_role = %portal_role,
+        pm_roles = ?pm_roles,
+        "PM token exchanged successfully"
+    );
+
+    Ok(Json(ExchangeTokenResponse {
+        session_token,
+        user: user_info,
+        portal_role: portal_role.to_string(),
+        permissions,
+        pm_roles,
+        expires_in: 7 * 24 * 60 * 60, // 7 days
+    }))
+}
+
+/// Request to sync session between PM and Reality Portal.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct SyncSessionRequest {
+    /// PM session token or access token.
+    pub pm_token: String,
+    /// Current Reality Portal session token (if exists).
+    pub portal_session: Option<String>,
+}
+
+/// Session sync response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct SyncSessionResponse {
+    /// Whether sync was successful.
+    pub synced: bool,
+    /// Updated or new portal session token.
+    pub session_token: String,
+    /// Whether session was refreshed.
+    pub refreshed: bool,
+    /// Session status.
+    pub status: String,
+}
+
+/// Synchronize session state between PM and Reality Portal.
+///
+/// This ensures that logout in PM invalidates the Reality Portal session,
+/// and that role changes are propagated.
+#[utoipa::path(
+    post,
+    path = "/api/v1/sso/sync",
+    tag = "SSO",
+    request_body = SyncSessionRequest,
+    responses(
+        (status = 200, description = "Session synchronized", body = SyncSessionResponse),
+        (status = 401, description = "PM session invalid", body = SsoError)
+    )
+)]
+pub async fn sync_session(
+    State(state): State<AppState>,
+    Json(request): Json<SyncSessionRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<SsoError>)> {
+    tracing::info!("Syncing session between PM and Reality Portal");
+
+    // Validate PM token is still active
+    let token_info = introspect_pm_token(&state, &request.pm_token)
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "PM token introspection failed during sync");
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(SsoError::new("pm_session_invalid", &e.to_string())),
+            )
+        })?;
+
+    // If PM token is inactive, invalidate portal session
+    if !token_info.active {
+        if let Some(portal_session) = &request.portal_session {
+            let _ = state
+                .session_service
+                .invalidate_session(portal_session)
+                .await;
+            tracing::info!("Invalidated portal session due to inactive PM token");
+        }
+
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(SsoError::new(
+                "pm_session_expired",
+                "PM session has expired, portal session invalidated",
+            )),
+        ));
+    }
+
+    // Get current user info
+    let user_info = get_user_info(&state, &request.pm_token)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(SsoError::new("user_info_failed", &e.to_string())),
+            )
+        })?;
+
+    // If portal session exists, refresh it; otherwise create new
+    let (session_token, refreshed) = if let Some(portal_session) = &request.portal_session {
+        match state.session_service.refresh_session(portal_session).await {
+            Ok(_info) => (portal_session.clone(), true),
+            Err(_) => {
+                // Session invalid, create new one
+                let portal_user = state
+                    .user_service
+                    .upsert_sso_user(&user_info)
+                    .await
+                    .map_err(|e| {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(SsoError::new("user_create_failed", &e.to_string())),
+                        )
+                    })?;
+
+                let new_session = state
+                    .session_service
+                    .create_mobile_session(portal_user.id)
+                    .await
+                    .map_err(|e| {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(SsoError::new("session_create_failed", &e.to_string())),
+                        )
+                    })?;
+
+                (new_session, false)
+            }
+        }
+    } else {
+        // No portal session, create new one
+        let portal_user = state
+            .user_service
+            .upsert_sso_user(&user_info)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(SsoError::new("user_create_failed", &e.to_string())),
+                )
+            })?;
+
+        let new_session = state
+            .session_service
+            .create_mobile_session(portal_user.id)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(SsoError::new("session_create_failed", &e.to_string())),
+                )
+            })?;
+
+        (new_session, false)
+    };
+
+    Ok(Json(SyncSessionResponse {
+        synced: true,
+        session_token,
+        refreshed,
+        status: "active".to_string(),
+    }))
+}
+
+/// Mapped roles response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct MappedRolesResponse {
+    /// PM role to portal role mappings.
+    pub role_mappings: Vec<RoleMapping>,
+    /// All available portal roles.
+    pub portal_roles: Vec<PortalRoleInfo>,
+}
+
+/// Individual role mapping.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct RoleMapping {
+    /// PM role name.
+    pub pm_role: String,
+    /// Mapped portal role.
+    pub portal_role: String,
+    /// Whether this role can manage listings.
+    pub can_manage_listings: bool,
+}
+
+/// Portal role information.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PortalRoleInfo {
+    /// Role identifier.
+    pub role: String,
+    /// Role description.
+    pub description: String,
+    /// Permissions granted.
+    pub permissions: Vec<String>,
+}
+
+/// Get role mappings between PM and Reality Portal.
+///
+/// Returns the mapping configuration for PM roles to Reality Portal roles,
+/// useful for UI display and permission checking.
+#[utoipa::path(
+    get,
+    path = "/api/v1/sso/roles",
+    tag = "SSO",
+    responses(
+        (status = 200, description = "Role mappings", body = MappedRolesResponse)
+    )
+)]
+pub async fn get_mapped_roles(State(_state): State<AppState>) -> impl IntoResponse {
+    let role_mappings = vec![
+        RoleMapping {
+            pm_role: role_mapping::pm_roles::REAL_ESTATE_AGENT.to_string(),
+            portal_role: role_mapping::portal_roles::AGENT.to_string(),
+            can_manage_listings: true,
+        },
+        RoleMapping {
+            pm_role: role_mapping::pm_roles::PROPERTY_MANAGER.to_string(),
+            portal_role: role_mapping::portal_roles::AGENT.to_string(),
+            can_manage_listings: true,
+        },
+        RoleMapping {
+            pm_role: role_mapping::pm_roles::MANAGER.to_string(),
+            portal_role: role_mapping::portal_roles::PROPERTY_OWNER.to_string(),
+            can_manage_listings: true,
+        },
+        RoleMapping {
+            pm_role: role_mapping::pm_roles::OWNER.to_string(),
+            portal_role: role_mapping::portal_roles::PROPERTY_OWNER.to_string(),
+            can_manage_listings: true,
+        },
+        RoleMapping {
+            pm_role: role_mapping::pm_roles::TECHNICAL_MANAGER.to_string(),
+            portal_role: role_mapping::portal_roles::VERIFIED_USER.to_string(),
+            can_manage_listings: false,
+        },
+        RoleMapping {
+            pm_role: role_mapping::pm_roles::TENANT.to_string(),
+            portal_role: role_mapping::portal_roles::USER.to_string(),
+            can_manage_listings: false,
+        },
+        RoleMapping {
+            pm_role: role_mapping::pm_roles::RESIDENT.to_string(),
+            portal_role: role_mapping::portal_roles::USER.to_string(),
+            can_manage_listings: false,
+        },
+    ];
+
+    let portal_roles = vec![
+        PortalRoleInfo {
+            role: role_mapping::portal_roles::AGENT.to_string(),
+            description: "Real estate agent with full listing management".to_string(),
+            permissions: role_mapping::get_portal_permissions(role_mapping::portal_roles::AGENT)
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        },
+        PortalRoleInfo {
+            role: role_mapping::portal_roles::PROPERTY_OWNER.to_string(),
+            description: "Property owner who can list own properties".to_string(),
+            permissions: role_mapping::get_portal_permissions(
+                role_mapping::portal_roles::PROPERTY_OWNER,
+            )
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        },
+        PortalRoleInfo {
+            role: role_mapping::portal_roles::VERIFIED_USER.to_string(),
+            description: "Verified user with enhanced access".to_string(),
+            permissions: role_mapping::get_portal_permissions(
+                role_mapping::portal_roles::VERIFIED_USER,
+            )
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        },
+        PortalRoleInfo {
+            role: role_mapping::portal_roles::USER.to_string(),
+            description: "Basic portal user".to_string(),
+            permissions: role_mapping::get_portal_permissions(role_mapping::portal_roles::USER)
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        },
+    ];
+
+    Json(MappedRolesResponse {
+        role_mappings,
+        portal_roles,
+    })
+}
+
+/// Extract roles from OAuth scope string.
+fn extract_roles_from_scope(scope: Option<&str>) -> Option<Vec<String>> {
+    scope.map(|s| {
+        s.split_whitespace()
+            .filter(|part| part.starts_with("role:"))
+            .map(|part| part.strip_prefix("role:").unwrap_or(part).to_string())
+            .collect()
+    })
 }

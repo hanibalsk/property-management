@@ -39,14 +39,17 @@ This directory contains architectural documentation and requirements for Phase 2
 - Workflow execution engine
 - Photo enhancement service integration
 
-### Infrastructure Tracing (Story 87.3)
+### Infrastructure Tracing (Story 87.3) ✅ COMPLETE
 
-**Implemented:**
-- Basic `tracing` crate logging throughout the codebase
-- Error logging patterns
+**Implemented (Epic 95):**
+- OpenTelemetry distributed tracing with OTLP export
+- Sentry error tracking with PII redaction
+- Prometheus metrics collection and `/metrics` endpoint
+- Enhanced health endpoints with detailed status
+- JSON structured logging with trace context
+- Error context propagation across services
 
-**Needs Phase 2 Work:**
-- OpenTelemetry integration
-- Distributed tracing with span propagation
-- Jaeger/Zipkin exporter configuration
-- Metrics collection and dashboards
+**Key Files:**
+- `backend/servers/api-server/src/observability.rs`
+- `backend/servers/reality-server/src/observability.rs`
+- `backend/servers/*/src/routes/health.rs` (enhanced)
