@@ -1,5 +1,6 @@
 /**
- * Migration Import React Hooks (Epic 66).
+ * Migration Import React Hooks (Epic 90 - Frontend API Integration).
+ * Originally from Epic 66, integrated as part of Epic 90.
  *
  * TanStack Query hooks for bulk data import functionality.
  */

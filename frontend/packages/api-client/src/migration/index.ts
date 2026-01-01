@@ -1,5 +1,5 @@
 /**
- * Migration Import Module (Epic 66).
+ * Migration Import Module (Epic 90 - Frontend API Integration).
  *
  * Exports for bulk data import functionality.
  */

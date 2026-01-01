@@ -1,5 +1,5 @@
 /**
- * Compliance API Client (Epic 67).
+ * Compliance API Client (Epic 90 - Frontend API Integration).
  *
  * API functions for AML, content moderation, and DSA compliance.
  */

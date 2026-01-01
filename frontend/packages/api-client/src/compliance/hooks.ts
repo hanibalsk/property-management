@@ -1,5 +1,5 @@
 /**
- * Compliance React Hooks (Epic 67).
+ * Compliance React Hooks (Epic 90 - Frontend API Integration).
  *
  * TanStack Query hooks for AML, content moderation, and DSA compliance.
  */

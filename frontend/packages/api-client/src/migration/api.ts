@@ -1,5 +1,5 @@
 /**
- * Migration Import API Client (Epic 66).
+ * Migration Import API Client (Epic 90 - Frontend API Integration).
  *
  * API functions for bulk data import functionality.
  */
