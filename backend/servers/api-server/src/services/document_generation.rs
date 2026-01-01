@@ -832,12 +832,12 @@ The announcements should be ready for immediate publication after minimal editin
                     if current_section == "content" {
                         draft.content = current_content.trim().to_string();
                     }
+                    // Strip the "TITLE:" prefix (case-insensitive)
                     draft.title = trimmed
-                        .trim_start_matches(|c: char| {
-                            c.is_uppercase() || c == ':' || c.is_whitespace()
-                        })
-                        .trim_start_matches("TITLE:")
-                        .trim_start_matches("Title:")
+                        .strip_prefix("TITLE:")
+                        .or_else(|| trimmed.strip_prefix("Title:"))
+                        .or_else(|| trimmed.strip_prefix("title:"))
+                        .unwrap_or(trimmed)
                         .trim()
                         .to_string();
                     current_section = "title";
@@ -849,12 +849,12 @@ The announcements should be ready for immediate publication after minimal editin
                     if current_section == "content" {
                         draft.content = current_content.trim().to_string();
                     }
+                    // Strip the "TARGET:" prefix (case-insensitive)
                     draft.suggested_target = trimmed
-                        .trim_start_matches(|c: char| {
-                            c.is_uppercase() || c == ':' || c.is_whitespace()
-                        })
-                        .trim_start_matches("TARGET:")
-                        .trim_start_matches("Target:")
+                        .strip_prefix("TARGET:")
+                        .or_else(|| trimmed.strip_prefix("Target:"))
+                        .or_else(|| trimmed.strip_prefix("target:"))
+                        .unwrap_or(trimmed)
                         .trim()
                         .to_lowercase();
                     current_section = "target";
@@ -863,12 +863,12 @@ The announcements should be ready for immediate publication after minimal editin
                     if current_section == "content" {
                         draft.content = current_content.trim().to_string();
                     }
+                    // Strip the "TONE:" prefix (case-insensitive)
                     draft.tone_analysis = trimmed
-                        .trim_start_matches(|c: char| {
-                            c.is_uppercase() || c == ':' || c.is_whitespace()
-                        })
-                        .trim_start_matches("TONE:")
-                        .trim_start_matches("Tone:")
+                        .strip_prefix("TONE:")
+                        .or_else(|| trimmed.strip_prefix("Tone:"))
+                        .or_else(|| trimmed.strip_prefix("tone:"))
+                        .unwrap_or(trimmed)
                         .trim()
                         .to_string();
                     current_section = "tone";
