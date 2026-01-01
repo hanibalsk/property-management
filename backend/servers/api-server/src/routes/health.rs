@@ -1,8 +1,10 @@
 //! Health check endpoint.
 
-use axum::Json;
+use axum::{extract::State, Json};
 use serde::Serialize;
 use utoipa::ToSchema;
+
+use crate::state::AppState;
 
 /// Health check response.
 #[derive(Serialize, ToSchema)]
@@ -13,6 +15,8 @@ pub struct HealthResponse {
     pub version: String,
     /// Service name
     pub service: String,
+    /// Uptime in seconds (Story 88.1)
+    pub uptime_seconds: u64,
 }
 
 /// Health check endpoint.
@@ -24,10 +28,12 @@ pub struct HealthResponse {
         (status = 200, description = "Service is healthy", body = HealthResponse)
     )
 )]
-pub async fn health() -> Json<HealthResponse> {
+pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
+    let uptime_seconds = state.boot_time.elapsed().as_secs();
     Json(HealthResponse {
         status: "ok".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         service: "api-server".to_string(),
+        uptime_seconds,
     })
 }

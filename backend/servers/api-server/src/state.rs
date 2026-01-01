@@ -1,5 +1,7 @@
 //! Application state.
 
+use std::time::Instant;
+
 use crate::services::{AuthService, EmailService, JwtService, OAuthService, TotpService};
 use api_core::TenantMembershipProvider;
 use db::{
@@ -11,9 +13,9 @@ use db::{
         EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
         FaultRepository, FeatureFlagRepository, FinancialRepository, FormRepository,
         GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
-        HelpRepository, InsuranceRepository, IntegrationRepository, LeaseRepository,
-        LegalRepository, ListingRepository, LlmDocumentRepository, MeterRepository,
-        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
+        LeaseRepository, LegalRepository, ListingRepository, LlmDocumentRepository,
+        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OwnerAnalyticsRepository, PackageVisitorRepository, PasswordResetRepository,
         PersonMonthRepository, PlatformAdminRepository, RegistryRepository, RentalRepository,
@@ -28,6 +30,8 @@ use db::{
 /// Application state shared across all handlers.
 #[derive(Clone)]
 pub struct AppState {
+    /// Boot time for uptime tracking (Story 88.1)
+    pub boot_time: Instant,
     pub db: DbPool,
     pub user_repo: UserRepository,
     pub session_repo: SessionRepository,
@@ -117,6 +121,8 @@ pub struct AppState {
     pub dispute_repo: DisputeRepository,
     // Epic 71: Background Jobs Infrastructure (Phase 1.3)
     pub background_job_repo: BackgroundJobRepository,
+    // Epic 89: Feature Flags & Health Monitoring
+    pub infrastructure_repo: InfrastructureRepository,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -215,11 +221,14 @@ impl AppState {
         let dispute_repo = DisputeRepository::new(db.clone());
         // Epic 71: Background Jobs Infrastructure (Phase 1.3)
         let background_job_repo = BackgroundJobRepository::new(db.clone());
+        // Epic 89: Feature Flags & Health Monitoring
+        let infrastructure_repo = InfrastructureRepository::new(db.clone());
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
 
         Self {
+            boot_time: Instant::now(),
             db,
             user_repo,
             session_repo,
@@ -283,6 +292,7 @@ impl AppState {
             owner_analytics_repo,
             dispute_repo,
             background_job_repo,
+            infrastructure_repo,
             auth_service,
             email_service,
             jwt_service,

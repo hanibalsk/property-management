@@ -16,6 +16,8 @@ import type {
   FacilityListResponse,
   ListBookingsQuery,
   ListFacilitiesQuery,
+  ListPendingBookingsQuery,
+  MyBookingsQuery,
   RejectBookingRequest,
   UpdateBookingRequest,
   UpdateFacilityRequest,
@@ -66,6 +68,8 @@ export async function listFacilities(
   if (params?.is_bookable !== undefined)
     searchParams.set('is_bookable', String(params.is_bookable));
   if (params?.is_active !== undefined) searchParams.set('is_active', String(params.is_active));
+  if (params?.limit !== undefined) searchParams.set('limit', String(params.limit));
+  if (params?.offset !== undefined) searchParams.set('offset', String(params.offset));
   const query = searchParams.toString();
   return fetchApi(`${API_BASE}/buildings/${buildingId}/facilities${query ? `?${query}` : ''}`);
 }
@@ -171,8 +175,13 @@ export async function createBooking(
 /**
  * Get current user's bookings.
  */
-export async function getMyBookings(): Promise<BookingListResponse> {
-  return fetchApi(`${API_BASE}/bookings/my`);
+export async function getMyBookings(params?: MyBookingsQuery): Promise<BookingListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.limit !== undefined) searchParams.set('limit', String(params.limit));
+  if (params?.offset !== undefined) searchParams.set('offset', String(params.offset));
+  const query = searchParams.toString();
+  return fetchApi(`${API_BASE}/bookings/my${query ? `?${query}` : ''}`);
 }
 
 /**
@@ -215,8 +224,17 @@ export async function cancelBooking(
 /**
  * List pending bookings for a building (for managers).
  */
-export async function listPendingBookings(buildingId: string): Promise<BookingListResponse> {
-  return fetchApi(`${API_BASE}/buildings/${buildingId}/bookings/pending`);
+export async function listPendingBookings(
+  buildingId: string,
+  params?: ListPendingBookingsQuery
+): Promise<BookingListResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit !== undefined) searchParams.set('limit', String(params.limit));
+  if (params?.offset !== undefined) searchParams.set('offset', String(params.offset));
+  const query = searchParams.toString();
+  return fetchApi(
+    `${API_BASE}/buildings/${buildingId}/bookings/pending${query ? `?${query}` : ''}`
+  );
 }
 
 /**
