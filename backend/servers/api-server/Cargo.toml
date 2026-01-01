@@ -57,3 +57,7 @@ tracing-opentelemetry = { workspace = true }
 metrics = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }
 sentry = { workspace = true }
+
+# Workflow Execution (Epic 94)
+async-trait = "0.1"
+regex = "1.10"

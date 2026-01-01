@@ -243,3 +243,8 @@ pub use background_jobs::BackgroundJobRepository;
 pub mod infrastructure;
 
 pub use infrastructure::InfrastructureRepository;
+
+// Epic 94: Workflow Execution Engine
+pub mod workflow_templates;
+
+pub use workflow_templates::WorkflowTemplateRepository;

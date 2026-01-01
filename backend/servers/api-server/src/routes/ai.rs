@@ -1293,6 +1293,13 @@ pub fn workflow_router() -> Router<AppState> {
         .route("/executions", get(list_executions))
         .route("/executions/{id}", get(get_execution))
         .route("/executions/{id}/steps", get(list_execution_steps))
+        // Story 94.2: Event handling endpoint
+        .route("/events", post(handle_workflow_event))
+        // Story 94.4: Templates marketplace
+        .route("/templates", get(list_workflow_templates))
+        .route("/templates/builtin", get(list_builtin_templates))
+        .route("/templates/{id}", get(get_workflow_template))
+        .route("/templates/{id}/import", post(import_workflow_template))
 }
 
 async fn create_workflow(
@@ -1455,20 +1462,38 @@ async fn delete_action(
 async fn trigger_workflow(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-    Json(mut req): Json<TriggerWorkflow>,
+    Json(req): Json<TriggerWorkflow>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
-    req.workflow_id = id;
+    use crate::services::WorkflowExecutor;
 
-    match state.workflow_repo.create_execution(req).await {
-        Ok(execution) => {
-            // TODO: Actually execute the workflow asynchronously
-            Ok((StatusCode::CREATED, Json(serde_json::json!(execution))))
+    // Create the workflow executor using the repository
+    let executor = WorkflowExecutor::new(state.workflow_repo.clone());
+
+    // Execute the workflow asynchronously (Epic 94)
+    match executor
+        .execute_workflow(id, req.trigger_event, req.context)
+        .await
+    {
+        Ok(execution_id) => {
+            tracing::info!(
+                workflow_id = %id,
+                execution_id = %execution_id,
+                "Workflow triggered successfully"
+            );
+            Ok((
+                StatusCode::CREATED,
+                Json(serde_json::json!({
+                    "execution_id": execution_id,
+                    "workflow_id": id,
+                    "status": "running"
+                })),
+            ))
         }
         Err(e) => {
             tracing::error!("Failed to trigger workflow: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to trigger")),
+                Json(ErrorResponse::new("INTERNAL_ERROR", e.to_string())),
             ))
         }
     }
@@ -1547,6 +1572,351 @@ async fn list_execution_steps(
             ))
         }
     }
+}
+
+// ============================================================================
+// Story 94.2: Workflow Event Handling
+// ============================================================================
+
+use db::models::{get_builtin_templates, template_category, ImportTemplateRequest};
+
+/// Request to trigger workflows by event.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WorkflowEventRequest {
+    /// Event type (matches trigger_type constants)
+    pub event_type: String,
+    /// Event data/payload
+    pub data: serde_json::Value,
+    /// Optional building ID
+    pub building_id: Option<Uuid>,
+}
+
+/// Handle workflow trigger events (Story 94.2).
+async fn handle_workflow_event(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<WorkflowEventRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
+    use crate::services::{WorkflowEvent, WorkflowExecutor};
+
+    let tenant = extract_tenant_context(&headers)?;
+
+    // Create the workflow executor
+    let executor = WorkflowExecutor::new(state.workflow_repo.clone());
+
+    // Create the event
+    let mut event = WorkflowEvent::new(&req.event_type, tenant.tenant_id, req.data);
+    if let Some(building_id) = req.building_id {
+        event = event.with_building(building_id);
+    }
+    // Set the user who triggered the event
+    event = event.with_user(tenant.user_id);
+
+    // Handle the event - this finds matching workflows and executes them
+    match executor.handle_event(event).await {
+        Ok(execution_ids) => {
+            tracing::info!(
+                event_type = %req.event_type,
+                triggered_count = execution_ids.len(),
+                "Workflow event processed"
+            );
+            Ok((
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "triggered_workflows": execution_ids.len(),
+                    "execution_ids": execution_ids
+                })),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to handle workflow event: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("INTERNAL_ERROR", e.to_string())),
+            ))
+        }
+    }
+}
+
+// ============================================================================
+// Story 94.4: Workflow Templates Marketplace
+// ============================================================================
+
+/// Query parameters for template search.
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct TemplateQuery {
+    pub category: Option<String>,
+    pub trigger_type: Option<String>,
+    pub search: Option<String>,
+    pub featured: Option<bool>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+/// List available workflow templates.
+async fn list_workflow_templates(
+    Query(query): Query<TemplateQuery>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    // For now, return built-in templates
+    // In production, this would query from workflow_templates table
+    let builtin = get_builtin_templates();
+
+    let templates: Vec<serde_json::Value> = builtin
+        .iter()
+        .enumerate()
+        .filter(|(_, (template, _))| {
+            // Apply category filter
+            if let Some(ref cat) = query.category {
+                if template.category != *cat {
+                    return false;
+                }
+            }
+            // Apply trigger type filter
+            if let Some(ref trigger) = query.trigger_type {
+                if template.trigger_type != *trigger {
+                    return false;
+                }
+            }
+            // Apply search filter
+            if let Some(ref search) = query.search {
+                let search_lower = search.to_lowercase();
+                if !template.name.to_lowercase().contains(&search_lower)
+                    && !template
+                        .description
+                        .as_ref()
+                        .map(|d| d.to_lowercase().contains(&search_lower))
+                        .unwrap_or(false)
+                {
+                    return false;
+                }
+            }
+            true
+        })
+        .map(|(idx, (template, actions))| {
+            serde_json::json!({
+                "id": format!("builtin-{}", idx),
+                "name": template.name,
+                "description": template.description,
+                "category": template.category,
+                "trigger_type": template.trigger_type,
+                "scope": template.scope,
+                "tags": template.tags,
+                "icon": template.icon,
+                "action_count": actions.len(),
+                "featured": false,
+                "use_count": 0
+            })
+        })
+        .collect();
+
+    // Apply pagination
+    let limit = query.limit.unwrap_or(50) as usize;
+    let offset = query.offset.unwrap_or(0) as usize;
+    let paginated: Vec<_> = templates.into_iter().skip(offset).take(limit).collect();
+
+    Ok(Json(serde_json::json!({
+        "templates": paginated,
+        "categories": template_category::ALL
+    })))
+}
+
+/// Get a specific workflow template.
+async fn get_workflow_template(
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    // Handle built-in templates
+    if id.starts_with("builtin-") {
+        let idx: usize = id
+            .strip_prefix("builtin-")
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse::new("INVALID_ID", "Invalid template ID")),
+                )
+            })?;
+
+        let builtin = get_builtin_templates();
+        if let Some((template, actions)) = builtin.get(idx) {
+            return Ok(Json(serde_json::json!({
+                "id": id,
+                "template": {
+                    "name": template.name,
+                    "description": template.description,
+                    "category": template.category,
+                    "trigger_type": template.trigger_type,
+                    "trigger_config": template.trigger_config,
+                    "conditions": template.conditions,
+                    "scope": template.scope,
+                    "tags": template.tags,
+                    "icon": template.icon
+                },
+                "actions": actions.iter().map(|a| serde_json::json!({
+                    "action_order": a.action_order,
+                    "action_type": a.action_type,
+                    "action_config": a.action_config,
+                    "description": a.description,
+                    "on_failure": a.on_failure,
+                    "retry_count": a.retry_count,
+                    "retry_delay_seconds": a.retry_delay_seconds
+                })).collect::<Vec<_>>(),
+                "variables": []
+            })));
+        }
+    }
+
+    // Template not found
+    Err((
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse::new("NOT_FOUND", "Template not found")),
+    ))
+}
+
+/// Import a workflow template.
+async fn import_workflow_template(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<ImportTemplateRequest>,
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
+    let tenant = extract_tenant_context(&headers)?;
+
+    // Get the template
+    let (template, actions) = if id.starts_with("builtin-") {
+        let idx: usize = id
+            .strip_prefix("builtin-")
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse::new("INVALID_ID", "Invalid template ID")),
+                )
+            })?;
+
+        let builtin = get_builtin_templates();
+        builtin.get(idx).cloned().ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Template not found")),
+            )
+        })?
+    } else {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Template not found")),
+        ));
+    };
+
+    // Create the workflow from template
+    let workflow_name = req
+        .name
+        .unwrap_or_else(|| format!("{} (from template)", template.name));
+
+    let create_workflow = CreateWorkflow {
+        organization_id: tenant.tenant_id,
+        name: workflow_name.clone(),
+        description: template.description,
+        trigger_type: template.trigger_type,
+        trigger_config: template.trigger_config,
+        conditions: template.conditions,
+        created_by: tenant.user_id,
+    };
+
+    // Create the workflow
+    let workflow = state
+        .workflow_repo
+        .create(create_workflow)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to create workflow from template: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to import template",
+                )),
+            )
+        })?;
+
+    // Add actions
+    for action in actions {
+        let create_action = CreateWorkflowAction {
+            workflow_id: workflow.id,
+            action_order: action.action_order,
+            action_type: action.action_type,
+            action_config: action.action_config,
+            on_failure: action.on_failure,
+            retry_count: action.retry_count,
+            retry_delay_seconds: action.retry_delay_seconds,
+        };
+
+        if let Err(e) = state.workflow_repo.add_action(create_action).await {
+            tracing::warn!("Failed to add action to imported workflow: {}", e);
+        }
+    }
+
+    // Enable if requested
+    if req.enabled.unwrap_or(false) {
+        let _ = state
+            .workflow_repo
+            .update(
+                workflow.id,
+                UpdateWorkflow {
+                    name: None,
+                    description: None,
+                    trigger_type: None,
+                    trigger_config: None,
+                    conditions: None,
+                    enabled: Some(true),
+                },
+            )
+            .await;
+    }
+
+    tracing::info!(
+        workflow_id = %workflow.id,
+        template_id = %id,
+        workflow_name = %workflow_name,
+        "Workflow imported from template"
+    );
+
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "workflow_id": workflow.id,
+            "name": workflow_name,
+            "enabled": req.enabled.unwrap_or(false),
+            "imported_from": id
+        })),
+    ))
+}
+
+/// List all built-in templates.
+async fn list_builtin_templates(
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+    let builtin = get_builtin_templates();
+
+    let templates: Vec<serde_json::Value> = builtin
+        .iter()
+        .enumerate()
+        .map(|(idx, (template, actions))| {
+            serde_json::json!({
+                "id": format!("builtin-{}", idx),
+                "name": template.name,
+                "description": template.description,
+                "category": template.category,
+                "trigger_type": template.trigger_type,
+                "tags": template.tags,
+                "icon": template.icon,
+                "action_count": actions.len()
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({
+        "templates": templates,
+        "categories": template_category::ALL
+    })))
 }
 
 // ============================================================================
