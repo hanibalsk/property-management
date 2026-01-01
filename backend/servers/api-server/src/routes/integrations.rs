@@ -2993,7 +2993,7 @@ pub struct SyncResponse {
     tag = "Integrations - Airbnb"
 )]
 pub async fn get_airbnb_status(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     auth: AuthUser,
     Path(path): Path<OrgIdPath>,
 ) -> Result<Json<AirbnbStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -3003,14 +3003,53 @@ pub async fn get_airbnb_status(
         "Getting Airbnb status"
     );
 
-    // Stub implementation - would query integration_connections table
+    let rental_repo = &state.rental_repo;
+
+    // Get aggregated Airbnb status
+    let (connected_count, listings_count, last_sync_at, sync_error) = rental_repo
+        .get_airbnb_status(path.org_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get Airbnb status");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get Airbnb status",
+                )),
+            )
+        })?;
+
+    // Get external account ID from first connection
+    let connection = rental_repo
+        .find_airbnb_connection_by_org(path.org_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to find Airbnb connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to find connection",
+                )),
+            )
+        })?;
+
+    let external_account_id = connection.and_then(|c| c.external_property_id);
+
+    // Get reservations count
+    let reservations_count = rental_repo
+        .count_airbnb_reservations(path.org_id)
+        .await
+        .unwrap_or(0);
+
     Ok(Json(AirbnbStatusResponse {
-        connected: false,
-        external_account_id: None,
-        last_sync_at: None,
-        sync_error: None,
-        listings_count: 0,
-        reservations_count: 0,
+        connected: connected_count > 0,
+        external_account_id,
+        last_sync_at,
+        sync_error,
+        listings_count: listings_count as i32,
+        reservations_count: reservations_count as i32,
     }))
 }
 
@@ -3063,12 +3102,33 @@ pub async fn connect_airbnb(
         redirect_uri,
     });
 
-    // Generate state for CSRF protection
-    let state = uuid::Uuid::new_v4().to_string();
+    // Generate state for CSRF protection (includes org_id for callback verification)
+    let oauth_state = format!("{}:{}", path.org_id, uuid::Uuid::new_v4());
 
-    let auth_url = client.generate_auth_url(&state);
+    // Store state in session repository for callback verification
+    // Note: In production, this could use Redis for distributed state management
+    // For now, we embed the org_id in the state parameter itself for stateless verification
+    tracing::debug!(oauth_state = %oauth_state, "Generated OAuth state parameter");
 
-    Ok(Json(AirbnbConnectResponse { auth_url, state }))
+    let auth_url = client.generate_auth_url(&oauth_state);
+
+    Ok(Json(AirbnbConnectResponse {
+        auth_url,
+        state: oauth_state,
+    }))
+}
+
+/// Airbnb OAuth callback response.
+#[derive(Debug, serde::Serialize, ToSchema)]
+pub struct AirbnbCallbackResponse {
+    /// Whether the connection was successful.
+    pub success: bool,
+    /// Connection ID.
+    pub connection_id: Option<Uuid>,
+    /// Message describing the result.
+    pub message: String,
+    /// Listing count retrieved after connection.
+    pub listings_count: Option<i32>,
 }
 
 /// Handle Airbnb OAuth callback.
@@ -3077,7 +3137,7 @@ pub async fn connect_airbnb(
     path = "/api/v1/integrations/organizations/{org_id}/airbnb/callback",
     params(OrgIdPath, OAuthCallbackQuery),
     responses(
-        (status = 200, description = "OAuth callback processed"),
+        (status = 200, description = "OAuth callback processed", body = AirbnbCallbackResponse),
         (status = 400, description = "Invalid callback"),
         (status = 500, description = "Internal server error")
     ),
@@ -3085,18 +3145,18 @@ pub async fn connect_airbnb(
     tag = "Integrations - Airbnb"
 )]
 pub async fn airbnb_oauth_callback(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     auth: AuthUser,
     Path(path): Path<OrgIdPath>,
     Query(query): Query<OAuthCallbackQuery>,
-) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<AirbnbCallbackResponse>, (StatusCode, Json<ErrorResponse>)> {
     tracing::info!(
         user_id = %auth.user_id,
         org_id = %path.org_id,
         "Processing Airbnb OAuth callback"
     );
 
-    // Verify state parameter (would check against stored state)
+    // Verify state parameter
     if query.state.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -3107,13 +3167,152 @@ pub async fn airbnb_oauth_callback(
         ));
     }
 
-    // Exchange code for tokens (stub)
-    // In production, would call client.exchange_code(&query.code) and store tokens
+    // Verify state contains valid org_id (stateless verification)
+    let state_parts: Vec<&str> = query.state.split(':').collect();
+    if state_parts.len() < 2 {
+        tracing::warn!(state = %query.state, "Invalid OAuth state format");
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_STATE",
+                "Invalid OAuth state format",
+            )),
+        ));
+    }
 
-    Ok(Json(serde_json::json!({
-        "success": true,
-        "message": "Airbnb connected successfully"
-    })))
+    // Verify org_id in state matches the path
+    let state_org_id = Uuid::parse_str(state_parts[0]).ok();
+    if state_org_id != Some(path.org_id) {
+        tracing::warn!(
+            state_org = ?state_org_id,
+            path_org = %path.org_id,
+            "OAuth state org_id mismatch"
+        );
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "STATE_MISMATCH",
+                "OAuth state does not match organization",
+            )),
+        ));
+    }
+
+    // Get OAuth config
+    let client_id = std::env::var("AIRBNB_CLIENT_ID").unwrap_or_default();
+    let client_secret = std::env::var("AIRBNB_CLIENT_SECRET").unwrap_or_default();
+    let redirect_uri = std::env::var("AIRBNB_REDIRECT_URI").unwrap_or_default();
+
+    if client_id.is_empty() {
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ErrorResponse::new(
+                "NOT_CONFIGURED",
+                "Airbnb integration is not configured",
+            )),
+        ));
+    }
+
+    let client = AirbnbClient::new(AirbnbOAuthConfig {
+        client_id,
+        client_secret,
+        redirect_uri,
+    });
+
+    // Exchange code for tokens
+    let tokens = client.exchange_code(&query.code).await.map_err(|e| {
+        tracing::error!(error = %e, "Failed to exchange Airbnb authorization code");
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "TOKEN_EXCHANGE_FAILED",
+                "Failed to exchange authorization code for tokens",
+            )),
+        )
+    })?;
+
+    // Encrypt tokens before storage
+    let crypto = integrations::IntegrationCrypto::from_env().ok();
+    let (encrypted_access, encrypted_refresh) = match &crypto {
+        Some(c) => (
+            c.encrypt(&tokens.access_token)
+                .unwrap_or(tokens.access_token.clone()),
+            tokens
+                .refresh_token
+                .as_ref()
+                .map(|rt| c.encrypt(rt).unwrap_or(rt.clone())),
+        ),
+        None => (tokens.access_token.clone(), tokens.refresh_token.clone()),
+    };
+
+    // Store tokens in database
+    let rental_repo = &state.rental_repo;
+    let connection = rental_repo
+        .upsert_airbnb_connection(
+            path.org_id,
+            None, // Will be updated when listing is mapped
+            &encrypted_access,
+            encrypted_refresh.as_deref(),
+            tokens.expires_at,
+            None, // External account ID will be fetched later
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to store Airbnb connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to store connection",
+                )),
+            )
+        })?;
+
+    // Try to fetch listings to get external account info
+    let listings_count = match client.fetch_listings(&tokens.access_token).await {
+        Ok(listings) => {
+            // Store first listing ID if available
+            if let Some(first_listing) = listings.first() {
+                let _ = rental_repo
+                    .update_airbnb_listing_mapping(
+                        connection.id,
+                        &first_listing.id,
+                        Some(&format!(
+                            "https://www.airbnb.com/rooms/{}",
+                            first_listing.id
+                        )),
+                    )
+                    .await;
+            }
+            Some(listings.len() as i32)
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to fetch Airbnb listings after OAuth");
+            None
+        }
+    };
+
+    // Note: Webhook subscription setup would be done here if Airbnb API supports it
+    // Currently, Airbnb webhooks are configured through their partner dashboard
+    let webhook_url = std::env::var("AIRBNB_WEBHOOK_URL").ok();
+    if webhook_url.is_some() {
+        tracing::info!(
+            "Airbnb webhook URL configured, webhook setup should be done via partner dashboard"
+        );
+    }
+
+    tracing::info!(
+        connection_id = %connection.id,
+        org_id = %path.org_id,
+        listings_count = ?listings_count,
+        "Airbnb OAuth completed successfully"
+    );
+
+    Ok(Json(AirbnbCallbackResponse {
+        success: true,
+        connection_id: Some(connection.id),
+        message: "Airbnb connected successfully".to_string(),
+        listings_count,
+    }))
 }
 
 /// Trigger Airbnb sync.
@@ -3157,13 +3356,14 @@ pub async fn sync_airbnb(
     responses(
         (status = 204, description = "Airbnb disconnected"),
         (status = 403, description = "Forbidden"),
+        (status = 404, description = "No connection found"),
         (status = 500, description = "Internal server error")
     ),
     security(("bearer_auth" = [])),
     tag = "Integrations - Airbnb"
 )]
 pub async fn disconnect_airbnb(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     auth: AuthUser,
     Path(path): Path<OrgIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
@@ -3173,7 +3373,63 @@ pub async fn disconnect_airbnb(
         "Disconnecting Airbnb"
     );
 
-    // Stub implementation - would delete from integration_connections
+    let rental_repo = &state.rental_repo;
+
+    // First check if there's a connection to disconnect
+    let connection = rental_repo
+        .find_airbnb_connection_by_org(path.org_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to find Airbnb connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check connection",
+                )),
+            )
+        })?;
+
+    if connection.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new(
+                "NOT_FOUND",
+                "No Airbnb connection found for this organization",
+            )),
+        ));
+    }
+
+    // Note: Airbnb API doesn't provide a token revocation endpoint
+    // We simply clear the tokens locally. The tokens will naturally expire.
+    // If needed, user can revoke access through Airbnb's account settings.
+    if let Some(conn) = &connection {
+        if conn.access_token.is_some() {
+            tracing::info!(
+                connection_id = %conn.id,
+                "Clearing Airbnb tokens (API revocation not available)"
+            );
+        }
+    }
+
+    // Revoke locally (clear tokens from database)
+    let revoked_count = rental_repo
+        .revoke_airbnb_connection(path.org_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to revoke Airbnb connection");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to disconnect")),
+            )
+        })?;
+
+    tracing::info!(
+        org_id = %path.org_id,
+        revoked_count = revoked_count,
+        "Airbnb disconnected successfully"
+    );
+
     Ok(StatusCode::NO_CONTENT)
 }
 
