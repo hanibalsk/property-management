@@ -34,8 +34,6 @@ export * from './emergency';
 export * from './news';
 export * from './integrations';
 export * from './disputes';
-export * from './migration';
-export * from './compliance';
 
 // API client configuration
 export interface ApiConfig {
