@@ -548,31 +548,31 @@ mod tests {
         VoiceCommandProcessor::new(LlmDocumentRepository::new(pool))
     }
 
-    #[test]
-    fn test_parse_command_balance() {
+    #[tokio::test]
+    async fn test_parse_command_balance() {
         let processor = create_test_processor();
         let parsed = processor.parse_command("What is my balance?", "en-US");
         assert_eq!(parsed.intent, voice_intent::CHECK_BALANCE);
         assert!(parsed.confidence > 0.8);
     }
 
-    #[test]
-    fn test_parse_command_fault() {
+    #[tokio::test]
+    async fn test_parse_command_fault() {
         let processor = create_test_processor();
         let parsed = processor.parse_command("Report a fault with the elevator", "en-US");
         assert_eq!(parsed.intent, voice_intent::REPORT_FAULT);
         assert!(parsed.slots.get("description").is_some());
     }
 
-    #[test]
-    fn test_parse_command_help() {
+    #[tokio::test]
+    async fn test_parse_command_help() {
         let processor = create_test_processor();
         let parsed = processor.parse_command("What can you do?", "en-US");
         assert_eq!(parsed.intent, voice_intent::GET_HELP);
     }
 
-    #[test]
-    fn test_parse_command_slovak() {
+    #[tokio::test]
+    async fn test_parse_command_slovak() {
         let processor = create_test_processor();
         let parsed = processor.parse_command("Skontroluj moj zostatok", "sk-SK");
         assert_eq!(parsed.intent, voice_intent::CHECK_BALANCE);
