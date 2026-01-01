@@ -71,7 +71,6 @@ impl VoiceCommandProcessor {
             || text_lower.contains("issue")
             || text_lower.contains("broken")
             || text_lower.contains("porucha")
-            || text_lower.contains("problem")
         {
             // Try to extract fault description
             let description = Self::extract_fault_description(&text_lower);
@@ -500,11 +499,11 @@ impl VoiceCommandProcessor {
     fn localized_error(&self, language: &str, error: &str) -> String {
         match language {
             "sk" => format!(
-                "Prepacte, nastala chyba: {}. Skuste to prosim znova.",
+                "Prepáčte, nastala chyba: {}. Skúste to prosím znova.",
                 error
             ),
             "cs" => format!(
-                "Promiite, nastala chyba: {}. Zkuste to prosim znovu.",
+                "Promiňte, nastala chyba: {}. Zkuste to prosím znovu.",
                 error
             ),
             _ => format!("Sorry, an error occurred: {}. Please try again.", error),
