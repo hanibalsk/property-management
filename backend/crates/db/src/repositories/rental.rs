@@ -241,6 +241,45 @@ impl RentalRepository {
         Ok(())
     }
 
+    /// Update connection tokens and status (Story 98.2: Rental OAuth Implementation).
+    ///
+    /// # Arguments
+    /// * `id` - Connection ID
+    /// * `access_token` - Encrypted access token
+    /// * `refresh_token` - Optional encrypted refresh token
+    /// * `expires_at` - Token expiration time
+    /// * `is_connected` - Whether the connection is now connected
+    pub async fn update_connection_tokens(
+        &self,
+        id: Uuid,
+        access_token: &str,
+        refresh_token: Option<&str>,
+        expires_at: Option<chrono::DateTime<Utc>>,
+        is_connected: bool,
+    ) -> Result<(), SqlxError> {
+        sqlx::query(
+            r#"
+            UPDATE rental_platform_connections SET
+                access_token = $2,
+                refresh_token = COALESCE($3, refresh_token),
+                token_expires_at = $4,
+                is_active = $5,
+                sync_error = NULL,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .bind(access_token)
+        .bind(refresh_token)
+        .bind(expires_at)
+        .bind(is_connected)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     /// Update last sync time.
     pub async fn update_sync_status(&self, id: Uuid, error: Option<&str>) -> Result<(), SqlxError> {
         sqlx::query(
