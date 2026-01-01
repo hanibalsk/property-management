@@ -32,11 +32,14 @@ export function VisitorsPage() {
   } | null>(null);
 
   // API configuration
+  // TODO(Phase-2): Make token reactive - add getToken to deps or use auth context
+  // Phase 1: Token retrieved once at component mount
   const apiConfig: ApiConfig = useMemo(
     () => ({
       baseUrl: API_BASE_URL,
       accessToken: getToken() ?? undefined,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -62,6 +65,8 @@ export function VisitorsPage() {
   });
 
   const handleView = useCallback((_id: string) => {
+    // TODO(Phase-2): Use React Router's useNavigate for SPA navigation
+    // Phase 1: Full page reload for simplicity
     window.location.href = `/visitors/${_id}`;
   }, []);
 
@@ -115,6 +120,8 @@ export function VisitorsPage() {
       setVerificationResult({ type: 'error', message: 'Please enter an access code' });
       return;
     }
+    // TODO(Phase-2): Get buildingId from context/URL/user session
+    // Phase 1: Empty buildingId - API should handle default building or return error
     verifyAccessCodeMutation.mutate(
       { accessCode: accessCode.trim().toUpperCase(), buildingId: '' },
       {

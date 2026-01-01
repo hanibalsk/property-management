@@ -25,11 +25,14 @@ export function PackagesPage() {
   const [filter, setFilter] = useState<FilterStatus>('all');
 
   // API configuration
+  // TODO(Phase-2): Make token reactive - add getToken to deps or use auth context
+  // Phase 1: Token retrieved once at component mount
   const apiConfig: ApiConfig = useMemo(
     () => ({
       baseUrl: API_BASE_URL,
       accessToken: getToken() ?? undefined,
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -45,11 +48,15 @@ export function PackagesPage() {
   const filteredPackages = packages.filter((pkg) => filter === 'all' || pkg.status === filter);
 
   const handleView = useCallback((_id: string) => {
+    // TODO(Phase-2): Use React Router's useNavigate for SPA navigation
+    // Phase 1: Full page reload for simplicity
     window.location.href = `/packages/${_id}`;
   }, []);
 
   const handleReceive = useCallback(
     (id: string) => {
+      // TODO(Phase-2): Add modal to collect receiver signature, timestamp, photos
+      // Phase 1: Empty data object for basic functionality
       receivePackage.mutate(
         { id, data: {} },
         {
@@ -65,6 +72,8 @@ export function PackagesPage() {
 
   const handlePickup = useCallback(
     (id: string) => {
+      // TODO(Phase-2): Add modal to collect pickup details (signature, ID verification)
+      // Phase 1: Empty data object for basic functionality
       pickupPackage.mutate(
         { id, data: {} },
         {

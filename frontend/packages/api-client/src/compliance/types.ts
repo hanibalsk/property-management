@@ -1,11 +1,12 @@
 /**
- * Compliance API Types (Epic 67).
+ * Compliance API Types (Epic 90 - Frontend API Integration).
+ * Originally from Epic 67, integrated as part of Epic 90.
  *
  * Type definitions for AML, content moderation, and DSA compliance.
  */
 
 // =============================================================================
-// Content Moderation Types (Story 67.4)
+// Content Moderation Types (Epic 90 - Frontend API Integration)
 // =============================================================================
 
 export type ModerationCaseStatus =

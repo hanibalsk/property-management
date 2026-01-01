@@ -70,9 +70,13 @@ export const ContentModerationPage: React.FC = () => {
     content_owner: {
       user_id: c.owner_id,
       name: c.owner_name,
-      previous_violations: 0, // Not available from API
+      // TODO(Phase-2): Extend API to include previous_violations count
+      // Phase 1: Default value
+      previous_violations: 0,
     },
-    report_source: 'user', // Default value
+    // TODO(Phase-2): Extend API to include report_source
+    // Phase 1: Default value
+    report_source: 'user',
     violation_type: c.violation_type as ModerationCase['violation_type'],
     status: c.status as ModerationCase['status'],
     priority: c.priority,
@@ -121,8 +125,8 @@ export const ContentModerationPage: React.FC = () => {
 
   const handleTakeAction = useCallback(
     (caseId: string) => {
-      // In a real app, this would open a modal to select action type and rationale
-      // For now, we'll show an alert and require the modal implementation
+      // TODO(Phase-2): Replace window.prompt with modal form with action templates integration
+      // Phase 1: Basic prompts for action type and rationale
       const actionType = window.prompt(
         'Enter action type (remove, restrict, warn, approve):',
         'approve'
@@ -153,12 +157,15 @@ export const ContentModerationPage: React.FC = () => {
   );
 
   const handleViewContent = useCallback((caseId: string) => {
+    // TODO(Phase-2): Use React Router's useNavigate for SPA navigation
+    // Phase 1: Full page reload for simplicity
     window.location.href = `/compliance/moderation/cases/${caseId}`;
   }, []);
 
   const handleDecideAppeal = useCallback(
     (caseId: string) => {
-      // In a real app, this would open a modal
+      // TODO(Phase-2): Replace window.prompt with modal form with validation
+      // Phase 1: Basic prompts for decision and rationale
       const decision = window.prompt('Enter decision (uphold, overturn):', 'uphold');
       if (!decision) return;
 

@@ -19,6 +19,9 @@ import type {
 const API_BASE = '/api/v1/import';
 
 async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
+  // TODO(Phase-1): Add authentication headers to fetchApi
+  // Currently auth is only added in uploadFile via XHR
+  // Will be implemented when auth context is available
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -28,8 +31,15 @@ async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const error = await response
+      .json()
+      .catch(() => ({
+        message: `Request failed with status ${response.status} ${response.statusText}`.trim(),
+      }));
+    throw new Error(
+      error.message ||
+        `HTTP ${response.status} ${response.statusText}`.trim()
+    );
   }
 
   return response.json();

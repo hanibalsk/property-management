@@ -25,6 +25,8 @@ import type {
 const API_BASE = '/api/v1/compliance';
 
 async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
+  // TODO(Phase-1): Add authentication headers to fetchApi
+  // Will be implemented when auth context is available
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -34,8 +36,14 @@ async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const error = await response.json().catch(() => ({}));
+    const statusInfo = `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`;
+    const errorMessage = (error as { message?: string }).message;
+    const message =
+      (typeof errorMessage === 'string' && errorMessage.trim()) ||
+      statusInfo ||
+      'Request failed';
+    throw new Error(message);
   }
 
   return response.json();

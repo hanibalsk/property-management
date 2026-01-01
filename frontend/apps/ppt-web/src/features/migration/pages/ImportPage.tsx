@@ -120,12 +120,16 @@ export function ImportPage() {
 
   // Handle view job details
   const handleViewJob = useCallback((job: ImportJobHistoryItem) => {
+    // TODO(Phase-2): Use React Router's useNavigate for SPA navigation
+    // Phase 1: Full page reload for simplicity
     window.location.href = `/import/jobs/${job.id}`;
   }, []);
 
   // Handle retry job
   const handleRetryJob = useCallback(
     (job: ImportJobHistoryItem) => {
+      // TODO(Phase-2): Replace alert with toast notification system
+      // Phase 1: Basic alert for success feedback
       retryImport.mutate(
         { jobId: job.id },
         {
@@ -142,6 +146,8 @@ export function ImportPage() {
 
   // Handle view job errors
   const handleViewErrors = useCallback((job: ImportJobHistoryItem) => {
+    // TODO(Phase-2): Use React Router's useNavigate for SPA navigation
+    // Phase 1: Full page reload for simplicity
     window.location.href = `/import/jobs/${job.id}/errors`;
   }, []);
 

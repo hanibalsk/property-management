@@ -1,5 +1,6 @@
 /**
- * Migration Import Types (Epic 66).
+ * Migration Import Types (Epic 90 - Frontend API Integration).
+ * Originally from Epic 66, integrated as part of Epic 90.
  *
  * Type definitions for bulk data import functionality.
  */

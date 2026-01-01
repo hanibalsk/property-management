@@ -74,7 +74,9 @@ export const AmlDashboardPage: React.FC = () => {
       mitigated: !f.triggered,
     })),
     flagged_for_review: a.flagged_for_review,
-    id_verified: false, // Not available from API
+    // TODO(Phase-2): Extend API to include these fields
+    // Phase 1: Default values for missing fields
+    id_verified: false,
     source_of_funds_documented: false,
     pep_check_completed: false,
     sanctions_check_completed: false,
@@ -102,6 +104,8 @@ export const AmlDashboardPage: React.FC = () => {
 
   const handleInitiateEdd = useCallback(
     (assessmentId: string) => {
+      // TODO(Phase-2): Replace window.prompt with proper modal form with document selection
+      // Phase 1: Basic prompt for collecting reason
       const reason = window.prompt('Enter reason for initiating Enhanced Due Diligence:');
       if (!reason) return;
 
@@ -127,6 +131,8 @@ export const AmlDashboardPage: React.FC = () => {
 
   const handleReview = useCallback(
     (assessmentId: string) => {
+      // TODO(Phase-2): Replace window.prompt with proper modal form with validation
+      // Phase 1: Basic prompts for collecting decision and notes
       const decision = window.prompt('Enter decision (approve, reject, escalate):', 'approve');
       if (!decision) return;
 
