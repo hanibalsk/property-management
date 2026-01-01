@@ -2,6 +2,7 @@
 
 pub mod actions;
 pub mod auth;
+pub mod document_generation;
 pub mod email;
 pub mod jwt;
 pub mod oauth;
@@ -11,6 +12,8 @@ pub mod voice_commands;
 pub mod workflow_executor;
 
 pub use auth::AuthService;
+#[allow(unused_imports)]
+pub use document_generation::DocumentGenerationService;
 pub use email::EmailService;
 pub use jwt::JwtService;
 pub use oauth::OAuthService;
