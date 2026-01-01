@@ -16,6 +16,5 @@ pub use jwt::JwtService;
 pub use oauth::OAuthService;
 pub use scheduler::{Scheduler, SchedulerConfig};
 pub use totp::TotpService;
-#[allow(unused_imports)]
 pub use voice_commands::VoiceCommandProcessor;
 pub use workflow_executor::{WorkflowEvent, WorkflowExecutor};

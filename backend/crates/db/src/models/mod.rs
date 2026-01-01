@@ -547,18 +547,26 @@ pub use energy::{
 };
 
 // Epic 64: Advanced AI & LLM Capabilities
+// Epic 93: Voice Assistant OAuth Completion
 pub use llm_document::{
     enhancement_status, enhancement_type, generation_status, llm_provider, supported_language,
     voice_intent, voice_platform, AiEscalationConfig, AiUsageQuery, AiUsageStatistics,
+    AlexaApplication, AlexaCard, AlexaIntent, AlexaOutputSpeech, AlexaRequestBody,
+    AlexaResponseBody, AlexaSession, AlexaSkillRequest, AlexaSkillResponse, AlexaUser,
     BatchEnhancePhotosRequest, BatchEnhancePhotosResponse, CreatePromptTemplate, DescriptionStyle,
     DocumentEmbedding, EnhancePhotoRequest, EnhancedChatRequest, EnhancedChatResponse,
     EnhancementOptions, GenerateLeaseRequest, GenerateListingDescriptionRequest,
-    GeneratedListingDescription, GeneratedListingDescriptionResponse, LeaseClause,
-    LeaseGenerationInput, LeaseGenerationResult, LinkVoiceDeviceRequest, LinkVoiceDeviceResponse,
-    ListingLocation, LlmGenerationRequest, LlmPromptTemplate, PhotoEnhancement,
-    PhotoEnhancementResponse, ProviderStats, RagContextSource, RequestTypeStats,
-    UpdateEscalationConfig, UpdatePromptTemplate, VoiceAssistantDevice, VoiceCommandHistory,
-    VoiceCommandRequest, VoiceCommandResponse,
+    GeneratedListingDescription, GeneratedListingDescriptionResponse, GoogleActionsRequest,
+    GoogleActionsResponse, GoogleCard, GoogleContent, GoogleHandler, GoogleImage, GoogleIntent,
+    GooglePrompt, GoogleScene, GoogleSceneResponse, GoogleSession, GoogleSessionResponse,
+    GoogleSimpleResponse, GoogleUser, LeaseClause, LeaseGenerationInput, LeaseGenerationResult,
+    LinkVoiceDeviceRequest, LinkVoiceDeviceResponse, ListingLocation, LlmGenerationRequest,
+    LlmPromptTemplate, ParsedVoiceCommand, PhotoEnhancement, PhotoEnhancementResponse,
+    ProviderStats, RagContextSource, RequestTypeStats, UpdateEscalationConfig,
+    UpdatePromptTemplate, VoiceActionResult, VoiceAssistantDevice, VoiceCard, VoiceCommandHistory,
+    VoiceCommandRequest, VoiceCommandResponse, VoiceOAuthExchangeRequest,
+    VoiceOAuthExchangeResponse, VoiceTokenRefreshRequest, VoiceTokenRefreshResult,
+    WebhookVerificationResult,
 };
 
 // Epic 72: Regional Legal Compliance (SK/CZ)

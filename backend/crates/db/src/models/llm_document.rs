@@ -579,3 +579,389 @@ pub struct AiUsageQuery {
     pub request_type: Option<String>,
     pub provider: Option<String>,
 }
+
+// =============================================================================
+// Epic 93: Voice Assistant OAuth Completion
+// =============================================================================
+
+/// Story 93.1: OAuth token exchange request from voice assistant platform.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct VoiceOAuthExchangeRequest {
+    /// OAuth authorization code from voice platform.
+    pub auth_code: String,
+    /// Voice platform (alexa or google_assistant).
+    pub platform: String,
+    /// Redirect URI used in OAuth flow.
+    pub redirect_uri: String,
+    /// Optional state parameter for CSRF protection.
+    pub state: Option<String>,
+}
+
+/// Story 93.1: OAuth token exchange response.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct VoiceOAuthExchangeResponse {
+    /// Device ID after successful linking.
+    pub device_id: Uuid,
+    /// Whether the exchange was successful.
+    pub success: bool,
+    /// User-friendly message.
+    pub message: String,
+    /// Linked capabilities.
+    pub capabilities: Vec<String>,
+}
+
+/// Story 93.1: Token refresh request.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct VoiceTokenRefreshRequest {
+    /// Device ID to refresh token for.
+    pub device_id: Uuid,
+}
+
+/// Story 93.1: Token refresh result.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct VoiceTokenRefreshResult {
+    /// Whether refresh was successful.
+    pub success: bool,
+    /// New expiration time if successful.
+    pub expires_at: Option<DateTime<Utc>>,
+    /// Error message if refresh failed.
+    pub error: Option<String>,
+}
+
+/// Story 93.2: Parsed voice command with intent and slots.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ParsedVoiceCommand {
+    /// Original command text.
+    pub raw_text: String,
+    /// Detected intent (check_balance, report_fault, etc.).
+    pub intent: String,
+    /// Confidence score (0.0-1.0).
+    pub confidence: f64,
+    /// Extracted slots/entities.
+    pub slots: serde_json::Value,
+    /// Language detected.
+    pub language: String,
+}
+
+/// Story 93.2: Voice command action result.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct VoiceActionResult {
+    /// Whether the action was successful.
+    pub success: bool,
+    /// Action type that was taken.
+    pub action_type: String,
+    /// Human-readable response.
+    pub response_text: String,
+    /// SSML for speech synthesis.
+    pub ssml: Option<String>,
+    /// Optional card for display devices.
+    pub card: Option<VoiceCard>,
+    /// Whether to end the conversation.
+    pub should_end_session: bool,
+    /// Data returned by the action (e.g., fault ID, balance amount).
+    pub data: Option<serde_json::Value>,
+}
+
+/// Story 93.2: Voice card for visual display.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct VoiceCard {
+    /// Card title.
+    pub title: String,
+    /// Card content/body.
+    pub content: String,
+    /// Optional image URL.
+    pub image_url: Option<String>,
+}
+
+/// Story 93.3: Alexa Skills Kit request.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct AlexaSkillRequest {
+    /// Request version.
+    pub version: String,
+    /// Session information.
+    pub session: AlexaSession,
+    /// Context information.
+    pub context: serde_json::Value,
+    /// The actual request.
+    pub request: AlexaRequestBody,
+}
+
+/// Story 93.3: Alexa session information.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct AlexaSession {
+    /// Whether this is a new session.
+    pub new: bool,
+    /// Session ID.
+    #[serde(rename = "sessionId")]
+    pub session_id: String,
+    /// Application information.
+    pub application: AlexaApplication,
+    /// User information.
+    pub user: AlexaUser,
+}
+
+/// Story 93.3: Alexa application info.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct AlexaApplication {
+    /// Skill application ID.
+    #[serde(rename = "applicationId")]
+    pub application_id: String,
+}
+
+/// Story 93.3: Alexa user info.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct AlexaUser {
+    /// User ID.
+    #[serde(rename = "userId")]
+    pub user_id: String,
+    /// Access token from account linking.
+    #[serde(rename = "accessToken")]
+    pub access_token: Option<String>,
+}
+
+/// Story 93.3: Alexa request body.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+#[serde(tag = "type")]
+pub enum AlexaRequestBody {
+    /// Launch request (skill opened).
+    LaunchRequest {
+        #[serde(rename = "requestId")]
+        request_id: String,
+        timestamp: String,
+        locale: String,
+    },
+    /// Intent request (user spoke a command).
+    IntentRequest {
+        #[serde(rename = "requestId")]
+        request_id: String,
+        timestamp: String,
+        locale: String,
+        intent: AlexaIntent,
+    },
+    /// Session ended.
+    SessionEndedRequest {
+        #[serde(rename = "requestId")]
+        request_id: String,
+        timestamp: String,
+        locale: String,
+        reason: String,
+    },
+}
+
+/// Story 93.3: Alexa intent.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct AlexaIntent {
+    /// Intent name.
+    pub name: String,
+    /// Intent slots.
+    pub slots: Option<serde_json::Value>,
+}
+
+/// Story 93.3: Alexa skill response.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct AlexaSkillResponse {
+    /// Response version.
+    pub version: String,
+    /// Response body.
+    pub response: AlexaResponseBody,
+}
+
+/// Story 93.3: Alexa response body.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct AlexaResponseBody {
+    /// Speech output.
+    #[serde(rename = "outputSpeech")]
+    pub output_speech: AlexaOutputSpeech,
+    /// Optional card.
+    pub card: Option<AlexaCard>,
+    /// Whether to end the session.
+    #[serde(rename = "shouldEndSession")]
+    pub should_end_session: bool,
+}
+
+/// Story 93.3: Alexa output speech.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct AlexaOutputSpeech {
+    /// Speech type (PlainText or SSML).
+    #[serde(rename = "type")]
+    pub speech_type: String,
+    /// Text content (for PlainText).
+    pub text: Option<String>,
+    /// SSML content (for SSML type).
+    pub ssml: Option<String>,
+}
+
+/// Story 93.3: Alexa card.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct AlexaCard {
+    /// Card type (Simple, Standard).
+    #[serde(rename = "type")]
+    pub card_type: String,
+    /// Card title.
+    pub title: String,
+    /// Card content.
+    pub content: Option<String>,
+    /// Card text (for Standard cards).
+    pub text: Option<String>,
+}
+
+/// Story 93.3: Google Actions request.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct GoogleActionsRequest {
+    /// Handler information.
+    pub handler: GoogleHandler,
+    /// Intent information.
+    pub intent: GoogleIntent,
+    /// Scene information.
+    pub scene: Option<GoogleScene>,
+    /// Session information.
+    pub session: GoogleSession,
+    /// User information.
+    pub user: GoogleUser,
+    /// Device information.
+    pub device: Option<serde_json::Value>,
+}
+
+/// Story 93.3: Google handler.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct GoogleHandler {
+    /// Handler name.
+    pub name: String,
+}
+
+/// Story 93.3: Google intent.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct GoogleIntent {
+    /// Intent name.
+    pub name: String,
+    /// Intent parameters.
+    pub params: Option<serde_json::Value>,
+    /// Query text.
+    pub query: Option<String>,
+}
+
+/// Story 93.3: Google scene.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct GoogleScene {
+    /// Scene name.
+    pub name: String,
+    /// Slot filling status.
+    #[serde(rename = "slotFillingStatus")]
+    pub slot_filling_status: Option<String>,
+    /// Slots.
+    pub slots: Option<serde_json::Value>,
+}
+
+/// Story 93.3: Google session.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct GoogleSession {
+    /// Session ID.
+    pub id: String,
+    /// Session parameters.
+    pub params: Option<serde_json::Value>,
+    /// Language code.
+    #[serde(rename = "languageCode")]
+    pub language_code: Option<String>,
+}
+
+/// Story 93.3: Google user.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct GoogleUser {
+    /// User verification status.
+    #[serde(rename = "verificationStatus")]
+    pub verification_status: String,
+    /// Account linking access token.
+    #[serde(rename = "accountLinkingStatus")]
+    pub account_linking_status: Option<String>,
+    /// Params including access token.
+    pub params: Option<serde_json::Value>,
+}
+
+/// Story 93.3: Google Actions response.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct GoogleActionsResponse {
+    /// Session params to persist.
+    pub session: GoogleSessionResponse,
+    /// Prompt to speak.
+    pub prompt: GooglePrompt,
+    /// Scene transition.
+    pub scene: Option<GoogleSceneResponse>,
+}
+
+/// Story 93.3: Google session response.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct GoogleSessionResponse {
+    /// Session ID.
+    pub id: String,
+    /// Parameters to persist.
+    pub params: Option<serde_json::Value>,
+}
+
+/// Story 93.3: Google prompt.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct GooglePrompt {
+    /// Override mode.
+    #[serde(rename = "override")]
+    pub override_mode: bool,
+    /// First simple response.
+    #[serde(rename = "firstSimple")]
+    pub first_simple: GoogleSimpleResponse,
+    /// Optional content.
+    pub content: Option<GoogleContent>,
+}
+
+/// Story 93.3: Google simple response.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct GoogleSimpleResponse {
+    /// Speech text.
+    pub speech: String,
+    /// Display text.
+    pub text: Option<String>,
+}
+
+/// Story 93.3: Google content for rich responses.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct GoogleContent {
+    /// Card content.
+    pub card: Option<GoogleCard>,
+}
+
+/// Story 93.3: Google card.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct GoogleCard {
+    /// Card title.
+    pub title: String,
+    /// Card subtitle.
+    pub subtitle: Option<String>,
+    /// Card text.
+    pub text: String,
+    /// Card image.
+    pub image: Option<GoogleImage>,
+}
+
+/// Story 93.3: Google image.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct GoogleImage {
+    /// Image URL.
+    pub url: String,
+    /// Alt text.
+    pub alt: String,
+}
+
+/// Story 93.3: Google scene response.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct GoogleSceneResponse {
+    /// Scene name to transition to.
+    pub name: String,
+}
+
+/// Story 93.3: Webhook signature verification result.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct WebhookVerificationResult {
+    /// Whether the signature is valid.
+    pub valid: bool,
+    /// Platform that was verified.
+    pub platform: String,
+    /// Error message if invalid.
+    pub error: Option<String>,
+}
