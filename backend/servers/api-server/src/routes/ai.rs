@@ -11,6 +11,7 @@ use axum::{
     Json, Router,
 };
 use common::{errors::ErrorResponse, TenantContext};
+use db::models::{alert_type, CreateSentimentAlert, UpsertSentimentTrend};
 use db::models::{
     CreateChatSession, CreateEquipment, CreateMaintenance, CreateWorkflow, CreateWorkflowAction,
     EquipmentQuery, ExecutionQuery, ProvideFeedback, SendChatMessage, SentimentTrendQuery,
@@ -324,6 +325,91 @@ async fn send_message(
                 )),
             )
         })?;
+
+    // Story 97.4: Analyze sentiment of user message and trigger alerts if needed
+    let sentiment_analysis = if let Some(ref tenant_ctx) = tenant {
+        // Check if sentiment analysis is enabled via feature flag
+        let sentiment_enabled = std::env::var("SENTIMENT_ANALYSIS_ENABLED")
+            .unwrap_or_else(|_| "true".to_string())
+            .to_lowercase();
+        let analyze_sentiment = sentiment_enabled != "false" && sentiment_enabled != "0";
+
+        if analyze_sentiment {
+            match state.llm_client.analyze_sentiment(&req.content, None).await {
+                Ok(result) => {
+                    // Check if alert should be triggered based on organization thresholds
+                    if let Ok(thresholds) = state
+                        .sentiment_repo
+                        .get_thresholds(tenant_ctx.tenant_id)
+                        .await
+                    {
+                        if thresholds.enabled {
+                            // Story 97.4: Check if sentiment requires attention and create alert
+                            let should_alert = result.requires_attention
+                                || (result.score < 0.0
+                                    && result.score.abs() >= thresholds.negative_threshold);
+
+                            if should_alert {
+                                let alert = CreateSentimentAlert {
+                                    organization_id: tenant_ctx.tenant_id,
+                                    building_id: None, // Could be extracted from session context
+                                    alert_type: alert_type::SPIKE_NEGATIVE.to_string(),
+                                    threshold_breached: thresholds.negative_threshold,
+                                    current_sentiment: result.score,
+                                    previous_sentiment: None,
+                                    sample_message_ids: vec![user_msg.id],
+                                };
+
+                                if let Err(e) = state.sentiment_repo.create_alert(alert).await {
+                                    tracing::warn!("Failed to create sentiment alert: {}", e);
+                                } else {
+                                    tracing::info!(
+                                        "Created sentiment alert for message {} (score: {:.2})",
+                                        user_msg.id,
+                                        result.score
+                                    );
+                                }
+                            }
+
+                            // Update daily sentiment trend
+                            let today = chrono::Utc::now().date_naive();
+                            let (neg, neut, pos) = match result.label.as_str() {
+                                "negative" => (1, 0, 0),
+                                "neutral" => (0, 1, 0),
+                                "positive" => (0, 0, 1),
+                                _ => (0, 0, 0),
+                            };
+
+                            let trend_data = UpsertSentimentTrend {
+                                organization_id: tenant_ctx.tenant_id,
+                                building_id: None,
+                                date: today,
+                                avg_sentiment: result.score,
+                                message_count: 1,
+                                negative_count: neg,
+                                neutral_count: neut,
+                                positive_count: pos,
+                            };
+
+                            if let Err(e) = state.sentiment_repo.upsert_trend(trend_data).await {
+                                tracing::warn!("Failed to update sentiment trend: {}", e);
+                            }
+                        }
+                    }
+
+                    Some(result)
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to analyze sentiment: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
     // Story 97.1: Build tenant-specific system prompt
     // Load tenant AI configuration if available (custom personality, building context)
@@ -652,16 +738,32 @@ async fn send_message(
             )
         })?;
 
-    Ok((
-        StatusCode::CREATED,
-        Json(serde_json::json!({
+    // Story 97.4: Include sentiment analysis in response if available
+    let response_json = if let Some(sentiment) = sentiment_analysis {
+        serde_json::json!({
+            "user_message": user_msg,
+            "assistant_message": assistant_msg,
+            "provider": provider,
+            "model": model,
+            "latency_ms": latency_ms,
+            "sentiment": {
+                "score": sentiment.score,
+                "label": sentiment.label,
+                "confidence": sentiment.confidence,
+                "requires_attention": sentiment.requires_attention
+            }
+        })
+    } else {
+        serde_json::json!({
             "user_message": user_msg,
             "assistant_message": assistant_msg,
             "provider": provider,
             "model": model,
             "latency_ms": latency_ms
-        })),
-    ))
+        })
+    };
+
+    Ok((StatusCode::CREATED, Json(response_json)))
 }
 
 async fn provide_feedback(
