@@ -1825,4 +1825,115 @@ impl RentalRepository {
 
         Ok(count)
     }
+
+    // ========================================================================
+    // Booking.com Connection Methods (Story 98.5)
+    // ========================================================================
+
+    /// Find Booking.com connection by organization.
+    pub async fn find_booking_connection_by_org(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Option<RentalPlatformConnection>, SqlxError> {
+        let connection = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"
+            SELECT * FROM rental_platform_connections
+            WHERE organization_id = $1 AND platform = 'booking'
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(connection)
+    }
+
+    /// Create or update Booking.com connection.
+    /// For Booking.com, we store credentials in access_token (username) and refresh_token (password)
+    pub async fn create_or_update_booking_connection(
+        &self,
+        org_id: Uuid,
+        hotel_id: &str,
+        username: &str,
+        password: &str,
+    ) -> Result<RentalPlatformConnection, SqlxError> {
+        let id = Uuid::new_v4();
+        let unit_id = Uuid::nil(); // Booking connections are org-level
+
+        let connection = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"
+            INSERT INTO rental_platform_connections (
+                id, unit_id, organization_id, platform, external_property_id,
+                access_token, refresh_token, is_active,
+                sync_calendar, sync_interval_minutes, block_other_platforms,
+                created_at, updated_at
+            )
+            VALUES ($1, $2, $3, 'booking', $4, $5, $6, true, false, 60, false, NOW(), NOW())
+            ON CONFLICT (organization_id, platform) WHERE unit_id = '00000000-0000-0000-0000-000000000000'
+            DO UPDATE SET
+                external_property_id = EXCLUDED.external_property_id,
+                access_token = EXCLUDED.access_token,
+                refresh_token = EXCLUDED.refresh_token,
+                is_active = true,
+                sync_error = NULL,
+                updated_at = NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(unit_id)
+        .bind(org_id)
+        .bind(hotel_id)
+        .bind(username)
+        .bind(password)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(connection)
+    }
+
+    /// Revoke Booking.com connection (clear credentials).
+    pub async fn revoke_booking_connection(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE rental_platform_connections SET
+                access_token = NULL,
+                refresh_token = NULL,
+                is_active = false,
+                sync_error = 'User revoked access',
+                updated_at = NOW()
+            WHERE organization_id = $1 AND platform = 'booking'
+            "#,
+        )
+        .bind(org_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+
+    /// Update connection last sync timestamp.
+    pub async fn update_connection_last_sync(
+        &self,
+        connection_id: Uuid,
+        sync_time: chrono::DateTime<Utc>,
+    ) -> Result<(), SqlxError> {
+        sqlx::query(
+            r#"
+            UPDATE rental_platform_connections SET
+                last_sync_at = $2,
+                sync_error = NULL,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(connection_id)
+        .bind(sync_time)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
 }
