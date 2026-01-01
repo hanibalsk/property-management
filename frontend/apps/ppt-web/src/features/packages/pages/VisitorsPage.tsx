@@ -2,61 +2,59 @@
  * VisitorsPage
  *
  * Main page for visitor management (Epic 58, Story 58.4-58.5).
+ * Epic 90, Story 90.2: Wire up check-in/out/cancel handlers to API.
  */
 
-import type { VisitorPurpose, VisitorStatus } from '@ppt/api-client';
-import { useState } from 'react';
+import {
+  type ApiConfig,
+  type VisitorStatus,
+  getToken,
+  useCancelVisitor,
+  useCheckInVisitor,
+  useCheckOutVisitor,
+  useVerifyAccessCode,
+  useVisitors,
+} from '@ppt/api-client';
+import { useCallback, useMemo, useState } from 'react';
 import { VisitorCard } from '../components/VisitorCard';
 
-// Mock data for development - will be replaced with API calls
-const mockVisitors = [
-  {
-    id: '1',
-    unitId: 'unit-1',
-    unitNumber: '101',
-    hostId: 'user-1',
-    hostName: 'John Doe',
-    visitorName: 'Alice Brown',
-    purpose: 'guest' as VisitorPurpose,
-    expectedArrival: '2024-01-15T14:00:00Z',
-    status: 'pending' as VisitorStatus,
-    accessCode: 'ABC123',
-    createdAt: '2024-01-10T10:00:00Z',
-  },
-  {
-    id: '2',
-    unitId: 'unit-2',
-    unitNumber: '205',
-    hostId: 'user-2',
-    hostName: 'Jane Smith',
-    visitorName: 'Bob Wilson (HVAC Tech)',
-    purpose: 'service' as VisitorPurpose,
-    expectedArrival: '2024-01-15T09:00:00Z',
-    status: 'checked_in' as VisitorStatus,
-    accessCode: 'XYZ789',
-    createdAt: '2024-01-14T10:00:00Z',
-  },
-  {
-    id: '3',
-    unitId: 'unit-3',
-    unitNumber: '310',
-    hostId: 'user-3',
-    hostName: 'Charlie Davis',
-    visitorName: 'Carol Miller',
-    purpose: 'delivery' as VisitorPurpose,
-    expectedArrival: '2024-01-14T16:00:00Z',
-    status: 'checked_out' as VisitorStatus,
-    accessCode: 'DEF456',
-    createdAt: '2024-01-13T10:00:00Z',
-  },
-];
+// API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 type FilterStatus = 'all' | 'today' | VisitorStatus;
 
 export function VisitorsPage() {
   const [filter, setFilter] = useState<FilterStatus>('all');
+  const [accessCode, setAccessCode] = useState('');
+  const [verificationResult, setVerificationResult] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
-  const filteredVisitors = mockVisitors.filter((visitor) => {
+  // API configuration
+  // TODO(Phase-2): Make token reactive - add getToken to deps or use auth context
+  // Phase 1: Token retrieved once at component mount
+  const apiConfig: ApiConfig = useMemo(
+    () => ({
+      baseUrl: API_BASE_URL,
+      accessToken: getToken() ?? undefined,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  // Fetch visitors from API
+  const { data: visitorsData, isLoading, error } = useVisitors(apiConfig);
+
+  // Mutations for visitor status updates
+  const checkInVisitor = useCheckInVisitor(apiConfig);
+  const checkOutVisitor = useCheckOutVisitor(apiConfig);
+  const cancelVisitor = useCancelVisitor(apiConfig);
+  const verifyAccessCodeMutation = useVerifyAccessCode(apiConfig);
+
+  // Get visitors from API response or use empty array
+  const visitors = visitorsData?.visitors ?? [];
+  const filteredVisitors = visitors.filter((visitor) => {
     if (filter === 'all') return true;
     if (filter === 'today') {
       const today = new Date().toDateString();
@@ -66,21 +64,119 @@ export function VisitorsPage() {
     return visitor.status === filter;
   });
 
-  const handleView = (_id: string) => {
-    // TODO: Navigate to visitor detail page
-  };
+  const handleView = useCallback((_id: string) => {
+    // TODO(Phase-2): Use React Router's useNavigate for SPA navigation
+    // Phase 1: Full page reload for simplicity
+    window.location.href = `/visitors/${_id}`;
+  }, []);
 
-  const handleCheckIn = (_id: string) => {
-    // TODO: API call to check in visitor
-  };
+  const handleCheckIn = useCallback(
+    (id: string) => {
+      checkInVisitor.mutate(
+        { id },
+        {
+          onError: (err) => {
+            console.error('Failed to check in visitor:', err);
+            alert('Failed to check in visitor. Please try again.');
+          },
+        }
+      );
+    },
+    [checkInVisitor]
+  );
 
-  const handleCheckOut = (_id: string) => {
-    // TODO: API call to check out visitor
-  };
+  const handleCheckOut = useCallback(
+    (id: string) => {
+      checkOutVisitor.mutate(
+        { id },
+        {
+          onError: (err) => {
+            console.error('Failed to check out visitor:', err);
+            alert('Failed to check out visitor. Please try again.');
+          },
+        }
+      );
+    },
+    [checkOutVisitor]
+  );
 
-  const handleCancel = (_id: string) => {
-    // TODO: API call to cancel visitor registration
-  };
+  const handleCancel = useCallback(
+    (id: string) => {
+      if (!window.confirm('Are you sure you want to cancel this visitor registration?')) {
+        return;
+      }
+      cancelVisitor.mutate(id, {
+        onError: (err) => {
+          console.error('Failed to cancel visitor:', err);
+          alert('Failed to cancel visitor registration. Please try again.');
+        },
+      });
+    },
+    [cancelVisitor]
+  );
+
+  const handleVerifyCode = useCallback(() => {
+    if (!accessCode.trim()) {
+      setVerificationResult({ type: 'error', message: 'Please enter an access code' });
+      return;
+    }
+    // TODO(Phase-2): Get buildingId from context/URL/user session
+    // Phase 1: Empty buildingId - API should handle default building or return error
+    verifyAccessCodeMutation.mutate(
+      { accessCode: accessCode.trim().toUpperCase(), buildingId: '' },
+      {
+        onSuccess: (result) => {
+          if (result.valid) {
+            setVerificationResult({
+              type: 'success',
+              message: `Valid code for ${result.visitor?.visitorName ?? 'visitor'}`,
+            });
+          } else {
+            setVerificationResult({
+              type: 'error',
+              message: result.message || 'Invalid access code',
+            });
+          }
+        },
+        onError: (err) => {
+          setVerificationResult({
+            type: 'error',
+            message: err.message || 'Failed to verify code',
+          });
+        },
+      }
+    );
+  }, [accessCode, verifyAccessCodeMutation]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="text-gray-500 mt-4">Loading visitors...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12 bg-red-50 rounded-lg">
+          <p className="text-red-600">Failed to load visitors: {error.message}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -121,6 +217,15 @@ export function VisitorsPage() {
           <div className="flex-1">
             <p className="text-sm font-medium text-blue-900">Verify Access Code</p>
             <p className="text-xs text-blue-700">Enter a visitor&apos;s access code to verify</p>
+            {verificationResult && (
+              <p
+                className={`text-xs mt-1 ${
+                  verificationResult.type === 'success' ? 'text-green-700' : 'text-red-700'
+                }`}
+              >
+                {verificationResult.message}
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             <input
@@ -128,12 +233,20 @@ export function VisitorsPage() {
               placeholder="Enter code..."
               className="px-3 py-2 border border-blue-300 rounded-md text-sm uppercase font-mono"
               maxLength={8}
+              value={accessCode}
+              onChange={(e) => {
+                setAccessCode(e.target.value);
+                setVerificationResult(null);
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && handleVerifyCode()}
             />
             <button
               type="button"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+              onClick={handleVerifyCode}
+              disabled={verifyAccessCodeMutation.isPending}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm disabled:opacity-50"
             >
-              Verify
+              {verifyAccessCodeMutation.isPending ? 'Verifying...' : 'Verify'}
             </button>
           </div>
         </div>

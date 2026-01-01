@@ -1,22 +1,30 @@
 /**
  * AML Dashboard Page (Epic 67, Story 67.1).
+ * Epic 90, Story 90.5: Wire up AML dashboard handlers to API.
  *
  * Dashboard for AML risk assessments and compliance monitoring.
  */
 
+import {
+  useAmlAssessments,
+  useAmlThresholds,
+  useCountryRisks,
+  useInitiateEdd,
+  useReviewAmlAssessment,
+} from '@ppt/api-client';
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AmlRiskAssessmentCard } from '../components/AmlRiskAssessmentCard';
 import type { AmlRiskAssessment } from '../components/AmlRiskAssessmentCard';
 
-interface AmlThresholds {
+interface AmlThresholdsDisplay {
   transaction_threshold_eur: number;
   transaction_threshold_cents: number;
   cumulative_threshold_eur: number;
   review_threshold_score: number;
 }
 
-interface CountryRisk {
+interface CountryRiskDisplay {
   country_code: string;
   country_name: string;
   risk_rating: string;
@@ -25,86 +33,168 @@ interface CountryRisk {
 }
 
 export const AmlDashboardPage: React.FC = () => {
-  const [assessments, setAssessments] = useState<AmlRiskAssessment[]>([]);
-  const [thresholds, setThresholds] = useState<AmlThresholds | null>(null);
-  const [countryRisks, setCountryRisks] = useState<CountryRisk[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [riskLevelFilter, setRiskLevelFilter] = useState<string>('');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
 
-  // Load data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // In production, these would be API calls
-        // For now, we use sample data
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        setThresholds({
-          transaction_threshold_eur: 10000,
-          transaction_threshold_cents: 1000000,
-          cumulative_threshold_eur: 15000,
-          review_threshold_score: 50,
-        });
-
-        setCountryRisks([
-          {
-            country_code: 'SK',
-            country_name: 'Slovakia',
-            risk_rating: 'low',
-            is_sanctioned: false,
-          },
-          {
-            country_code: 'CZ',
-            country_name: 'Czech Republic',
-            risk_rating: 'low',
-            is_sanctioned: false,
-          },
-          {
-            country_code: 'RU',
-            country_name: 'Russia',
-            risk_rating: 'high',
-            is_sanctioned: true,
-            fatf_status: 'FATF Blacklist',
-          },
-        ]);
-
-        // Sample assessments
-        setAssessments([]);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load AML data');
-        // Error is shown to user via setError, logging handled by error boundary
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-    // Note: Filters are not in deps because filtering is done client-side after data load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleInitiateEdd = useCallback((_assessmentId: string) => {
-    // TODO: Navigate to EDD initiation
-  }, []);
-
-  const handleReview = useCallback((_assessmentId: string) => {
-    // TODO: Open review modal
-  }, []);
-
-  const filteredAssessments = assessments.filter((a) => {
-    if (statusFilter && a.status !== statusFilter) return false;
-    if (riskLevelFilter && a.risk_level !== riskLevelFilter) return false;
-    if (flaggedOnly && !a.flagged_for_review) return false;
-    return true;
+  // Fetch assessments from API
+  const {
+    data: assessmentsData,
+    isLoading: assessmentsLoading,
+    error: assessmentsError,
+  } = useAmlAssessments({
+    status: statusFilter || undefined,
+    risk_level: riskLevelFilter || undefined,
+    flagged_only: flaggedOnly || undefined,
   });
+
+  // Fetch thresholds from API
+  const { data: thresholdsData } = useAmlThresholds();
+
+  // Fetch country risks from API
+  const { data: countryRisksData } = useCountryRisks();
+
+  // Mutations
+  const initiateEdd = useInitiateEdd();
+  const reviewAssessment = useReviewAmlAssessment();
+
+  // Transform API data to component types
+  const assessments: AmlRiskAssessment[] = (assessmentsData?.assessments ?? []).map((a) => ({
+    id: a.id,
+    party_id: a.subject_id,
+    party_type: a.subject_type,
+    risk_score: a.risk_score,
+    risk_level: a.risk_level,
+    status: a.status,
+    risk_factors: a.risk_factors.map((f) => ({
+      factor_type: f.factor_type,
+      description: f.description,
+      weight: f.weight,
+      mitigated: !f.triggered,
+    })),
+    flagged_for_review: a.flagged_for_review,
+    // TODO(Phase-2): Extend API to include these fields
+    // Phase 1: Default values for missing fields
+    id_verified: false,
+    source_of_funds_documented: false,
+    pep_check_completed: false,
+    sanctions_check_completed: false,
+    recommendations: [],
+    created_at: a.created_at,
+    assessed_at: a.updated_at,
+  }));
+
+  const thresholds: AmlThresholdsDisplay | null = thresholdsData?.thresholds
+    ? {
+        transaction_threshold_eur: thresholdsData.thresholds.transaction_threshold_eur,
+        transaction_threshold_cents: thresholdsData.thresholds.transaction_threshold_cents,
+        cumulative_threshold_eur: thresholdsData.thresholds.cumulative_threshold_eur,
+        review_threshold_score: thresholdsData.thresholds.review_threshold_score,
+      }
+    : null;
+
+  const countryRisks: CountryRiskDisplay[] = (countryRisksData?.countries ?? []).map((c) => ({
+    country_code: c.country_code,
+    country_name: c.country_name,
+    risk_rating: c.risk_rating,
+    is_sanctioned: c.is_sanctioned,
+    fatf_status: c.fatf_status,
+  }));
+
+  const handleInitiateEdd = useCallback(
+    (assessmentId: string) => {
+      // TODO(Phase-2): Replace window.prompt with proper modal form with document selection
+      // Phase 1: Basic prompt for collecting reason
+      const reason = window.prompt('Enter reason for initiating Enhanced Due Diligence:');
+      if (!reason) return;
+
+      initiateEdd.mutate(
+        {
+          assessment_id: assessmentId,
+          reason,
+          documents_requested: [],
+        },
+        {
+          onSuccess: () => {
+            alert('Enhanced Due Diligence initiated successfully.');
+          },
+          onError: (err) => {
+            console.error('Failed to initiate EDD:', err);
+            alert('Failed to initiate EDD. Please try again.');
+          },
+        }
+      );
+    },
+    [initiateEdd]
+  );
+
+  const handleReview = useCallback(
+    (assessmentId: string) => {
+      // TODO(Phase-2): Replace window.prompt with proper modal form with validation
+      // Phase 1: Basic prompts for collecting decision and notes
+      const decision = window.prompt('Enter decision (approve, reject, escalate):', 'approve');
+      if (!decision) return;
+
+      const notes = window.prompt('Enter review notes:');
+      if (!notes) return;
+
+      reviewAssessment.mutate(
+        {
+          assessmentId,
+          request: {
+            decision: decision as 'approve' | 'reject' | 'escalate',
+            notes,
+          },
+        },
+        {
+          onSuccess: () => {
+            alert('Assessment reviewed successfully.');
+          },
+          onError: (err) => {
+            console.error('Failed to review assessment:', err);
+            alert('Failed to review assessment. Please try again.');
+          },
+        }
+      );
+    },
+    [reviewAssessment]
+  );
+
+  // Loading state
+  if (assessmentsLoading) {
+    return (
+      <div className="aml-dashboard-page">
+        <div className="aml-dashboard-header">
+          <h1>AML Compliance Dashboard</h1>
+          <p>Monitor anti-money laundering risk assessments and compliance status.</p>
+        </div>
+        <div className="aml-loading">Loading AML data...</div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (assessmentsError) {
+    return (
+      <div className="aml-dashboard-page">
+        <div className="aml-dashboard-header">
+          <h1>AML Compliance Dashboard</h1>
+          <p>Monitor anti-money laundering risk assessments and compliance status.</p>
+        </div>
+        <div className="aml-dashboard-error" role="alert">
+          Failed to load AML data: {assessmentsError.message}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="aml-retry-button"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="aml-dashboard-page">
@@ -112,12 +202,6 @@ export const AmlDashboardPage: React.FC = () => {
         <h1>AML Compliance Dashboard</h1>
         <p>Monitor anti-money laundering risk assessments and compliance status.</p>
       </div>
-
-      {error && (
-        <div className="aml-dashboard-error" role="alert">
-          {error}
-        </div>
-      )}
 
       {/* Thresholds Info */}
       {thresholds && (
@@ -224,11 +308,9 @@ export const AmlDashboardPage: React.FC = () => {
       </div>
 
       {/* Assessments List */}
-      {isLoading ? (
-        <div className="aml-loading">Loading AML data...</div>
-      ) : filteredAssessments.length > 0 ? (
+      {assessments.length > 0 ? (
         <div className="aml-assessments-list">
-          {filteredAssessments.map((assessment) => (
+          {assessments.map((assessment) => (
             <AmlRiskAssessmentCard
               key={assessment.id}
               assessment={assessment}

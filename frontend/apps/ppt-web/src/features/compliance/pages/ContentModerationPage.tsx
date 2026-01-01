@@ -1,32 +1,35 @@
 /**
  * Content Moderation Dashboard Page (Epic 67, Story 67.4).
+ * Epic 90, Story 90.4: Wire up moderation handlers to API.
  *
  * Dashboard for reviewing and moderating user-generated content.
  */
 
+import {
+  useAssignModerationCase,
+  useDecideModerationAppeal,
+  useModerationCases,
+  useModerationStats,
+  useModerationTemplates,
+  useTakeModerationAction,
+} from '@ppt/api-client';
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ModerationCaseCard } from '../components/ModerationCaseCard';
-import type { ModerationCase, ViolationType } from '../components/ModerationCaseCard';
+import type { ModerationCase } from '../components/ModerationCaseCard';
 import { ModerationQueueStats } from '../components/ModerationQueueStats';
 import type { ModerationQueueStatsData } from '../components/ModerationQueueStats';
 
 interface ActionTemplate {
   id: string;
   name: string;
-  violation_type: ViolationType;
+  violation_type: string;
   action_type: string;
   rationale_template: string;
   notify_owner: boolean;
 }
 
 export const ContentModerationPage: React.FC = () => {
-  const [cases, setCases] = useState<ModerationCase[]>([]);
-  const [stats, setStats] = useState<ModerationQueueStatsData | null>(null);
-  const [templates, setTemplates] = useState<ActionTemplate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('pending');
   const [contentTypeFilter, setContentTypeFilter] = useState<string>('');
@@ -34,77 +37,159 @@ export const ContentModerationPage: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<string>('');
   const [unassignedOnly, setUnassignedOnly] = useState(false);
 
-  // Load data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  // Fetch moderation cases from API
+  const {
+    data: casesData,
+    isLoading: casesLoading,
+    error: casesError,
+  } = useModerationCases({
+    status: statusFilter || undefined,
+    content_type: contentTypeFilter || undefined,
+    violation_type: violationTypeFilter || undefined,
+    priority: priorityFilter ? Number.parseInt(priorityFilter, 10) : undefined,
+    unassigned_only: unassignedOnly || undefined,
+  });
 
-        // In production, these would be API calls
-        await new Promise((resolve) => setTimeout(resolve, 500));
+  // Fetch stats from API
+  const { data: statsData } = useModerationStats();
 
-        setStats({
-          pending_count: 0,
-          under_review_count: 0,
-          by_priority: [
-            { priority: 1, count: 0 },
-            { priority: 2, count: 0 },
-            { priority: 3, count: 0 },
-          ],
-          by_violation_type: [],
-          avg_resolution_time_hours: 0,
-          overdue_count: 0,
-        });
+  // Fetch templates from API
+  const { data: templatesData } = useModerationTemplates();
 
-        setTemplates([
-          {
-            id: '1',
-            name: 'Remove Spam',
-            violation_type: 'spam',
-            action_type: 'remove',
-            rationale_template: 'Content removed as it violates our spam policy.',
-            notify_owner: true,
-          },
-          {
-            id: '2',
-            name: 'Warn for Inappropriate Language',
-            violation_type: 'inappropriate_content',
-            action_type: 'warn',
-            rationale_template: 'Warning issued for use of inappropriate language.',
-            notify_owner: true,
-          },
-        ]);
+  // Mutations
+  const assignCase = useAssignModerationCase();
+  const takeAction = useTakeModerationAction();
+  const decideAppeal = useDecideModerationAppeal();
 
-        setCases([]);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load moderation data');
-        // Error is shown to user via setError, logging handled by error boundary
-      } finally {
-        setIsLoading(false);
+  // Transform API data to component types
+  const cases: ModerationCase[] = (casesData?.cases ?? []).map((c) => ({
+    id: c.id,
+    content_type: c.content_type as ModerationCase['content_type'],
+    content_id: c.content_id,
+    content_preview: c.content_preview,
+    content_owner: {
+      user_id: c.owner_id,
+      name: c.owner_name,
+      // TODO(Phase-2): Extend API to include previous_violations count
+      // Phase 1: Default value
+      previous_violations: 0,
+    },
+    // TODO(Phase-2): Extend API to include report_source
+    // Phase 1: Default value
+    report_source: 'user',
+    violation_type: c.violation_type as ModerationCase['violation_type'],
+    status: c.status as ModerationCase['status'],
+    priority: c.priority,
+    assigned_to_name: c.assigned_to_name,
+    appeal_filed: c.is_appeal ?? false,
+    created_at: c.reported_at,
+    age_hours: c.sla_deadline
+      ? Math.max(0, (new Date().getTime() - new Date(c.reported_at).getTime()) / (1000 * 60 * 60))
+      : 0,
+  }));
+
+  const stats: ModerationQueueStatsData | null = statsData?.stats
+    ? {
+        pending_count: statsData.stats.pending_count,
+        under_review_count: statsData.stats.under_review_count,
+        by_priority: statsData.stats.by_priority,
+        by_violation_type: statsData.stats.by_violation_type.map((v) => ({
+          violation_type: v.type,
+          count: v.count,
+        })),
+        avg_resolution_time_hours: statsData.stats.avg_resolution_time_hours,
+        overdue_count: statsData.stats.overdue_count,
       }
-    };
+    : null;
 
-    loadData();
-    // Note: Filters are not in deps because filtering is done client-side after data load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const templates: ActionTemplate[] = (templatesData?.templates ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    violation_type: t.violation_type,
+    action_type: t.action_type,
+    rationale_template: t.rationale_template,
+    notify_owner: t.notify_owner,
+  }));
+
+  const handleAssign = useCallback(
+    (caseId: string) => {
+      assignCase.mutate(caseId, {
+        onError: (err) => {
+          console.error('Failed to assign case:', err);
+          alert('Failed to assign case. Please try again.');
+        },
+      });
+    },
+    [assignCase]
+  );
+
+  const handleTakeAction = useCallback(
+    (caseId: string) => {
+      // TODO(Phase-2): Replace window.prompt with modal form with action templates integration
+      // Phase 1: Basic prompts for action type and rationale
+      const actionType = window.prompt(
+        'Enter action type (remove, restrict, warn, approve):',
+        'approve'
+      );
+      if (!actionType) return;
+
+      const rationale = window.prompt('Enter rationale for this action:');
+      if (!rationale) return;
+
+      takeAction.mutate(
+        {
+          caseId,
+          request: {
+            action_type: actionType as 'remove' | 'restrict' | 'warn' | 'approve',
+            rationale,
+            notify_owner: true,
+          },
+        },
+        {
+          onError: (err) => {
+            console.error('Failed to take action:', err);
+            alert('Failed to take action. Please try again.');
+          },
+        }
+      );
+    },
+    [takeAction]
+  );
+
+  const handleViewContent = useCallback((caseId: string) => {
+    // TODO(Phase-2): Use React Router's useNavigate for SPA navigation
+    // Phase 1: Full page reload for simplicity
+    window.location.href = `/compliance/moderation/cases/${caseId}`;
   }, []);
 
-  const handleAssign = useCallback((_caseId: string) => {
-    // TODO: API call to assign case to current user
-  }, []);
+  const handleDecideAppeal = useCallback(
+    (caseId: string) => {
+      // TODO(Phase-2): Replace window.prompt with modal form with validation
+      // Phase 1: Basic prompts for decision and rationale
+      const decision = window.prompt('Enter decision (uphold, overturn):', 'uphold');
+      if (!decision) return;
 
-  const handleTakeAction = useCallback((_caseId: string) => {
-    // TODO: Open action modal
-  }, []);
+      const rationale = window.prompt('Enter rationale for this decision:');
+      if (!rationale) return;
 
-  const handleViewContent = useCallback((_caseId: string) => {
-    // TODO: Navigate to content view
-  }, []);
-
-  const handleDecideAppeal = useCallback((_caseId: string) => {
-    // TODO: Open appeal decision modal
-  }, []);
+      decideAppeal.mutate(
+        {
+          caseId,
+          request: {
+            decision: decision as 'uphold' | 'overturn',
+            rationale,
+          },
+        },
+        {
+          onError: (err) => {
+            console.error('Failed to decide appeal:', err);
+            alert('Failed to decide appeal. Please try again.');
+          },
+        }
+      );
+    },
+    [decideAppeal]
+  );
 
   const handleFilterByPriority = useCallback((priority: number) => {
     setPriorityFilter(priority.toString());
@@ -120,14 +205,40 @@ export const ContentModerationPage: React.FC = () => {
     // TODO: Add overdue filter parameter when API supports it
   }, []);
 
-  const filteredCases = cases.filter((c) => {
-    if (statusFilter && c.status !== statusFilter) return false;
-    if (contentTypeFilter && c.content_type !== contentTypeFilter) return false;
-    if (violationTypeFilter && c.violation_type !== violationTypeFilter) return false;
-    if (priorityFilter && c.priority.toString() !== priorityFilter) return false;
-    if (unassignedOnly && c.assigned_to_name) return false;
-    return true;
-  });
+  // Loading state
+  if (casesLoading) {
+    return (
+      <div className="content-moderation-page">
+        <div className="moderation-page-header">
+          <h1>Content Moderation Dashboard</h1>
+          <p>Review and moderate user-generated content for DSA compliance.</p>
+        </div>
+        <div className="moderation-loading">Loading moderation queue...</div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (casesError) {
+    return (
+      <div className="content-moderation-page">
+        <div className="moderation-page-header">
+          <h1>Content Moderation Dashboard</h1>
+          <p>Review and moderate user-generated content for DSA compliance.</p>
+        </div>
+        <div className="moderation-page-error" role="alert">
+          Failed to load moderation cases: {casesError.message}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="moderation-retry-button"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="content-moderation-page">
@@ -135,12 +246,6 @@ export const ContentModerationPage: React.FC = () => {
         <h1>Content Moderation Dashboard</h1>
         <p>Review and moderate user-generated content for DSA compliance.</p>
       </div>
-
-      {error && (
-        <div className="moderation-page-error" role="alert">
-          {error}
-        </div>
-      )}
 
       {/* Queue Statistics */}
       {stats && (
@@ -238,11 +343,9 @@ export const ContentModerationPage: React.FC = () => {
       </div>
 
       {/* Cases List */}
-      {isLoading ? (
-        <div className="moderation-loading">Loading moderation queue...</div>
-      ) : filteredCases.length > 0 ? (
+      {cases.length > 0 ? (
         <div className="moderation-cases-list">
-          {filteredCases.map((case_) => (
+          {cases.map((case_) => (
             <ModerationCaseCard
               key={case_.id}
               case_={case_}

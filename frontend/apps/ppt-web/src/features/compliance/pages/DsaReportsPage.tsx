@@ -1,18 +1,23 @@
 /**
  * DSA Transparency Reports Page (Epic 67, Story 67.3).
+ * Epic 90, Story 90.6: Wire up DSA reports handlers to API.
  *
  * Page for generating and viewing DSA transparency reports.
  */
 
+import {
+  useDownloadDsaReportPdf,
+  useDsaMetrics,
+  useDsaReports,
+  useGenerateDsaReport,
+  usePublishDsaReport,
+} from '@ppt/api-client';
 import type React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { DsaTransparencyReportCard } from '../components/DsaTransparencyReportCard';
-import type {
-  DsaReportStatus,
-  DsaTransparencyReport,
-} from '../components/DsaTransparencyReportCard';
+import type { DsaTransparencyReport } from '../components/DsaTransparencyReportCard';
 
-interface DsaMetrics {
+interface DsaMetricsDisplay {
   current_period_start: string;
   current_period_end: string;
   moderation_actions_this_period: number;
@@ -22,116 +27,106 @@ interface DsaMetrics {
 }
 
 export const DsaReportsPage: React.FC = () => {
-  const [reports, setReports] = useState<DsaTransparencyReport[]>([]);
-  const [metrics, setMetrics] = useState<DsaMetrics | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-
   // Report generation form
   const [showGenerateForm, setShowGenerateForm] = useState(false);
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Load data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  // Fetch reports from API
+  const { data: reportsData, isLoading: reportsLoading, error: reportsError } = useDsaReports();
 
-        // In production, these would be API calls
-        await new Promise((resolve) => setTimeout(resolve, 500));
+  // Fetch metrics from API
+  const { data: metricsData } = useDsaMetrics();
 
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  // Mutations
+  const generateReport = useGenerateDsaReport();
+  const publishReport = usePublishDsaReport();
+  const downloadPdf = useDownloadDsaReportPdf();
 
-        setMetrics({
-          current_period_start: thirtyDaysAgo.toISOString(),
-          current_period_end: now.toISOString(),
-          moderation_actions_this_period: 0,
-          pending_cases: 0,
-          avg_resolution_time_hours: 0,
-          sla_compliance_rate: 100,
-        });
+  // Transform API data to component types
+  const reports: DsaTransparencyReport[] = (reportsData?.reports ?? []).map((r) => ({
+    id: r.id,
+    period_start: r.period_start,
+    period_end: r.period_end,
+    status: r.status,
+    summary: r.summary,
+    content_type_breakdown: r.content_type_breakdown.map((c) => ({
+      content_type: c.type,
+      count: c.count,
+    })),
+    violation_type_breakdown: r.violation_type_breakdown.map((v) => ({
+      violation_type: v.type,
+      count: v.count,
+    })),
+    download_url: r.download_url,
+    generated_at: r.generated_at,
+    published_at: r.published_at,
+  }));
 
-        setReports([]);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load DSA reports');
-        // Error is shown to user via setError, logging handled by error boundary
-      } finally {
-        setIsLoading(false);
+  const metrics: DsaMetricsDisplay | null = metricsData?.metrics
+    ? {
+        current_period_start: metricsData.metrics.current_period_start,
+        current_period_end: metricsData.metrics.current_period_end,
+        moderation_actions_this_period: metricsData.metrics.moderation_actions_this_period,
+        pending_cases: metricsData.metrics.pending_cases,
+        avg_resolution_time_hours: metricsData.metrics.avg_resolution_time_hours,
+        sla_compliance_rate: metricsData.metrics.sla_compliance_rate,
       }
-    };
+    : null;
 
-    loadData();
-  }, []);
-
-  const handleGenerateReport = useCallback(async () => {
+  const handleGenerateReport = useCallback(() => {
     if (!periodStart || !periodEnd) {
-      setError('Please select both start and end dates');
+      setFormError('Please select both start and end dates');
       return;
     }
 
-    try {
-      setIsGenerating(true);
-      setError(null);
-
-      // In production, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const newReport: DsaTransparencyReport = {
-        id: crypto.randomUUID(),
+    setFormError(null);
+    generateReport.mutate(
+      {
         period_start: periodStart,
         period_end: periodEnd,
-        status: 'generated',
-        summary: {
-          total_moderation_actions: 0,
-          content_removed: 0,
-          content_restricted: 0,
-          warnings_issued: 0,
-          user_reports_received: 0,
-          user_reports_resolved: 0,
-          avg_resolution_time_hours: undefined,
-          automated_decisions: 0,
-          automated_decisions_overturned: 0,
-          appeals_received: 0,
-          appeals_upheld: 0,
-          appeals_rejected: 0,
+      },
+      {
+        onSuccess: () => {
+          setShowGenerateForm(false);
+          setPeriodStart('');
+          setPeriodEnd('');
         },
-        content_type_breakdown: [],
-        violation_type_breakdown: [],
-        download_url: undefined,
-        generated_at: new Date().toISOString(),
-        published_at: undefined,
-      };
-
-      setReports((prev) => [newReport, ...prev]);
-      setShowGenerateForm(false);
-      setPeriodStart('');
-      setPeriodEnd('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate report');
-      // Error is shown to user via setError, logging handled by error boundary
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [periodStart, periodEnd]);
-
-  const handlePublish = useCallback((reportId: string) => {
-    // TODO: API call to publish report
-    setReports((prev) =>
-      prev.map((r) =>
-        r.id === reportId
-          ? { ...r, status: 'published' as DsaReportStatus, published_at: new Date().toISOString() }
-          : r
-      )
+        onError: (err) => {
+          console.error('Failed to generate report:', err);
+          setFormError('Failed to generate report. Please try again.');
+        },
+      }
     );
-  }, []);
+  }, [periodStart, periodEnd, generateReport]);
 
-  const handleDownload = useCallback((_reportId: string) => {
-    // TODO: Trigger PDF download from API
-  }, []);
+  const handlePublish = useCallback(
+    (reportId: string) => {
+      publishReport.mutate(reportId, {
+        onSuccess: () => {
+          alert('Report published successfully.');
+        },
+        onError: (err) => {
+          console.error('Failed to publish report:', err);
+          alert('Failed to publish report. Please try again.');
+        },
+      });
+    },
+    [publishReport]
+  );
+
+  const handleDownload = useCallback(
+    (reportId: string) => {
+      downloadPdf.mutate(reportId, {
+        onError: (err) => {
+          console.error('Failed to download report:', err);
+          alert('Failed to download report. Please try again.');
+        },
+      });
+    },
+    [downloadPdf]
+  );
 
   const formatDate = (dateStr: string): string => {
     return new Date(dateStr).toLocaleDateString('en-GB', {
@@ -141,18 +136,47 @@ export const DsaReportsPage: React.FC = () => {
     });
   };
 
+  // Loading state
+  if (reportsLoading) {
+    return (
+      <div className="dsa-reports-page">
+        <div className="dsa-reports-header">
+          <h1>DSA Transparency Reports</h1>
+          <p>Generate and publish transparency reports for Digital Services Act compliance.</p>
+        </div>
+        <div className="dsa-loading">Loading reports...</div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (reportsError) {
+    return (
+      <div className="dsa-reports-page">
+        <div className="dsa-reports-header">
+          <h1>DSA Transparency Reports</h1>
+          <p>Generate and publish transparency reports for Digital Services Act compliance.</p>
+        </div>
+        <div className="dsa-reports-error" role="alert">
+          Failed to load DSA reports: {reportsError.message}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="dsa-retry-button"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dsa-reports-page">
       <div className="dsa-reports-header">
         <h1>DSA Transparency Reports</h1>
         <p>Generate and publish transparency reports for Digital Services Act compliance.</p>
       </div>
-
-      {error && (
-        <div className="dsa-reports-error" role="alert">
-          {error}
-        </div>
-      )}
 
       {/* Current Metrics */}
       {metrics && (
@@ -198,6 +222,11 @@ export const DsaReportsPage: React.FC = () => {
         ) : (
           <div className="dsa-generate-form">
             <h3>Generate Transparency Report</h3>
+            {formError && (
+              <div className="dsa-form-error" role="alert">
+                {formError}
+              </div>
+            )}
             <div className="dsa-form-row">
               <div className="dsa-form-field">
                 <label htmlFor="periodStart">Period Start</label>
@@ -223,7 +252,7 @@ export const DsaReportsPage: React.FC = () => {
                 type="button"
                 className="dsa-form-cancel"
                 onClick={() => setShowGenerateForm(false)}
-                disabled={isGenerating}
+                disabled={generateReport.isPending}
               >
                 Cancel
               </button>
@@ -231,9 +260,9 @@ export const DsaReportsPage: React.FC = () => {
                 type="button"
                 className="dsa-form-submit"
                 onClick={handleGenerateReport}
-                disabled={isGenerating}
+                disabled={generateReport.isPending}
               >
-                {isGenerating ? 'Generating...' : 'Generate Report'}
+                {generateReport.isPending ? 'Generating...' : 'Generate Report'}
               </button>
             </div>
           </div>
@@ -243,9 +272,7 @@ export const DsaReportsPage: React.FC = () => {
       {/* Reports List */}
       <div className="dsa-reports-list-section">
         <h2>Previous Reports</h2>
-        {isLoading ? (
-          <div className="dsa-loading">Loading reports...</div>
-        ) : reports.length > 0 ? (
+        {reports.length > 0 ? (
           <div className="dsa-reports-list">
             {reports.map((report) => (
               <DsaTransparencyReportCard
