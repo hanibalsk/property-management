@@ -1,4 +1,4 @@
-//! Document routes (Epic 7A: Basic Document Management, Epic 7B: Document Versioning, Epic 28: Document Intelligence).
+//! Document routes (Epic 7A: Basic Document Management, Epic 7B: Document Versioning, Epic 28: Document Intelligence, Epic 92: Intelligent Document Generation).
 
 use crate::state::AppState;
 use api_core::{AuthUser, TenantExtractor};
@@ -188,6 +188,39 @@ pub struct SummarizationResponse {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct IntelligenceStatsResponse {
     pub stats: Vec<DocumentIntelligenceStats>,
+}
+
+// ============================================================================
+// Epic 92.3: AI Document Summarization Types
+// ============================================================================
+
+/// Request for AI-powered document summarization.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AiSummarizeRequest {
+    /// Target summary length (short, medium, long)
+    pub summary_length: Option<String>,
+    /// Language for the summary (sk, cs, de, en)
+    pub language: Option<String>,
+    /// Whether to extract key points
+    #[serde(default = "default_true")]
+    pub extract_key_points: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Response for AI-powered document summarization.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AiSummarizeResponse {
+    pub document_id: Uuid,
+    pub summary: String,
+    pub key_points: Vec<String>,
+    pub word_count: usize,
+    pub tokens_used: i32,
+    pub processing_time_ms: u64,
+    pub provider: String,
+    pub model: String,
 }
 
 // ============================================================================
@@ -381,6 +414,8 @@ pub fn router() -> Router<AppState> {
         )
         // Story 28.4: Summarization
         .route("/{id}/summarize", post(request_summarization))
+        // Story 92.3: LLM-powered summarization (sync)
+        .route("/{id}/ai-summarize", post(ai_summarize_document))
         // Intelligence stats
         .route("/intelligence/stats", get(get_intelligence_stats))
     // Public shared document access (no auth required - separate route in main.rs)
@@ -2929,4 +2964,316 @@ async fn get_intelligence_stats(
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct MessageResponse {
     pub message: String,
+}
+
+// ============================================================================
+// Epic 92.3: AI Document Summarization Handler
+// ============================================================================
+
+/// AI-powered document summarization (Story 92.3).
+///
+/// Generates a concise summary of the document using LLM.
+/// Supports PDF, DOCX, and TXT documents.
+#[utoipa::path(
+    post,
+    path = "/api/v1/documents/{id}/ai-summarize",
+    params(
+        ("id" = Uuid, Path, description = "Document ID")
+    ),
+    request_body = AiSummarizeRequest,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Document summarized", body = AiSummarizeResponse),
+        (status = 404, description = "Document not found", body = ErrorResponse),
+        (status = 400, description = "Unsupported document type", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    tag = "Document Intelligence"
+)]
+async fn ai_summarize_document(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    tenant: TenantExtractor,
+    Path(id): Path<Uuid>,
+    Json(req): Json<AiSummarizeRequest>,
+) -> Result<Json<AiSummarizeResponse>, (StatusCode, Json<ErrorResponse>)> {
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+
+    // Verify document exists
+    let document = match state.document_repo.find_by_id(id).await {
+        Ok(Some(d)) => d,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to find document: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find document",
+                )),
+            ));
+        }
+    };
+
+    // Verify organization
+    if document.organization_id != tenant.tenant_id {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
+        ));
+    }
+
+    // Check if document type is supported
+    let supported_mime_types = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain",
+        "text/markdown",
+        "application/rtf",
+    ];
+
+    if !supported_mime_types.contains(&document.mime_type.as_str()) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "UNSUPPORTED_FORMAT",
+                format!(
+                    "Document type '{}' is not supported for summarization. Supported: PDF, DOCX, DOC, TXT, MD, RTF",
+                    document.mime_type
+                ),
+            )),
+        ));
+    }
+
+    // Get document content (extracted text)
+    let content = match state.document_repo.get_extracted_text(id).await {
+        Ok(Some(text)) if !text.trim().is_empty() => text,
+        Ok(_) => {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "NO_CONTENT",
+                    "Document has no extracted text. Please run OCR first using /{id}/ocr/reprocess",
+                )),
+            ));
+        }
+        Err(e) => {
+            tracing::error!("Failed to get document content: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to retrieve document content",
+                )),
+            ));
+        }
+    };
+
+    // Determine provider and model
+    let provider = std::env::var("LLM_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
+    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| match provider.as_str() {
+        "openai" => "gpt-4o".to_string(),
+        "azure_openai" => "gpt-4o".to_string(),
+        _ => "claude-3-5-sonnet-20241022".to_string(),
+    });
+
+    // Build the summarization prompt
+    let language = req.language.as_deref().unwrap_or("en");
+    let summary_length = req.summary_length.as_deref().unwrap_or("medium");
+
+    let word_target = match summary_length {
+        "short" => "50-100 words",
+        "long" => "300-500 words",
+        _ => "150-250 words",
+    };
+
+    let language_name = match language {
+        "sk" => "Slovak",
+        "cs" => "Czech",
+        "de" => "German",
+        _ => "English",
+    };
+
+    let system_prompt = format!(
+        r#"You are an expert document analyst and summarizer.
+
+Your task is to create a concise summary of the provided document in {} language.
+
+Requirements:
+1. Generate a summary of {} (target length)
+2. Extract 3-7 key points as bullet points
+3. Maintain the document's core message and important details
+4. Use clear, professional language
+5. Do not add information not present in the original document
+
+Format your response as:
+SUMMARY:
+[Your summary here]
+
+KEY POINTS:
+- [Key point 1]
+- [Key point 2]
+..."#,
+        language_name, word_target
+    );
+
+    // For very long documents, truncate
+    let content_tokens_estimate = content.len() / 4;
+    let max_context = 100_000;
+
+    let content_to_summarize = if content_tokens_estimate > max_context {
+        let char_limit = max_context * 4;
+        let half_limit = char_limit / 2;
+        let start = &content[..half_limit.min(content.len())];
+        let end_start = content.len().saturating_sub(half_limit);
+        let end = &content[end_start..];
+
+        format!(
+            "[Document truncated for length]\n\n{}\n\n[...]\n\n{}",
+            start, end
+        )
+    } else {
+        content.clone()
+    };
+
+    // Call LLM
+    let llm_request = integrations::ChatCompletionRequest {
+        model: model.clone(),
+        messages: vec![
+            integrations::ChatMessage {
+                role: "system".to_string(),
+                content: system_prompt,
+            },
+            integrations::ChatMessage {
+                role: "user".to_string(),
+                content: format!(
+                    "Please summarize the following document:\n\n{}",
+                    content_to_summarize
+                ),
+            },
+        ],
+        temperature: Some(0.3),
+        max_tokens: Some(2000),
+    };
+
+    let response = state
+        .llm_client
+        .chat(&provider, &llm_request)
+        .await
+        .map_err(|e| {
+            tracing::error!("LLM summarization failed: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "LLM_ERROR",
+                    format!("Failed to generate summary: {}", e),
+                )),
+            )
+        })?;
+
+    let response_content = response
+        .choices
+        .first()
+        .map(|c| c.message.content.clone())
+        .unwrap_or_default();
+
+    // Parse the response
+    let (summary, key_points) = parse_summary_response(&response_content);
+
+    let processing_time_ms = start_time.elapsed().as_millis() as u64;
+
+    // Store the summary in the document
+    let key_points_json = serde_json::to_value(&key_points).ok();
+    let word_count = summary.split_whitespace().count() as i32;
+    let _ = state
+        .document_repo
+        .update_summary(
+            id,
+            &summary,
+            key_points_json,
+            None, // action_items
+            None, // topics
+            Some(word_count),
+            Some(language),
+        )
+        .await;
+
+    tracing::info!(
+        "Document {} summarized (tokens: {}, latency: {}ms)",
+        id,
+        response.usage.total_tokens,
+        processing_time_ms
+    );
+
+    Ok(Json(AiSummarizeResponse {
+        document_id: id,
+        summary: summary.clone(),
+        key_points,
+        word_count: summary.split_whitespace().count(),
+        tokens_used: response.usage.total_tokens,
+        processing_time_ms,
+        provider,
+        model,
+    }))
+}
+
+/// Parse the summary response from LLM.
+fn parse_summary_response(content: &str) -> (String, Vec<String>) {
+    let mut summary = String::new();
+    let mut key_points = Vec::new();
+    let mut in_summary = false;
+    let mut in_key_points = false;
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        if trimmed.to_uppercase().starts_with("SUMMARY:") {
+            in_summary = true;
+            in_key_points = false;
+            let after_label = trimmed
+                .strip_prefix("SUMMARY:")
+                .or_else(|| trimmed.strip_prefix("Summary:"))
+                .unwrap_or("");
+            if !after_label.trim().is_empty() {
+                summary.push_str(after_label.trim());
+                summary.push(' ');
+            }
+            continue;
+        }
+
+        if trimmed.to_uppercase().starts_with("KEY POINTS:")
+            || trimmed.to_uppercase().starts_with("KEY_POINTS:")
+        {
+            in_summary = false;
+            in_key_points = true;
+            continue;
+        }
+
+        if in_summary && !trimmed.is_empty() {
+            summary.push_str(trimmed);
+            summary.push(' ');
+        }
+
+        if in_key_points && trimmed.starts_with('-') {
+            let point = trimmed.trim_start_matches('-').trim();
+            if !point.is_empty() {
+                key_points.push(point.to_string());
+            }
+        }
+    }
+
+    // If parsing failed, use the whole content as summary
+    if summary.is_empty() {
+        summary = content.to_string();
+    }
+
+    (summary.trim().to_string(), key_points)
 }

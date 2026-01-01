@@ -1971,7 +1971,7 @@ pub fn llm_router() -> Router<AppState> {
 }
 
 // ============================================================================
-// Story 64.1: Lease Generation Endpoints
+// Story 64.1 + Epic 92.1: Lease Generation Endpoints
 // ============================================================================
 
 #[utoipa::path(
@@ -1990,6 +1990,21 @@ async fn generate_lease(
     Json(req): Json<GenerateLeaseRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
     let tenant = extract_tenant_context(&headers)?;
+    let start_time = Instant::now();
+
+    // Check feature flag for document generation
+    let doc_gen_enabled = std::env::var("LLM_DOCUMENT_GENERATION")
+        .unwrap_or_else(|_| "true".to_string())
+        .to_lowercase();
+    let doc_gen_enabled = doc_gen_enabled != "false" && doc_gen_enabled != "0";
+
+    // Determine provider and model
+    let provider = std::env::var("LLM_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
+    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| match provider.as_str() {
+        "openai" => "gpt-4o".to_string(),
+        "azure_openai" => "gpt-4o".to_string(),
+        _ => "claude-3-5-sonnet-20241022".to_string(),
+    });
 
     // Create a generation request record
     let input_data = serde_json::to_value(&req).unwrap_or_default();
@@ -1999,9 +2014,9 @@ async fn generate_lease(
             tenant.tenant_id,
             tenant.user_id,
             "lease_generation",
-            "openai",
-            "gpt-4",
-            input_data,
+            &provider,
+            &model,
+            input_data.clone(),
             req.template_id,
         )
         .await
@@ -2016,16 +2031,165 @@ async fn generate_lease(
             )
         })?;
 
-    // For now, return a placeholder response
-    // Real implementation would call the LLM client
-    Ok((
-        StatusCode::CREATED,
-        Json(serde_json::json!({
-            "request_id": request.id,
-            "status": request.status,
-            "message": "Lease generation request created. Processing..."
-        })),
-    ))
+    if !doc_gen_enabled {
+        tracing::info!("LLM document generation disabled via feature flag");
+        return Ok((
+            StatusCode::CREATED,
+            Json(serde_json::json!({
+                "request_id": request.id,
+                "status": "pending",
+                "message": "Lease generation is currently disabled. Request queued for later processing."
+            })),
+        ));
+    }
+
+    // Epic 92.1: Generate lease using LLM
+    let jurisdiction = req.jurisdiction.as_deref().unwrap_or("SK");
+    let lease_input = integrations::LeaseGenerationInput {
+        unit_id: req.unit_id,
+        landlord_name: req.landlord_name.clone(),
+        landlord_address: req.landlord_address.clone(),
+        tenant_name: req.tenant_name.clone(),
+        tenant_email: req.tenant_email.clone(),
+        tenant_phone: req.tenant_phone.clone(),
+        start_date: req.start_date.clone(),
+        end_date: req.end_date.clone(),
+        monthly_rent: req.monthly_rent,
+        security_deposit: req.security_deposit,
+        currency: req.currency.clone(),
+        additional_terms: req.additional_terms.clone(),
+        include_pet_clause: req.include_pet_clause,
+        include_parking: req.include_parking,
+        jurisdiction: Some(jurisdiction.to_string()),
+    };
+
+    let system_prompt = build_lease_system_prompt(jurisdiction, &req.language);
+
+    let result = state
+        .llm_client
+        .generate_lease(
+            &provider,
+            &model,
+            &system_prompt,
+            &lease_input,
+            &req.language,
+        )
+        .await;
+
+    let latency_ms = start_time.elapsed().as_millis() as i32;
+
+    match result {
+        Ok(lease_result) => {
+            // Update the generation request with the result
+            let result_json = serde_json::to_value(&lease_result).unwrap_or_default();
+            let _ = state
+                .llm_document_repo
+                .update_generation_status(
+                    request.id,
+                    "completed",
+                    Some(result_json.clone()),
+                    None,
+                    Some(lease_result.tokens_used),
+                    None,
+                    Some(latency_ms),
+                )
+                .await;
+
+            tracing::info!(
+                "Lease generated successfully for unit {} (tokens: {}, latency: {}ms)",
+                req.unit_id,
+                lease_result.tokens_used,
+                latency_ms
+            );
+
+            Ok((
+                StatusCode::CREATED,
+                Json(serde_json::json!({
+                    "request_id": request.id,
+                    "status": "completed",
+                    "document_html": lease_result.document_html,
+                    "document_text": lease_result.document_text,
+                    "clauses": lease_result.clauses,
+                    "warnings": lease_result.warnings,
+                    "compliance_notes": lease_result.compliance_notes,
+                    "tokens_used": lease_result.tokens_used,
+                    "latency_ms": latency_ms,
+                    "provider": provider,
+                    "model": model
+                })),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Lease generation failed: {}", e);
+            let error_msg = format!("{}", e);
+
+            // Update the generation request with the error
+            let _ = state
+                .llm_document_repo
+                .update_generation_status(
+                    request.id,
+                    "failed",
+                    None,
+                    Some(&error_msg),
+                    None,
+                    None,
+                    Some(latency_ms),
+                )
+                .await;
+
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "GENERATION_FAILED",
+                    format!("Failed to generate lease: {}", e),
+                )),
+            ))
+        }
+    }
+}
+
+/// Build the system prompt for lease generation based on jurisdiction.
+fn build_lease_system_prompt(jurisdiction: &str, language: &str) -> String {
+    let legal_framework = match jurisdiction {
+        "SK" => "Slovak Civil Code (Obciansky zakonnik) and Act No. 116/1990 Coll. on Rental and Sub-rental of Non-residential Premises",
+        "CZ" => "Czech Civil Code (Obcansky zakonik) No. 89/2012 Coll., specifically sections 2235-2301",
+        "DE" => "German Civil Code (BGB), Mietrecht (sections 535-580a)",
+        _ => "applicable local tenancy laws",
+    };
+
+    let language_name = match language {
+        "sk" => "Slovak",
+        "cs" => "Czech",
+        "de" => "German",
+        _ => "English",
+    };
+
+    format!(
+        r#"You are an expert legal document assistant specializing in residential lease agreements for Central European jurisdictions.
+
+Your task is to generate a comprehensive lease agreement that complies with {}.
+
+Requirements:
+1. Generate the document in {} language
+2. Include all mandatory clauses required by law
+3. Use clear, professional legal language appropriate for the jurisdiction
+4. Include proper formatting with numbered sections
+5. Add placeholders for signatures and dates
+6. Include any required notices or disclosures
+
+The generated lease should be ready for review and signing, with proper legal structure and comprehensive terms covering:
+- Parties and property identification
+- Lease term and renewal conditions
+- Rent amount, payment terms, and late fees
+- Security deposit terms and conditions for return
+- Maintenance responsibilities
+- Rules for property use
+- Termination conditions
+- Dispute resolution procedures
+
+Respond with well-structured content that can be converted to a professional document."#,
+        legal_framework, language_name
+    )
 }
 
 async fn list_lease_templates(
@@ -2077,7 +2241,7 @@ async fn get_lease_template(
 }
 
 // ============================================================================
-// Story 64.2: Listing Description Endpoints
+// Story 64.2 + Epic 92.2: Listing Description Endpoints
 // ============================================================================
 
 #[utoipa::path(
@@ -2096,6 +2260,21 @@ async fn generate_listing_description(
     Json(req): Json<GenerateListingDescriptionRequest>,
 ) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
     let tenant = extract_tenant_context(&headers)?;
+    let start_time = Instant::now();
+
+    // Check feature flag for document generation
+    let doc_gen_enabled = std::env::var("LLM_DOCUMENT_GENERATION")
+        .unwrap_or_else(|_| "true".to_string())
+        .to_lowercase();
+    let doc_gen_enabled = doc_gen_enabled != "false" && doc_gen_enabled != "0";
+
+    // Determine provider and model
+    let provider = std::env::var("LLM_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
+    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| match provider.as_str() {
+        "openai" => "gpt-4o".to_string(),
+        "azure_openai" => "gpt-4o".to_string(),
+        _ => "claude-3-5-sonnet-20241022".to_string(),
+    });
 
     // Create a generation request
     let input_data = serde_json::to_value(&req).unwrap_or_default();
@@ -2105,8 +2284,8 @@ async fn generate_listing_description(
             tenant.tenant_id,
             tenant.user_id,
             "listing_description",
-            "openai",
-            "gpt-4",
+            &provider,
+            &model,
             input_data.clone(),
             None,
         )
@@ -2122,19 +2301,64 @@ async fn generate_listing_description(
             )
         })?;
 
-    // Placeholder for actual LLM call
-    let placeholder_description = format!(
-        "Beautiful {} {} in {} with {} rooms. This property offers {} sqm of living space with modern amenities.",
-        req.property_type,
-        if req.transaction_type == "sale" {
-            "for sale"
-        } else {
-            "for rent"
-        },
-        req.location.city,
-        req.rooms.unwrap_or(0),
-        req.size_sqm.unwrap_or(0.0)
-    );
+    // Epic 92.2: Generate listing description using LLM
+    let style_str = req.style.as_ref().and_then(|s| s.tone.as_deref());
+    let system_prompt = build_listing_system_prompt(style_str);
+
+    let listing_input = integrations::ListingDescriptionInput {
+        property_type: req.property_type.clone(),
+        transaction_type: req.transaction_type.clone(),
+        size_sqm: req.size_sqm,
+        rooms: req.rooms,
+        bathrooms: req.bathrooms,
+        floor: req.floor,
+        total_floors: req.total_floors,
+        features: req.features.clone(),
+        city: req.location.city.clone(),
+        district: req.location.district.clone(),
+        nearby_amenities: req.location.nearby_amenities.clone(),
+        price: req.price,
+        currency: req.currency.clone(),
+        language: req.language.clone(),
+        style: req.style.as_ref().and_then(|s| s.tone.clone()),
+        max_length: req.max_length,
+    };
+
+    // Generate description (or use placeholder if disabled)
+    let (description_text, tokens_used) = if doc_gen_enabled {
+        match state
+            .llm_client
+            .generate_listing_description(&provider, &model, &system_prompt, &listing_input)
+            .await
+        {
+            Ok(result) => (result.description, result.tokens_used),
+            Err(e) => {
+                tracing::warn!("LLM listing generation failed, using fallback: {}", e);
+                // Fallback to placeholder
+                let placeholder = format!(
+                    "Beautiful {} {} in {} with {} rooms. This property offers {} sqm of living space with modern amenities.",
+                    req.property_type,
+                    if req.transaction_type == "sale" { "for sale" } else { "for rent" },
+                    req.location.city,
+                    req.rooms.unwrap_or(0),
+                    req.size_sqm.unwrap_or(0.0)
+                );
+                (placeholder, 0)
+            }
+        }
+    } else {
+        let placeholder = format!(
+            "Beautiful {} {} in {} with {} rooms. This property offers {} sqm of living space with modern amenities.",
+            req.property_type,
+            if req.transaction_type == "sale" { "for sale" } else { "for rent" },
+            req.location.city,
+            req.rooms.unwrap_or(0),
+            req.size_sqm.unwrap_or(0.0)
+        );
+        (placeholder, 0)
+    };
+
+    let latency_ms = start_time.elapsed().as_millis() as i32;
 
     // Store the generated description
     let description = state
@@ -2144,9 +2368,9 @@ async fn generate_listing_description(
             req.listing_id,
             tenant.user_id,
             &req.language,
-            &placeholder_description,
+            &description_text,
             input_data,
-            None,
+            Some(tokens_used.into()),
             request.id,
         )
         .await
@@ -2161,14 +2385,78 @@ async fn generate_listing_description(
             )
         })?;
 
+    // Update the generation request status
+    let _ = state
+        .llm_document_repo
+        .update_generation_status(
+            request.id,
+            "completed",
+            Some(serde_json::json!({ "description": description_text })),
+            None,
+            Some(tokens_used),
+            None,
+            Some(latency_ms),
+        )
+        .await;
+
+    tracing::info!(
+        "Listing description generated for listing {:?} in {} (tokens: {}, latency: {}ms)",
+        req.listing_id,
+        req.language,
+        tokens_used,
+        latency_ms
+    );
+
     Ok((
         StatusCode::CREATED,
         Json(serde_json::json!({
             "id": description.id,
-            "description": placeholder_description,
-            "request_id": request.id
+            "description": description_text,
+            "request_id": request.id,
+            "language": req.language,
+            "tokens_used": tokens_used,
+            "latency_ms": latency_ms,
+            "provider": provider,
+            "model": model
         })),
     ))
+}
+
+/// Build the system prompt for listing description generation.
+fn build_listing_system_prompt(style: Option<&str>) -> String {
+    let style_instruction = match style {
+        Some("luxury") => "Use elegant, sophisticated language that appeals to high-end buyers. Emphasize exclusivity, premium finishes, and prestigious location.",
+        Some("casual") => "Use friendly, approachable language. Focus on livability and community aspects.",
+        Some("investment") => "Focus on investment potential, rental yields, and market position. Include relevant statistics.",
+        _ => "Use professional, engaging language that highlights the property's best features while remaining factual.",
+    };
+
+    format!(
+        r#"You are an expert real estate copywriter specializing in property listings for Central European markets.
+
+Your task is to generate compelling property listing descriptions that attract potential buyers or renters.
+
+Style Guidelines:
+{}
+
+Requirements:
+1. Generate a main description (150-300 words unless specified otherwise)
+2. Create 3-5 key highlights as bullet points
+3. Suggest an attention-grabbing title
+4. Provide SEO-friendly keywords
+5. Highlight unique selling points
+6. Include location benefits
+7. Use appropriate language for the target market
+
+The description should:
+- Be engaging and persuasive
+- Be accurate and not misleading
+- Follow real estate advertising best practices
+- Be culturally appropriate for the Central European market
+
+Format your response with clear sections for each component."#,
+        style_instruction
+    )
 }
 
 async fn list_listing_descriptions(

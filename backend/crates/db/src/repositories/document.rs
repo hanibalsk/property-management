@@ -1702,6 +1702,21 @@ impl DocumentRepository {
         .fetch_all(&self.pool)
         .await
     }
+
+    /// Get extracted text for a document (Epic 92).
+    pub async fn get_extracted_text(&self, document_id: Uuid) -> Result<Option<String>, SqlxError> {
+        let row: Option<(Option<String>,)> = sqlx::query_as(
+            r#"
+            SELECT extracted_text FROM documents
+            WHERE id = $1 AND deleted_at IS NULL
+            "#,
+        )
+        .bind(document_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.and_then(|(text,)| text))
+    }
 }
 
 // ============================================================================
