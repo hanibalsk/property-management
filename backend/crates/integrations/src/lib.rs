@@ -18,6 +18,9 @@ pub mod storage;
 // Epic 64: Advanced AI & LLM Capabilities
 pub mod llm;
 
+// Epic 97: Workflow Execution Engine
+pub mod workflow_executor;
+
 // Re-exports
 
 // Story 83.1: Airbnb Integration
@@ -73,10 +76,12 @@ pub use oauth::{
 };
 
 // Story 64.1-64.4: LLM Integration
+// Story 97.1-97.4: Enhanced LLM Capabilities
 pub use llm::{
-    ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ContextChunk, EnhancedChatResult,
-    LeaseGenerationInput, LeaseGenerationResult, ListingDescriptionInput, ListingDescriptionResult,
-    LlmClient, LlmConfig, LlmError, TokenUsage,
+    token_limits, BatchSentimentResult, ChatCompletionRequest, ChatCompletionResponse, ChatMessage,
+    ContextChunk, EmbeddingResult, EnhancedChatResult, LeaseGenerationInput, LeaseGenerationResult,
+    ListingDescriptionInput, ListingDescriptionResult, LlmClient, LlmConfig, LlmError,
+    SentimentResult, TenantAiConfig, TokenUsage,
 };
 
 // Story 84.1: S3 Presigned URLs
@@ -85,4 +90,11 @@ pub use storage::{
     supports_inline_preview, DownloadUrlResponse, PresignedUrl, StorageConfig, StorageError,
     StorageService, UploadUrlResponse, ALLOWED_MIME_TYPES, DEFAULT_DOWNLOAD_EXPIRATION_SECS,
     DEFAULT_UPLOAD_EXPIRATION_SECS, MAX_UPLOAD_SIZE_BYTES,
+};
+
+// Story 97.3: Workflow Execution Engine
+pub use workflow_executor::{
+    action_type as workflow_action_type, ActionResult, AssignTaskConfig, CreateFaultConfig,
+    DelayConfig, LlmResponseConfig, SendEmailConfig, SendNotificationConfig, WebhookConfig,
+    WorkflowExecutionError, WorkflowExecutor,
 };

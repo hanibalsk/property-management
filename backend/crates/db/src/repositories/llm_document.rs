@@ -468,10 +468,8 @@ impl LlmDocumentRepository {
 
     /// Search documents by text (simple text search, not semantic/vector similarity).
     ///
-    /// TODO: For production RAG capability, implement semantic similarity search using pgvector.
-    /// Current ILIKE text matching doesn't provide contextually relevant document retrieval.
-    /// Proper RAG requires cosine similarity search on embedding vectors.
-    /// See: https://github.com/pgvector/pgvector
+    /// This is a fallback method when pgvector is not available.
+    /// For production RAG capability, use `search_documents_by_embedding` instead.
     pub async fn search_documents_by_text(
         &self,
         organization_id: Uuid,
@@ -492,6 +490,215 @@ impl LlmDocumentRepository {
         .bind(limit)
         .fetch_all(&self.pool)
         .await
+    }
+
+    // =========================================================================
+    // Story 97.2: RAG Implementation - Semantic Similarity Search
+    // =========================================================================
+
+    /// Update embedding vector for an existing document chunk.
+    /// Used after generating embeddings via LLM client.
+    pub async fn update_embedding_vector(
+        &self,
+        id: Uuid,
+        embedding: Vec<f32>,
+    ) -> Result<Option<DocumentEmbedding>, SqlxError> {
+        // Store embedding as JSONB for now (works without pgvector extension)
+        // In production with pgvector enabled, this would use vector type directly
+        let embedding_json = serde_json::to_value(&embedding).unwrap_or_default();
+
+        sqlx::query_as::<_, DocumentEmbedding>(
+            r#"
+            UPDATE document_embeddings SET
+                embedding = $2,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&embedding_json)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Search documents by embedding vector using cosine similarity.
+    ///
+    /// Story 97.2: Implements semantic similarity search for RAG.
+    /// When pgvector extension is enabled, this uses native vector operations.
+    /// Otherwise, falls back to application-level cosine similarity calculation.
+    ///
+    /// Returns document chunks ordered by relevance (highest similarity first).
+    pub async fn search_documents_by_embedding(
+        &self,
+        organization_id: Uuid,
+        query_embedding: &[f32],
+        limit: i32,
+        min_similarity: Option<f64>,
+    ) -> Result<Vec<(DocumentEmbedding, f64)>, SqlxError> {
+        let min_sim = min_similarity.unwrap_or(0.5);
+
+        // First, try to use pgvector if available (native cosine similarity)
+        // Check if pgvector extension exists
+        let pgvector_available: Option<bool> = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if pgvector_available == Some(true) {
+            // Use pgvector's native cosine similarity (<=> operator)
+            // Note: Requires embedding column to be of type vector(1536)
+            let results: Vec<DocumentEmbedding> = sqlx::query_as::<_, DocumentEmbedding>(
+                r#"
+                SELECT de.*
+                FROM document_embeddings de
+                WHERE de.organization_id = $1
+                  AND de.embedding IS NOT NULL
+                ORDER BY de.embedding::vector <=> $2::vector
+                LIMIT $3
+                "#,
+            )
+            .bind(organization_id)
+            .bind(serde_json::to_value(query_embedding).unwrap_or_default())
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await?;
+
+            // Calculate similarity scores for the results
+            let results_with_scores: Vec<(DocumentEmbedding, f64)> = results
+                .into_iter()
+                .filter_map(|doc| {
+                    let doc_embedding: Option<Vec<f32>> = doc.embedding.as_ref().and_then(|e| {
+                        serde_json::from_value(serde_json::Value::Array(
+                            e.iter().map(|v| serde_json::Value::from(*v)).collect(),
+                        ))
+                        .ok()
+                    });
+
+                    if let Some(ref emb) = doc_embedding {
+                        let similarity = cosine_similarity(query_embedding, emb);
+                        if similarity >= min_sim {
+                            return Some((doc, similarity));
+                        }
+                    }
+                    None
+                })
+                .collect();
+
+            return Ok(results_with_scores);
+        }
+
+        // Fallback: Load all embeddings and compute similarity in application
+        // This is less efficient but works without pgvector
+        let all_docs = sqlx::query_as::<_, DocumentEmbedding>(
+            r#"
+            SELECT * FROM document_embeddings
+            WHERE organization_id = $1
+              AND embedding IS NOT NULL
+            "#,
+        )
+        .bind(organization_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        // Calculate cosine similarity for each document
+        let mut scored_docs: Vec<(DocumentEmbedding, f64)> = all_docs
+            .into_iter()
+            .filter_map(|doc| {
+                let doc_embedding: Option<Vec<f32>> = doc.embedding.as_ref().and_then(|e| {
+                    serde_json::from_value(serde_json::Value::Array(
+                        e.iter().map(|v| serde_json::Value::from(*v)).collect(),
+                    ))
+                    .ok()
+                });
+
+                if let Some(ref emb) = doc_embedding {
+                    let similarity = cosine_similarity(query_embedding, emb);
+                    if similarity >= min_sim {
+                        return Some((doc, similarity));
+                    }
+                }
+                None
+            })
+            .collect();
+
+        // Sort by similarity (highest first)
+        scored_docs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Return top N results
+        Ok(scored_docs.into_iter().take(limit as usize).collect())
+    }
+
+    /// Bulk create embeddings for a document (for chunked text).
+    /// Story 97.2: Efficient batch embedding creation for RAG indexing.
+    pub async fn create_embeddings_batch(
+        &self,
+        organization_id: Uuid,
+        document_id: Uuid,
+        chunks: Vec<(String, serde_json::Value)>, // (chunk_text, metadata)
+    ) -> Result<Vec<DocumentEmbedding>, SqlxError> {
+        let mut results = Vec::new();
+
+        for (index, (chunk_text, metadata)) in chunks.into_iter().enumerate() {
+            let embedding = self
+                .create_embedding(
+                    organization_id,
+                    document_id,
+                    index as i32,
+                    &chunk_text,
+                    None, // Embedding will be generated later
+                    metadata,
+                )
+                .await?;
+            results.push(embedding);
+        }
+
+        Ok(results)
+    }
+
+    /// Get documents that need embedding generation (embedding is null).
+    /// Story 97.2: Used by background job to process pending embeddings.
+    pub async fn get_pending_embeddings(
+        &self,
+        organization_id: Option<Uuid>,
+        limit: i32,
+    ) -> Result<Vec<DocumentEmbedding>, SqlxError> {
+        sqlx::query_as::<_, DocumentEmbedding>(
+            r#"
+            SELECT * FROM document_embeddings
+            WHERE embedding IS NULL
+              AND ($1::uuid IS NULL OR organization_id = $1)
+            ORDER BY created_at ASC
+            LIMIT $2
+            "#,
+        )
+        .bind(organization_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Count documents with and without embeddings for an organization.
+    /// Story 97.2: Used to track RAG indexing progress.
+    pub async fn count_embedding_status(
+        &self,
+        organization_id: Uuid,
+    ) -> Result<(i64, i64), SqlxError> {
+        let counts: (i64, i64) = sqlx::query_as(
+            r#"
+            SELECT
+                COUNT(*) FILTER (WHERE embedding IS NOT NULL) as with_embedding,
+                COUNT(*) FILTER (WHERE embedding IS NULL) as without_embedding
+            FROM document_embeddings
+            WHERE organization_id = $1
+            "#,
+        )
+        .bind(organization_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(counts)
     }
 
     // =========================================================================
@@ -937,5 +1144,93 @@ impl LlmDocumentRepository {
                 })
                 .collect(),
         })
+    }
+}
+
+// =============================================================================
+// Story 97.2: RAG Helper Functions
+// =============================================================================
+
+/// Calculate cosine similarity between two vectors.
+/// Returns a value between -1.0 (opposite) and 1.0 (identical).
+/// Used for semantic similarity search in RAG.
+fn cosine_similarity(a: &[f32], b: &[f32]) -> f64 {
+    if a.len() != b.len() || a.is_empty() {
+        return 0.0;
+    }
+
+    let dot_product: f64 = a
+        .iter()
+        .zip(b.iter())
+        .map(|(x, y)| (*x as f64) * (*y as f64))
+        .sum();
+    let magnitude_a: f64 = a
+        .iter()
+        .map(|x| (*x as f64) * (*x as f64))
+        .sum::<f64>()
+        .sqrt();
+    let magnitude_b: f64 = b
+        .iter()
+        .map(|x| (*x as f64) * (*x as f64))
+        .sum::<f64>()
+        .sqrt();
+
+    if magnitude_a == 0.0 || magnitude_b == 0.0 {
+        return 0.0;
+    }
+
+    dot_product / (magnitude_a * magnitude_b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cosine_similarity_identical_vectors() {
+        let a = vec![1.0, 2.0, 3.0];
+        let b = vec![1.0, 2.0, 3.0];
+        let similarity = cosine_similarity(&a, &b);
+        assert!((similarity - 1.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_cosine_similarity_opposite_vectors() {
+        let a = vec![1.0, 0.0, 0.0];
+        let b = vec![-1.0, 0.0, 0.0];
+        let similarity = cosine_similarity(&a, &b);
+        assert!((similarity + 1.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_cosine_similarity_orthogonal_vectors() {
+        let a = vec![1.0, 0.0, 0.0];
+        let b = vec![0.0, 1.0, 0.0];
+        let similarity = cosine_similarity(&a, &b);
+        assert!(similarity.abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_cosine_similarity_empty_vectors() {
+        let a: Vec<f32> = vec![];
+        let b: Vec<f32> = vec![];
+        assert_eq!(cosine_similarity(&a, &b), 0.0);
+    }
+
+    #[test]
+    fn test_cosine_similarity_different_lengths() {
+        let a = vec![1.0, 2.0];
+        let b = vec![1.0, 2.0, 3.0];
+        assert_eq!(cosine_similarity(&a, &b), 0.0);
+    }
+
+    #[test]
+    fn test_cosine_similarity_similar_vectors() {
+        // Two similar but not identical vectors
+        let a = vec![0.1, 0.2, 0.3, 0.4];
+        let b = vec![0.15, 0.25, 0.35, 0.45];
+        let similarity = cosine_similarity(&a, &b);
+        // Should be very similar (close to 1.0)
+        assert!(similarity > 0.99);
     }
 }
