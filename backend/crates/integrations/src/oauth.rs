@@ -223,7 +223,7 @@ impl TokenRefreshConfig {
 }
 
 /// OAuth provider configuration holder.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ProviderConfigs {
     /// Google OAuth configuration.
     pub google: Option<OAuthConfig>,
@@ -231,16 +231,6 @@ pub struct ProviderConfigs {
     pub microsoft: Option<OAuthConfig>,
     /// Airbnb OAuth configuration.
     pub airbnb: Option<crate::airbnb::AirbnbOAuthConfig>,
-}
-
-impl Default for ProviderConfigs {
-    fn default() -> Self {
-        Self {
-            google: None,
-            microsoft: None,
-            airbnb: None,
-        }
-    }
 }
 
 impl ProviderConfigs {
