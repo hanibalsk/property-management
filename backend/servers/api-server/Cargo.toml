@@ -48,3 +48,12 @@ base64 = "0.22"
 aes-gcm = "0.10"
 subtle = "2.5"
 lettre = { version = "0.11", features = ["tokio1-native-tls", "builder", "hostname", "smtp-transport"] }
+
+# Observability (Epic 95)
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+sentry = { workspace = true }

@@ -69,6 +69,17 @@ urlencoding = "2.1"
 # HTTP client (for integrations)
 reqwest = { version = "0.11", features = ["json"] }
 
+# Observability (Epic 95)
+opentelemetry = { version = "0.21", features = ["metrics", "trace"] }
+opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.14", features = ["tonic"] }
+tracing-opentelemetry = "0.22"
+metrics = "0.21"
+metrics-exporter-prometheus = "0.12"
+
+# Error tracking (Epic 95)
+sentry = { version = "0.32", features = ["tracing", "tower", "tower-http"] }
+
 # Internal crates
 common = { path = "crates/common" }
 api-core = { path = "crates/api-core" }

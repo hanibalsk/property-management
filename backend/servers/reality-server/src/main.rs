@@ -23,12 +23,12 @@ use http::HeaderValue;
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 pub mod extractors;
 mod handlers;
+mod observability;
 mod routes;
 pub mod state;
 
@@ -272,14 +272,18 @@ async fn main() -> anyhow::Result<()> {
     // Load .env file if present
     dotenvy::dotenv().ok();
 
-    // Initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "reality_server=debug,tower_http=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Initialize observability (Epic 95)
+    // This sets up OpenTelemetry tracing, Sentry error tracking, and Prometheus metrics
+    let _observability_guard = observability::init_observability(
+        observability::OtelConfig::default(),
+        observability::SentryConfig::default(),
+        observability::MetricsConfig::default(),
+    );
+
+    tracing::info!(
+        "Reality Server v{} starting with observability enabled",
+        env!("CARGO_PKG_VERSION")
+    );
 
     // Get database URL
     let database_url = std::env::var("DATABASE_URL")
@@ -296,6 +300,8 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         // Health check (stateless)
         .route("/health", get(routes::health::health))
+        // Prometheus metrics endpoint (Epic 95.4)
+        .route("/metrics", get(metrics_endpoint))
         // Public listing routes
         .nest("/api/v1/listings", routes::listings::router())
         // Portal user routes
@@ -350,4 +356,16 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+/// Prometheus metrics endpoint (Epic 95.4).
+async fn metrics_endpoint() -> impl axum::response::IntoResponse {
+    let metrics = observability::get_metrics_text();
+    (
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4; charset=utf-8",
+        )],
+        metrics,
+    )
 }
