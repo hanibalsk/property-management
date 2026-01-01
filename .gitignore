@@ -90,3 +90,6 @@ coverage/
 *.tmp
 *.temp
 .cache/
+
+# === Work directory (local task tracking) ===
+work/
