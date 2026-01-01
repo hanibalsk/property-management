@@ -113,3 +113,6 @@ pub mod disputes;
 
 // Epic 78: Vendor Operations Portal
 pub mod vendor_portal;
+
+// Epic 93: Voice Assistant & OAuth Completion
+pub mod voice_webhooks;

@@ -1039,6 +1039,102 @@ impl LlmDocumentRepository {
     }
 
     // =========================================================================
+    // Story 93.1: Voice Assistant OAuth Token Management
+    // =========================================================================
+
+    /// Update OAuth tokens for a voice device.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn update_voice_device_tokens(
+        &self,
+        id: Uuid,
+        access_token_encrypted: &str,
+        refresh_token_encrypted: Option<&str>,
+        token_expires_at: Option<DateTime<Utc>>,
+    ) -> Result<Option<VoiceAssistantDevice>, SqlxError> {
+        sqlx::query_as::<_, VoiceAssistantDevice>(
+            r#"
+            UPDATE voice_assistant_devices SET
+                access_token_encrypted = $2,
+                refresh_token_encrypted = COALESCE($3, refresh_token_encrypted),
+                token_expires_at = $4,
+                updated_at = NOW()
+            WHERE id = $1 AND is_active = TRUE
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(access_token_encrypted)
+        .bind(refresh_token_encrypted)
+        .bind(token_expires_at)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    /// Find voice devices with expiring tokens that need refresh.
+    pub async fn find_devices_needing_token_refresh(
+        &self,
+        expiry_threshold: DateTime<Utc>,
+        limit: i64,
+    ) -> Result<Vec<VoiceAssistantDevice>, SqlxError> {
+        sqlx::query_as::<_, VoiceAssistantDevice>(
+            r#"
+            SELECT * FROM voice_assistant_devices
+            WHERE is_active = TRUE
+              AND access_token_encrypted IS NOT NULL
+              AND refresh_token_encrypted IS NOT NULL
+              AND token_expires_at IS NOT NULL
+              AND token_expires_at <= $1
+            ORDER BY token_expires_at ASC
+            LIMIT $2
+            "#,
+        )
+        .bind(expiry_threshold)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+    }
+
+    /// Clear tokens for a voice device (on revocation or error).
+    pub async fn clear_voice_device_tokens(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE voice_assistant_devices SET
+                access_token_encrypted = NULL,
+                refresh_token_encrypted = NULL,
+                token_expires_at = NULL,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Find voice device by user ID and platform.
+    pub async fn find_voice_device_by_user_and_platform(
+        &self,
+        user_id: Uuid,
+        platform: &str,
+    ) -> Result<Option<VoiceAssistantDevice>, SqlxError> {
+        sqlx::query_as::<_, VoiceAssistantDevice>(
+            r#"
+            SELECT * FROM voice_assistant_devices
+            WHERE user_id = $1
+              AND platform = $2
+              AND is_active = TRUE
+            ORDER BY linked_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(user_id)
+        .bind(platform)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    // =========================================================================
     // Statistics
     // =========================================================================
 

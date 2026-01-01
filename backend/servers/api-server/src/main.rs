@@ -499,6 +499,11 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/vendor-portal", routes::vendor_portal::router())
         // Registry routes (Epic 64)
         .nest("/api/v1/registry", routes::registry::router())
+        // Voice Webhooks routes (Epic 93)
+        .nest(
+            "/api/v1/webhooks/voice",
+            routes::voice_webhooks::voice_webhook_router(),
+        )
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
