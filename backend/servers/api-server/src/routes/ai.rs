@@ -263,7 +263,36 @@ async fn send_message(
     // Get tenant context for RAG document search
     let tenant = extract_tenant_context(&headers).ok();
 
-    // Add user message first
+    // Verify session exists
+    let _session = state
+        .ai_chat_repo
+        .find_session_by_id(session_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to find session: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to find session",
+                )),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Session not found")),
+            )
+        })?;
+
+    // Get conversation history for context (last 10 messages) BEFORE adding current message
+    let history = state
+        .ai_chat_repo
+        .list_session_messages(session_id, 10, 0)
+        .await
+        .unwrap_or_default();
+
+    // Add user message after fetching history to avoid duplication
     let user_msg = state
         .ai_chat_repo
         .add_message(
@@ -289,43 +318,14 @@ async fn send_message(
             )
         })?;
 
-    // Verify session exists
-    let _session = state
-        .ai_chat_repo
-        .find_session_by_id(session_id)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to find session: {}", e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    "INTERNAL_ERROR",
-                    "Failed to find session",
-                )),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Session not found")),
-            )
-        })?;
-
-    // Get conversation history for context (last 10 messages)
-    let history = state
-        .ai_chat_repo
-        .list_session_messages(session_id, 10, 0)
-        .await
-        .unwrap_or_default();
-
     // Build messages for LLM
     let mut messages: Vec<ChatMessage> = vec![ChatMessage {
         role: "system".to_string(),
         content: DEFAULT_SYSTEM_PROMPT.to_string(),
     }];
 
-    // Add conversation history (skip the message we just added)
-    for msg in history.iter().take(history.len().saturating_sub(1)) {
+    // Add conversation history (fetched before adding current message, so no duplicates)
+    for msg in history.iter() {
         messages.push(ChatMessage {
             role: msg.role.clone(),
             content: msg.content.clone(),
@@ -335,23 +335,32 @@ async fn send_message(
     // Search for relevant documents if we have tenant context (RAG)
     let mut context_chunks: Vec<ContextChunk> = vec![];
     if let Some(ref tenant_ctx) = tenant {
-        if let Ok(docs) = state
+        match state
             .llm_document_repo
             .search_documents_by_text(tenant_ctx.tenant_id, &req.content, 3)
             .await
         {
-            for doc in docs {
-                context_chunks.push(ContextChunk {
-                    source_id: doc.document_id,
-                    source_title: doc
-                        .metadata
-                        .get("title")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Document")
-                        .to_string(),
-                    text: doc.chunk_text.clone(),
-                    relevance_score: 0.8, // Placeholder - real semantic search would provide this
-                });
+            Ok(docs) => {
+                for doc in docs {
+                    context_chunks.push(ContextChunk {
+                        source_id: doc.document_id,
+                        source_title: doc
+                            .metadata
+                            .get("title")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Document")
+                            .to_string(),
+                        text: doc.chunk_text.clone(),
+                        relevance_score: 0.8, // Placeholder - real semantic search would provide this
+                    });
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to search documents for RAG context (tenant: {}): {}",
+                    tenant_ctx.tenant_id,
+                    e
+                );
             }
         }
     }
@@ -376,82 +385,110 @@ async fn send_message(
         content: user_content,
     });
 
-    // Determine provider and model (default to anthropic/claude-3-haiku for cost efficiency)
+    // Feature flag: allow disabling LLM chat without changing route wiring.
+    // Environment variable `LLM_CHAT_ENABLED` acts as the `llm.chat_enabled` flag.
+    // Any value equal to "false" or "0" (case-insensitive) disables the LLM call.
+    let llm_chat_enabled = std::env::var("LLM_CHAT_ENABLED")
+        .unwrap_or_else(|_| "true".to_string())
+        .to_lowercase();
+    let llm_chat_enabled = llm_chat_enabled != "false" && llm_chat_enabled != "0";
+
+    // Determine provider and model (default to claude-3-5-haiku-20241022 for cost efficiency)
     let provider = std::env::var("LLM_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
-    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| {
-        if provider == "openai" {
-            "gpt-4o-mini".to_string()
-        } else {
-            "claude-3-5-haiku-20241022".to_string()
-        }
+    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| match provider.as_str() {
+        "openai" => "gpt-4o-mini".to_string(),
+        "azure_openai" => "gpt-4o-mini".to_string(),
+        _ => "claude-3-5-haiku-20241022".to_string(),
     });
 
-    // Build LLM request
-    let llm_request = ChatCompletionRequest {
-        model: model.clone(),
-        messages,
-        temperature: Some(0.7),
-        max_tokens: Some(1024),
-    };
+    // Latency will be populated in either branch below.
+    let latency_ms: i32;
 
-    // Call LLM
-    let llm_result = state.llm_client.chat(&provider, &llm_request).await;
-
-    let latency_ms = start_time.elapsed().as_millis() as i32;
-
-    // Handle response
-    let (response_content, confidence, escalated, escalation_reason, tokens_used) = match llm_result
-    {
-        Ok(response) => {
-            let content = response
-                .choices
-                .first()
-                .map(|c| c.message.content.clone())
-                .unwrap_or_else(|| "I'm sorry, I couldn't generate a response.".to_string());
-
-            // Simple escalation detection
-            let needs_escalation = content.to_lowercase().contains("contact management")
-                || content.to_lowercase().contains("escalat")
-                || content.to_lowercase().contains("human assistance")
-                || content.to_lowercase().contains("cannot answer");
-
-            let escalation_reason = if needs_escalation {
-                Some("Response indicates need for human assistance")
-            } else {
-                None
+    // Handle response; in the disabled case we avoid calling the LLM client entirely.
+    let (response_content, confidence, escalated, escalation_reason, tokens_used) =
+        if llm_chat_enabled {
+            // Build LLM request
+            let llm_request = ChatCompletionRequest {
+                model: model.clone(),
+                messages,
+                temperature: Some(0.7),
+                max_tokens: Some(1024),
             };
 
-            // Confidence based on whether we had context and if escalation was suggested
-            let confidence = if needs_escalation {
-                0.5
-            } else if !context_chunks.is_empty() {
-                0.9
-            } else {
-                0.75
-            };
+            // Measure only LLM call time, not DB operations
+            let llm_start_time = Instant::now();
+            let llm_result = state.llm_client.chat(&provider, &llm_request).await;
+            let elapsed_ms = llm_start_time.elapsed().as_millis();
+            latency_ms = std::cmp::min(elapsed_ms, i32::MAX as u128) as i32;
+
+            match llm_result {
+                Ok(response) => {
+                    let content = response
+                        .choices
+                        .first()
+                        .map(|c| c.message.content.clone())
+                        .unwrap_or_else(|| {
+                            "I'm sorry, I couldn't generate a response.".to_string()
+                        });
+
+                    // Simple escalation detection
+                    let needs_escalation = content.to_lowercase().contains("contact management")
+                        || content.to_lowercase().contains("escalat")
+                        || content.to_lowercase().contains("human assistance")
+                        || content.to_lowercase().contains("cannot answer");
+
+                    let escalation_reason = if needs_escalation {
+                        Some("Response indicates need for human assistance")
+                    } else {
+                        None
+                    };
+
+                    // Confidence based on whether we had context and if escalation was suggested
+                    let confidence = if needs_escalation {
+                        0.5
+                    } else if !context_chunks.is_empty() {
+                        0.9
+                    } else {
+                        0.75
+                    };
+
+                    (
+                        content,
+                        confidence,
+                        needs_escalation,
+                        escalation_reason,
+                        Some(response.usage.total_tokens),
+                    )
+                }
+                Err(e) => {
+                    tracing::error!("LLM call failed: {}", e);
+                    (
+                        "I'm sorry, I'm having trouble processing your request right now. Please try again later or contact building management for assistance."
+                            .to_string(),
+                        0.3,
+                        true,
+                        Some("LLM service unavailable"),
+                        None,
+                    )
+                }
+            }
+        } else {
+            // LLM chat is disabled via feature flag; do not call the LLM provider.
+            let elapsed_ms = start_time.elapsed().as_millis();
+            latency_ms = std::cmp::min(elapsed_ms, i32::MAX as u128) as i32;
+            tracing::info!(
+                "LLM chat disabled via feature flag LLM_CHAT_ENABLED; returning fallback response"
+            );
 
             (
-                content,
-                confidence,
-                needs_escalation,
-                escalation_reason,
-                Some(response.usage.total_tokens),
-            )
-        }
-        Err(e) => {
-            tracing::warn!("LLM call failed: {}, falling back to placeholder", e);
-            (
-                format!(
-                    "I'm sorry, I'm having trouble processing your request right now. Error: {}. Please try again later or contact building management for assistance.",
-                    e
-                ),
-                0.3,
+                "I'm sorry, I'm currently unavailable because AI chat is disabled. Please contact building management for assistance."
+                    .to_string(),
+                0.0,
                 true,
-                Some("LLM service unavailable"),
+                Some("LLM chat feature disabled"),
                 None,
             )
-        }
-    };
+        };
 
     // Build sources from context chunks
     let sources: Vec<serde_json::Value> = context_chunks
