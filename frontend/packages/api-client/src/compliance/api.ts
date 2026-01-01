@@ -41,9 +41,7 @@ async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
     const statusInfo = `HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}`;
     const errorMessage = (error as { message?: string }).message;
     const message =
-      (typeof errorMessage === 'string' && errorMessage.trim()) ||
-      statusInfo ||
-      'Request failed';
+      (typeof errorMessage === 'string' && errorMessage.trim()) || statusInfo || 'Request failed';
     throw new Error(message);
   }
 

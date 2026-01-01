@@ -32,15 +32,10 @@ async function fetchApi<T>(url: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({
-        message: `Request failed with status ${response.status} ${response.statusText}`.trim(),
-      }));
-    throw new Error(
-      error.message ||
-        `HTTP ${response.status} ${response.statusText}`.trim()
-    );
+    const error = await response.json().catch(() => ({
+      message: `Request failed with status ${response.status} ${response.statusText}`.trim(),
+    }));
+    throw new Error(error.message || `HTTP ${response.status} ${response.statusText}`.trim());
   }
 
   return response.json();
