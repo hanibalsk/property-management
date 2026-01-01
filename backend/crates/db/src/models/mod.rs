@@ -36,6 +36,7 @@ pub mod ai_chat;
 pub mod equipment;
 pub mod sentiment;
 pub mod workflow;
+pub mod workflow_templates;
 
 // Epic 14: IoT & Smart Building
 pub mod sensor;
@@ -78,6 +79,13 @@ pub use workflow::{
     CreateWorkflowAction, ExecutionQuery, TriggerWorkflow, UpdateWorkflow, Workflow,
     WorkflowAction, WorkflowExecution, WorkflowExecutionStep, WorkflowQuery, WorkflowSchedule,
     WorkflowSummary, WorkflowWithDetails,
+};
+pub use workflow_templates::{
+    get_builtin_templates, template_category, template_scope, CreateTemplateAction,
+    CreateTemplateVariable, CreateWorkflowTemplate, ImportTemplateRequest, RateTemplateRequest,
+    TemplateSearchQuery, UpdateWorkflowTemplate, WorkflowTemplate, WorkflowTemplateAction,
+    WorkflowTemplateRating, WorkflowTemplateSummary, WorkflowTemplateVariable,
+    WorkflowTemplateWithDetails,
 };
 
 pub use announcement::{
