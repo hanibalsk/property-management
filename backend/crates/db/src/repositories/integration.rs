@@ -1598,4 +1598,192 @@ impl IntegrationRepository {
             webhook_success_rate: success_rate,
         })
     }
+
+    // ========================================================================
+    // OAuth Token Refresh Operations (Story 96.1)
+    // ========================================================================
+
+    /// Get calendar connections that need token refresh.
+    ///
+    /// Returns connections where the token expires within the given buffer time
+    /// and have a refresh token available.
+    pub async fn get_calendar_connections_needing_refresh(
+        &self,
+        buffer_secs: i64,
+    ) -> Result<Vec<CalendarConnection>, SqlxError> {
+        let threshold = Utc::now() + Duration::seconds(buffer_secs);
+
+        let connections = sqlx::query_as::<_, CalendarConnection>(
+            r#"
+            SELECT * FROM calendar_connections
+            WHERE sync_status = 'active'
+              AND refresh_token IS NOT NULL
+              AND token_expires_at IS NOT NULL
+              AND token_expires_at <= $1
+            ORDER BY token_expires_at ASC
+            LIMIT 100
+            "#,
+        )
+        .bind(threshold)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(connections
+            .into_iter()
+            .map(|c| self.decrypt_calendar_connection(c))
+            .collect())
+    }
+
+    /// Get video conference connections that need token refresh.
+    pub async fn get_video_connections_needing_refresh(
+        &self,
+        buffer_secs: i64,
+    ) -> Result<Vec<VideoConferenceConnection>, SqlxError> {
+        let threshold = Utc::now() + Duration::seconds(buffer_secs);
+
+        let connections = sqlx::query_as::<_, VideoConferenceConnection>(
+            r#"
+            SELECT * FROM video_conference_connections
+            WHERE is_active = true
+              AND refresh_token IS NOT NULL
+              AND token_expires_at IS NOT NULL
+              AND token_expires_at <= $1
+            ORDER BY token_expires_at ASC
+            LIMIT 100
+            "#,
+        )
+        .bind(threshold)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(connections
+            .into_iter()
+            .map(|c| self.decrypt_video_connection(c))
+            .collect())
+    }
+
+    /// Mark a calendar connection's tokens as revoked (user-initiated revocation).
+    ///
+    /// This clears the tokens and sets sync_status to 'disconnected'.
+    pub async fn revoke_calendar_connection_tokens(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE calendar_connections SET
+                access_token = NULL,
+                refresh_token = NULL,
+                token_expires_at = NULL,
+                sync_status = 'disconnected',
+                last_error = 'User revoked access',
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Mark a video conference connection's tokens as revoked.
+    pub async fn revoke_video_connection_tokens(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE video_conference_connections SET
+                access_token = NULL,
+                refresh_token = NULL,
+                token_expires_at = NULL,
+                is_active = false,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Record a token refresh attempt result.
+    ///
+    /// Updates the connection with refresh result information for monitoring.
+    pub async fn record_calendar_refresh_result(
+        &self,
+        id: Uuid,
+        success: bool,
+        error: Option<&str>,
+    ) -> Result<(), SqlxError> {
+        if success {
+            sqlx::query(
+                r#"
+                UPDATE calendar_connections SET
+                    sync_status = 'active',
+                    last_sync_at = NOW(),
+                    last_error = NULL,
+                    updated_at = NOW()
+                WHERE id = $1
+                "#,
+            )
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        } else {
+            sqlx::query(
+                r#"
+                UPDATE calendar_connections SET
+                    sync_status = CASE
+                        WHEN last_error IS NOT NULL THEN 'error'
+                        ELSE 'syncing'
+                    END,
+                    last_error = $2,
+                    updated_at = NOW()
+                WHERE id = $1
+                "#,
+            )
+            .bind(id)
+            .bind(error)
+            .execute(&self.pool)
+            .await?;
+        }
+        Ok(())
+    }
+
+    /// Get count of connections needing refresh (for monitoring).
+    pub async fn count_connections_needing_refresh(
+        &self,
+        buffer_secs: i64,
+    ) -> Result<(i64, i64), SqlxError> {
+        let threshold = Utc::now() + Duration::seconds(buffer_secs);
+
+        let calendar_count = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*) FROM calendar_connections
+            WHERE sync_status = 'active'
+              AND refresh_token IS NOT NULL
+              AND token_expires_at IS NOT NULL
+              AND token_expires_at <= $1
+            "#,
+        )
+        .bind(threshold)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(0);
+
+        let video_count = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*) FROM video_conference_connections
+            WHERE is_active = true
+              AND refresh_token IS NOT NULL
+              AND token_expires_at IS NOT NULL
+              AND token_expires_at <= $1
+            "#,
+        )
+        .bind(threshold)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(0);
+
+        Ok((calendar_count, video_count))
+    }
 }

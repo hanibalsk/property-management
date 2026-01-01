@@ -1599,4 +1599,191 @@ impl RentalRepository {
             })
             .collect())
     }
+
+    // ========================================================================
+    // OAuth Token Management (Story 96.2)
+    // ========================================================================
+
+    /// Find Airbnb connection by organization.
+    pub async fn find_airbnb_connection_by_org(
+        &self,
+        org_id: Uuid,
+    ) -> Result<Option<RentalPlatformConnection>, SqlxError> {
+        let conn = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"
+            SELECT * FROM rental_platform_connections
+            WHERE organization_id = $1 AND platform = 'airbnb'
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(conn)
+    }
+
+    /// Get Airbnb status for organization (aggregated from all connections).
+    pub async fn get_airbnb_status(
+        &self,
+        org_id: Uuid,
+    ) -> Result<(i64, i64, Option<chrono::DateTime<Utc>>, Option<String>), SqlxError> {
+        let result = sqlx::query_as::<_, (i64, i64, Option<chrono::DateTime<Utc>>, Option<String>)>(
+            r#"
+            SELECT
+                COUNT(*) FILTER (WHERE is_active AND access_token IS NOT NULL) as connected_count,
+                COUNT(DISTINCT external_property_id) FILTER (WHERE external_property_id IS NOT NULL) as listings_count,
+                MAX(last_sync_at) as last_sync,
+                (SELECT sync_error FROM rental_platform_connections
+                 WHERE organization_id = $1 AND platform = 'airbnb' AND sync_error IS NOT NULL
+                 ORDER BY updated_at DESC LIMIT 1) as last_error
+            FROM rental_platform_connections
+            WHERE organization_id = $1 AND platform = 'airbnb'
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(result)
+    }
+
+    /// Create or update Airbnb connection with OAuth tokens.
+    pub async fn upsert_airbnb_connection(
+        &self,
+        org_id: Uuid,
+        unit_id: Option<Uuid>,
+        access_token: &str,
+        refresh_token: Option<&str>,
+        expires_at: Option<chrono::DateTime<Utc>>,
+        external_account_id: Option<&str>,
+    ) -> Result<RentalPlatformConnection, SqlxError> {
+        // If no unit_id provided, create a placeholder connection for the org
+        let effective_unit_id = match unit_id {
+            Some(id) => id,
+            None => {
+                // Try to find existing connection and use its unit_id
+                let existing = self.find_airbnb_connection_by_org(org_id).await?;
+                existing.map(|c| c.unit_id).unwrap_or_else(Uuid::nil)
+            }
+        };
+
+        let conn = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"
+            INSERT INTO rental_platform_connections (
+                organization_id, unit_id, platform,
+                access_token, refresh_token, token_expires_at,
+                external_property_id, is_active
+            )
+            VALUES ($1, $2, 'airbnb', $3, $4, $5, $6, true)
+            ON CONFLICT (organization_id, unit_id, platform) DO UPDATE SET
+                access_token = $3,
+                refresh_token = COALESCE($4, rental_platform_connections.refresh_token),
+                token_expires_at = $5,
+                external_property_id = COALESCE($6, rental_platform_connections.external_property_id),
+                is_active = true,
+                sync_error = NULL,
+                updated_at = NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(org_id)
+        .bind(effective_unit_id)
+        .bind(access_token)
+        .bind(refresh_token)
+        .bind(expires_at)
+        .bind(external_account_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(conn)
+    }
+
+    /// Store listing ID mapping for Airbnb connection.
+    pub async fn update_airbnb_listing_mapping(
+        &self,
+        connection_id: Uuid,
+        external_property_id: &str,
+        external_listing_url: Option<&str>,
+    ) -> Result<(), SqlxError> {
+        sqlx::query(
+            r#"
+            UPDATE rental_platform_connections SET
+                external_property_id = $2,
+                external_listing_url = $3,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(connection_id)
+        .bind(external_property_id)
+        .bind(external_listing_url)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Revoke Airbnb connection (clear tokens).
+    pub async fn revoke_airbnb_connection(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+        let result = sqlx::query(
+            r#"
+            UPDATE rental_platform_connections SET
+                access_token = NULL,
+                refresh_token = NULL,
+                token_expires_at = NULL,
+                is_active = false,
+                sync_error = 'User revoked access',
+                updated_at = NOW()
+            WHERE organization_id = $1 AND platform = 'airbnb'
+            "#,
+        )
+        .bind(org_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() as i64)
+    }
+
+    /// Get Airbnb connections needing token refresh.
+    pub async fn get_airbnb_connections_needing_refresh(
+        &self,
+        buffer_secs: i64,
+    ) -> Result<Vec<RentalPlatformConnection>, SqlxError> {
+        let threshold = Utc::now() + Duration::seconds(buffer_secs);
+
+        let connections = sqlx::query_as::<_, RentalPlatformConnection>(
+            r#"
+            SELECT * FROM rental_platform_connections
+            WHERE platform = 'airbnb'
+              AND is_active = true
+              AND refresh_token IS NOT NULL
+              AND token_expires_at IS NOT NULL
+              AND token_expires_at <= $1
+            ORDER BY token_expires_at ASC
+            LIMIT 100
+            "#,
+        )
+        .bind(threshold)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(connections)
+    }
+
+    /// Count Airbnb reservations for organization.
+    pub async fn count_airbnb_reservations(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+        let (count,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM rental_bookings
+            WHERE organization_id = $1 AND platform = 'airbnb'
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count)
+    }
 }
