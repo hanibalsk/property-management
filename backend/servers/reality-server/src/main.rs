@@ -274,7 +274,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Initialize observability (Epic 95)
     // This sets up OpenTelemetry tracing, Sentry error tracking, and Prometheus metrics
-    let _observability_guard = observability::init_observability(
+    // IMPORTANT: This guard MUST remain in scope for the entire application lifetime.
+    // Dropping it will shut down the Sentry client and stop error reporting.
+    #[allow(unused_variables)]
+    let observability_guard = observability::init_observability(
         observability::OtelConfig::default(),
         observability::SentryConfig::default(),
         observability::MetricsConfig::default(),

@@ -297,6 +297,8 @@ pub struct ErrorContext {
     pub method: String,
     /// Error category.
     pub category: ErrorCategory,
+    /// Environment/deployment identifier for cross-service correlation.
+    pub environment: String,
 }
 
 /// Error categories for classification.
