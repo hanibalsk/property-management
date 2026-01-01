@@ -10,12 +10,33 @@
 //! - Property listing descriptions (Story 64.2)
 //! - Conversational AI with RAG (Story 64.3)
 //! - Photo enhancement coordination (Story 64.4)
+//! - Embedding generation for RAG (Story 97.2)
+//! - Sentiment analysis (Story 97.4)
+//! - Context management with token limits (Story 97.1)
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use thiserror::Error;
 use uuid::Uuid;
+
+/// Default token limits for different models.
+pub mod token_limits {
+    /// GPT-4o context window
+    pub const GPT4O_CONTEXT: u32 = 128_000;
+    /// GPT-4o-mini context window
+    pub const GPT4O_MINI_CONTEXT: u32 = 128_000;
+    /// Claude 3.5 Sonnet context window
+    pub const CLAUDE_35_SONNET_CONTEXT: u32 = 200_000;
+    /// Claude 3.5 Haiku context window
+    pub const CLAUDE_35_HAIKU_CONTEXT: u32 = 200_000;
+    /// Default max tokens for chat responses
+    pub const DEFAULT_MAX_TOKENS: i32 = 4096;
+    /// Reserved tokens for response generation
+    pub const RESERVED_FOR_RESPONSE: u32 = 4096;
+    /// Approximate characters per token (for estimation)
+    pub const CHARS_PER_TOKEN: usize = 4;
+}
 
 /// LLM API errors.
 #[derive(Error, Debug)]
@@ -495,6 +516,289 @@ Generate:
             tokens_used: response.usage.total_tokens,
         })
     }
+
+    // =========================================================================
+    // Story 97.1: Context Management
+    // =========================================================================
+
+    /// Estimate token count from text using simple character-based approximation.
+    /// For production use, consider using tiktoken or similar library.
+    pub fn estimate_tokens(text: &str) -> u32 {
+        (text.len() / token_limits::CHARS_PER_TOKEN) as u32
+    }
+
+    /// Get context window limit for a model.
+    pub fn get_context_limit(model: &str) -> u32 {
+        match model {
+            m if m.contains("gpt-4o") => token_limits::GPT4O_CONTEXT,
+            m if m.contains("gpt-4") => 128_000,
+            m if m.contains("claude-3") => token_limits::CLAUDE_35_SONNET_CONTEXT,
+            _ => 32_000, // Conservative default
+        }
+    }
+
+    /// Truncate messages to fit within token limit, preserving system prompt and recent messages.
+    pub fn truncate_messages_to_fit(
+        messages: &[ChatMessage],
+        model: &str,
+        max_response_tokens: u32,
+    ) -> Vec<ChatMessage> {
+        let context_limit = Self::get_context_limit(model);
+        let available_tokens = context_limit.saturating_sub(max_response_tokens);
+
+        let mut result = Vec::new();
+        let mut total_tokens: u32 = 0;
+
+        // Always include system message first
+        if let Some(system_msg) = messages.iter().find(|m| m.role == "system") {
+            let msg_tokens = Self::estimate_tokens(&system_msg.content);
+            total_tokens += msg_tokens;
+            result.push(system_msg.clone());
+        }
+
+        // Get non-system messages in reverse order (most recent first)
+        let non_system_msgs: Vec<_> = messages.iter().filter(|m| m.role != "system").collect();
+
+        // Add messages from most recent, stopping when we hit the limit
+        for msg in non_system_msgs.into_iter().rev() {
+            let msg_tokens = Self::estimate_tokens(&msg.content);
+            if total_tokens + msg_tokens <= available_tokens {
+                total_tokens += msg_tokens;
+                result.push(msg.clone());
+            } else {
+                break;
+            }
+        }
+
+        // Reverse non-system messages to restore chronological order
+        // (system message stays at index 0, rest are reversed)
+        if result.len() > 1 {
+            let system_msg = result.remove(0);
+            result.reverse();
+            result.insert(0, system_msg);
+        }
+
+        result
+    }
+
+    /// Build a system prompt with tenant-specific configuration.
+    pub fn build_system_prompt(
+        base_prompt: &str,
+        tenant_config: Option<&TenantAiConfig>,
+        language: &str,
+    ) -> String {
+        let mut prompt = base_prompt.to_string();
+
+        if let Some(config) = tenant_config {
+            if let Some(ref personality) = config.personality {
+                prompt = format!("{}\n\nPersonality: {}", prompt, personality);
+            }
+            if let Some(ref building_context) = config.building_context {
+                prompt = format!(
+                    "{}\n\nBuilding-specific information:\n{}",
+                    prompt, building_context
+                );
+            }
+            if !config.custom_instructions.is_empty() {
+                prompt = format!(
+                    "{}\n\nCustom instructions:\n{}",
+                    prompt,
+                    config.custom_instructions.join("\n")
+                );
+            }
+        }
+
+        format!(
+            "{}\n\nIMPORTANT: Always respond in {} language.",
+            prompt, language
+        )
+    }
+
+    // =========================================================================
+    // Story 97.2: Embedding Generation
+    // =========================================================================
+
+    /// Generate embeddings using OpenAI's embedding API.
+    pub async fn generate_embedding(
+        &self,
+        text: &str,
+        model: Option<&str>,
+    ) -> Result<EmbeddingResult, LlmError> {
+        let api_key = self
+            .config
+            .openai_api_key
+            .as_ref()
+            .ok_or_else(|| LlmError::MissingApiKey("openai".to_string()))?;
+
+        let embedding_model = model.unwrap_or("text-embedding-3-small");
+
+        let request = OpenAiEmbeddingRequest {
+            model: embedding_model.to_string(),
+            input: text.to_string(),
+        };
+
+        let response = self
+            .http_client
+            .post("https://api.openai.com/v1/embeddings")
+            .header("Authorization", format!("Bearer {}", api_key))
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status().as_u16();
+            if status == 429 {
+                let retry_after = response
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|h| h.to_str().ok())
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(60);
+                return Err(LlmError::RateLimited { retry_after });
+            }
+            let error_body = response.text().await.unwrap_or_default();
+            return Err(LlmError::ApiError {
+                status,
+                message: error_body,
+            });
+        }
+
+        let embedding_response: OpenAiEmbeddingResponse = response.json().await?;
+
+        let embedding = embedding_response
+            .data
+            .first()
+            .map(|d| d.embedding.clone())
+            .ok_or_else(|| LlmError::InvalidResponse("No embedding in response".to_string()))?;
+
+        Ok(EmbeddingResult {
+            embedding,
+            model: embedding_model.to_string(),
+            tokens_used: embedding_response.usage.total_tokens,
+        })
+    }
+
+    /// Generate embeddings for multiple texts in batch.
+    pub async fn generate_embeddings_batch(
+        &self,
+        texts: &[String],
+        model: Option<&str>,
+    ) -> Result<Vec<EmbeddingResult>, LlmError> {
+        // Process in batches to avoid rate limits
+        let mut results = Vec::new();
+        for text in texts {
+            let result = self.generate_embedding(text, model).await?;
+            results.push(result);
+        }
+        Ok(results)
+    }
+
+    // =========================================================================
+    // Story 97.4: Sentiment Analysis
+    // =========================================================================
+
+    /// Analyze sentiment of text using OpenAI with structured output.
+    pub async fn analyze_sentiment(
+        &self,
+        text: &str,
+        provider: Option<&str>,
+    ) -> Result<SentimentResult, LlmError> {
+        let provider = provider.unwrap_or("openai");
+        let model = match provider {
+            "openai" => "gpt-4o-mini",
+            "anthropic" => "claude-3-5-haiku-20241022",
+            _ => "gpt-4o-mini",
+        };
+
+        let system_prompt = r#"You are a sentiment analysis assistant. Analyze the sentiment of the given text and respond with a JSON object containing:
+- score: a number from -1.0 (very negative) to 1.0 (very positive)
+- label: one of "negative", "neutral", "positive"
+- confidence: a number from 0.0 to 1.0 indicating your confidence
+- key_phrases: an array of key phrases that influenced the sentiment
+- requires_attention: boolean, true if the message indicates urgent issues, complaints, or frustration that management should address
+
+Respond ONLY with valid JSON, no other text."#;
+
+        let request = ChatCompletionRequest {
+            model: model.to_string(),
+            messages: vec![
+                ChatMessage {
+                    role: "system".to_string(),
+                    content: system_prompt.to_string(),
+                },
+                ChatMessage {
+                    role: "user".to_string(),
+                    content: text.to_string(),
+                },
+            ],
+            temperature: Some(0.1), // Low temperature for consistent analysis
+            max_tokens: Some(500),
+        };
+
+        let response = self.chat(provider, &request).await?;
+        let content = response
+            .choices
+            .first()
+            .map(|c| c.message.content.clone())
+            .unwrap_or_default();
+
+        // Parse the JSON response
+        let sentiment: SentimentResult = serde_json::from_str(&content).map_err(|e| {
+            LlmError::InvalidResponse(format!("Failed to parse sentiment response: {}", e))
+        })?;
+
+        Ok(sentiment)
+    }
+
+    /// Analyze sentiment for multiple texts, returning aggregate statistics.
+    pub async fn analyze_sentiment_batch(
+        &self,
+        texts: &[String],
+        provider: Option<&str>,
+    ) -> Result<BatchSentimentResult, LlmError> {
+        let mut results = Vec::new();
+        let mut total_score = 0.0;
+        let mut negative_count = 0;
+        let mut neutral_count = 0;
+        let mut positive_count = 0;
+        let mut attention_required = Vec::new();
+
+        for (i, text) in texts.iter().enumerate() {
+            let result = self.analyze_sentiment(text, provider).await?;
+
+            match result.label.as_str() {
+                "negative" => negative_count += 1,
+                "neutral" => neutral_count += 1,
+                "positive" => positive_count += 1,
+                _ => {}
+            }
+
+            total_score += result.score;
+
+            if result.requires_attention {
+                attention_required.push(i);
+            }
+
+            results.push(result);
+        }
+
+        let count = texts.len() as f64;
+        let avg_score = if count > 0.0 {
+            total_score / count
+        } else {
+            0.0
+        };
+
+        Ok(BatchSentimentResult {
+            results,
+            average_score: avg_score,
+            negative_count,
+            neutral_count,
+            positive_count,
+            attention_required_indices: attention_required,
+        })
+    }
 }
 
 impl Default for LlmClient {
@@ -814,6 +1118,106 @@ pub struct EnhancedChatResult {
 }
 
 // =============================================================================
+// Story 97.1: Tenant AI Configuration
+// =============================================================================
+
+/// Tenant-specific AI configuration for customizing chatbot behavior.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TenantAiConfig {
+    /// Custom personality for the AI (e.g., "friendly and professional")
+    pub personality: Option<String>,
+    /// Building-specific context and knowledge
+    pub building_context: Option<String>,
+    /// Custom instructions to follow
+    pub custom_instructions: Vec<String>,
+    /// Preferred language for responses
+    pub preferred_language: Option<String>,
+    /// Topics that should trigger escalation
+    pub escalation_topics: Vec<String>,
+}
+
+// =============================================================================
+// Story 97.2: Embedding Types
+// =============================================================================
+
+/// OpenAI embedding request.
+#[derive(Debug, Clone, Serialize)]
+struct OpenAiEmbeddingRequest {
+    model: String,
+    input: String,
+}
+
+/// OpenAI embedding response.
+#[derive(Debug, Clone, Deserialize)]
+struct OpenAiEmbeddingResponse {
+    data: Vec<OpenAiEmbeddingData>,
+    usage: OpenAiEmbeddingUsage,
+}
+
+/// OpenAI embedding data.
+#[derive(Debug, Clone, Deserialize)]
+struct OpenAiEmbeddingData {
+    embedding: Vec<f32>,
+    #[allow(dead_code)]
+    index: i32,
+}
+
+/// OpenAI embedding usage.
+#[derive(Debug, Clone, Deserialize)]
+struct OpenAiEmbeddingUsage {
+    #[allow(dead_code)]
+    prompt_tokens: i32,
+    total_tokens: i32,
+}
+
+/// Result of embedding generation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingResult {
+    /// The embedding vector (1536 dimensions for text-embedding-3-small)
+    pub embedding: Vec<f32>,
+    /// The model used for embedding
+    pub model: String,
+    /// Number of tokens used
+    pub tokens_used: i32,
+}
+
+// =============================================================================
+// Story 97.4: Sentiment Analysis Types
+// =============================================================================
+
+/// Result of sentiment analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SentimentResult {
+    /// Sentiment score from -1.0 (very negative) to 1.0 (very positive)
+    pub score: f64,
+    /// Sentiment label: "negative", "neutral", or "positive"
+    pub label: String,
+    /// Confidence in the analysis from 0.0 to 1.0
+    pub confidence: f64,
+    /// Key phrases that influenced the sentiment
+    pub key_phrases: Vec<String>,
+    /// Whether this message requires management attention
+    pub requires_attention: bool,
+}
+
+/// Result of batch sentiment analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchSentimentResult {
+    /// Individual sentiment results
+    pub results: Vec<SentimentResult>,
+    /// Average sentiment score across all texts
+    pub average_score: f64,
+    /// Count of negative sentiments
+    pub negative_count: usize,
+    /// Count of neutral sentiments
+    pub neutral_count: usize,
+    /// Count of positive sentiments
+    pub positive_count: usize,
+    /// Indices of texts that require attention
+    pub attention_required_indices: Vec<usize>,
+}
+
+// =============================================================================
 // Helper Functions
 // =============================================================================
 
@@ -884,5 +1288,243 @@ mod tests {
             Some("You are helpful".to_string())
         );
         assert_eq!(anthropic_request.messages.len(), 1);
+    }
+
+    // =========================================================================
+    // Story 97.1: Context Management Tests
+    // =========================================================================
+
+    #[test]
+    fn test_estimate_tokens() {
+        // Approximately 4 characters per token
+        let text = "Hello, world!"; // 13 chars = ~3 tokens
+        let tokens = LlmClient::estimate_tokens(text);
+        assert_eq!(tokens, 3);
+
+        let empty = "";
+        assert_eq!(LlmClient::estimate_tokens(empty), 0);
+
+        // Longer text
+        let long_text = "a".repeat(1000); // 1000 chars = 250 tokens
+        assert_eq!(LlmClient::estimate_tokens(&long_text), 250);
+    }
+
+    #[test]
+    fn test_get_context_limit() {
+        assert_eq!(LlmClient::get_context_limit("gpt-4o"), 128_000);
+        assert_eq!(LlmClient::get_context_limit("gpt-4o-mini"), 128_000);
+        assert_eq!(LlmClient::get_context_limit("gpt-4-turbo"), 128_000);
+        assert_eq!(LlmClient::get_context_limit("claude-3-5-sonnet"), 200_000);
+        assert_eq!(LlmClient::get_context_limit("unknown-model"), 32_000);
+    }
+
+    #[test]
+    fn test_truncate_messages_preserves_system_and_recent() {
+        let messages = vec![
+            ChatMessage {
+                role: "system".to_string(),
+                content: "You are a helpful assistant.".to_string(),
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: "First message".to_string(),
+            },
+            ChatMessage {
+                role: "assistant".to_string(),
+                content: "First response".to_string(),
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: "Second message".to_string(),
+            },
+            ChatMessage {
+                role: "assistant".to_string(),
+                content: "Second response".to_string(),
+            },
+        ];
+
+        let truncated = LlmClient::truncate_messages_to_fit(&messages, "gpt-4o", 4096);
+
+        // Should preserve system message
+        assert_eq!(truncated[0].role, "system");
+
+        // Should include all messages since they fit
+        assert_eq!(truncated.len(), 5);
+    }
+
+    #[test]
+    fn test_truncate_messages_removes_old_when_limit_exceeded() {
+        // Create messages that would exceed a very small limit
+        let messages = vec![
+            ChatMessage {
+                role: "system".to_string(),
+                content: "System prompt.".to_string(),
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: "a".repeat(200000), // Very large message
+            },
+            ChatMessage {
+                role: "assistant".to_string(),
+                content: "Response 1".to_string(),
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: "Recent message".to_string(),
+            },
+        ];
+
+        // With a model that has 32000 token limit and we want 4096 for response
+        let truncated = LlmClient::truncate_messages_to_fit(&messages, "unknown-model", 4096);
+
+        // Should at least have system message
+        assert!(!truncated.is_empty());
+        assert_eq!(truncated[0].role, "system");
+
+        // Should have dropped the very large message
+        assert!(truncated.len() < messages.len());
+    }
+
+    #[test]
+    fn test_build_system_prompt_without_config() {
+        let base = "You are a building management assistant.";
+        let result = LlmClient::build_system_prompt(base, None, "en");
+
+        assert!(result.contains(base));
+        assert!(result.contains("IMPORTANT: Always respond in en language."));
+    }
+
+    #[test]
+    fn test_build_system_prompt_with_tenant_config() {
+        let base = "You are a building management assistant.";
+        let config = TenantAiConfig {
+            personality: Some("friendly and professional".to_string()),
+            building_context: Some(
+                "This is a 10-story residential building built in 2020.".to_string(),
+            ),
+            custom_instructions: vec![
+                "Always mention the building name 'Sunset Towers'".to_string(),
+                "Contact hours are 9am-5pm".to_string(),
+            ],
+            preferred_language: Some("sk".to_string()),
+            escalation_topics: vec!["emergency".to_string()],
+        };
+
+        let result = LlmClient::build_system_prompt(base, Some(&config), "sk");
+
+        assert!(result.contains("friendly and professional"));
+        assert!(result.contains("10-story residential building"));
+        assert!(result.contains("Sunset Towers"));
+        assert!(result.contains("9am-5pm"));
+        assert!(result.contains("IMPORTANT: Always respond in sk language."));
+    }
+
+    // =========================================================================
+    // Story 97.2: Embedding Tests
+    // =========================================================================
+
+    #[test]
+    fn test_embedding_result_structure() {
+        let result = EmbeddingResult {
+            embedding: vec![0.1, 0.2, 0.3],
+            model: "text-embedding-3-small".to_string(),
+            tokens_used: 10,
+        };
+
+        assert_eq!(result.embedding.len(), 3);
+        assert_eq!(result.model, "text-embedding-3-small");
+        assert_eq!(result.tokens_used, 10);
+    }
+
+    // =========================================================================
+    // Story 97.4: Sentiment Analysis Tests
+    // =========================================================================
+
+    #[test]
+    fn test_sentiment_result_structure() {
+        let result = SentimentResult {
+            score: 0.8,
+            label: "positive".to_string(),
+            confidence: 0.95,
+            key_phrases: vec!["excellent service".to_string(), "very helpful".to_string()],
+            requires_attention: false,
+        };
+
+        assert_eq!(result.score, 0.8);
+        assert_eq!(result.label, "positive");
+        assert_eq!(result.confidence, 0.95);
+        assert_eq!(result.key_phrases.len(), 2);
+        assert!(!result.requires_attention);
+    }
+
+    #[test]
+    fn test_batch_sentiment_result_structure() {
+        let results = vec![
+            SentimentResult {
+                score: -0.5,
+                label: "negative".to_string(),
+                confidence: 0.9,
+                key_phrases: vec!["broken elevator".to_string()],
+                requires_attention: true,
+            },
+            SentimentResult {
+                score: 0.3,
+                label: "neutral".to_string(),
+                confidence: 0.85,
+                key_phrases: vec!["general inquiry".to_string()],
+                requires_attention: false,
+            },
+            SentimentResult {
+                score: 0.8,
+                label: "positive".to_string(),
+                confidence: 0.95,
+                key_phrases: vec!["thank you".to_string()],
+                requires_attention: false,
+            },
+        ];
+
+        let batch = BatchSentimentResult {
+            results: results.clone(),
+            average_score: 0.2,
+            negative_count: 1,
+            neutral_count: 1,
+            positive_count: 1,
+            attention_required_indices: vec![0],
+        };
+
+        assert_eq!(batch.results.len(), 3);
+        assert_eq!(batch.negative_count, 1);
+        assert_eq!(batch.neutral_count, 1);
+        assert_eq!(batch.positive_count, 1);
+        assert_eq!(batch.attention_required_indices, vec![0]);
+    }
+
+    #[test]
+    fn test_tenant_ai_config_default() {
+        let config = TenantAiConfig::default();
+
+        assert!(config.personality.is_none());
+        assert!(config.building_context.is_none());
+        assert!(config.custom_instructions.is_empty());
+        assert!(config.preferred_language.is_none());
+        assert!(config.escalation_topics.is_empty());
+    }
+
+    #[test]
+    fn test_sentiment_result_serialization() {
+        let result = SentimentResult {
+            score: -0.7,
+            label: "negative".to_string(),
+            confidence: 0.88,
+            key_phrases: vec!["broken pipe".to_string(), "urgent".to_string()],
+            requires_attention: true,
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        let deserialized: SentimentResult = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(result.score, deserialized.score);
+        assert_eq!(result.label, deserialized.label);
+        assert_eq!(result.requires_attention, deserialized.requires_attention);
     }
 }

@@ -17,7 +17,7 @@ use db::models::{
     TriggerWorkflow, UpdateEquipment, UpdateMaintenance, UpdateSentimentThresholds, UpdateWorkflow,
     WorkflowQuery,
 };
-use integrations::{ChatCompletionRequest, ChatMessage, ContextChunk};
+use integrations::{ChatCompletionRequest, ChatMessage, ContextChunk, LlmClient, TenantAiConfig};
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use utoipa::ToSchema;
@@ -240,7 +240,7 @@ async fn list_messages(
     }
 }
 
-/// Default system prompt for the AI assistant.
+/// Default system prompt for the AI assistant (Story 97.1).
 const DEFAULT_SYSTEM_PROMPT: &str = r#"You are a helpful AI assistant for a property management system. You help users with:
 - Building and property management questions
 - Fault reporting and maintenance inquiries
@@ -251,6 +251,12 @@ const DEFAULT_SYSTEM_PROMPT: &str = r#"You are a helpful AI assistant for a prop
 Be concise, professional, and helpful. If you're unsure about something or the question requires human expertise, acknowledge this and suggest escalation to building management.
 
 If you don't have enough context to answer a question confidently, say so and ask for clarification."#;
+
+/// Default maximum messages to include in conversation history for context.
+const DEFAULT_HISTORY_LIMIT: i64 = 20;
+
+/// Maximum response tokens to reserve when truncating context.
+const MAX_RESPONSE_TOKENS: u32 = 2048;
 
 async fn send_message(
     State(state): State<AppState>,
@@ -285,10 +291,11 @@ async fn send_message(
             )
         })?;
 
-    // Get conversation history for context (last 10 messages) BEFORE adding current message
+    // Get conversation history for context BEFORE adding current message
+    // Story 97.1: Load more messages for context, will be truncated to fit token limits
     let history = state
         .ai_chat_repo
-        .list_session_messages(session_id, 10, 0)
+        .list_session_messages(session_id, DEFAULT_HISTORY_LIMIT, 0)
         .await
         .unwrap_or_default();
 
@@ -318,10 +325,46 @@ async fn send_message(
             )
         })?;
 
+    // Story 97.1: Build tenant-specific system prompt
+    // Load tenant AI configuration if available (custom personality, building context)
+    let tenant_config = if tenant.is_some() {
+        // Try to load tenant AI config from environment or database
+        // For now, build from environment variables as a simple implementation
+        // In production, this would query a tenant_ai_config table
+        let personality = std::env::var("AI_PERSONALITY").ok();
+        let building_context = std::env::var("AI_BUILDING_CONTEXT").ok();
+        let custom_instructions: Vec<String> = std::env::var("AI_CUSTOM_INSTRUCTIONS")
+            .ok()
+            .map(|s| s.split(';').map(|i| i.trim().to_string()).collect())
+            .unwrap_or_default();
+
+        Some(TenantAiConfig {
+            personality,
+            building_context,
+            custom_instructions,
+            preferred_language: Some(
+                std::env::var("AI_LANGUAGE").unwrap_or_else(|_| "en".to_string()),
+            ),
+            escalation_topics: vec![],
+        })
+    } else {
+        None
+    };
+
+    // Determine language for response
+    let language = tenant_config
+        .as_ref()
+        .and_then(|c| c.preferred_language.clone())
+        .unwrap_or_else(|| "en".to_string());
+
+    // Build the system prompt with tenant-specific configuration
+    let system_prompt =
+        LlmClient::build_system_prompt(DEFAULT_SYSTEM_PROMPT, tenant_config.as_ref(), &language);
+
     // Build messages for LLM
     let mut messages: Vec<ChatMessage> = vec![ChatMessage {
         role: "system".to_string(),
-        content: DEFAULT_SYSTEM_PROMPT.to_string(),
+        content: system_prompt,
     }];
 
     // Add conversation history (fetched before adding current message, so no duplicates)
@@ -407,10 +450,25 @@ async fn send_message(
     // Handle response; in the disabled case we avoid calling the LLM client entirely.
     let (response_content, confidence, escalated, escalation_reason, tokens_used) =
         if llm_chat_enabled {
-            // Build LLM request
+            // Story 97.1: Truncate messages to fit within model's context window
+            // This preserves the system prompt and most recent messages
+            let truncated_messages =
+                LlmClient::truncate_messages_to_fit(&messages, &model, MAX_RESPONSE_TOKENS);
+
+            let original_count = messages.len();
+            let truncated_count = truncated_messages.len();
+            if truncated_count < original_count {
+                tracing::info!(
+                    "Truncated conversation history from {} to {} messages to fit token limit",
+                    original_count,
+                    truncated_count
+                );
+            }
+
+            // Build LLM request with truncated messages
             let llm_request = ChatCompletionRequest {
                 model: model.clone(),
-                messages,
+                messages: truncated_messages,
                 temperature: Some(0.7),
                 max_tokens: Some(1024),
             };

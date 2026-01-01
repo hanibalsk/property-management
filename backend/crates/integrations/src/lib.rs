@@ -62,10 +62,12 @@ pub use crypto::{
 };
 
 // Story 64.1-64.4: LLM Integration
+// Story 97.1-97.4: Enhanced LLM Capabilities
 pub use llm::{
-    ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ContextChunk, EnhancedChatResult,
-    LeaseGenerationInput, LeaseGenerationResult, ListingDescriptionInput, ListingDescriptionResult,
-    LlmClient, LlmConfig, LlmError, TokenUsage,
+    token_limits, BatchSentimentResult, ChatCompletionRequest, ChatCompletionResponse, ChatMessage,
+    ContextChunk, EmbeddingResult, EnhancedChatResult, LeaseGenerationInput, LeaseGenerationResult,
+    ListingDescriptionInput, ListingDescriptionResult, LlmClient, LlmConfig, LlmError,
+    SentimentResult, TenantAiConfig, TokenUsage,
 };
 
 // Story 84.1: S3 Presigned URLs
