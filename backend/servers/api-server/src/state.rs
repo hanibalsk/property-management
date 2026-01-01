@@ -26,6 +26,7 @@ use db::{
     },
     DbPool,
 };
+use integrations::LlmClient;
 
 /// Application state shared across all handlers.
 #[derive(Clone)]
@@ -123,6 +124,8 @@ pub struct AppState {
     pub background_job_repo: BackgroundJobRepository,
     // Epic 89: Feature Flags & Health Monitoring
     pub infrastructure_repo: InfrastructureRepository,
+    // Epic 91: AI Chat LLM Integration
+    pub llm_client: LlmClient,
     pub auth_service: AuthService,
     pub email_service: EmailService,
     pub jwt_service: JwtService,
@@ -223,6 +226,8 @@ impl AppState {
         let background_job_repo = BackgroundJobRepository::new(db.clone());
         // Epic 89: Feature Flags & Health Monitoring
         let infrastructure_repo = InfrastructureRepository::new(db.clone());
+        // Epic 91: AI Chat LLM Integration
+        let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
         let totp_service = TotpService::new("Property Management".to_string());
         let oauth_service = OAuthService::new(oauth_repo.clone(), auth_service.clone());
@@ -293,6 +298,7 @@ impl AppState {
             dispute_repo,
             background_job_repo,
             infrastructure_repo,
+            llm_client,
             auth_service,
             email_service,
             jwt_service,
