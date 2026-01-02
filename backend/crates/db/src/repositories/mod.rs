@@ -248,3 +248,8 @@ pub use infrastructure::InfrastructureRepository;
 pub mod workflow_templates;
 
 pub use workflow_templates::WorkflowTemplateRepository;
+
+// Epic 100: Enhanced Due Diligence (AML/DSA Compliance)
+pub mod edd;
+
+pub use edd::{EddRepository, EddStatistics};
