@@ -1,13 +1,13 @@
 //! Integration sync integration tests (Epic 99, Story 99.3).
 //!
 //! Tests external integration sync flows:
-//! - Airbnb listing sync (mocked)
-//! - Booking.com reservation sync (mocked)
+//! - Airbnb listing sync
+//! - Booking.com reservation sync
 //! - Error handling for external APIs
 //! - Retry logic verification
 //! - Rate limiting handling
 //!
-//! Uses wiremock for mocking external APIs.
+//! Note: These tests use the shared test harness in `common` for mocking.
 
 mod common;
 

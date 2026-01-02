@@ -29,6 +29,8 @@ pub struct TestConfig {
 impl Default for TestConfig {
     fn default() -> Self {
         Self {
+            // WARNING: Test-only JWT secret. This value must NEVER be used in production.
+            // It is only used for integration testing with isolated test databases.
             jwt_secret: "test-secret-key-that-is-at-least-64-characters-long-for-testing-purposes"
                 .to_string(),
             base_url: "http://localhost:8080".to_string(),
@@ -301,11 +303,13 @@ impl Default for TestUser {
 
 /// Test helper to clean up test data.
 pub async fn cleanup_test_user(pool: &PgPool, email: &str) {
-    sqlx::query("DELETE FROM users WHERE email = $1")
+    if let Err(err) = sqlx::query("DELETE FROM users WHERE email = $1")
         .bind(email)
         .execute(pool)
         .await
-        .ok();
+    {
+        eprintln!("Warning: Failed to clean up test user '{}': {}", email, err);
+    }
 }
 
 /// Test helper to verify user directly in database.
