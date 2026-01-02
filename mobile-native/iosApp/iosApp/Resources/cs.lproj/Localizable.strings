@@ -1,0 +1,119 @@
+/* App */
+"app_name" = "Reality Portál";
+
+/* Common */
+"loading" = "Načítá se…";
+"error" = "Chyba";
+"retry" = "Zkusit znovu";
+"save" = "Uložit";
+"cancel" = "Zrušit";
+"close" = "Zavřít";
+"delete" = "Smazat";
+"edit" = "Upravit";
+"confirm" = "Potvrdit";
+"back" = "Zpět";
+"next" = "Další";
+"done" = "Hotovo";
+"yes" = "Ano";
+"no" = "Ne";
+"ok" = "OK";
+"search" = "Hledat";
+"share" = "Sdílet";
+"see_all" = "Zobrazit vše";
+
+/* Tabs/Navigation */
+"tab_home" = "Domů";
+"tab_search" = "Hledat";
+"tab_favorites" = "Oblíbené";
+"tab_inquiries" = "Dotazy";
+"tab_account" = "Účet";
+
+/* Auth */
+"login" = "Přihlásit se";
+"logout" = "Odhlásit se";
+"sign_in" = "Přihlásit se";
+"sign_out" = "Odhlásit se";
+"email" = "E-mail";
+"password" = "Heslo";
+"forgot_password" = "Zapomenuté heslo?";
+"remember_me" = "Zapamatovat si mě";
+"create_account" = "Vytvořit účet";
+"or_continue_with" = "Nebo pokračovat přes";
+
+/* Home */
+"featured_properties" = "Doporučené nemovitosti";
+"recent_properties" = "Nejnovější nemovitosti";
+"view_all_properties" = "Zobrazit všechny nemovitosti";
+"welcome_back" = "Vítejte zpět";
+
+/* Search */
+"search_properties" = "Hledat nemovitosti…";
+"filters" = "Filtry";
+"price_range" = "Cenové rozpětí";
+"property_type" = "Typ nemovitosti";
+"bedrooms" = "Ložnice";
+"bathrooms" = "Koupelny";
+"area" = "Plocha";
+"location" = "Lokalita";
+"apply_filters" = "Použít filtry";
+"clear_filters" = "Vymazat filtry";
+"no_results" = "Žádné nemovitosti";
+"results_count" = "%d výsledků";
+
+/* Property Types */
+"apartment" = "Byt";
+"house" = "Dům";
+"studio" = "Garsonka";
+"penthouse" = "Penthouse";
+"villa" = "Vila";
+"land" = "Pozemek";
+"commercial" = "Komerční";
+
+/* Listing */
+"property_details" = "Detail nemovitosti";
+"description" = "Popis";
+"features" = "Vlastnosti";
+"amenities" = "Vybavení";
+"floor_plan" = "Půdorys";
+"contact_agent" = "Kontaktovat agenta";
+"schedule_viewing" = "Naplánovat prohlídku";
+"add_to_favorites" = "Přidat do oblíbených";
+"remove_from_favorites" = "Odebrat z oblíbených";
+"price" = "Cena";
+"per_month" = "/měsíc";
+"for_sale" = "Na prodej";
+"for_rent" = "K pronájmu";
+"sqm" = "m²";
+
+/* Favorites */
+"my_favorites" = "Moje oblíbené";
+"no_favorites" = "Zatím žádné oblíbené";
+"no_favorites_description" = "Nemovitosti, které se vám líbí, se zobrazí zde";
+
+/* Inquiries */
+"my_inquiries" = "Moje dotazy";
+"no_inquiries" = "Zatím žádné dotazy";
+"no_inquiries_description" = "Vaše dotazy na nemovitosti se zobrazí zde";
+"inquiry_sent" = "Dotaz odeslán";
+"inquiry_pending" = "Čeká se";
+"inquiry_responded" = "Odpovězeno";
+
+/* Account */
+"my_account" = "Můj účet";
+"profile" = "Profil";
+"settings" = "Nastavení";
+"language" = "Jazyk";
+"notifications" = "Oznámení";
+"privacy" = "Soukromí";
+"help" = "Nápověda";
+"about" = "O aplikaci";
+"version" = "Verze";
+"terms_of_service" = "Podmínky používání";
+"privacy_policy" = "Zásady ochrany osobních údajů";
+
+/* Errors */
+"error_generic" = "Vyskytla se chyba. Zkuste to znovu.";
+"error_network" = "Chyba sítě. Zkontrolujte připojení.";
+"error_server" = "Chyba serveru. Zkuste to později.";
+"error_not_found" = "Nenalezeno";
+"error_unauthorized" = "Nemáte oprávnění k této akci.";

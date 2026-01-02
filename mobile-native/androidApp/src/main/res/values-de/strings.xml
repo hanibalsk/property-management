@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Reality Portal</string>
+
+    <!-- Common -->
+    <string name="loading">Lädt…</string>
+    <string name="error">Fehler</string>
+    <string name="retry">Erneut versuchen</string>
+    <string name="save">Speichern</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="close">Schließen</string>
+    <string name="delete">Löschen</string>
+    <string name="edit">Bearbeiten</string>
+    <string name="confirm">Bestätigen</string>
+    <string name="back">Zurück</string>
+    <string name="next">Weiter</string>
+    <string name="done">Fertig</string>
+    <string name="yes">Ja</string>
+    <string name="no">Nein</string>
+    <string name="ok">OK</string>
+    <string name="search">Suchen</string>
+    <string name="share">Teilen</string>
+    <string name="see_all">Alle anzeigen</string>
+
+    <!-- Tabs/Navigation -->
+    <string name="tab_home">Startseite</string>
+    <string name="tab_search">Suchen</string>
+    <string name="tab_favorites">Favoriten</string>
+    <string name="tab_inquiries">Anfragen</string>
+    <string name="tab_account">Konto</string>
+
+    <!-- Auth -->
+    <string name="login">Anmelden</string>
+    <string name="logout">Abmelden</string>
+    <string name="sign_in">Anmelden</string>
+    <string name="sign_out">Abmelden</string>
+    <string name="email">E-Mail</string>
+    <string name="password">Passwort</string>
+    <string name="forgot_password">Passwort vergessen?</string>
+    <string name="remember_me">Angemeldet bleiben</string>
+    <string name="create_account">Konto erstellen</string>
+    <string name="or_continue_with">Oder fortfahren mit</string>
+
+    <!-- Home -->
+    <string name="featured_properties">Empfohlene Immobilien</string>
+    <string name="recent_properties">Neueste Immobilien</string>
+    <string name="view_all_properties">Alle Immobilien anzeigen</string>
+    <string name="welcome_back">Willkommen zurück</string>
+
+    <!-- Search -->
+    <string name="search_properties">Immobilien suchen…</string>
+    <string name="filters">Filter</string>
+    <string name="price_range">Preisspanne</string>
+    <string name="property_type">Immobilientyp</string>
+    <string name="bedrooms">Schlafzimmer</string>
+    <string name="bathrooms">Badezimmer</string>
+    <string name="area">Fläche</string>
+    <string name="location">Lage</string>
+    <string name="apply_filters">Filter anwenden</string>
+    <string name="clear_filters">Filter löschen</string>
+    <string name="no_results">Keine Immobilien gefunden</string>
+    <string name="results_count">%1$d Ergebnisse</string>
+
+    <!-- Property Types -->
+    <string name="apartment">Wohnung</string>
+    <string name="house">Haus</string>
+    <string name="studio">Studio</string>
+    <string name="penthouse">Penthouse</string>
+    <string name="villa">Villa</string>
+    <string name="land">Grundstück</string>
+    <string name="commercial">Gewerbe</string>
+
+    <!-- Listing -->
+    <string name="property_details">Immobiliendetails</string>
+    <string name="description">Beschreibung</string>
+    <string name="features">Eigenschaften</string>
+    <string name="amenities">Ausstattung</string>
+    <string name="floor_plan">Grundriss</string>
+    <string name="contact_agent">Agent kontaktieren</string>
+    <string name="schedule_viewing">Besichtigung vereinbaren</string>
+    <string name="add_to_favorites">Zu Favoriten hinzufügen</string>
+    <string name="remove_from_favorites">Aus Favoriten entfernen</string>
+    <string name="price">Preis</string>
+    <string name="per_month">/Monat</string>
+    <string name="for_sale">Zum Verkauf</string>
+    <string name="for_rent">Zur Miete</string>
+    <string name="sqm">m²</string>
+
+    <!-- Favorites -->
+    <string name="my_favorites">Meine Favoriten</string>
+    <string name="no_favorites">Noch keine Favoriten</string>
+    <string name="no_favorites_description">Immobilien, die Ihnen gefallen, werden hier angezeigt</string>
+
+    <!-- Inquiries -->
+    <string name="my_inquiries">Meine Anfragen</string>
+    <string name="no_inquiries">Noch keine Anfragen</string>
+    <string name="no_inquiries_description">Ihre Immobilienanfragen werden hier angezeigt</string>
+    <string name="inquiry_sent">Anfrage gesendet</string>
+    <string name="inquiry_pending">Ausstehend</string>
+    <string name="inquiry_responded">Beantwortet</string>
+
+    <!-- Account -->
+    <string name="my_account">Mein Konto</string>
+    <string name="profile">Profil</string>
+    <string name="settings">Einstellungen</string>
+    <string name="language">Sprache</string>
+    <string name="notifications">Benachrichtigungen</string>
+    <string name="privacy">Datenschutz</string>
+    <string name="help">Hilfe</string>
+    <string name="about">Über</string>
+    <string name="version">Version</string>
+    <string name="terms_of_service">Nutzungsbedingungen</string>
+    <string name="privacy_policy">Datenschutzrichtlinie</string>
+
+    <!-- Errors -->
+    <string name="error_generic">Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.</string>
+    <string name="error_network">Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.</string>
+    <string name="error_server">Serverfehler. Bitte versuchen Sie es später erneut.</string>
+    <string name="error_not_found">Nicht gefunden</string>
+    <string name="error_unauthorized">Sie sind nicht berechtigt, diese Aktion durchzuführen.</string>
+</resources>

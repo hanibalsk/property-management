@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Reality Portál</string>
+
+    <!-- Common -->
+    <string name="loading">Načítá se…</string>
+    <string name="error">Chyba</string>
+    <string name="retry">Zkusit znovu</string>
+    <string name="save">Uložit</string>
+    <string name="cancel">Zrušit</string>
+    <string name="close">Zavřít</string>
+    <string name="delete">Smazat</string>
+    <string name="edit">Upravit</string>
+    <string name="confirm">Potvrdit</string>
+    <string name="back">Zpět</string>
+    <string name="next">Další</string>
+    <string name="done">Hotovo</string>
+    <string name="yes">Ano</string>
+    <string name="no">Ne</string>
+    <string name="ok">OK</string>
+    <string name="search">Hledat</string>
+    <string name="share">Sdílet</string>
+    <string name="see_all">Zobrazit vše</string>
+
+    <!-- Tabs/Navigation -->
+    <string name="tab_home">Domů</string>
+    <string name="tab_search">Hledat</string>
+    <string name="tab_favorites">Oblíbené</string>
+    <string name="tab_inquiries">Dotazy</string>
+    <string name="tab_account">Účet</string>
+
+    <!-- Auth -->
+    <string name="login">Přihlásit se</string>
+    <string name="logout">Odhlásit se</string>
+    <string name="sign_in">Přihlásit se</string>
+    <string name="sign_out">Odhlásit se</string>
+    <string name="email">E-mail</string>
+    <string name="password">Heslo</string>
+    <string name="forgot_password">Zapomenuté heslo?</string>
+    <string name="remember_me">Zapamatovat si mě</string>
+    <string name="create_account">Vytvořit účet</string>
+    <string name="or_continue_with">Nebo pokračovat přes</string>
+
+    <!-- Home -->
+    <string name="featured_properties">Doporučené nemovitosti</string>
+    <string name="recent_properties">Nejnovější nemovitosti</string>
+    <string name="view_all_properties">Zobrazit všechny nemovitosti</string>
+    <string name="welcome_back">Vítejte zpět</string>
+
+    <!-- Search -->
+    <string name="search_properties">Hledat nemovitosti…</string>
+    <string name="filters">Filtry</string>
+    <string name="price_range">Cenové rozpětí</string>
+    <string name="property_type">Typ nemovitosti</string>
+    <string name="bedrooms">Ložnice</string>
+    <string name="bathrooms">Koupelny</string>
+    <string name="area">Plocha</string>
+    <string name="location">Lokalita</string>
+    <string name="apply_filters">Použít filtry</string>
+    <string name="clear_filters">Vymazat filtry</string>
+    <string name="no_results">Žádné nemovitosti</string>
+    <string name="results_count">%1$d výsledků</string>
+
+    <!-- Property Types -->
+    <string name="apartment">Byt</string>
+    <string name="house">Dům</string>
+    <string name="studio">Garsonka</string>
+    <string name="penthouse">Penthouse</string>
+    <string name="villa">Vila</string>
+    <string name="land">Pozemek</string>
+    <string name="commercial">Komerční</string>
+
+    <!-- Listing -->
+    <string name="property_details">Detail nemovitosti</string>
+    <string name="description">Popis</string>
+    <string name="features">Vlastnosti</string>
+    <string name="amenities">Vybavení</string>
+    <string name="floor_plan">Půdorys</string>
+    <string name="contact_agent">Kontaktovat agenta</string>
+    <string name="schedule_viewing">Naplánovat prohlídku</string>
+    <string name="add_to_favorites">Přidat do oblíbených</string>
+    <string name="remove_from_favorites">Odebrat z oblíbených</string>
+    <string name="price">Cena</string>
+    <string name="per_month">/měsíc</string>
+    <string name="for_sale">Na prodej</string>
+    <string name="for_rent">K pronájmu</string>
+    <string name="sqm">m²</string>
+
+    <!-- Favorites -->
+    <string name="my_favorites">Moje oblíbené</string>
+    <string name="no_favorites">Zatím žádné oblíbené</string>
+    <string name="no_favorites_description">Nemovitosti, které se vám líbí, se zobrazí zde</string>
+
+    <!-- Inquiries -->
+    <string name="my_inquiries">Moje dotazy</string>
+    <string name="no_inquiries">Zatím žádné dotazy</string>
+    <string name="no_inquiries_description">Vaše dotazy na nemovitosti se zobrazí zde</string>
+    <string name="inquiry_sent">Dotaz odeslán</string>
+    <string name="inquiry_pending">Čeká se</string>
+    <string name="inquiry_responded">Odpovězeno</string>
+
+    <!-- Account -->
+    <string name="my_account">Můj účet</string>
+    <string name="profile">Profil</string>
+    <string name="settings">Nastavení</string>
+    <string name="language">Jazyk</string>
+    <string name="notifications">Oznámení</string>
+    <string name="privacy">Soukromí</string>
+    <string name="help">Nápověda</string>
+    <string name="about">O aplikaci</string>
+    <string name="version">Verze</string>
+    <string name="terms_of_service">Podmínky používání</string>
+    <string name="privacy_policy">Zásady ochrany osobních údajů</string>
+
+    <!-- Errors -->
+    <string name="error_generic">Vyskytla se chyba. Zkuste to znovu.</string>
+    <string name="error_network">Chyba sítě. Zkontrolujte připojení.</string>
+    <string name="error_server">Chyba serveru. Zkuste to později.</string>
+    <string name="error_not_found">Nenalezeno</string>
+    <string name="error_unauthorized">Nemáte oprávnění k této akci.</string>
+</resources>

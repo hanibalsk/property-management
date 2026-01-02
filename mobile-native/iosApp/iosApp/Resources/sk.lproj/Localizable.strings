@@ -1,0 +1,119 @@
+/* App */
+"app_name" = "Reality Portál";
+
+/* Common */
+"loading" = "Načítava sa…";
+"error" = "Chyba";
+"retry" = "Skúsiť znova";
+"save" = "Uložiť";
+"cancel" = "Zrušiť";
+"close" = "Zavrieť";
+"delete" = "Vymazať";
+"edit" = "Upraviť";
+"confirm" = "Potvrdiť";
+"back" = "Späť";
+"next" = "Ďalej";
+"done" = "Hotovo";
+"yes" = "Áno";
+"no" = "Nie";
+"ok" = "OK";
+"search" = "Hľadať";
+"share" = "Zdieľať";
+"see_all" = "Zobraziť všetko";
+
+/* Tabs/Navigation */
+"tab_home" = "Domov";
+"tab_search" = "Hľadať";
+"tab_favorites" = "Obľúbené";
+"tab_inquiries" = "Dopyty";
+"tab_account" = "Účet";
+
+/* Auth */
+"login" = "Prihlásiť sa";
+"logout" = "Odhlásiť sa";
+"sign_in" = "Prihlásiť sa";
+"sign_out" = "Odhlásiť sa";
+"email" = "E-mail";
+"password" = "Heslo";
+"forgot_password" = "Zabudnuté heslo?";
+"remember_me" = "Zapamätať si ma";
+"create_account" = "Vytvoriť účet";
+"or_continue_with" = "Alebo pokračovať cez";
+
+/* Home */
+"featured_properties" = "Odporúčané nehnuteľnosti";
+"recent_properties" = "Najnovšie nehnuteľnosti";
+"view_all_properties" = "Zobraziť všetky nehnuteľnosti";
+"welcome_back" = "Vitajte späť";
+
+/* Search */
+"search_properties" = "Hľadať nehnuteľnosti…";
+"filters" = "Filtre";
+"price_range" = "Cenové rozpätie";
+"property_type" = "Typ nehnuteľnosti";
+"bedrooms" = "Spálne";
+"bathrooms" = "Kúpeľne";
+"area" = "Plocha";
+"location" = "Lokalita";
+"apply_filters" = "Použiť filtre";
+"clear_filters" = "Vymazať filtre";
+"no_results" = "Žiadne nehnuteľnosti";
+"results_count" = "%d výsledkov";
+
+/* Property Types */
+"apartment" = "Byt";
+"house" = "Dom";
+"studio" = "Garsónka";
+"penthouse" = "Penthouse";
+"villa" = "Vila";
+"land" = "Pozemok";
+"commercial" = "Komerčné";
+
+/* Listing */
+"property_details" = "Detaily nehnuteľnosti";
+"description" = "Popis";
+"features" = "Vlastnosti";
+"amenities" = "Vybavenie";
+"floor_plan" = "Pôdorys";
+"contact_agent" = "Kontaktovať agenta";
+"schedule_viewing" = "Naplánovať obhliadku";
+"add_to_favorites" = "Pridať do obľúbených";
+"remove_from_favorites" = "Odstrániť z obľúbených";
+"price" = "Cena";
+"per_month" = "/mesiac";
+"for_sale" = "Na predaj";
+"for_rent" = "Na prenájom";
+"sqm" = "m²";
+
+/* Favorites */
+"my_favorites" = "Moje obľúbené";
+"no_favorites" = "Zatiaľ žiadne obľúbené";
+"no_favorites_description" = "Nehnuteľnosti, ktoré sa vám páčia, sa zobrazia tu";
+
+/* Inquiries */
+"my_inquiries" = "Moje dopyty";
+"no_inquiries" = "Zatiaľ žiadne dopyty";
+"no_inquiries_description" = "Vaše dopyty na nehnuteľnosti sa zobrazia tu";
+"inquiry_sent" = "Dopyt odoslaný";
+"inquiry_pending" = "Čaká sa";
+"inquiry_responded" = "Odpoveď";
+
+/* Account */
+"my_account" = "Môj účet";
+"profile" = "Profil";
+"settings" = "Nastavenia";
+"language" = "Jazyk";
+"notifications" = "Oznámenia";
+"privacy" = "Súkromie";
+"help" = "Pomoc";
+"about" = "O aplikácii";
+"version" = "Verzia";
+"terms_of_service" = "Podmienky používania";
+"privacy_policy" = "Zásady ochrany súkromia";
+
+/* Errors */
+"error_generic" = "Vyskytla sa chyba. Skúste to znova.";
+"error_network" = "Chyba siete. Skontrolujte pripojenie.";
+"error_server" = "Chyba servera. Skúste to neskôr.";
+"error_not_found" = "Nenájdené";
+"error_unauthorized" = "Nemáte oprávnenie na túto akciu.";
