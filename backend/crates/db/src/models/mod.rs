@@ -707,13 +707,14 @@ pub use infrastructure::{
     job_type, queue, AcknowledgeAlert, AlertSeverity, AlertStatus, BackgroundJob,
     BackgroundJobExecution, BackgroundJobQuery, BackgroundJobQueueStats, BackgroundJobStatus,
     BackgroundJobTypeStats, CreateBackgroundJob, CreateFeatureFlag as CreateInfraFeatureFlag,
-    DependencyHealth, EvaluateFeatureFlag, FeatureFlag as InfraFeatureFlag, FeatureFlagAuditAction,
-    FeatureFlagAuditLog, FeatureFlagEvaluation, FeatureFlagOverride as InfraFeatureFlagOverride,
+    CreateHealthAlertRule, CreateSpan, CreateTrace, DependencyHealth, EvaluateFeatureFlag,
+    FeatureFlag as InfraFeatureFlag, FeatureFlagAuditAction, FeatureFlagAuditLog,
+    FeatureFlagEvaluation, FeatureFlagOverride as InfraFeatureFlagOverride,
     FeatureFlagOverrideType, FeatureFlagValueType, HealthAlert, HealthAlertRule, HealthCheckConfig,
     HealthCheckResult, HealthCheckType, HealthStatus, InfrastructureDashboard,
     PaginatedResponse as InfrastructurePaginatedResponse, PrometheusMetric, ResolveAlert,
     RetryBackgroundJob, Span, SpanKind, SpanStatus, SystemHealth, SystemMetrics, Trace, TraceQuery,
-    TraceWithSpans, UpdateFeatureFlag as UpdateInfraFeatureFlag,
+    TraceWithSpans, UpdateFeatureFlag as UpdateInfraFeatureFlag, UpdateHealthAlertRule,
 };
 
 // Epic 73: Infrastructure & Operations

@@ -803,6 +803,108 @@ pub struct ResolveAlert {
     pub note: Option<String>,
 }
 
+/// Request to create an alert rule.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreateHealthAlertRule {
+    /// Rule name
+    pub name: String,
+    /// Description
+    pub description: Option<String>,
+    /// Condition expression (e.g., "cpu_usage > 80")
+    pub condition: String,
+    /// Alert severity
+    pub severity: AlertSeverity,
+    /// Notification channels as JSON array
+    pub notification_channels: serde_json::Value,
+    /// Whether the rule is enabled (default: true)
+    pub enabled: Option<bool>,
+    /// Cooldown period in seconds (default: 300)
+    pub cooldown_seconds: Option<i32>,
+}
+
+/// Request to update an alert rule.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct UpdateHealthAlertRule {
+    /// Rule name
+    pub name: Option<String>,
+    /// Description
+    pub description: Option<String>,
+    /// Condition expression
+    pub condition: Option<String>,
+    /// Alert severity
+    pub severity: Option<AlertSeverity>,
+    /// Notification channels as JSON array
+    pub notification_channels: Option<serde_json::Value>,
+    /// Whether the rule is enabled
+    pub enabled: Option<bool>,
+    /// Cooldown period in seconds
+    pub cooldown_seconds: Option<i32>,
+}
+
+/// Request to create a new trace.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreateTrace {
+    /// Trace ID from OpenTelemetry (128-bit hex string)
+    pub trace_id: String,
+    /// Root span ID
+    pub root_span_id: String,
+    /// Service that initiated the trace
+    pub service_name: String,
+    /// Operation name (e.g., "GET /api/v1/buildings")
+    pub operation_name: String,
+    /// HTTP method if applicable
+    pub http_method: Option<String>,
+    /// HTTP path if applicable
+    pub http_path: Option<String>,
+    /// HTTP status code if applicable
+    pub http_status_code: Option<i32>,
+    /// Total duration in milliseconds
+    pub duration_ms: i64,
+    /// Whether the trace has errors
+    pub has_error: bool,
+    /// User ID if authenticated
+    pub user_id: Option<Uuid>,
+    /// Organization ID if in context
+    pub org_id: Option<Uuid>,
+    /// Additional attributes as JSON
+    pub attributes: Option<serde_json::Value>,
+    /// When the trace started
+    pub started_at: DateTime<Utc>,
+    /// When the trace completed
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+/// Request to create a new span.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreateSpan {
+    /// Parent trace ID (database UUID)
+    pub trace_id: Uuid,
+    /// Span ID (64-bit hex string)
+    pub span_id: String,
+    /// Parent span ID if not root span
+    pub parent_span_id: Option<String>,
+    /// Service name
+    pub service_name: String,
+    /// Operation name
+    pub operation_name: String,
+    /// Span kind
+    pub span_kind: SpanKind,
+    /// Duration in milliseconds
+    pub duration_ms: i64,
+    /// Span status
+    pub status: SpanStatus,
+    /// Error message if status is error
+    pub error_message: Option<String>,
+    /// Additional attributes as JSON
+    pub attributes: Option<serde_json::Value>,
+    /// Span events as JSON array
+    pub events: Option<serde_json::Value>,
+    /// When the span started
+    pub started_at: DateTime<Utc>,
+    /// When the span ended
+    pub ended_at: Option<DateTime<Utc>>,
+}
+
 // ==================== Common Types ====================
 
 /// Pagination response wrapper.
