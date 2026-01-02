@@ -6,8 +6,9 @@ import type {
 } from '@ppt/api-client';
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
 import { type ReactNode, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { ConnectionStatus, OfflineIndicator, ToastProvider, useToast } from './components';
+import { ConnectionStatus, LanguageSwitcher, OfflineIndicator, ToastProvider, useToast } from './components';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
 import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
@@ -122,6 +123,23 @@ function WebSocketWrapper({ children }: { children: ReactNode }) {
   );
 }
 
+function AppNavigation() {
+  const { t } = useTranslation();
+  return (
+    <nav className="app-nav" aria-label="Main navigation">
+      <Link to="/">{t('nav.home')}</Link>
+      <Link to="/documents">{t('nav.documents')}</Link>
+      <Link to="/news">{t('nav.news')}</Link>
+      <Link to="/emergency">{t('nav.emergency')}</Link>
+      <Link to="/disputes">{t('nav.disputes')}</Link>
+      <Link to="/settings/accessibility">{t('nav.accessibility')}</Link>
+      <Link to="/settings/privacy">{t('nav.privacy')}</Link>
+      <ConnectionStatus />
+      <LanguageSwitcher />
+    </nav>
+  );
+}
+
 function App() {
   return (
     <AccessibilityProvider>
@@ -132,16 +150,7 @@ function App() {
               <SkipNavigation mainContentId="main-content" />
               <OfflineIndicator />
               <div className="app">
-                <nav className="app-nav" aria-label="Main navigation">
-                  <Link to="/">Home</Link>
-                  <Link to="/documents">Documents</Link>
-                  <Link to="/news">News</Link>
-                  <Link to="/emergency">Emergency Contacts</Link>
-                  <Link to="/disputes">Disputes</Link>
-                  <Link to="/settings/accessibility">Accessibility</Link>
-                  <Link to="/settings/privacy">Privacy</Link>
-                  <ConnectionStatus />
-                </nav>
+                <AppNavigation />
                 <main id="main-content">
                   <Routes>
                     <Route path="/" element={<Home />} />
