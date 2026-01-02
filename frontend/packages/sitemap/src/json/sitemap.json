@@ -1,0 +1,2309 @@
+{
+  "routes": {
+    "ppt-web": [
+      {
+        "id": "ppt-home",
+        "app": "ppt-web",
+        "path": "/",
+        "name": "Home",
+        "description": "Property Management System homepage",
+        "auth": {
+          "required": false
+        },
+        "component": "Home",
+        "tags": ["navigation", "public"]
+      },
+      {
+        "id": "ppt-login",
+        "app": "ppt-web",
+        "path": "/login",
+        "name": "Login",
+        "description": "User authentication page",
+        "auth": {
+          "required": false
+        },
+        "apiEndpoints": ["auth_login"],
+        "component": "LoginPage",
+        "feature": "UC-14",
+        "tags": ["auth", "public"]
+      },
+      {
+        "id": "ppt-documents",
+        "app": "ppt-web",
+        "path": "/documents",
+        "name": "Documents",
+        "description": "Document management dashboard",
+        "auth": {
+          "required": true,
+          "roles": ["owner", "tenant", "manager", "organization_admin"],
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["documents_list"],
+        "component": "DocumentsPage",
+        "feature": "Epic-39",
+        "tags": ["documents", "protected"]
+      },
+      {
+        "id": "ppt-document-upload",
+        "app": "ppt-web",
+        "path": "/documents/upload",
+        "name": "Upload Document",
+        "description": "Document upload page",
+        "auth": {
+          "required": true,
+          "roles": ["owner", "manager", "organization_admin"],
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["documents_upload"],
+        "component": "DocumentUploadPage",
+        "parentId": "ppt-documents",
+        "feature": "Epic-39",
+        "tags": ["documents", "protected", "create"]
+      },
+      {
+        "id": "ppt-document-detail",
+        "app": "ppt-web",
+        "path": "/documents/:documentId",
+        "name": "Document Detail",
+        "description": "View document details and versions",
+        "params": [
+          {
+            "name": "documentId",
+            "type": "uuid",
+            "required": true,
+            "description": "Document ID"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["documents_get", "documents_get_versions"],
+        "component": "DocumentDetailPage",
+        "parentId": "ppt-documents",
+        "feature": "Epic-39",
+        "tags": ["documents", "protected", "detail"]
+      },
+      {
+        "id": "ppt-news",
+        "app": "ppt-web",
+        "path": "/news",
+        "name": "News",
+        "description": "News and announcements list",
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["news_list"],
+        "component": "NewsListPage",
+        "feature": "Epic-59",
+        "tags": ["news", "protected"]
+      },
+      {
+        "id": "ppt-news-detail",
+        "app": "ppt-web",
+        "path": "/news/:articleId",
+        "name": "Article Detail",
+        "description": "View news article details",
+        "params": [
+          {
+            "name": "articleId",
+            "type": "uuid",
+            "required": true,
+            "description": "Article ID"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["news_get"],
+        "component": "ArticleDetailPage",
+        "parentId": "ppt-news",
+        "feature": "Epic-59",
+        "tags": ["news", "protected", "detail"]
+      },
+      {
+        "id": "ppt-emergency",
+        "app": "ppt-web",
+        "path": "/emergency",
+        "name": "Emergency Contacts",
+        "description": "Emergency contact directory",
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["emergency_list"],
+        "component": "EmergencyContactDirectoryPage",
+        "feature": "Epic-62",
+        "tags": ["emergency", "protected"]
+      },
+      {
+        "id": "ppt-settings-accessibility",
+        "app": "ppt-web",
+        "path": "/settings/accessibility",
+        "name": "Accessibility Settings",
+        "description": "Accessibility preferences",
+        "auth": {
+          "required": true
+        },
+        "component": "AccessibilitySettingsPage",
+        "feature": "Epic-60",
+        "tags": ["settings", "protected"]
+      },
+      {
+        "id": "ppt-settings-privacy",
+        "app": "ppt-web",
+        "path": "/settings/privacy",
+        "name": "Privacy Settings",
+        "description": "Privacy preferences",
+        "auth": {
+          "required": true
+        },
+        "component": "PrivacySettingsPage",
+        "feature": "Epic-63",
+        "tags": ["settings", "protected"]
+      },
+      {
+        "id": "ppt-disputes",
+        "app": "ppt-web",
+        "path": "/disputes",
+        "name": "Disputes",
+        "description": "Dispute resolution center",
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["disputes_list"],
+        "component": "DisputesPage",
+        "feature": "Epic-77",
+        "tags": ["disputes", "protected"]
+      },
+      {
+        "id": "ppt-dispute-new",
+        "app": "ppt-web",
+        "path": "/disputes/new",
+        "name": "File Dispute",
+        "description": "File a new dispute",
+        "auth": {
+          "required": true,
+          "roles": ["owner", "tenant", "resident"],
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["disputes_create"],
+        "component": "FileDisputePage",
+        "parentId": "ppt-disputes",
+        "feature": "Epic-77",
+        "tags": ["disputes", "protected", "create"]
+      },
+      {
+        "id": "ppt-dispute-detail",
+        "app": "ppt-web",
+        "path": "/disputes/:disputeId",
+        "name": "Dispute Detail",
+        "description": "View dispute details and status",
+        "params": [
+          {
+            "name": "disputeId",
+            "type": "uuid",
+            "required": true,
+            "description": "Dispute ID"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "apiEndpoints": ["disputes_get"],
+        "component": "DisputeDetailPage",
+        "parentId": "ppt-disputes",
+        "feature": "Epic-77",
+        "tags": ["disputes", "protected", "detail"]
+      }
+    ],
+    "reality-web": [
+      {
+        "id": "reality-home",
+        "app": "reality-web",
+        "path": "/",
+        "name": "Home",
+        "description": "Reality Portal homepage with hero search",
+        "auth": {
+          "required": false
+        },
+        "component": "HomePage",
+        "tags": ["navigation", "public"]
+      },
+      {
+        "id": "reality-listings",
+        "app": "reality-web",
+        "path": "/listings",
+        "name": "Listings",
+        "description": "Property search results with filters",
+        "queryParams": [
+          {
+            "name": "type",
+            "type": "string",
+            "required": false,
+            "description": "sale or rent"
+          },
+          {
+            "name": "price_min",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "price_max",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "area_min",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "rooms",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "city",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "sort",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "apiEndpoints": ["listings_search"],
+        "component": "ListingsPage",
+        "tags": ["listings", "public", "search"]
+      },
+      {
+        "id": "reality-listing-detail",
+        "app": "reality-web",
+        "path": "/listings/[slug]",
+        "name": "Listing Detail",
+        "description": "Individual property listing page",
+        "params": [
+          {
+            "name": "slug",
+            "type": "string",
+            "required": true,
+            "description": "Listing slug"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "apiEndpoints": ["listings_get"],
+        "component": "ListingDetailPage",
+        "parentId": "reality-listings",
+        "tags": ["listings", "public", "detail"]
+      },
+      {
+        "id": "reality-favorites",
+        "app": "reality-web",
+        "path": "/favorites",
+        "name": "Favorites",
+        "description": "User's favorite listings",
+        "auth": {
+          "required": true
+        },
+        "apiEndpoints": ["favorites_list"],
+        "component": "FavoritesPage",
+        "tags": ["favorites", "protected"]
+      },
+      {
+        "id": "reality-saved-searches",
+        "app": "reality-web",
+        "path": "/saved-searches",
+        "name": "Saved Searches",
+        "description": "Saved search queries",
+        "auth": {
+          "required": true
+        },
+        "apiEndpoints": ["saved_searches_list"],
+        "component": "SavedSearchesPage",
+        "tags": ["saved-searches", "protected"]
+      },
+      {
+        "id": "reality-inquiries",
+        "app": "reality-web",
+        "path": "/inquiries",
+        "name": "Inquiries",
+        "description": "Viewing and contact inquiries",
+        "auth": {
+          "required": true
+        },
+        "apiEndpoints": ["inquiries_list"],
+        "component": "InquiriesPage",
+        "tags": ["inquiries", "protected"]
+      },
+      {
+        "id": "reality-auth-callback",
+        "app": "reality-web",
+        "path": "/auth/callback",
+        "name": "OAuth Callback",
+        "description": "OAuth callback handler",
+        "auth": {
+          "required": false
+        },
+        "component": "OAuthCallbackPage",
+        "tags": ["auth", "public"]
+      },
+      {
+        "id": "reality-agency",
+        "app": "reality-web",
+        "path": "/agency",
+        "name": "Agency Dashboard",
+        "description": "Agency management dashboard",
+        "auth": {
+          "required": true,
+          "roles": ["real_estate_agent", "organization_admin"]
+        },
+        "apiEndpoints": ["agencies_get"],
+        "component": "AgencyPage",
+        "feature": "Epic-32",
+        "tags": ["agency", "protected"]
+      },
+      {
+        "id": "reality-compare",
+        "app": "reality-web",
+        "path": "/compare",
+        "name": "Compare Properties",
+        "description": "Property comparison tool",
+        "auth": {
+          "required": false
+        },
+        "component": "ComparePage",
+        "tags": ["compare", "public"]
+      }
+    ]
+  },
+  "screens": {
+    "mobile": [
+      {
+        "id": "mobile-dashboard",
+        "app": "mobile",
+        "screenName": "Dashboard",
+        "name": "Dashboard",
+        "description": "Main dashboard with overview",
+        "tab": "Home",
+        "tabIcon": "🏠",
+        "auth": {
+          "required": true
+        },
+        "apiEndpoints": ["dashboard_get"],
+        "component": "DashboardScreen",
+        "tags": ["dashboard", "protected", "navigation"]
+      },
+      {
+        "id": "mobile-faults-list",
+        "app": "mobile",
+        "screenName": "FaultsList",
+        "name": "Faults List",
+        "description": "List of reported faults",
+        "tab": "Faults",
+        "tabIcon": "🔧",
+        "auth": {
+          "required": true
+        },
+        "apiEndpoints": ["faults_list"],
+        "component": "FaultsListScreen",
+        "feature": "UC-03",
+        "tags": ["faults", "protected", "navigation"]
+      },
+      {
+        "id": "mobile-report-fault",
+        "app": "mobile",
+        "screenName": "ReportFault",
+        "name": "Report Fault",
+        "description": "Report a new fault",
+        "tab": "Faults",
+        "tabIcon": "🔧",
+        "auth": {
+          "required": true,
+          "roles": ["owner", "tenant", "resident"]
+        },
+        "apiEndpoints": ["faults_create"],
+        "component": "ReportFaultScreen",
+        "feature": "UC-03",
+        "stack": "Faults",
+        "tags": ["faults", "protected", "create"]
+      },
+      {
+        "id": "mobile-announcements",
+        "app": "mobile",
+        "screenName": "Announcements",
+        "name": "Announcements",
+        "description": "Building announcements and news",
+        "tab": "News",
+        "tabIcon": "📢",
+        "auth": {
+          "required": true
+        },
+        "apiEndpoints": ["announcements_list"],
+        "component": "AnnouncementsScreen",
+        "feature": "Epic-6",
+        "tags": ["announcements", "protected", "navigation"]
+      },
+      {
+        "id": "mobile-voting",
+        "app": "mobile",
+        "screenName": "Voting",
+        "name": "Voting",
+        "description": "Building votes and polls",
+        "tab": "Vote",
+        "tabIcon": "🗳️",
+        "auth": {
+          "required": true
+        },
+        "apiEndpoints": ["voting_list"],
+        "component": "VotingScreen",
+        "feature": "UC-04",
+        "tags": ["voting", "protected", "navigation"]
+      },
+      {
+        "id": "mobile-documents",
+        "app": "mobile",
+        "screenName": "Documents",
+        "name": "Documents",
+        "description": "Building documents",
+        "tab": "Docs",
+        "tabIcon": "📄",
+        "auth": {
+          "required": true
+        },
+        "apiEndpoints": ["documents_list"],
+        "component": "DocumentsScreen",
+        "feature": "Epic-7",
+        "tags": ["documents", "protected", "navigation"]
+      }
+    ]
+  },
+  "endpoints": {
+    "api-server": [
+      {
+        "operationId": "health_check",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/health",
+        "description": "Health check endpoint",
+        "tags": ["Health"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Healthy"
+          }
+        ],
+        "auth": {
+          "required": false
+        }
+      },
+      {
+        "operationId": "auth_login",
+        "server": "api-server",
+        "method": "POST",
+        "path": "/api/v1/auth/login",
+        "description": "Login with email and password",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "ref": "Auth.LoginRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Successful login",
+            "ref": "Auth.LoginResponse"
+          },
+          {
+            "statusCode": 401,
+            "description": "Invalid credentials"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "UC-14"
+      },
+      {
+        "operationId": "auth_register",
+        "server": "api-server",
+        "method": "POST",
+        "path": "/api/v1/auth/register",
+        "description": "Register new user account",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "ref": "Auth.RegisterRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "User created"
+          },
+          {
+            "statusCode": 400,
+            "description": "Invalid input"
+          },
+          {
+            "statusCode": 409,
+            "description": "Email already exists"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "UC-14"
+      },
+      {
+        "operationId": "auth_logout",
+        "server": "api-server",
+        "method": "POST",
+        "path": "/api/v1/auth/logout",
+        "description": "Logout user",
+        "tags": ["Authentication"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Logged out"
+          }
+        ],
+        "auth": {
+          "required": true
+        },
+        "feature": "UC-14"
+      },
+      {
+        "operationId": "auth_refresh",
+        "server": "api-server",
+        "method": "POST",
+        "path": "/api/v1/auth/refresh",
+        "description": "Refresh access token",
+        "tags": ["Authentication"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Token refreshed"
+          },
+          {
+            "statusCode": 401,
+            "description": "Invalid refresh token"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "UC-14"
+      },
+      {
+        "operationId": "documents_list",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/documents",
+        "description": "List documents",
+        "tags": ["Documents"],
+        "queryParams": [
+          {
+            "name": "page",
+            "type": "number",
+            "required": false,
+            "defaultValue": 1
+          },
+          {
+            "name": "limit",
+            "type": "number",
+            "required": false,
+            "defaultValue": 20
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Document list"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-39"
+      },
+      {
+        "operationId": "documents_get",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/documents/:id",
+        "description": "Get document details",
+        "tags": ["Documents"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Document details"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-39"
+      },
+      {
+        "operationId": "documents_upload",
+        "server": "api-server",
+        "method": "POST",
+        "path": "/api/v1/documents",
+        "description": "Upload a new document",
+        "tags": ["Documents"],
+        "requestBody": {
+          "contentType": "multipart/form-data",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "Document created"
+          },
+          {
+            "statusCode": 400,
+            "description": "Invalid file"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-39"
+      },
+      {
+        "operationId": "documents_get_versions",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/documents/:id/versions",
+        "description": "Get document versions",
+        "tags": ["Documents"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Version list"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-39"
+      },
+      {
+        "operationId": "faults_list",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/faults",
+        "description": "List faults",
+        "tags": ["Faults"],
+        "queryParams": [
+          {
+            "name": "page",
+            "type": "number",
+            "required": false,
+            "defaultValue": 1
+          },
+          {
+            "name": "limit",
+            "type": "number",
+            "required": false,
+            "defaultValue": 20
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Fault list"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "UC-03"
+      },
+      {
+        "operationId": "faults_get",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/faults/:id",
+        "description": "Get fault details",
+        "tags": ["Faults"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Fault details"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "UC-03"
+      },
+      {
+        "operationId": "faults_create",
+        "server": "api-server",
+        "method": "POST",
+        "path": "/api/v1/faults",
+        "description": "Report a new fault",
+        "tags": ["Faults"],
+        "requestBody": {
+          "ref": "Faults.CreateRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "Fault created"
+          },
+          {
+            "statusCode": 400,
+            "description": "Invalid input"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "UC-03"
+      },
+      {
+        "operationId": "voting_list",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/voting",
+        "description": "List votes",
+        "tags": ["Voting"],
+        "queryParams": [
+          {
+            "name": "page",
+            "type": "number",
+            "required": false,
+            "defaultValue": 1
+          },
+          {
+            "name": "limit",
+            "type": "number",
+            "required": false,
+            "defaultValue": 20
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Vote list"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "UC-04"
+      },
+      {
+        "operationId": "voting_get",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/voting/:id",
+        "description": "Get vote details",
+        "tags": ["Voting"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Vote details"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "UC-04"
+      },
+      {
+        "operationId": "voting_cast",
+        "server": "api-server",
+        "method": "POST",
+        "path": "/api/v1/voting/:id/cast",
+        "description": "Cast a vote",
+        "tags": ["Voting"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "ref": "Voting.CastRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Vote cast"
+          },
+          {
+            "statusCode": 400,
+            "description": "Invalid vote"
+          },
+          {
+            "statusCode": 403,
+            "description": "Not eligible"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "UC-04"
+      },
+      {
+        "operationId": "announcements_list",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/announcements",
+        "description": "List announcements",
+        "tags": ["Announcements"],
+        "queryParams": [
+          {
+            "name": "page",
+            "type": "number",
+            "required": false,
+            "defaultValue": 1
+          },
+          {
+            "name": "limit",
+            "type": "number",
+            "required": false,
+            "defaultValue": 20
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Announcement list"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-6"
+      },
+      {
+        "operationId": "announcements_get",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/announcements/:id",
+        "description": "Get announcement details",
+        "tags": ["Announcements"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Announcement details"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-6"
+      },
+      {
+        "operationId": "news_list",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/news",
+        "description": "List news articles",
+        "tags": ["News"],
+        "queryParams": [
+          {
+            "name": "page",
+            "type": "number",
+            "required": false,
+            "defaultValue": 1
+          },
+          {
+            "name": "limit",
+            "type": "number",
+            "required": false,
+            "defaultValue": 20
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "News list"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-59"
+      },
+      {
+        "operationId": "news_get",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/news/:id",
+        "description": "Get news article details",
+        "tags": ["News"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "News article"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-59"
+      },
+      {
+        "operationId": "emergency_list",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/emergency",
+        "description": "List emergency contacts",
+        "tags": ["Emergency"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Emergency contacts list"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-62"
+      },
+      {
+        "operationId": "disputes_list",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/disputes",
+        "description": "List disputes",
+        "tags": ["Disputes"],
+        "queryParams": [
+          {
+            "name": "page",
+            "type": "number",
+            "required": false,
+            "defaultValue": 1
+          },
+          {
+            "name": "limit",
+            "type": "number",
+            "required": false,
+            "defaultValue": 20
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Dispute list"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-77"
+      },
+      {
+        "operationId": "disputes_get",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/disputes/:id",
+        "description": "Get dispute details",
+        "tags": ["Disputes"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Dispute details"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-77"
+      },
+      {
+        "operationId": "disputes_create",
+        "server": "api-server",
+        "method": "POST",
+        "path": "/api/v1/disputes",
+        "description": "File a new dispute",
+        "tags": ["Disputes"],
+        "requestBody": {
+          "ref": "Disputes.CreateRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "Dispute created"
+          },
+          {
+            "statusCode": 400,
+            "description": "Invalid input"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        },
+        "feature": "Epic-77"
+      },
+      {
+        "operationId": "dashboard_get",
+        "server": "api-server",
+        "method": "GET",
+        "path": "/api/v1/dashboard",
+        "description": "Get dashboard data",
+        "tags": ["Dashboard"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Dashboard data"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "tenantContext": {
+            "required": true
+          }
+        }
+      }
+    ],
+    "reality-server": [
+      {
+        "operationId": "health_check",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/health",
+        "description": "Health check endpoint",
+        "tags": ["Health"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Healthy"
+          }
+        ],
+        "auth": {
+          "required": false
+        }
+      },
+      {
+        "operationId": "listings_search",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/listings",
+        "description": "Search property listings",
+        "tags": ["Listings"],
+        "queryParams": [
+          {
+            "name": "type",
+            "type": "string",
+            "required": false,
+            "description": "sale or rent"
+          },
+          {
+            "name": "price_min",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "price_max",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "area_min",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "area_max",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "rooms",
+            "type": "number",
+            "required": false
+          },
+          {
+            "name": "city",
+            "type": "string",
+            "required": false
+          },
+          {
+            "name": "page",
+            "type": "number",
+            "required": false,
+            "defaultValue": 1
+          },
+          {
+            "name": "limit",
+            "type": "number",
+            "required": false,
+            "defaultValue": 20
+          },
+          {
+            "name": "sort",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Listing search results"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "Epic-16"
+      },
+      {
+        "operationId": "listings_get",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/listings/:slug",
+        "description": "Get listing details by slug",
+        "tags": ["Listings"],
+        "pathParams": [
+          {
+            "name": "slug",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Listing details"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "Epic-16"
+      },
+      {
+        "operationId": "listings_suggestions",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/listings/suggestions",
+        "description": "Get search suggestions",
+        "tags": ["Listings"],
+        "queryParams": [
+          {
+            "name": "q",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Search suggestions"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "Epic-16"
+      },
+      {
+        "operationId": "favorites_list",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/favorites",
+        "description": "List user's favorites",
+        "tags": ["Favorites"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Favorites list"
+          }
+        ],
+        "auth": {
+          "required": true
+        }
+      },
+      {
+        "operationId": "favorites_add",
+        "server": "reality-server",
+        "method": "POST",
+        "path": "/api/v1/favorites",
+        "description": "Add to favorites",
+        "tags": ["Favorites"],
+        "requestBody": {
+          "ref": "Favorites.AddRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "Added to favorites"
+          },
+          {
+            "statusCode": 409,
+            "description": "Already favorited"
+          }
+        ],
+        "auth": {
+          "required": true
+        }
+      },
+      {
+        "operationId": "favorites_remove",
+        "server": "reality-server",
+        "method": "DELETE",
+        "path": "/api/v1/favorites/:id",
+        "description": "Remove from favorites",
+        "tags": ["Favorites"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Removed from favorites"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": true
+        }
+      },
+      {
+        "operationId": "saved_searches_list",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/saved-searches",
+        "description": "List saved searches",
+        "tags": ["SavedSearches"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Saved searches list"
+          }
+        ],
+        "auth": {
+          "required": true
+        }
+      },
+      {
+        "operationId": "saved_searches_create",
+        "server": "reality-server",
+        "method": "POST",
+        "path": "/api/v1/saved-searches",
+        "description": "Create saved search",
+        "tags": ["SavedSearches"],
+        "requestBody": {
+          "ref": "SavedSearches.CreateRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "Saved search created"
+          }
+        ],
+        "auth": {
+          "required": true
+        }
+      },
+      {
+        "operationId": "saved_searches_delete",
+        "server": "reality-server",
+        "method": "DELETE",
+        "path": "/api/v1/saved-searches/:id",
+        "description": "Delete saved search",
+        "tags": ["SavedSearches"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Deleted"
+          }
+        ],
+        "auth": {
+          "required": true
+        }
+      },
+      {
+        "operationId": "inquiries_list",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/inquiries",
+        "description": "List inquiries",
+        "tags": ["Inquiries"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Inquiries list"
+          }
+        ],
+        "auth": {
+          "required": true
+        }
+      },
+      {
+        "operationId": "inquiries_contact",
+        "server": "reality-server",
+        "method": "POST",
+        "path": "/api/v1/inquiries/contact/:listing_id",
+        "description": "Send contact message",
+        "tags": ["Inquiries"],
+        "pathParams": [
+          {
+            "name": "listing_id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "ref": "Inquiries.ContactRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "Message sent"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "Epic-33"
+      },
+      {
+        "operationId": "inquiries_viewing",
+        "server": "reality-server",
+        "method": "POST",
+        "path": "/api/v1/inquiries/viewing/:listing_id",
+        "description": "Request viewing",
+        "tags": ["Inquiries"],
+        "pathParams": [
+          {
+            "name": "listing_id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "ref": "Inquiries.ViewingRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "Viewing requested"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "Epic-33"
+      },
+      {
+        "operationId": "sso_login",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/sso/login",
+        "description": "Initiate SSO login",
+        "tags": ["SSO"],
+        "responses": [
+          {
+            "statusCode": 302,
+            "description": "Redirect to OAuth provider"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "Epic-10A"
+      },
+      {
+        "operationId": "sso_callback",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/sso/callback",
+        "description": "SSO callback",
+        "tags": ["SSO"],
+        "responses": [
+          {
+            "statusCode": 302,
+            "description": "Redirect after auth"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "Epic-10A"
+      },
+      {
+        "operationId": "sso_session",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/sso/session",
+        "description": "Get current session",
+        "tags": ["SSO"],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Session info"
+          }
+        ],
+        "auth": {
+          "required": true
+        },
+        "feature": "Epic-10A"
+      },
+      {
+        "operationId": "agencies_get",
+        "server": "reality-server",
+        "method": "GET",
+        "path": "/api/v1/agencies/:id",
+        "description": "Get agency details",
+        "tags": ["Agencies"],
+        "pathParams": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "required": true
+          }
+        ],
+        "responses": [
+          {
+            "statusCode": 200,
+            "description": "Agency details"
+          },
+          {
+            "statusCode": 404,
+            "description": "Not found"
+          }
+        ],
+        "auth": {
+          "required": false
+        },
+        "feature": "Epic-32"
+      },
+      {
+        "operationId": "agencies_create",
+        "server": "reality-server",
+        "method": "POST",
+        "path": "/api/v1/agencies",
+        "description": "Create agency",
+        "tags": ["Agencies"],
+        "requestBody": {
+          "ref": "Agencies.CreateRequest",
+          "contentType": "application/json",
+          "required": true
+        },
+        "responses": [
+          {
+            "statusCode": 201,
+            "description": "Agency created"
+          }
+        ],
+        "auth": {
+          "required": true,
+          "roles": ["organization_admin"]
+        },
+        "feature": "Epic-32"
+      }
+    ]
+  },
+  "flows": [
+    {
+      "id": "flow-login-basic",
+      "name": "Basic Login Flow",
+      "apps": ["ppt-web", "api-server"],
+      "description": "User logs in with email and password",
+      "category": "authentication",
+      "requiredRole": "anonymous",
+      "useCases": ["UC-14.1"],
+      "steps": [
+        {
+          "order": 1,
+          "name": "Navigate to login page",
+          "route": "ppt-login",
+          "action": {
+            "type": "navigate",
+            "target": "/login"
+          },
+          "assertions": [
+            {
+              "type": "url",
+              "target": "path",
+              "expected": "/login"
+            },
+            {
+              "type": "visible",
+              "target": "[data-testid=\"login-form\"]",
+              "expected": true
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "name": "Enter email",
+          "action": {
+            "type": "fill",
+            "target": "[name=\"email\"]",
+            "value": "{{user.email}}"
+          }
+        },
+        {
+          "order": 3,
+          "name": "Enter password",
+          "action": {
+            "type": "fill",
+            "target": "[name=\"password\"]",
+            "value": "{{user.password}}"
+          }
+        },
+        {
+          "order": 4,
+          "name": "Submit login form",
+          "apiCall": "auth_login",
+          "action": {
+            "type": "submit",
+            "target": "[data-testid=\"login-form\"]"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 200
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "name": "Redirect to dashboard",
+          "action": {
+            "type": "wait",
+            "waitMs": 500
+          },
+          "assertions": [
+            {
+              "type": "url",
+              "target": "path",
+              "expected": "/"
+            },
+            {
+              "type": "visible",
+              "target": "[data-testid=\"dashboard\"]",
+              "expected": true
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "authenticated": true,
+        "redirectedTo": "/"
+      },
+      "tags": ["auth", "critical", "smoke"]
+    },
+    {
+      "id": "flow-logout",
+      "name": "Logout Flow",
+      "apps": ["ppt-web", "api-server"],
+      "description": "User logs out of the system",
+      "category": "authentication",
+      "requiredRole": "tenant",
+      "prerequisites": ["flow-login-basic"],
+      "steps": [
+        {
+          "order": 1,
+          "name": "Click logout button",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"logout-btn\"]"
+          }
+        },
+        {
+          "order": 2,
+          "name": "Confirm logout",
+          "apiCall": "auth_logout",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"confirm-logout\"]"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 200
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "name": "Redirect to login",
+          "assertions": [
+            {
+              "type": "url",
+              "target": "path",
+              "expected": "/login"
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "authenticated": false,
+        "redirectedTo": "/login"
+      },
+      "tags": ["auth", "smoke"]
+    },
+    {
+      "id": "flow-document-upload",
+      "name": "Document Upload Flow",
+      "apps": ["ppt-web", "api-server"],
+      "description": "User uploads a new document",
+      "category": "documents",
+      "requiredRole": "owner",
+      "prerequisites": ["flow-login-basic"],
+      "useCases": ["UC-08.1"],
+      "steps": [
+        {
+          "order": 1,
+          "name": "Navigate to documents",
+          "route": "ppt-documents",
+          "action": {
+            "type": "navigate",
+            "target": "/documents"
+          },
+          "assertions": [
+            {
+              "type": "url",
+              "target": "path",
+              "expected": "/documents"
+            }
+          ]
+        },
+        {
+          "order": 2,
+          "name": "Click upload button",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"upload-btn\"]"
+          },
+          "assertions": [
+            {
+              "type": "url",
+              "target": "path",
+              "expected": "/documents/upload"
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "name": "Fill upload form",
+          "action": {
+            "type": "fill",
+            "value": {
+              "file": "{{document.file}}",
+              "title": "{{document.title}}",
+              "category": "{{document.category}}"
+            }
+          }
+        },
+        {
+          "order": 4,
+          "name": "Submit upload",
+          "apiCall": "documents_upload",
+          "action": {
+            "type": "submit",
+            "target": "[data-testid=\"upload-form\"]"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 201
+            }
+          ]
+        },
+        {
+          "order": 5,
+          "name": "Verify success",
+          "assertions": [
+            {
+              "type": "visible",
+              "target": "[data-testid=\"toast-success\"]",
+              "expected": true
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "documentUploaded": true
+      },
+      "tags": ["documents", "upload", "smoke"]
+    },
+    {
+      "id": "flow-document-view",
+      "name": "Document View Flow",
+      "apps": ["ppt-web", "api-server"],
+      "description": "User views document details",
+      "category": "documents",
+      "requiredRole": "tenant",
+      "prerequisites": ["flow-login-basic"],
+      "steps": [
+        {
+          "order": 1,
+          "name": "Navigate to documents",
+          "route": "ppt-documents",
+          "action": {
+            "type": "navigate",
+            "target": "/documents"
+          }
+        },
+        {
+          "order": 2,
+          "name": "Click on document",
+          "apiCall": "documents_get",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"document-item\"]:first-child"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 200
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "name": "View document detail",
+          "assertions": [
+            {
+              "type": "visible",
+              "target": "[data-testid=\"document-detail\"]",
+              "expected": true
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "documentViewed": true
+      },
+      "tags": ["documents", "view"]
+    },
+    {
+      "id": "flow-report-fault",
+      "name": "Report Fault Flow",
+      "apps": ["mobile", "api-server"],
+      "description": "User reports a new fault",
+      "category": "fault_management",
+      "requiredRole": "tenant",
+      "prerequisites": ["flow-login-basic"],
+      "useCases": ["UC-03.1"],
+      "steps": [
+        {
+          "order": 1,
+          "name": "Navigate to faults",
+          "route": "mobile-faults-list",
+          "action": {
+            "type": "navigate",
+            "target": "FaultsList"
+          }
+        },
+        {
+          "order": 2,
+          "name": "Tap report button",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"report-fault-btn\"]"
+          }
+        },
+        {
+          "order": 3,
+          "name": "Fill fault form",
+          "action": {
+            "type": "fill",
+            "value": {
+              "title": "{{fault.title}}",
+              "description": "{{fault.description}}",
+              "category": "{{fault.category}}",
+              "priority": "{{fault.priority}}"
+            }
+          }
+        },
+        {
+          "order": 4,
+          "name": "Submit fault",
+          "apiCall": "faults_create",
+          "action": {
+            "type": "submit",
+            "target": "[data-testid=\"fault-form\"]"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 201
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "faultCreated": true
+      },
+      "tags": ["faults", "create", "smoke"]
+    },
+    {
+      "id": "flow-file-dispute",
+      "name": "File Dispute Flow",
+      "apps": ["ppt-web", "api-server"],
+      "description": "User files a new dispute",
+      "category": "disputes",
+      "requiredRole": "tenant",
+      "prerequisites": ["flow-login-basic"],
+      "steps": [
+        {
+          "order": 1,
+          "name": "Navigate to disputes",
+          "route": "ppt-disputes",
+          "action": {
+            "type": "navigate",
+            "target": "/disputes"
+          }
+        },
+        {
+          "order": 2,
+          "name": "Click file dispute",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"file-dispute-btn\"]"
+          },
+          "assertions": [
+            {
+              "type": "url",
+              "target": "path",
+              "expected": "/disputes/new"
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "name": "Fill dispute form",
+          "action": {
+            "type": "fill",
+            "value": {
+              "subject": "{{dispute.subject}}",
+              "description": "{{dispute.description}}",
+              "category": "{{dispute.category}}"
+            }
+          }
+        },
+        {
+          "order": 4,
+          "name": "Submit dispute",
+          "apiCall": "disputes_create",
+          "action": {
+            "type": "submit",
+            "target": "[data-testid=\"dispute-form\"]"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 201
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "disputeFiled": true
+      },
+      "tags": ["disputes", "create", "smoke"]
+    },
+    {
+      "id": "flow-cast-vote",
+      "name": "Cast Vote Flow",
+      "apps": ["mobile", "api-server"],
+      "description": "User casts a vote on a poll",
+      "category": "voting",
+      "requiredRole": "owner",
+      "prerequisites": ["flow-login-basic"],
+      "useCases": ["UC-04.1"],
+      "steps": [
+        {
+          "order": 1,
+          "name": "Navigate to voting",
+          "route": "mobile-voting",
+          "action": {
+            "type": "navigate",
+            "target": "Voting"
+          }
+        },
+        {
+          "order": 2,
+          "name": "Select active vote",
+          "apiCall": "voting_get",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"vote-item\"]:first-child"
+          }
+        },
+        {
+          "order": 3,
+          "name": "Select option",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"vote-option-1\"]"
+          }
+        },
+        {
+          "order": 4,
+          "name": "Confirm vote",
+          "apiCall": "voting_cast",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"confirm-vote-btn\"]"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 200
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "voteCast": true
+      },
+      "tags": ["voting", "cast", "smoke"]
+    },
+    {
+      "id": "flow-search-listings",
+      "name": "Search Listings Flow",
+      "apps": ["reality-web", "reality-server"],
+      "description": "User searches for property listings",
+      "category": "listings",
+      "requiredRole": "anonymous",
+      "steps": [
+        {
+          "order": 1,
+          "name": "Navigate to home",
+          "route": "reality-home",
+          "action": {
+            "type": "navigate",
+            "target": "/"
+          }
+        },
+        {
+          "order": 2,
+          "name": "Enter search criteria",
+          "action": {
+            "type": "fill",
+            "value": {
+              "type": "sale",
+              "city": "{{search.city}}",
+              "price_max": "{{search.price_max}}"
+            }
+          }
+        },
+        {
+          "order": 3,
+          "name": "Submit search",
+          "apiCall": "listings_search",
+          "action": {
+            "type": "submit",
+            "target": "[data-testid=\"search-form\"]"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 200
+            }
+          ]
+        },
+        {
+          "order": 4,
+          "name": "View results",
+          "assertions": [
+            {
+              "type": "url",
+              "target": "path",
+              "expected": "/listings"
+            },
+            {
+              "type": "visible",
+              "target": "[data-testid=\"listing-grid\"]",
+              "expected": true
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "searchPerformed": true,
+        "resultsDisplayed": true
+      },
+      "tags": ["listings", "search", "smoke"]
+    },
+    {
+      "id": "flow-add-favorite",
+      "name": "Add to Favorites Flow",
+      "apps": ["reality-web", "reality-server"],
+      "description": "User adds a listing to favorites",
+      "category": "listings",
+      "requiredRole": "portal_user",
+      "prerequisites": ["flow-search-listings"],
+      "steps": [
+        {
+          "order": 1,
+          "name": "View listing detail",
+          "route": "reality-listing-detail",
+          "apiCall": "listings_get",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"listing-card\"]:first-child"
+          }
+        },
+        {
+          "order": 2,
+          "name": "Click favorite button",
+          "apiCall": "favorites_add",
+          "action": {
+            "type": "click",
+            "target": "[data-testid=\"favorite-btn\"]"
+          },
+          "assertions": [
+            {
+              "type": "api_response",
+              "target": "status",
+              "expected": 201
+            }
+          ]
+        },
+        {
+          "order": 3,
+          "name": "Verify favorite added",
+          "assertions": [
+            {
+              "type": "visible",
+              "target": "[data-testid=\"favorite-btn\"][data-favorited=\"true\"]",
+              "expected": true
+            }
+          ]
+        }
+      ],
+      "expectedOutcome": {
+        "favoriteAdded": true
+      },
+      "tags": ["favorites", "add"]
+    }
+  ],
+  "metadata": {
+    "generated_at": "2026-01-02T12:05:07.763Z",
+    "version": "1.0.0",
+    "stats": {
+      "ppt_web_routes": 13,
+      "reality_web_routes": 9,
+      "mobile_screens": 6,
+      "api_server_endpoints": 24,
+      "reality_server_endpoints": 18,
+      "flows": 9
+    }
+  }
+}
