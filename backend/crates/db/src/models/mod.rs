@@ -795,11 +795,12 @@ pub use feature_package::{
 
 // Epic 109: User Type Feature Experience
 pub use feature_analytics::{
-    CreateFeaturePackage, FeatureAccessState, FeatureDescriptor, FeatureDescriptorSummary,
-    FeatureEventType, FeaturePackage, FeaturePackageFeature, FeaturePackageItem,
-    FeaturePackageWithFeatures, FeatureStatsByUserType, FeatureStatsQuery, FeatureUsageEvent,
-    FeatureUsageStats, LogFeatureEvent, OrganizationFeaturePackage, ResolvedFeature,
-    ResolvedFeaturesQuery, SetFeaturePreference, SetUserTypeAccess, SubscribeToPackage,
-    UpdateFeaturePackage, UpgradeOptionsResponse, UpsertFeatureDescriptor, UserFeaturePreference,
+    CreateFeaturePackage, FeatureAccessState as FeatureAccessState109,
+    FeatureDescriptor as FeatureDescriptor109, FeatureDescriptorSummary, FeatureEventType,
+    FeaturePackage, FeaturePackageFeature, FeaturePackageItem, FeaturePackageWithFeatures,
+    FeatureStatsByUserType, FeatureStatsQuery, FeatureUsageEvent, FeatureUsageStats,
+    LogFeatureEvent, OrganizationFeaturePackage, ResolvedFeature, ResolvedFeaturesQuery,
+    SetFeaturePreference, SetUserTypeAccess, SubscribeToPackage, UpdateFeaturePackage,
+    UpgradeOptionsResponse, UpsertFeatureDescriptor, UserFeaturePreference as UserFeaturePreference109,
     UserTypeFeatureAccess,
 };
