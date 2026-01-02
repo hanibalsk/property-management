@@ -6,5 +6,14 @@
     "extensionToLanguage": {
       ".rs": "rust"
     }
+  },
+  "kotlin": {
+    "command": "/opt/homebrew/bin/kotlin-language-server",
+    "args": [],
+    "rootPath": "mobile-native",
+    "extensionToLanguage": {
+      ".kt": "kotlin",
+      ".kts": "kotlin"
+    }
   }
 }

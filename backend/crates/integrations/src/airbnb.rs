@@ -534,6 +534,8 @@ impl AirbnbClient {
     ///
     /// # Returns
     /// List of Airbnb listings.
+    ///
+    /// Story 98.3: Implemented actual API response parsing.
     pub async fn fetch_listings(
         &self,
         access_token: &str,
@@ -547,11 +549,26 @@ impl AirbnbClient {
 
         self.handle_response_status(&response)?;
 
-        // Stub implementation - parse actual response in production
         tracing::info!("Fetching Airbnb listings");
 
-        // Return empty list as stub
-        Ok(Vec::new())
+        // Parse the API response
+        #[derive(Deserialize)]
+        struct ListingsResponse {
+            listings: Option<Vec<AirbnbListing>>,
+            data: Option<Vec<AirbnbListing>>,
+        }
+
+        let body = response.text().await?;
+        let parsed: ListingsResponse = serde_json::from_str(&body).map_err(|e| {
+            tracing::error!("Failed to parse Airbnb listings response: {}", e);
+            AirbnbError::Api(format!("Invalid response format: {}", e))
+        })?;
+
+        // Airbnb API may return listings in either 'listings' or 'data' field
+        let listings = parsed.listings.or(parsed.data).unwrap_or_default();
+        tracing::info!("Fetched {} Airbnb listings", listings.len());
+
+        Ok(listings)
     }
 
     /// Fetch a single listing by ID.
@@ -562,6 +579,8 @@ impl AirbnbClient {
     ///
     /// # Returns
     /// The listing details.
+    ///
+    /// Story 98.3: Implemented actual API response parsing.
     pub async fn fetch_listing(
         &self,
         access_token: &str,
@@ -576,10 +595,25 @@ impl AirbnbClient {
 
         self.handle_response_status(&response)?;
 
-        // Stub implementation
         tracing::info!("Fetching Airbnb listing: {}", listing_id);
 
-        Err(AirbnbError::Api("Listing not found".to_string()))
+        // Parse the API response
+        #[derive(Deserialize)]
+        struct ListingResponse {
+            listing: Option<AirbnbListing>,
+            data: Option<AirbnbListing>,
+        }
+
+        let body = response.text().await?;
+        let parsed: ListingResponse = serde_json::from_str(&body).map_err(|e| {
+            tracing::error!("Failed to parse Airbnb listing response: {}", e);
+            AirbnbError::Api(format!("Invalid response format: {}", e))
+        })?;
+
+        parsed
+            .listing
+            .or(parsed.data)
+            .ok_or_else(|| AirbnbError::Api(format!("Listing {} not found", listing_id)))
     }
 
     // ==================== Reservation Operations ====================
@@ -594,6 +628,8 @@ impl AirbnbClient {
     ///
     /// # Returns
     /// List of reservations.
+    ///
+    /// Story 98.3: Implemented actual API response parsing.
     pub async fn fetch_reservations(
         &self,
         access_token: &str,
@@ -619,10 +655,29 @@ impl AirbnbClient {
 
         self.handle_response_status(&response)?;
 
-        // Stub implementation
         tracing::info!("Fetching Airbnb reservations for listing: {}", listing_id);
 
-        Ok(Vec::new())
+        // Parse the API response
+        #[derive(Deserialize)]
+        struct ReservationsResponse {
+            reservations: Option<Vec<AirbnbReservation>>,
+            data: Option<Vec<AirbnbReservation>>,
+        }
+
+        let body = response.text().await?;
+        let parsed: ReservationsResponse = serde_json::from_str(&body).map_err(|e| {
+            tracing::error!("Failed to parse Airbnb reservations response: {}", e);
+            AirbnbError::Api(format!("Invalid response format: {}", e))
+        })?;
+
+        let reservations = parsed.reservations.or(parsed.data).unwrap_or_default();
+        tracing::info!(
+            "Fetched {} Airbnb reservations for listing {}",
+            reservations.len(),
+            listing_id
+        );
+
+        Ok(reservations)
     }
 
     /// Fetch all reservations across all listings.
@@ -632,6 +687,8 @@ impl AirbnbClient {
     ///
     /// # Returns
     /// List of all reservations.
+    ///
+    /// Story 98.3: Implemented actual API response parsing.
     pub async fn fetch_all_reservations(
         &self,
         access_token: &str,
@@ -645,10 +702,25 @@ impl AirbnbClient {
 
         self.handle_response_status(&response)?;
 
-        // Stub implementation
         tracing::info!("Fetching all Airbnb reservations");
 
-        Ok(Vec::new())
+        // Parse the API response
+        #[derive(Deserialize)]
+        struct ReservationsResponse {
+            reservations: Option<Vec<AirbnbReservation>>,
+            data: Option<Vec<AirbnbReservation>>,
+        }
+
+        let body = response.text().await?;
+        let parsed: ReservationsResponse = serde_json::from_str(&body).map_err(|e| {
+            tracing::error!("Failed to parse Airbnb reservations response: {}", e);
+            AirbnbError::Api(format!("Invalid response format: {}", e))
+        })?;
+
+        let reservations = parsed.reservations.or(parsed.data).unwrap_or_default();
+        tracing::info!("Fetched {} Airbnb reservations total", reservations.len());
+
+        Ok(reservations)
     }
 
     /// Sync reservations from Airbnb.

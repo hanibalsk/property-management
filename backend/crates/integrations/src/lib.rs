@@ -12,6 +12,9 @@ pub mod crypto;
 // Epic 96: OAuth Phase 2 Integrations
 pub mod oauth;
 
+// Epic 98: Voice Assistant OAuth
+pub mod voice_oauth;
+
 // Epic 84: S3 Storage Integration
 pub mod storage;
 
@@ -73,6 +76,12 @@ pub use oauth::{
     OAuthProvider, OAuthTokenManager, ProviderConfigs, RefreshResult, RevocationResult,
     StoredToken, TokenRefreshConfig, TokenRefreshScheduler, DEFAULT_REFRESH_BUFFER_SECS,
     MAX_REFRESH_BUFFER_SECS, MIN_REFRESH_BUFFER_SECS,
+};
+
+// Story 98.1: Voice Assistant OAuth
+pub use voice_oauth::{
+    VoiceOAuthClient, VoiceOAuthConfig, VoiceOAuthError, VoiceOAuthManager, VoiceOAuthTokens,
+    VoicePlatform,
 };
 
 // Story 64.1-64.4: LLM Integration

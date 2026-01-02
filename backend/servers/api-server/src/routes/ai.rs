@@ -2773,9 +2773,11 @@ async fn link_voice_device(
     // While longer than a plain UUID, the platform prefix aids in debugging and log analysis.
     let device_id = format!("{}_{}", req.platform, Uuid::new_v4());
 
-    // TODO: Phase 2 - Implement OAuth token exchange using auth_code from request.
-    // Current implementation (Phase 1) stores device linkage but doesn't handle OAuth tokens.
-    // Future: Exchange auth_code for access_token/refresh_token from voice assistant platform.
+    // Story 98.1: Implement OAuth token exchange using auth_code from request.
+    // Exchange the authorization code for access and refresh tokens from the voice platform.
+    let (access_token_encrypted, refresh_token_encrypted, token_expires_at) =
+        exchange_voice_oauth_tokens(&req.platform, &req.auth_code).await?;
+
     let device = state
         .llm_document_repo
         .create_voice_device(
@@ -2785,9 +2787,9 @@ async fn link_voice_device(
             &req.platform,
             &device_id,
             req.device_name.as_deref(),
-            None, // access_token - TODO: fetch via OAuth in Phase 2
-            None, // refresh_token - TODO: fetch via OAuth in Phase 2
-            None, // token_expires_at - TODO: set from OAuth response in Phase 2
+            access_token_encrypted.as_deref(),
+            refresh_token_encrypted.as_deref(),
+            token_expires_at,
             serde_json::json!(["check_balance", "report_fault", "check_announcements"]),
         )
         .await
@@ -2809,9 +2811,92 @@ async fn link_voice_device(
             "platform": device.platform,
             "device_name": device.device_name,
             "capabilities": ["check_balance", "report_fault", "check_announcements"],
-            "linked_at": device.linked_at
+            "linked_at": device.linked_at,
+            "oauth_linked": access_token_encrypted.is_some()
         })),
     ))
+}
+
+/// Exchange OAuth authorization code for tokens from voice platform.
+/// Story 98.1: Voice Device OAuth Token Exchange
+async fn exchange_voice_oauth_tokens(
+    platform: &str,
+    auth_code: &str,
+) -> Result<
+    (
+        Option<String>,
+        Option<String>,
+        Option<chrono::DateTime<chrono::Utc>>,
+    ),
+    (StatusCode, Json<ErrorResponse>),
+> {
+    use integrations::{encrypt_if_available, IntegrationCrypto, VoiceOAuthManager, VoicePlatform};
+
+    // Parse the platform
+    let voice_platform: VoicePlatform = platform.parse().map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                "INVALID_PLATFORM",
+                "Unsupported voice platform",
+            )),
+        )
+    })?;
+
+    // Get OAuth manager from environment
+    let oauth_manager = VoiceOAuthManager::from_env();
+
+    // Check if platform is configured
+    if !oauth_manager.has_platform(voice_platform) {
+        // Platform not configured - store device without OAuth tokens
+        // This allows development/testing without OAuth credentials
+        tracing::warn!(
+            "Voice OAuth not configured for platform {}, storing device without tokens",
+            platform
+        );
+        return Ok((None, None, None));
+    }
+
+    // Get redirect URI from environment (platform-specific)
+    let redirect_uri = match voice_platform {
+        VoicePlatform::Alexa => std::env::var("ALEXA_REDIRECT_URI").unwrap_or_else(|_| {
+            "https://ppt.three-two-bit.com/api/v1/webhooks/voice/oauth/callback".to_string()
+        }),
+        VoicePlatform::GoogleAssistant => std::env::var("GOOGLE_VOICE_REDIRECT_URI")
+            .unwrap_or_else(|_| {
+                "https://ppt.three-two-bit.com/api/v1/webhooks/voice/oauth/callback".to_string()
+            }),
+    };
+
+    // Exchange the authorization code for tokens
+    let tokens = oauth_manager
+        .exchange_code(voice_platform, auth_code, &redirect_uri)
+        .await
+        .map_err(|e| {
+            tracing::error!("OAuth token exchange failed for {}: {}", platform, e);
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "OAUTH_EXCHANGE_FAILED",
+                    format!("Failed to exchange authorization code: {}", e),
+                )),
+            )
+        })?;
+
+    // Encrypt tokens for storage
+    let crypto = IntegrationCrypto::try_from_env();
+    let access_encrypted = encrypt_if_available(crypto.as_ref(), &tokens.access_token);
+    let refresh_encrypted = tokens
+        .refresh_token
+        .as_ref()
+        .map(|rt| encrypt_if_available(crypto.as_ref(), rt));
+
+    tracing::info!(
+        "Successfully exchanged OAuth tokens for voice platform {}",
+        platform
+    );
+
+    Ok((Some(access_encrypted), refresh_encrypted, tokens.expires_at))
 }
 
 async fn unlink_voice_device(

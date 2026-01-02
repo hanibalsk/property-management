@@ -338,41 +338,293 @@ pub struct OAuthCallbackQuery {
 }
 
 /// Airbnb OAuth callback.
+///
+/// Story 98.2: Rental Platform OAuth Implementation
 pub async fn airbnb_callback(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Query(params): Query<OAuthCallbackQuery>,
-) -> Result<String, (axum::http::StatusCode, String)> {
-    // TODO: Implement Airbnb OAuth flow
-    // 1. Validate state parameter
-    // 2. Exchange code for tokens
-    // 3. Save tokens to connection
-    // 4. Redirect to success page
+) -> Result<axum::response::Redirect, (axum::http::StatusCode, String)> {
+    use integrations::{encrypt_if_available, AirbnbClient, AirbnbOAuthConfig, IntegrationCrypto};
 
+    // Check for OAuth error
     if let Some(error) = params.error {
+        tracing::error!("Airbnb OAuth error: {}", error);
         return Err((
             axum::http::StatusCode::BAD_REQUEST,
             format!("OAuth error: {}", error),
         ));
     }
 
-    Ok("Airbnb connected successfully".to_string())
+    // Validate required parameters
+    let code = params.code.ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            "Missing authorization code".to_string(),
+        )
+    })?;
+
+    let oauth_state = params.state.ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            "Missing state parameter".to_string(),
+        )
+    })?;
+
+    // Parse the OAuth state which contains the connection ID
+    // Format: "{connection_id}:{random_nonce}"
+    let connection_id: Uuid = oauth_state
+        .split(':')
+        .next()
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| {
+            tracing::warn!("Invalid OAuth state format: {}", oauth_state);
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Invalid state parameter format".to_string(),
+            )
+        })?;
+
+    // Find the connection by ID
+    let connection = state
+        .rental_repo
+        .find_connection_by_id(connection_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Database error finding connection: {}", e);
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Database error".to_string(),
+            )
+        })?
+        .ok_or_else(|| {
+            tracing::warn!("Connection not found: {}", connection_id);
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Connection not found".to_string(),
+            )
+        })?;
+
+    // Get Airbnb OAuth configuration from environment
+    let client_id = std::env::var("AIRBNB_CLIENT_ID").map_err(|_| {
+        tracing::error!("AIRBNB_CLIENT_ID not configured");
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "Airbnb OAuth not configured".to_string(),
+        )
+    })?;
+
+    let client_secret = std::env::var("AIRBNB_CLIENT_SECRET").map_err(|_| {
+        tracing::error!("AIRBNB_CLIENT_SECRET not configured");
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "Airbnb OAuth not configured".to_string(),
+        )
+    })?;
+
+    let redirect_uri = std::env::var("AIRBNB_REDIRECT_URI").unwrap_or_else(|_| {
+        "https://ppt.three-two-bit.com/api/v1/rentals/oauth/airbnb/callback".to_string()
+    });
+
+    // Exchange code for tokens
+    let airbnb_config = AirbnbOAuthConfig {
+        client_id,
+        client_secret,
+        redirect_uri,
+    };
+    let airbnb_client = AirbnbClient::new(airbnb_config);
+
+    let tokens = airbnb_client.exchange_code(&code).await.map_err(|e| {
+        tracing::error!("Airbnb token exchange failed: {}", e);
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("Token exchange failed: {}", e),
+        )
+    })?;
+
+    // Encrypt tokens for storage
+    let crypto = IntegrationCrypto::try_from_env();
+    let access_encrypted = encrypt_if_available(crypto.as_ref(), &tokens.access_token);
+    let refresh_encrypted = tokens
+        .refresh_token
+        .as_ref()
+        .map(|rt| encrypt_if_available(crypto.as_ref(), rt));
+
+    // Update connection with tokens and mark as connected
+    state
+        .rental_repo
+        .update_connection_tokens(
+            connection.id,
+            &access_encrypted,
+            refresh_encrypted.as_deref(),
+            tokens.expires_at,
+            true, // is_connected
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update connection tokens: {}", e);
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to save tokens".to_string(),
+            )
+        })?;
+
+    tracing::info!(
+        "Airbnb OAuth completed successfully for connection {}",
+        connection.id
+    );
+
+    // Redirect to success page
+    let success_url = std::env::var("FRONTEND_SUCCESS_URL").unwrap_or_else(|_| {
+        "https://ppt.three-two-bit.com/rentals/connections?success=airbnb".to_string()
+    });
+    Ok(axum::response::Redirect::to(&success_url))
 }
 
 /// Booking.com OAuth callback.
+///
+/// Story 98.2: Rental Platform OAuth Implementation
 pub async fn booking_callback(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Query(params): Query<OAuthCallbackQuery>,
-) -> Result<String, (axum::http::StatusCode, String)> {
-    // TODO: Implement Booking.com OAuth flow
+) -> Result<axum::response::Redirect, (axum::http::StatusCode, String)> {
+    use integrations::{
+        encrypt_if_available, BookingClient, BookingCredentials, IntegrationCrypto,
+    };
 
+    // Check for OAuth error
     if let Some(error) = params.error {
+        tracing::error!("Booking.com OAuth error: {}", error);
         return Err((
             axum::http::StatusCode::BAD_REQUEST,
             format!("OAuth error: {}", error),
         ));
     }
 
-    Ok("Booking.com connected successfully".to_string())
+    // Validate required parameters
+    let code = params.code.ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            "Missing authorization code".to_string(),
+        )
+    })?;
+
+    let oauth_state = params.state.ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            "Missing state parameter".to_string(),
+        )
+    })?;
+
+    // Parse the OAuth state which contains the connection ID
+    // Format: "{connection_id}:{random_nonce}"
+    let connection_id: Uuid = oauth_state
+        .split(':')
+        .next()
+        .and_then(|s| s.parse().ok())
+        .ok_or_else(|| {
+            tracing::warn!("Invalid OAuth state format: {}", oauth_state);
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Invalid state parameter format".to_string(),
+            )
+        })?;
+
+    // Find the connection by ID
+    let connection = state
+        .rental_repo
+        .find_connection_by_id(connection_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("Database error finding connection: {}", e);
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Database error".to_string(),
+            )
+        })?
+        .ok_or_else(|| {
+            tracing::warn!("Connection not found: {}", connection_id);
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                "Connection not found".to_string(),
+            )
+        })?;
+
+    // Get Booking.com OAuth configuration from environment
+    let username = std::env::var("BOOKING_USERNAME").map_err(|_| {
+        tracing::error!("BOOKING_USERNAME not configured");
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "Booking.com OAuth not configured".to_string(),
+        )
+    })?;
+
+    let password = std::env::var("BOOKING_PASSWORD").map_err(|_| {
+        tracing::error!("BOOKING_PASSWORD not configured");
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "Booking.com OAuth not configured".to_string(),
+        )
+    })?;
+
+    let hotel_id = std::env::var("BOOKING_HOTEL_ID").unwrap_or_else(|_| "default".to_string());
+
+    let api_url = std::env::var("BOOKING_API_URL")
+        .unwrap_or_else(|_| "https://supply-xml.booking.com".to_string());
+
+    // Booking.com uses API credentials rather than OAuth tokens
+    // The 'code' here represents a confirmation/authorization code
+    let credentials = BookingCredentials {
+        username,
+        password,
+        hotel_id,
+        api_url,
+    };
+
+    let booking_client = BookingClient::new(credentials);
+
+    // Validate credentials by attempting to fetch properties
+    let validation_result = booking_client.fetch_properties().await;
+    if let Err(e) = validation_result {
+        tracing::error!("Booking.com credential validation failed: {}", e);
+        return Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("Credential validation failed: {}", e),
+        ));
+    }
+
+    // Encrypt authorization code for storage
+    let crypto = IntegrationCrypto::try_from_env();
+    let code_encrypted = encrypt_if_available(crypto.as_ref(), &code);
+
+    // Update connection with credentials and mark as connected
+    state
+        .rental_repo
+        .update_connection_tokens(
+            connection.id,
+            &code_encrypted,
+            None,
+            None,
+            true, // is_connected
+        )
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update connection credentials: {}", e);
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to save credentials".to_string(),
+            )
+        })?;
+
+    tracing::info!(
+        "Booking.com OAuth completed successfully for connection {}",
+        connection.id
+    );
+
+    // Redirect to success page
+    let success_url = std::env::var("FRONTEND_SUCCESS_URL").unwrap_or_else(|_| {
+        "https://ppt.three-two-bit.com/rentals/connections?success=booking".to_string()
+    });
+    Ok(axum::response::Redirect::to(&success_url))
 }
 
 // ============================================
