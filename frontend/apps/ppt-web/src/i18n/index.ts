@@ -7,6 +7,8 @@ import { defaultLocale, locales } from './config';
 import cs from '../../messages/cs.json';
 import de from '../../messages/de.json';
 import en from '../../messages/en.json';
+import hu from '../../messages/hu.json';
+import pl from '../../messages/pl.json';
 import sk from '../../messages/sk.json';
 
 const resources = {
@@ -14,6 +16,8 @@ const resources = {
   sk: { translation: sk },
   cs: { translation: cs },
   de: { translation: de },
+  pl: { translation: pl },
+  hu: { translation: hu },
 };
 
 i18n

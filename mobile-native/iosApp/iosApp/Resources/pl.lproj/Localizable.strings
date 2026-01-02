@@ -1,0 +1,119 @@
+/* App */
+"app_name" = "Reality Portal";
+
+/* Common */
+"loading" = "Ładowanie…";
+"error" = "Błąd";
+"retry" = "Ponów";
+"save" = "Zapisz";
+"cancel" = "Anuluj";
+"close" = "Zamknij";
+"delete" = "Usuń";
+"edit" = "Edytuj";
+"confirm" = "Potwierdź";
+"back" = "Wstecz";
+"next" = "Dalej";
+"done" = "Gotowe";
+"yes" = "Tak";
+"no" = "Nie";
+"ok" = "OK";
+"search" = "Szukaj";
+"share" = "Udostępnij";
+"see_all" = "Zobacz wszystko";
+
+/* Tabs/Navigation */
+"tab_home" = "Główna";
+"tab_search" = "Szukaj";
+"tab_favorites" = "Ulubione";
+"tab_inquiries" = "Zapytania";
+"tab_account" = "Konto";
+
+/* Auth */
+"login" = "Zaloguj się";
+"logout" = "Wyloguj się";
+"sign_in" = "Zaloguj się";
+"sign_out" = "Wyloguj się";
+"email" = "E-mail";
+"password" = "Hasło";
+"forgot_password" = "Zapomniałeś hasła?";
+"remember_me" = "Zapamiętaj mnie";
+"create_account" = "Utwórz konto";
+"or_continue_with" = "Lub kontynuuj z";
+
+/* Home */
+"featured_properties" = "Wyróżnione nieruchomości";
+"recent_properties" = "Ostatnie nieruchomości";
+"view_all_properties" = "Zobacz wszystkie nieruchomości";
+"welcome_back" = "Witaj ponownie";
+
+/* Search */
+"search_properties" = "Szukaj nieruchomości…";
+"filters" = "Filtry";
+"price_range" = "Zakres cenowy";
+"property_type" = "Typ nieruchomości";
+"bedrooms" = "Sypialnie";
+"bathrooms" = "Łazienki";
+"area" = "Powierzchnia";
+"location" = "Lokalizacja";
+"apply_filters" = "Zastosuj filtry";
+"clear_filters" = "Wyczyść filtry";
+"no_results" = "Nie znaleziono nieruchomości";
+"results_count" = "%d wyników";
+
+/* Property Types */
+"apartment" = "Mieszkanie";
+"house" = "Dom";
+"studio" = "Kawalerka";
+"penthouse" = "Penthouse";
+"villa" = "Willa";
+"land" = "Działka";
+"commercial" = "Lokal użytkowy";
+
+/* Listing */
+"property_details" = "Szczegóły nieruchomości";
+"description" = "Opis";
+"features" = "Cechy";
+"amenities" = "Udogodnienia";
+"floor_plan" = "Plan piętra";
+"contact_agent" = "Skontaktuj się z agentem";
+"schedule_viewing" = "Umów oglądanie";
+"add_to_favorites" = "Dodaj do ulubionych";
+"remove_from_favorites" = "Usuń z ulubionych";
+"price" = "Cena";
+"per_month" = "/miesiąc";
+"for_sale" = "Na sprzedaż";
+"for_rent" = "Do wynajęcia";
+"sqm" = "m²";
+
+/* Favorites */
+"my_favorites" = "Moje ulubione";
+"no_favorites" = "Brak ulubionych";
+"no_favorites_description" = "Polubione nieruchomości pojawią się tutaj";
+
+/* Inquiries */
+"my_inquiries" = "Moje zapytania";
+"no_inquiries" = "Brak zapytań";
+"no_inquiries_description" = "Twoje zapytania o nieruchomości pojawią się tutaj";
+"inquiry_sent" = "Zapytanie wysłane";
+"inquiry_pending" = "Oczekujące";
+"inquiry_responded" = "Odpowiedziano";
+
+/* Account */
+"my_account" = "Moje konto";
+"profile" = "Profil";
+"settings" = "Ustawienia";
+"language" = "Język";
+"notifications" = "Powiadomienia";
+"privacy" = "Prywatność";
+"help" = "Pomoc";
+"about" = "O aplikacji";
+"version" = "Wersja";
+"terms_of_service" = "Regulamin";
+"privacy_policy" = "Polityka prywatności";
+
+/* Errors */
+"error_generic" = "Wystąpił błąd. Spróbuj ponownie.";
+"error_network" = "Błąd sieci. Sprawdź połączenie.";
+"error_server" = "Błąd serwera. Spróbuj później.";
+"error_not_found" = "Nie znaleziono";
+"error_unauthorized" = "Nie masz uprawnień do wykonania tej czynności.";

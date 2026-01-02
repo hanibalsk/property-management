@@ -1,0 +1,119 @@
+/* App */
+"app_name" = "Reality Portal";
+
+/* Common */
+"loading" = "Betöltés…";
+"error" = "Hiba";
+"retry" = "Újra";
+"save" = "Mentés";
+"cancel" = "Mégse";
+"close" = "Bezárás";
+"delete" = "Törlés";
+"edit" = "Szerkesztés";
+"confirm" = "Megerősítés";
+"back" = "Vissza";
+"next" = "Következő";
+"done" = "Kész";
+"yes" = "Igen";
+"no" = "Nem";
+"ok" = "OK";
+"search" = "Keresés";
+"share" = "Megosztás";
+"see_all" = "Összes megtekintése";
+
+/* Tabs/Navigation */
+"tab_home" = "Főoldal";
+"tab_search" = "Keresés";
+"tab_favorites" = "Kedvencek";
+"tab_inquiries" = "Érdeklődések";
+"tab_account" = "Fiók";
+
+/* Auth */
+"login" = "Bejelentkezés";
+"logout" = "Kijelentkezés";
+"sign_in" = "Bejelentkezés";
+"sign_out" = "Kijelentkezés";
+"email" = "E-mail";
+"password" = "Jelszó";
+"forgot_password" = "Elfelejtette jelszavát?";
+"remember_me" = "Emlékezzen rám";
+"create_account" = "Fiók létrehozása";
+"or_continue_with" = "Vagy folytatás";
+
+/* Home */
+"featured_properties" = "Kiemelt ingatlanok";
+"recent_properties" = "Legutóbbi ingatlanok";
+"view_all_properties" = "Összes ingatlan megtekintése";
+"welcome_back" = "Üdvözöljük újra";
+
+/* Search */
+"search_properties" = "Ingatlan keresése…";
+"filters" = "Szűrők";
+"price_range" = "Ártartomány";
+"property_type" = "Ingatlan típusa";
+"bedrooms" = "Hálószobák";
+"bathrooms" = "Fürdőszobák";
+"area" = "Terület";
+"location" = "Helyszín";
+"apply_filters" = "Szűrők alkalmazása";
+"clear_filters" = "Szűrők törlése";
+"no_results" = "Nem található ingatlan";
+"results_count" = "%d találat";
+
+/* Property Types */
+"apartment" = "Lakás";
+"house" = "Ház";
+"studio" = "Garzon";
+"penthouse" = "Penthouse";
+"villa" = "Villa";
+"land" = "Telek";
+"commercial" = "Üzlethelyiség";
+
+/* Listing */
+"property_details" = "Ingatlan részletei";
+"description" = "Leírás";
+"features" = "Jellemzők";
+"amenities" = "Felszereltség";
+"floor_plan" = "Alaprajz";
+"contact_agent" = "Kapcsolatfelvétel";
+"schedule_viewing" = "Megtekintés időpontja";
+"add_to_favorites" = "Hozzáadás a kedvencekhez";
+"remove_from_favorites" = "Eltávolítás a kedvencekből";
+"price" = "Ár";
+"per_month" = "/hó";
+"for_sale" = "Eladó";
+"for_rent" = "Kiadó";
+"sqm" = "m²";
+
+/* Favorites */
+"my_favorites" = "Kedvenceim";
+"no_favorites" = "Nincsenek kedvencek";
+"no_favorites_description" = "A kedvelt ingatlanok itt jelennek meg";
+
+/* Inquiries */
+"my_inquiries" = "Érdeklődéseim";
+"no_inquiries" = "Nincsenek érdeklődések";
+"no_inquiries_description" = "Az ingatlanokkal kapcsolatos érdeklődései itt jelennek meg";
+"inquiry_sent" = "Érdeklődés elküldve";
+"inquiry_pending" = "Függőben";
+"inquiry_responded" = "Válaszolva";
+
+/* Account */
+"my_account" = "Fiókom";
+"profile" = "Profil";
+"settings" = "Beállítások";
+"language" = "Nyelv";
+"notifications" = "Értesítések";
+"privacy" = "Adatvédelem";
+"help" = "Súgó";
+"about" = "Névjegy";
+"version" = "Verzió";
+"terms_of_service" = "Felhasználási feltételek";
+"privacy_policy" = "Adatvédelmi irányelvek";
+
+/* Errors */
+"error_generic" = "Hiba történt. Próbálja újra.";
+"error_network" = "Hálózati hiba. Ellenőrizze a kapcsolatot.";
+"error_server" = "Szerverhiba. Próbálja később.";
+"error_not_found" = "Nem található";
+"error_unauthorized" = "Nincs jogosultsága a művelet végrehajtásához.";

@@ -23,6 +23,8 @@ pub enum Locale {
     Sk,
     Cs,
     De,
+    Pl,
+    Hu,
 }
 
 impl Locale {
@@ -43,6 +45,8 @@ impl Locale {
             "sk" => Some(Self::Sk),
             "cs" => Some(Self::Cs),
             "de" => Some(Self::De),
+            "pl" => Some(Self::Pl),
+            "hu" => Some(Self::Hu),
             _ => None,
         }
     }
@@ -54,6 +58,8 @@ impl Locale {
             Self::Sk => "sk".parse().unwrap(),
             Self::Cs => "cs".parse().unwrap(),
             Self::De => "de".parse().unwrap(),
+            Self::Pl => "pl".parse().unwrap(),
+            Self::Hu => "hu".parse().unwrap(),
         }
     }
 
@@ -64,6 +70,8 @@ impl Locale {
             Self::Sk => "sk",
             Self::Cs => "cs",
             Self::De => "de",
+            Self::Pl => "pl",
+            Self::Hu => "hu",
         }
     }
 }
@@ -109,6 +117,8 @@ impl I18nResolver {
                 Locale::Sk => fluent_resources::SK,
                 Locale::Cs => fluent_resources::CS,
                 Locale::De => fluent_resources::DE,
+                Locale::Pl => fluent_resources::PL,
+                Locale::Hu => fluent_resources::HU,
             };
 
             if let Some(bundle) = Self::create_bundle(locale, resource_str) {
@@ -214,6 +224,8 @@ mod tests {
         assert_eq!(Locale::from_str_opt("sk-SK"), Some(Locale::Sk));
         assert_eq!(Locale::from_str_opt("cs_CZ"), Some(Locale::Cs));
         assert_eq!(Locale::from_str_opt("DE"), Some(Locale::De));
+        assert_eq!(Locale::from_str_opt("pl-PL"), Some(Locale::Pl));
+        assert_eq!(Locale::from_str_opt("hu_HU"), Some(Locale::Hu));
         assert_eq!(Locale::from_str_opt("fr"), None);
     }
 

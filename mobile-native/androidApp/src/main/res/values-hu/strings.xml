@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Reality Portal</string>
+
+    <!-- Common -->
+    <string name="loading">Betöltés…</string>
+    <string name="error">Hiba</string>
+    <string name="retry">Újra</string>
+    <string name="save">Mentés</string>
+    <string name="cancel">Mégse</string>
+    <string name="close">Bezárás</string>
+    <string name="delete">Törlés</string>
+    <string name="edit">Szerkesztés</string>
+    <string name="confirm">Megerősítés</string>
+    <string name="back">Vissza</string>
+    <string name="next">Következő</string>
+    <string name="done">Kész</string>
+    <string name="yes">Igen</string>
+    <string name="no">Nem</string>
+    <string name="ok">OK</string>
+    <string name="search">Keresés</string>
+    <string name="share">Megosztás</string>
+    <string name="see_all">Összes megtekintése</string>
+
+    <!-- Tabs/Navigation -->
+    <string name="tab_home">Főoldal</string>
+    <string name="tab_search">Keresés</string>
+    <string name="tab_favorites">Kedvencek</string>
+    <string name="tab_inquiries">Érdeklődések</string>
+    <string name="tab_account">Fiók</string>
+
+    <!-- Auth -->
+    <string name="login">Bejelentkezés</string>
+    <string name="logout">Kijelentkezés</string>
+    <string name="sign_in">Bejelentkezés</string>
+    <string name="sign_out">Kijelentkezés</string>
+    <string name="email">E-mail</string>
+    <string name="password">Jelszó</string>
+    <string name="forgot_password">Elfelejtette jelszavát?</string>
+    <string name="remember_me">Emlékezzen rám</string>
+    <string name="create_account">Fiók létrehozása</string>
+    <string name="or_continue_with">Vagy folytatás</string>
+
+    <!-- Home -->
+    <string name="featured_properties">Kiemelt ingatlanok</string>
+    <string name="recent_properties">Legutóbbi ingatlanok</string>
+    <string name="view_all_properties">Összes ingatlan megtekintése</string>
+    <string name="welcome_back">Üdvözöljük újra</string>
+
+    <!-- Search -->
+    <string name="search_properties">Ingatlan keresése…</string>
+    <string name="filters">Szűrők</string>
+    <string name="price_range">Ártartomány</string>
+    <string name="property_type">Ingatlan típusa</string>
+    <string name="bedrooms">Hálószobák</string>
+    <string name="bathrooms">Fürdőszobák</string>
+    <string name="area">Terület</string>
+    <string name="location">Helyszín</string>
+    <string name="apply_filters">Szűrők alkalmazása</string>
+    <string name="clear_filters">Szűrők törlése</string>
+    <string name="no_results">Nem található ingatlan</string>
+    <string name="results_count">%1$d találat</string>
+
+    <!-- Property Types -->
+    <string name="apartment">Lakás</string>
+    <string name="house">Ház</string>
+    <string name="studio">Garzon</string>
+    <string name="penthouse">Penthouse</string>
+    <string name="villa">Villa</string>
+    <string name="land">Telek</string>
+    <string name="commercial">Üzlethelyiség</string>
+
+    <!-- Listing -->
+    <string name="property_details">Ingatlan részletei</string>
+    <string name="description">Leírás</string>
+    <string name="features">Jellemzők</string>
+    <string name="amenities">Felszereltség</string>
+    <string name="floor_plan">Alaprajz</string>
+    <string name="contact_agent">Kapcsolatfelvétel</string>
+    <string name="schedule_viewing">Megtekintés időpontja</string>
+    <string name="add_to_favorites">Hozzáadás a kedvencekhez</string>
+    <string name="remove_from_favorites">Eltávolítás a kedvencekből</string>
+    <string name="price">Ár</string>
+    <string name="per_month">/hó</string>
+    <string name="for_sale">Eladó</string>
+    <string name="for_rent">Kiadó</string>
+    <string name="sqm">m²</string>
+
+    <!-- Favorites -->
+    <string name="my_favorites">Kedvenceim</string>
+    <string name="no_favorites">Nincsenek kedvencek</string>
+    <string name="no_favorites_description">A kedvelt ingatlanok itt jelennek meg</string>
+
+    <!-- Inquiries -->
+    <string name="my_inquiries">Érdeklődéseim</string>
+    <string name="no_inquiries">Nincsenek érdeklődések</string>
+    <string name="no_inquiries_description">Az ingatlanokkal kapcsolatos érdeklődései itt jelennek meg</string>
+    <string name="inquiry_sent">Érdeklődés elküldve</string>
+    <string name="inquiry_pending">Függőben</string>
+    <string name="inquiry_responded">Válaszolva</string>
+
+    <!-- Account -->
+    <string name="my_account">Fiókom</string>
+    <string name="profile">Profil</string>
+    <string name="settings">Beállítások</string>
+    <string name="language">Nyelv</string>
+    <string name="notifications">Értesítések</string>
+    <string name="privacy">Adatvédelem</string>
+    <string name="help">Súgó</string>
+    <string name="about">Névjegy</string>
+    <string name="version">Verzió</string>
+    <string name="terms_of_service">Felhasználási feltételek</string>
+    <string name="privacy_policy">Adatvédelmi irányelvek</string>
+
+    <!-- Errors -->
+    <string name="error_generic">Hiba történt. Próbálja újra.</string>
+    <string name="error_network">Hálózati hiba. Ellenőrizze a kapcsolatot.</string>
+    <string name="error_server">Szerverhiba. Próbálja később.</string>
+    <string name="error_not_found">Nem található</string>
+    <string name="error_unauthorized">Nincs jogosultsága a művelet végrehajtásához.</string>
+</resources>

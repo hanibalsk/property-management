@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "retry": "Ponów",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "delete": "Usuń",
+    "edit": "Edytuj",
+    "confirm": "Potwierdź",
+    "back": "Wstecz",
+    "next": "Dalej",
+    "done": "Gotowe",
+    "yes": "Tak",
+    "no": "Nie",
+    "ok": "OK",
+    "search": "Szukaj",
+    "refresh": "Odśwież",
+    "submit": "Wyślij"
+  },
+  "tabs": {
+    "home": "Główna",
+    "faults": "Usterki",
+    "news": "Aktualności",
+    "vote": "Głosowanie",
+    "docs": "Dokumenty"
+  },
+  "auth": {
+    "login": "Zaloguj się",
+    "logout": "Wyloguj się",
+    "email": "E-mail",
+    "password": "Hasło",
+    "signIn": "Zaloguj się",
+    "signOut": "Wyloguj się",
+    "forgotPassword": "Zapomniałeś hasła?",
+    "emailRequired": "E-mail jest wymagany",
+    "passwordRequired": "Hasło jest wymagane",
+    "invalidCredentials": "Nieprawidłowy e-mail lub hasło"
+  },
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "Witaj",
+    "recentActivity": "Ostatnia aktywność",
+    "quickActions": "Szybkie akcje",
+    "notifications": "Powiadomienia"
+  },
+  "faults": {
+    "title": "Zgłoszenia usterek",
+    "newFault": "Zgłoś usterkę",
+    "myFaults": "Moje usterki",
+    "allFaults": "Wszystkie usterki",
+    "description": "Opis",
+    "location": "Lokalizacja",
+    "priority": "Priorytet",
+    "status": "Status",
+    "photo": "Zdjęcie",
+    "addPhoto": "Dodaj zdjęcie",
+    "submitFault": "Zgłoś usterkę",
+    "priorityLow": "Niski",
+    "priorityMedium": "Średni",
+    "priorityHigh": "Wysoki",
+    "priorityUrgent": "Pilny",
+    "statusOpen": "Otwarte",
+    "statusInProgress": "W trakcie",
+    "statusResolved": "Rozwiązane",
+    "statusClosed": "Zamknięte"
+  },
+  "news": {
+    "title": "Aktualności",
+    "latest": "Najnowsze wiadomości",
+    "readMore": "Czytaj więcej",
+    "noNews": "Brak dostępnych wiadomości"
+  },
+  "voting": {
+    "title": "Głosowanie",
+    "activePolls": "Aktywne ankiety",
+    "completedPolls": "Zakończone ankiety",
+    "vote": "Głosuj",
+    "voted": "Zagłosowano",
+    "results": "Wyniki",
+    "deadline": "Termin",
+    "noPolls": "Brak aktywnych ankiet"
+  },
+  "documents": {
+    "title": "Dokumenty",
+    "recent": "Ostatnie dokumenty",
+    "categories": "Kategorie",
+    "download": "Pobierz",
+    "view": "Zobacz",
+    "noDocuments": "Brak dostępnych dokumentów"
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "language": "Język",
+    "notifications": "Powiadomienia",
+    "privacy": "Prywatność",
+    "about": "O aplikacji",
+    "version": "Wersja"
+  },
+  "errors": {
+    "generic": "Wystąpił błąd. Spróbuj ponownie.",
+    "network": "Błąd sieci. Sprawdź połączenie.",
+    "server": "Błąd serwera. Spróbuj później.",
+    "notFound": "Nie znaleziono",
+    "unauthorized": "Nie masz uprawnień do wykonania tej czynności."
+  },
+  "offline": {
+    "title": "Jesteś offline",
+    "message": "Niektóre funkcje mogą być niedostępne."
+  }
+}

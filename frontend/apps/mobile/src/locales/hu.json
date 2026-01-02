@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "Betöltés...",
+    "error": "Hiba",
+    "retry": "Újra",
+    "save": "Mentés",
+    "cancel": "Mégse",
+    "delete": "Törlés",
+    "edit": "Szerkesztés",
+    "confirm": "Megerősítés",
+    "back": "Vissza",
+    "next": "Következő",
+    "done": "Kész",
+    "yes": "Igen",
+    "no": "Nem",
+    "ok": "OK",
+    "search": "Keresés",
+    "refresh": "Frissítés",
+    "submit": "Küldés"
+  },
+  "tabs": {
+    "home": "Főoldal",
+    "faults": "Hibák",
+    "news": "Hírek",
+    "vote": "Szavazás",
+    "docs": "Dokumentumok"
+  },
+  "auth": {
+    "login": "Bejelentkezés",
+    "logout": "Kijelentkezés",
+    "email": "E-mail",
+    "password": "Jelszó",
+    "signIn": "Bejelentkezés",
+    "signOut": "Kijelentkezés",
+    "forgotPassword": "Elfelejtette jelszavát?",
+    "emailRequired": "E-mail kötelező",
+    "passwordRequired": "Jelszó kötelező",
+    "invalidCredentials": "Hibás e-mail vagy jelszó"
+  },
+  "dashboard": {
+    "title": "Irányítópult",
+    "welcome": "Üdvözöljük",
+    "recentActivity": "Legutóbbi tevékenység",
+    "quickActions": "Gyors műveletek",
+    "notifications": "Értesítések"
+  },
+  "faults": {
+    "title": "Hibajelentések",
+    "newFault": "Hiba jelentése",
+    "myFaults": "Saját hibák",
+    "allFaults": "Összes hiba",
+    "description": "Leírás",
+    "location": "Helyszín",
+    "priority": "Prioritás",
+    "status": "Állapot",
+    "photo": "Fotó",
+    "addPhoto": "Fotó hozzáadása",
+    "submitFault": "Hiba beküldése",
+    "priorityLow": "Alacsony",
+    "priorityMedium": "Közepes",
+    "priorityHigh": "Magas",
+    "priorityUrgent": "Sürgős",
+    "statusOpen": "Nyitott",
+    "statusInProgress": "Folyamatban",
+    "statusResolved": "Megoldva",
+    "statusClosed": "Lezárva"
+  },
+  "news": {
+    "title": "Hírek",
+    "latest": "Legfrissebb hírek",
+    "readMore": "Bővebben",
+    "noNews": "Nincsenek elérhető hírek"
+  },
+  "voting": {
+    "title": "Szavazás",
+    "activePolls": "Aktív szavazások",
+    "completedPolls": "Befejezett szavazások",
+    "vote": "Szavazás",
+    "voted": "Szavazott",
+    "results": "Eredmények",
+    "deadline": "Határidő",
+    "noPolls": "Nincsenek aktív szavazások"
+  },
+  "documents": {
+    "title": "Dokumentumok",
+    "recent": "Legutóbbi dokumentumok",
+    "categories": "Kategóriák",
+    "download": "Letöltés",
+    "view": "Megtekintés",
+    "noDocuments": "Nincsenek elérhető dokumentumok"
+  },
+  "settings": {
+    "title": "Beállítások",
+    "language": "Nyelv",
+    "notifications": "Értesítések",
+    "privacy": "Adatvédelem",
+    "about": "Névjegy",
+    "version": "Verzió"
+  },
+  "errors": {
+    "generic": "Hiba történt. Próbálja újra.",
+    "network": "Hálózati hiba. Ellenőrizze a kapcsolatot.",
+    "server": "Szerverhiba. Próbálja később.",
+    "notFound": "Nem található",
+    "unauthorized": "Nincs jogosultsága a művelet végrehajtásához."
+  },
+  "offline": {
+    "title": "Offline",
+    "message": "Egyes funkciók nem érhetők el."
+  }
+}

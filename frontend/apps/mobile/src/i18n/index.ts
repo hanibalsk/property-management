@@ -8,6 +8,8 @@ import { defaultLocale, locales } from './config';
 import cs from '../locales/cs.json';
 import de from '../locales/de.json';
 import en from '../locales/en.json';
+import hu from '../locales/hu.json';
+import pl from '../locales/pl.json';
 import sk from '../locales/sk.json';
 
 const LANGUAGE_STORAGE_KEY = 'ppt-language';
@@ -17,6 +19,8 @@ const resources = {
   sk: { translation: sk },
   cs: { translation: cs },
   de: { translation: de },
+  pl: { translation: pl },
+  hu: { translation: hu },
 };
 
 /**

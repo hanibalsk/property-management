@@ -37,5 +37,5 @@
     "@types/react-native": "~0.73.0",
     "typescript": "^5.3.0"
   },
-  "version": "0.2.261"
+  "version": "0.2.262"
 }
