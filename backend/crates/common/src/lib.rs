@@ -2,10 +2,12 @@
 
 pub mod errors;
 pub mod notifications;
+pub mod sitemap;
 pub mod tenant;
 pub mod types;
 
 pub use errors::*;
 pub use notifications::*;
+pub use sitemap::Sitemap;
 pub use tenant::*;
 pub use types::*;
