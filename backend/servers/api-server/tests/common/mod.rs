@@ -1,0 +1,356 @@
+//! Common test utilities for integration tests.
+//!
+//! Provides test helpers for:
+//! - Test application builder with mock database
+//! - Request helpers
+//! - Response extractors
+//! - Test fixtures for users and organizations
+
+use axum::{
+    body::Body,
+    http::{header, Method, Request, StatusCode},
+    Router,
+};
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json::{json, Value};
+use sqlx::PgPool;
+use tower::ServiceExt;
+
+/// Test configuration.
+pub struct TestConfig {
+    /// JWT secret for test tokens
+    pub jwt_secret: String,
+    /// Base URL for test server
+    pub base_url: String,
+    /// Email service in test mode
+    pub email_enabled: bool,
+}
+
+impl Default for TestConfig {
+    fn default() -> Self {
+        Self {
+            // WARNING: Test-only JWT secret. This value must NEVER be used in production.
+            // It is only used for integration testing with isolated test databases.
+            jwt_secret: "test-secret-key-that-is-at-least-64-characters-long-for-testing-purposes"
+                .to_string(),
+            base_url: "http://localhost:8080".to_string(),
+            email_enabled: false,
+        }
+    }
+}
+
+/// Test application wrapper.
+pub struct TestApp {
+    pub router: Router,
+    pub pool: PgPool,
+    pub config: TestConfig,
+}
+
+impl TestApp {
+    /// Create a new test application with the given database pool.
+    pub async fn new(pool: PgPool) -> Self {
+        Self::with_config(pool, TestConfig::default()).await
+    }
+
+    /// Create a new test application with custom configuration.
+    pub async fn with_config(pool: PgPool, config: TestConfig) -> Self {
+        use api_server::services::{EmailService, JwtService};
+        use api_server::state::AppState;
+
+        let email_service = EmailService::new(config.base_url.clone(), config.email_enabled);
+        let jwt_service =
+            JwtService::new(&config.jwt_secret).expect("Failed to create JWT service for tests");
+
+        let state = AppState::new(pool.clone(), email_service, jwt_service);
+
+        // Build the router with all routes
+        let router = api_server::create_router(state);
+
+        Self {
+            router,
+            pool,
+            config,
+        }
+    }
+
+    /// Execute a request against the test application.
+    pub async fn execute(&self, request: Request<Body>) -> TestResponse {
+        let response = self
+            .router
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("Failed to execute request");
+
+        TestResponse::from_response(response).await
+    }
+
+    /// Create a JSON POST request.
+    pub fn post(&self, uri: &str) -> RequestBuilder {
+        RequestBuilder::new(Method::POST, uri)
+    }
+
+    /// Create a JSON GET request.
+    pub fn get(&self, uri: &str) -> RequestBuilder {
+        RequestBuilder::new(Method::GET, uri)
+    }
+
+    /// Create a JSON PUT request.
+    pub fn put(&self, uri: &str) -> RequestBuilder {
+        RequestBuilder::new(Method::PUT, uri)
+    }
+
+    /// Create a JSON DELETE request.
+    pub fn delete(&self, uri: &str) -> RequestBuilder {
+        RequestBuilder::new(Method::DELETE, uri)
+    }
+}
+
+/// Request builder for test requests.
+pub struct RequestBuilder {
+    method: Method,
+    uri: String,
+    body: Option<Value>,
+    auth_token: Option<String>,
+    headers: Vec<(String, String)>,
+}
+
+impl RequestBuilder {
+    pub fn new(method: Method, uri: &str) -> Self {
+        Self {
+            method,
+            uri: uri.to_string(),
+            body: None,
+            auth_token: None,
+            headers: Vec::new(),
+        }
+    }
+
+    /// Set JSON body.
+    pub fn json<T: Serialize>(mut self, body: T) -> Self {
+        self.body = Some(serde_json::to_value(body).expect("Failed to serialize body"));
+        self
+    }
+
+    /// Set authorization bearer token.
+    pub fn bearer(mut self, token: &str) -> Self {
+        self.auth_token = Some(token.to_string());
+        self
+    }
+
+    /// Add a custom header.
+    pub fn header(mut self, name: &str, value: &str) -> Self {
+        self.headers.push((name.to_string(), value.to_string()));
+        self
+    }
+
+    /// Build the request.
+    pub fn build(self) -> Request<Body> {
+        let mut builder = Request::builder().method(self.method).uri(&self.uri);
+
+        // Add content type if we have a body
+        if self.body.is_some() {
+            builder = builder.header(header::CONTENT_TYPE, "application/json");
+        }
+
+        // Add auth header if present
+        if let Some(token) = &self.auth_token {
+            builder = builder.header(header::AUTHORIZATION, format!("Bearer {}", token));
+        }
+
+        // Add custom headers
+        for (name, value) in &self.headers {
+            builder = builder.header(name.as_str(), value.as_str());
+        }
+
+        // Build body
+        let body = match self.body {
+            Some(v) => Body::from(v.to_string()),
+            None => Body::empty(),
+        };
+
+        builder.body(body).expect("Failed to build request")
+    }
+}
+
+/// Test response wrapper with helpers for extracting data.
+pub struct TestResponse {
+    pub status: StatusCode,
+    pub headers: axum::http::HeaderMap,
+    pub body: Vec<u8>,
+}
+
+impl TestResponse {
+    /// Create from an axum response.
+    pub async fn from_response(response: axum::response::Response) -> Self {
+        let status = response.status();
+        let headers = response.headers().clone();
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("Failed to read response body")
+            .to_vec();
+
+        Self {
+            status,
+            headers,
+            body,
+        }
+    }
+
+    /// Parse body as JSON.
+    pub fn json<T: DeserializeOwned>(&self) -> T {
+        serde_json::from_slice(&self.body).expect("Failed to parse JSON response")
+    }
+
+    /// Get body as JSON value.
+    pub fn json_value(&self) -> Value {
+        serde_json::from_slice(&self.body).expect("Failed to parse JSON response")
+    }
+
+    /// Get body as string.
+    pub fn text(&self) -> String {
+        String::from_utf8(self.body.clone()).expect("Response is not valid UTF-8")
+    }
+
+    /// Assert status code.
+    pub fn assert_status(&self, expected: StatusCode) -> &Self {
+        assert_eq!(
+            self.status, expected,
+            "Expected status {}, got {}. Body: {}",
+            expected, self.status,
+            self.text()
+        );
+        self
+    }
+
+    /// Assert JSON field exists.
+    pub fn assert_json_field(&self, field: &str) -> &Self {
+        let json = self.json_value();
+        assert!(
+            json.get(field).is_some(),
+            "Expected field '{}' in response: {}",
+            field,
+            json
+        );
+        self
+    }
+
+    /// Assert JSON field value.
+    pub fn assert_json_value(&self, field: &str, expected: &Value) -> &Self {
+        let json = self.json_value();
+        let actual = json.get(field);
+        assert_eq!(
+            actual,
+            Some(expected),
+            "Expected field '{}' to be {:?}, got {:?}",
+            field,
+            expected,
+            actual
+        );
+        self
+    }
+}
+
+/// Test fixture for creating test users.
+pub struct TestUser {
+    pub email: String,
+    pub password: String,
+    pub name: String,
+}
+
+impl TestUser {
+    /// Create a new test user with random email.
+    pub fn new() -> Self {
+        let random_id = uuid::Uuid::new_v4().to_string()[..8].to_string();
+        Self {
+            email: format!("test-{}@example.com", random_id),
+            password: "SecurePassword123!".to_string(),
+            name: "Test User".to_string(),
+        }
+    }
+
+    /// Create with specific email.
+    pub fn with_email(email: &str) -> Self {
+        Self {
+            email: email.to_string(),
+            ..Self::new()
+        }
+    }
+
+    /// Get registration request body.
+    pub fn registration_body(&self) -> Value {
+        json!({
+            "email": self.email,
+            "password": self.password,
+            "name": self.name
+        })
+    }
+
+    /// Get login request body.
+    pub fn login_body(&self) -> Value {
+        json!({
+            "email": self.email,
+            "password": self.password
+        })
+    }
+}
+
+impl Default for TestUser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Test helper to clean up test data.
+pub async fn cleanup_test_user(pool: &PgPool, email: &str) {
+    if let Err(err) = sqlx::query("DELETE FROM users WHERE email = $1")
+        .bind(email)
+        .execute(pool)
+        .await
+    {
+        eprintln!("Warning: Failed to clean up test user '{}': {}", email, err);
+    }
+}
+
+/// Test helper to verify user directly in database.
+pub async fn verify_user_email(pool: &PgPool, email: &str) {
+    sqlx::query("UPDATE users SET email_verified = true WHERE email = $1")
+        .bind(email)
+        .execute(pool)
+        .await
+        .expect("Failed to verify user email");
+}
+
+/// Test helper to create a verified user and return auth tokens.
+pub async fn create_authenticated_user(app: &TestApp, user: &TestUser) -> (String, String) {
+    // Register user
+    let register_req = app
+        .post("/api/v1/auth/register")
+        .json(&user.registration_body())
+        .build();
+    let register_resp = app.execute(register_req).await;
+    assert_eq!(register_resp.status, StatusCode::CREATED);
+
+    // Verify email in database
+    verify_user_email(&app.pool, &user.email).await;
+
+    // Login to get tokens
+    let login_req = app
+        .post("/api/v1/auth/login")
+        .json(&user.login_body())
+        .build();
+    let login_resp = app.execute(login_req).await;
+    assert_eq!(login_resp.status, StatusCode::OK);
+
+    let json = login_resp.json_value();
+    let access_token = json["access_token"]
+        .as_str()
+        .expect("Missing access_token")
+        .to_string();
+    let refresh_token = json["refresh_token"]
+        .as_str()
+        .expect("Missing refresh_token")
+        .to_string();
+
+    (access_token, refresh_token)
+}
