@@ -1,4 +1,6 @@
 //! Health check endpoint (Epic 95.3 - Enhanced Health Checks).
+//!
+//! Story 103.2: Added Redis health check.
 
 use axum::{extract::State, http::StatusCode, Json};
 use serde::Serialize;
@@ -87,6 +89,52 @@ async fn check_database(pool: &sqlx::PgPool) -> DependencyHealth {
     }
 }
 
+/// Check Redis connectivity and measure latency (Story 103.2).
+async fn check_redis(redis_client: &Option<integrations::RedisClient>) -> DependencyHealth {
+    let start = Instant::now();
+
+    match redis_client {
+        Some(client) => {
+            let result = client.health_check().await;
+            let latency_ms = start.elapsed().as_millis() as u64;
+
+            match result {
+                Ok(true) => DependencyHealth {
+                    name: "redis".to_string(),
+                    status: if latency_ms > 500 {
+                        HealthStatus::Degraded
+                    } else {
+                        HealthStatus::Healthy
+                    },
+                    latency_ms: Some(latency_ms),
+                    error: None,
+                },
+                Ok(false) => DependencyHealth {
+                    name: "redis".to_string(),
+                    status: HealthStatus::Unhealthy,
+                    latency_ms: Some(latency_ms),
+                    error: Some("Redis PING returned unexpected response".to_string()),
+                },
+                Err(e) => DependencyHealth {
+                    name: "redis".to_string(),
+                    status: HealthStatus::Unhealthy,
+                    latency_ms: Some(latency_ms),
+                    error: Some(format!("Redis connection failed: {}", e)),
+                },
+            }
+        }
+        None => {
+            // Redis not configured - report as degraded (not critical)
+            DependencyHealth {
+                name: "redis".to_string(),
+                status: HealthStatus::Degraded,
+                latency_ms: None,
+                error: Some("Redis not configured".to_string()),
+            }
+        }
+    }
+}
+
 /// Determine overall health status from dependency checks.
 fn determine_overall_status(dependencies: &[DependencyHealth]) -> HealthStatus {
     let has_unhealthy = dependencies
@@ -126,10 +174,10 @@ pub async fn health(State(state): State<AppState>) -> (StatusCode, Json<HealthRe
     // Check all dependencies
     let db_health = check_database(&state.db).await;
 
-    // TODO: Add Redis health check when Redis client is available
-    // let redis_health = check_redis(&state.redis).await;
+    // Story 103.2: Redis health check
+    let redis_health = check_redis(&state.redis_client).await;
 
-    let dependencies = vec![db_health];
+    let dependencies = vec![db_health, redis_health];
     let overall_status = determine_overall_status(&dependencies);
 
     let status_code = match overall_status {

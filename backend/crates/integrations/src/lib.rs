@@ -18,6 +18,9 @@ pub mod voice_oauth;
 // Epic 84: S3 Storage Integration
 pub mod storage;
 
+// Epic 103: Redis Integration (Cache, Sessions, Pub/Sub)
+pub mod redis;
+
 // Epic 64: Advanced AI & LLM Capabilities
 pub mod llm;
 
@@ -106,4 +109,12 @@ pub use workflow_executor::{
     action_type as workflow_action_type, ActionResult, AssignTaskConfig, CreateFaultConfig,
     DelayConfig, LlmResponseConfig, SendEmailConfig, SendNotificationConfig, WebhookConfig,
     WorkflowExecutionError, WorkflowExecutor,
+};
+
+// Story 103.2-103.4: Redis Integration
+pub use redis::{
+    channels as redis_channels, event_types as redis_events, CacheError, PubSubMessage,
+    PubSubService, RedisClient, RedisConfig, SessionData, SessionStore, CACHE_KEY_PREFIX,
+    DEFAULT_CACHE_TTL_SECS, DEFAULT_SESSION_TTL_SECS, PUBSUB_CHANNEL_PREFIX, REDIS_URL_ENV,
+    SESSION_KEY_PREFIX,
 };
