@@ -1,5 +1,7 @@
 //! Listing routes (UC-31, Epic 15) - Real estate listing management.
+//! Extended for Epic 105: Portal Syndication.
 
+use crate::services::SyndicationService;
 use crate::state::AppState;
 use api_core::extractors::TenantExtractor;
 use axum::{
@@ -11,7 +13,9 @@ use db::models::{
     listing_status, property_type as prop_type, CreateListing, CreateListingFromUnit,
     CreateListingPhoto, CreateSyndication, Listing, ListingListQuery, ListingPhoto,
     ListingStatistics, ListingSummary, ListingSyndication, ListingWithDetails,
-    PublishListingResponse, ReorderPhotos, SyndicationResult, UpdateListing, UpdateListingStatus,
+    OrganizationSyndicationStats, PublishListingResponse, ReorderPhotos, SyndicationDashboardQuery,
+    SyndicationDashboardResponse, SyndicationResult, SyndicationStatusDashboard, UpdateListing,
+    UpdateListingStatus,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -25,6 +29,12 @@ pub fn router() -> Router<AppState> {
         .route("/", get(list_listings))
         .route("/from-unit", post(create_from_unit))
         .route("/statistics", get(get_statistics))
+        // Epic 105: Syndication dashboard routes
+        .route("/syndication/dashboard", get(get_syndication_dashboard))
+        .route(
+            "/syndication/stats",
+            get(get_organization_syndication_stats),
+        )
         .route("/:id", get(get_listing))
         .route("/:id", put(update_listing))
         .route("/:id", delete(delete_listing))
@@ -35,6 +45,11 @@ pub fn router() -> Router<AppState> {
         .route("/:id/photos/reorder", post(reorder_photos))
         .route("/:id/photos/:photo_id", delete(delete_photo))
         .route("/:id/syndications", get(get_syndications))
+        // Epic 105: Per-listing syndication status
+        .route(
+            "/:id/syndication/status",
+            get(get_listing_syndication_status),
+        )
 }
 
 /// Paginated listings response.
@@ -423,7 +438,7 @@ pub async fn delete_listing(
     Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
-/// Update listing status (Story 15.4).
+/// Update listing status (Story 15.4, Epic 105: Status Propagation).
 #[utoipa::path(
     put,
     path = "/api/v1/listings/{id}/status",
@@ -460,6 +475,27 @@ pub async fn update_status(
         ));
     }
 
+    // Get current listing to track previous status
+    let existing = state
+        .listing_repo
+        .find_by_id_and_org(id, tenant.tenant_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to fetch listing: {}", e),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                "Listing not found".to_string(),
+            )
+        })?;
+
+    let previous_status = existing.status.clone();
+    let new_status = data.status.clone();
+
     let listing = state
         .listing_repo
         .update_status(id, tenant.tenant_id, data)
@@ -471,12 +507,37 @@ pub async fn update_status(
             )
         })?;
 
-    // TODO: Propagate status change to syndicated portals
+    // Epic 105, Story 105.2: Propagate status change to syndicated portals
+    if previous_status != new_status {
+        let syndication_service = SyndicationService::new(
+            state.background_job_repo.clone(),
+            state.listing_repo.clone(),
+        );
+
+        if let Err(e) = syndication_service
+            .create_status_change_jobs(
+                &listing,
+                &previous_status,
+                &new_status,
+                Some(tenant.user_id),
+            )
+            .await
+        {
+            tracing::warn!(
+                listing_id = %id,
+                previous_status = %previous_status,
+                new_status = %new_status,
+                error = %e,
+                "Failed to create status propagation jobs"
+            );
+            // Don't fail the status update if job creation fails
+        }
+    }
 
     Ok(Json(listing))
 }
 
-/// Publish listing to portals (Story 15.3).
+/// Publish listing to portals (Story 15.3, Epic 105: Syndication Jobs).
 #[utoipa::path(
     post,
     path = "/api/v1/listings/{id}/publish",
@@ -542,7 +603,7 @@ pub async fn publish_listing(
     // Create syndications
     let syndications = state
         .listing_repo
-        .create_syndications(id, data)
+        .create_syndications(id, data.clone())
         .await
         .map_err(|e| {
             (
@@ -553,16 +614,33 @@ pub async fn publish_listing(
 
     // Build syndication results (initially all pending)
     let syndication_results: Vec<SyndicationResult> = syndications
-        .into_iter()
+        .iter()
         .map(|s| SyndicationResult {
-            portal: s.portal,
+            portal: s.portal.clone(),
             success: true,
             external_id: None,
             error: None,
         })
         .collect();
 
-    // TODO: Trigger async syndication jobs to actually sync with portals
+    // Epic 105, Story 105.1: Create async syndication jobs for each portal
+    let syndication_service = SyndicationService::new(
+        state.background_job_repo.clone(),
+        state.listing_repo.clone(),
+    );
+
+    if let Err(e) = syndication_service
+        .create_publish_jobs(&listing, &data.portals, Some(tenant.user_id))
+        .await
+    {
+        tracing::warn!(
+            listing_id = %id,
+            portals = ?data.portals,
+            error = %e,
+            "Failed to create syndication publish jobs"
+        );
+        // Don't fail the publish if job creation fails - syndications are already created
+    }
 
     Ok(Json(PublishListingResponse {
         listing_id: id,
@@ -856,4 +934,120 @@ pub async fn get_syndications(
     })?;
 
     Ok(Json(syndications))
+}
+
+// ============================================
+// Epic 105: Syndication Dashboard Endpoints
+// ============================================
+
+/// Get syndication status for a specific listing (Story 105.3).
+#[utoipa::path(
+    get,
+    path = "/api/v1/listings/{id}/syndication/status",
+    tag = "Listings",
+    params(("id" = Uuid, Path, description = "Listing ID")),
+    responses(
+        (status = 200, description = "Syndication status", body = SyndicationStatusDashboard),
+        (status = 404, description = "Listing not found"),
+        (status = 401, description = "Unauthorized")
+    )
+)]
+pub async fn get_listing_syndication_status(
+    State(state): State<AppState>,
+    TenantExtractor(tenant): TenantExtractor,
+    Path(id): Path<Uuid>,
+) -> Result<Json<SyndicationStatusDashboard>, (axum::http::StatusCode, String)> {
+    let dashboard = state
+        .listing_repo
+        .get_syndication_status_dashboard(id, tenant.tenant_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get syndication status: {}", e),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                "Listing not found".to_string(),
+            )
+        })?;
+
+    Ok(Json(dashboard))
+}
+
+/// Get syndication dashboard for organization (Story 105.3).
+#[utoipa::path(
+    get,
+    path = "/api/v1/listings/syndication/dashboard",
+    tag = "Listings",
+    params(SyndicationDashboardQuery),
+    responses(
+        (status = 200, description = "Syndication dashboard", body = SyndicationDashboardResponse),
+        (status = 401, description = "Unauthorized")
+    )
+)]
+pub async fn get_syndication_dashboard(
+    State(state): State<AppState>,
+    TenantExtractor(tenant): TenantExtractor,
+    Query(query): Query<SyndicationDashboardQuery>,
+) -> Result<Json<SyndicationDashboardResponse>, (axum::http::StatusCode, String)> {
+    let (listings, total) = state
+        .listing_repo
+        .get_syndication_dashboard(tenant.tenant_id, &query)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get syndication dashboard: {}", e),
+            )
+        })?;
+
+    let organization_stats = state
+        .listing_repo
+        .get_organization_syndication_stats(tenant.tenant_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get organization stats: {}", e),
+            )
+        })?;
+
+    Ok(Json(SyndicationDashboardResponse {
+        listings,
+        total,
+        page: query.page.unwrap_or(1),
+        limit: query.limit.unwrap_or(20),
+        organization_stats,
+    }))
+}
+
+/// Get organization-wide syndication statistics (Story 105.3).
+#[utoipa::path(
+    get,
+    path = "/api/v1/listings/syndication/stats",
+    tag = "Listings",
+    responses(
+        (status = 200, description = "Organization syndication statistics", body = OrganizationSyndicationStats),
+        (status = 401, description = "Unauthorized")
+    )
+)]
+pub async fn get_organization_syndication_stats(
+    State(state): State<AppState>,
+    TenantExtractor(tenant): TenantExtractor,
+) -> Result<Json<OrganizationSyndicationStats>, (axum::http::StatusCode, String)> {
+    let stats = state
+        .listing_repo
+        .get_organization_syndication_stats(tenant.tenant_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to get syndication stats: {}", e),
+            )
+        })?;
+
+    Ok(Json(stats))
 }

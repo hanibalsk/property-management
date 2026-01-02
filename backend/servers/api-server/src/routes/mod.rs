@@ -116,3 +116,6 @@ pub mod vendor_portal;
 
 // Epic 93: Voice Assistant & OAuth Completion
 pub mod voice_webhooks;
+
+// Epic 105: Portal Syndication
+pub mod portal_webhooks;

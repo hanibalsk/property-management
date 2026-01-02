@@ -375,3 +375,218 @@ pub struct PropertyTypeCount {
     pub property_type: String,
     pub count: i64,
 }
+
+// ============================================
+// Epic 105: Portal Syndication (Extended)
+// ============================================
+
+/// Syndication job type constants.
+pub mod syndication_job_type {
+    pub const PUBLISH: &str = "syndication_publish";
+    pub const UPDATE: &str = "syndication_update";
+    pub const STATUS_CHANGE: &str = "syndication_status_change";
+    pub const REMOVE: &str = "syndication_remove";
+}
+
+/// Syndication job payload for background processing.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SyndicationJobPayload {
+    /// Listing ID to syndicate
+    pub listing_id: Uuid,
+    /// Target portal for syndication
+    pub portal: String,
+    /// Type of syndication operation
+    pub operation: String,
+    /// Previous status (for status change operations)
+    pub previous_status: Option<String>,
+    /// New status (for status change operations)
+    pub new_status: Option<String>,
+    /// Organization ID for context
+    pub organization_id: Uuid,
+}
+
+/// Syndication status dashboard response.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SyndicationStatusDashboard {
+    /// Listing ID
+    pub listing_id: Uuid,
+    /// Listing title
+    pub listing_title: String,
+    /// Current listing status
+    pub listing_status: String,
+    /// Syndication status per portal
+    pub portal_statuses: Vec<PortalSyndicationStatus>,
+    /// Overall syndication health
+    pub overall_status: SyndicationHealthStatus,
+    /// Total views across all portals
+    pub total_views: i64,
+    /// Total inquiries across all portals
+    pub total_inquiries: i64,
+}
+
+/// Syndication status for a specific portal.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct PortalSyndicationStatus {
+    /// Portal name
+    pub portal: String,
+    /// Current syndication status
+    pub status: String,
+    /// External listing ID on the portal
+    pub external_id: Option<String>,
+    /// Last successful sync timestamp
+    pub synced_at: Option<DateTime<Utc>>,
+    /// Last error message if any
+    pub last_error: Option<String>,
+    /// Number of views from this portal
+    pub views: i64,
+    /// Number of inquiries from this portal
+    pub inquiries: i64,
+    /// Last activity timestamp
+    pub last_activity_at: Option<DateTime<Utc>>,
+}
+
+/// Overall syndication health status.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SyndicationHealthStatus {
+    /// All portals synced successfully
+    Healthy,
+    /// Some portals have issues
+    Degraded,
+    /// All portals failing
+    Unhealthy,
+    /// No syndications configured
+    NotConfigured,
+}
+
+/// Portal webhook event types.
+pub mod webhook_event_type {
+    pub const VIEW: &str = "view";
+    pub const INQUIRY: &str = "inquiry";
+    pub const FAVORITE: &str = "favorite";
+    pub const PRICE_ALERT: &str = "price_alert";
+    pub const STATUS_UPDATE: &str = "status_update";
+}
+
+/// Portal webhook event.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct PortalWebhookEvent {
+    pub id: Uuid,
+    pub listing_id: Uuid,
+    pub syndication_id: Uuid,
+    pub portal: String,
+    pub event_type: String,
+    pub external_id: Option<String>,
+    pub payload: serde_json::Value,
+    pub processed: bool,
+    pub processed_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+}
+
+/// Request to create a portal webhook event.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CreatePortalWebhookEvent {
+    /// Portal sending the webhook
+    pub portal: String,
+    /// Event type
+    pub event_type: String,
+    /// External listing ID on the portal
+    pub external_id: String,
+    /// Event payload from the portal
+    pub payload: serde_json::Value,
+}
+
+/// Portal webhook incoming request for views/inquiries.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct PortalViewWebhook {
+    /// External listing ID on the portal
+    pub external_id: String,
+    /// Number of views to add
+    #[serde(default)]
+    pub views_count: i64,
+    /// Timestamp of the view event
+    pub timestamp: Option<DateTime<Utc>>,
+}
+
+/// Portal webhook incoming request for inquiries.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct PortalInquiryWebhook {
+    /// External listing ID on the portal
+    pub external_id: String,
+    /// Inquiry sender name
+    pub sender_name: Option<String>,
+    /// Inquiry sender email
+    pub sender_email: Option<String>,
+    /// Inquiry sender phone
+    pub sender_phone: Option<String>,
+    /// Inquiry message
+    pub message: Option<String>,
+    /// Timestamp of the inquiry
+    pub timestamp: Option<DateTime<Utc>>,
+}
+
+/// Aggregated syndication statistics for an organization.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct OrganizationSyndicationStats {
+    /// Total active syndications
+    pub total_active: i64,
+    /// Total pending syndications
+    pub total_pending: i64,
+    /// Total failed syndications
+    pub total_failed: i64,
+    /// Total views across all portals
+    pub total_views: i64,
+    /// Total inquiries across all portals
+    pub total_inquiries: i64,
+    /// Stats breakdown by portal
+    pub by_portal: Vec<PortalStats>,
+}
+
+/// Statistics for a specific portal.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct PortalStats {
+    /// Portal name
+    pub portal: String,
+    /// Number of active listings on this portal
+    pub active_count: i64,
+    /// Number of pending listings
+    pub pending_count: i64,
+    /// Number of failed listings
+    pub failed_count: i64,
+    /// Total views
+    pub views: i64,
+    /// Total inquiries
+    pub inquiries: i64,
+}
+
+/// Query parameters for syndication dashboard.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema, utoipa::IntoParams)]
+pub struct SyndicationDashboardQuery {
+    /// Filter by portal
+    pub portal: Option<String>,
+    /// Filter by syndication status
+    pub status: Option<String>,
+    /// Filter by date range start
+    pub from_date: Option<DateTime<Utc>>,
+    /// Filter by date range end
+    pub to_date: Option<DateTime<Utc>>,
+    /// Page number
+    pub page: Option<i32>,
+    /// Items per page
+    pub limit: Option<i32>,
+}
+
+/// Response for syndication dashboard listing.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SyndicationDashboardResponse {
+    /// List of listing syndication statuses
+    pub listings: Vec<SyndicationStatusDashboard>,
+    /// Total count
+    pub total: i64,
+    /// Current page
+    pub page: i32,
+    /// Items per page
+    pub limit: i32,
+    /// Organization-wide statistics
+    pub organization_stats: OrganizationSyndicationStats,
+}

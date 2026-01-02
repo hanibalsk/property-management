@@ -247,12 +247,17 @@ pub use vote::{
 };
 
 // Epic 15: Property Listings & Multi-Portal Sync
+// Epic 105: Portal Syndication
 pub use listing::{
-    currency, listing_status, portal as listing_portal, property_type, syndication_status,
-    transaction_type, CreateListing, CreateListingFromUnit, CreateListingPhoto, CreateSyndication,
-    Listing, ListingListQuery, ListingPhoto, ListingStatistics, ListingSummary, ListingSyndication,
-    ListingWithDetails, PropertyTypeCount, PublishListingResponse, ReorderPhotos,
-    SyndicationResult, UpdateListing, UpdateListingStatus,
+    currency, listing_status, portal as listing_portal, property_type, syndication_job_type,
+    syndication_status, transaction_type, webhook_event_type, CreateListing, CreateListingFromUnit,
+    CreateListingPhoto, CreatePortalWebhookEvent, CreateSyndication, Listing, ListingListQuery,
+    ListingPhoto, ListingStatistics, ListingSummary, ListingSyndication, ListingWithDetails,
+    OrganizationSyndicationStats, PortalInquiryWebhook, PortalStats, PortalSyndicationStatus,
+    PortalViewWebhook, PortalWebhookEvent, PropertyTypeCount, PublishListingResponse,
+    ReorderPhotos, SyndicationDashboardQuery, SyndicationDashboardResponse,
+    SyndicationHealthStatus, SyndicationJobPayload, SyndicationResult, SyndicationStatusDashboard,
+    UpdateListing, UpdateListingStatus,
 };
 
 // Epic 16: Portal Search & Discovery
