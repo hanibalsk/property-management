@@ -6,7 +6,8 @@
 use serde::Deserialize;
 
 /// Embedded sitemap JSON at compile time
-const SITEMAP_JSON: &str = include_str!("../../../../../frontend/packages/sitemap/src/json/sitemap.json");
+const SITEMAP_JSON: &str =
+    include_str!("../../../../../frontend/packages/sitemap/src/json/sitemap.json");
 
 /// Authentication requirement for a route or endpoint
 #[derive(Debug, Clone, Deserialize)]
@@ -234,7 +235,11 @@ impl Sitemap {
         };
         endpoints
             .iter()
-            .filter(|e| e.tags.as_ref().map_or(false, |t| t.contains(&tag.to_string())))
+            .filter(|e| {
+                e.tags
+                    .as_ref()
+                    .map_or(false, |t| t.contains(&tag.to_string()))
+            })
             .collect()
     }
 
@@ -245,7 +250,10 @@ impl Sitemap {
 
     /// Get all flows for a category
     pub fn get_flows_by_category(&self, category: &str) -> Vec<&UserFlow> {
-        self.flows.iter().filter(|f| f.category == category).collect()
+        self.flows
+            .iter()
+            .filter(|f| f.category == category)
+            .collect()
     }
 }
 
