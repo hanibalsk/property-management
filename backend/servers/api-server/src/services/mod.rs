@@ -6,6 +6,7 @@ pub mod document_generation;
 pub mod email;
 pub mod feature_service;
 pub mod jwt;
+pub mod notification;
 pub mod oauth;
 pub mod scheduler;
 pub mod syndication;
@@ -19,6 +20,8 @@ pub use document_generation::DocumentGenerationService;
 pub use email::EmailService;
 pub use feature_service::FeatureService;
 pub use jwt::JwtService;
+#[allow(unused_imports)]
+pub use notification::{NotificationService, NotificationServiceConfig};
 pub use oauth::OAuthService;
 pub use scheduler::{Scheduler, SchedulerConfig};
 pub use syndication::SyndicationService;

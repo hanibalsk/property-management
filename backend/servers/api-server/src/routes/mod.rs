@@ -120,5 +120,8 @@ pub mod voice_webhooks;
 // Epic 105: Portal Syndication
 pub mod portal_webhooks;
 
+// Epic 108: Feature Packages & Bundles
+pub mod feature_packages;
+
 // Epic 109: User Type Feature Experience
 pub mod features;

@@ -204,14 +204,19 @@ pub use person_month::{
     YearlyPersonMonthSummary,
 };
 pub use platform_admin::{
-    AdminOrganizationDetail, AdminOrganizationSummary, AnnouncementSeverity,
-    CreateFeatureFlagOverrideRequest, CreateFeatureFlagRequest, CreateHelpArticleRequest,
-    CreateMaintenanceRequest, CreateSystemAnnouncementRequest, FeatureFlag, FeatureFlagOverride,
-    FeatureFlagScope, HelpArticle, HelpArticleRevision, MetricAlert, MetricThreshold, MetricType,
-    OnboardingStep, OnboardingTour, OrganizationDetailMetrics, OrganizationMetrics, PlatformMetric,
-    ReactivateOrganizationRequest, ScheduledMaintenance, StepPlacement, SupportAccessLog,
-    SupportAccessRequest, SupportAccessStatus, SuspendOrganizationRequest, SystemAnnouncement,
-    SystemAnnouncementAcknowledgment, UserOnboardingProgress,
+    AdminOrganizationDetail, AdminOrganizationSummary, AnnouncementSeverity, CatalogPagination,
+    CategoryWithCount, CreateFeatureCategoryRequest, CreateFeatureFlagOverrideRequest,
+    CreateFeatureFlagRequest, CreateHelpArticleRequest, CreateMaintenanceRequest,
+    CreateSystemAnnouncementRequest, FeatureAccessState, FeatureCatalogItem, FeatureCatalogQuery,
+    FeatureCatalogResponse, FeatureCategory, FeatureCategorySummary, FeatureDescriptor,
+    FeatureDescriptorDisplay, FeatureFlag, FeatureFlagOverride, FeatureFlagScope, FeatureState,
+    FeatureUserTypeAccess, HelpArticle, HelpArticleRevision, MetricAlert, MetricThreshold,
+    MetricType, OnboardingStep, OnboardingTour, OrganizationDetailMetrics, OrganizationMetrics,
+    PlatformMetric, ReactivateOrganizationRequest, ScheduledMaintenance,
+    SetFeatureUserTypeAccessRequest, SetUserFeaturePreferenceRequest, StepPlacement,
+    SupportAccessLog, SupportAccessRequest, SupportAccessStatus, SuspendOrganizationRequest,
+    SystemAnnouncement, SystemAnnouncementAcknowledgment, UpdateFeatureCategoryRequest,
+    UpsertFeatureDescriptorRequest, UserFeaturePreference, UserOnboardingProgress,
 };
 pub use refresh_token::{CreateRefreshToken, LoginAttempt, RateLimitStatus, RefreshToken};
 pub use role::{permissions, system_roles, CreateRole, PermissionDefinition, Role, UpdateRole};
@@ -758,6 +763,9 @@ pub use owner_analytics::{
 // Epic 77: Dispute Resolution
 pub mod disputes;
 
+// Epic 108: Feature Packages & Bundles
+pub mod feature_package;
+
 // Epic 109: User Type Feature Experience
 pub mod feature_analytics;
 
@@ -772,6 +780,17 @@ pub use disputes::{
     PriorityCount as DisputePriorityCount, ProposeResolution, RecordSessionNotes, ResolutionTerm,
     ResolutionVote, ResolutionWithVotes, ResolveEscalation, ScheduleSession, SessionAttendance,
     StatusCount as DisputeStatusCount, SubmitResponse, UpdateDisputeStatus, VoteOnResolution,
+};
+
+// Epic 108: Feature Packages & Bundles
+pub use feature_package::{
+    package_source, BatchAddFeatures, CreateFeaturePackage as CreateFeaturePackage108,
+    CreateFeaturePackageItem, CreateOrganizationPackage, FeatureComparisonRow,
+    FeaturePackage as FeaturePackage108, FeaturePackageItem as FeaturePackageItem108,
+    FeaturePackageItemWithDetails, FeaturePackageQuery, FeaturePackageSummary,
+    FeaturePackageWithFeatures as FeaturePackageWithFeatures108, OrganizationPackage,
+    OrganizationPackageWithDetails, PackageComparison, PackageType, PublicPackage,
+    UpdateFeaturePackage as UpdateFeaturePackage108, UpdateOrganizationPackage,
 };
 
 // Epic 109: User Type Feature Experience

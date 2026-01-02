@@ -10,7 +10,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.250"
+version = "0.2.255"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT"
@@ -87,6 +87,9 @@ aws-credential-types = "1.1"
 
 # Redis (Epic 103)
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+
+# CLI (Epic 110)
+clap = { version = "4.4", features = ["derive"] }
 
 # Internal crates
 common = { path = "crates/common" }

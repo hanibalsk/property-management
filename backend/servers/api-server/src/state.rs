@@ -11,7 +11,8 @@ use db::{
         CommunityRepository, CriticalNotificationRepository, DataExportRepository,
         DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
         EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
-        FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository, FinancialRepository,
+        FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository,
+        FeaturePackageRepository, FinancialRepository,
         FormRepository, GovernmentPortalRepository, GranularNotificationRepository,
         HealthMonitoringRepository, HelpRepository, InfrastructureRepository, InsuranceRepository,
         IntegrationRepository, LeaseRepository, LegalRepository, ListingRepository,
@@ -125,6 +126,8 @@ pub struct AppState {
     pub background_job_repo: BackgroundJobRepository,
     // Epic 89: Feature Flags & Health Monitoring
     pub infrastructure_repo: InfrastructureRepository,
+    // Epic 108: Feature Packages & Bundles
+    pub feature_package_repo: FeaturePackageRepository,
     // Epic 109: User Type Feature Experience
     pub feature_analytics_repo: FeatureAnalyticsRepository,
     // Epic 91: AI Chat LLM Integration
@@ -235,6 +238,8 @@ impl AppState {
         let background_job_repo = BackgroundJobRepository::new(db.clone());
         // Epic 89: Feature Flags & Health Monitoring
         let infrastructure_repo = InfrastructureRepository::new(db.clone());
+        // Epic 108: Feature Packages & Bundles
+        let feature_package_repo = FeaturePackageRepository::new(db.clone());
         // Epic 109: User Type Feature Experience
         let feature_analytics_repo = FeatureAnalyticsRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
@@ -309,6 +314,7 @@ impl AppState {
             dispute_repo,
             background_job_repo,
             infrastructure_repo,
+            feature_package_repo,
             feature_analytics_repo,
             llm_client,
             auth_service,

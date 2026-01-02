@@ -254,6 +254,11 @@ pub mod edd;
 
 pub use edd::{EddRepository, EddStatistics};
 
+// Epic 108: Feature Packages & Bundles
+pub mod feature_package;
+
+pub use feature_package::FeaturePackageRepository;
+
 // Epic 109: User Type Feature Experience
 pub mod feature_analytics;
 

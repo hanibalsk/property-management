@@ -46,6 +46,10 @@ pub fn router() -> Router<AppState> {
         .route("/:id/branding", put(update_organization_branding))
         // Data export (Story 2A.7)
         .route("/:id/export", get(export_organization_data))
+        // Feature preferences (Epic 110, Story 110.3)
+        .route("/:id/features", get(list_organization_features))
+        .route("/:id/features", put(bulk_update_organization_features))
+        .route("/:id/features/:key", put(toggle_organization_feature))
 }
 
 // ==================== Create Organization (Story 2A.1) ====================
@@ -3377,4 +3381,481 @@ pub async fn export_organization_data(
     tracing::info!(org_id = %id, format = "json", "Organization data exported");
 
     Ok(Json(export).into_response())
+}
+
+// ==================== Organization Feature Preferences (Epic 110, Story 110.3) ====================
+
+/// Organization feature preference response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct OrganizationFeatureResponse {
+    /// Feature flag key
+    pub key: String,
+    /// Feature flag name
+    pub name: String,
+    /// Feature flag description
+    pub description: Option<String>,
+    /// Whether globally enabled
+    pub global_enabled: bool,
+    /// Whether enabled for this organization (override)
+    pub org_enabled: Option<bool>,
+    /// Resolved enabled state for this organization
+    pub effective_enabled: bool,
+    /// Whether the org can toggle this feature
+    pub can_toggle: bool,
+}
+
+/// List organization features response.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ListOrganizationFeaturesResponse {
+    /// List of features with their states
+    pub features: Vec<OrganizationFeatureResponse>,
+}
+
+/// Request to update a single feature preference.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateFeaturePreferenceRequest {
+    /// Whether to enable the feature
+    pub is_enabled: bool,
+}
+
+/// Request to bulk update feature preferences.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct BulkUpdateFeaturesRequest {
+    /// Map of feature keys to enabled states
+    pub features: std::collections::HashMap<String, bool>,
+}
+
+/// Response after updating feature preferences.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UpdateFeaturesResponse {
+    /// Number of features updated
+    pub updated: usize,
+    /// Success message
+    pub message: String,
+}
+
+/// List all features for an organization with their toggle states.
+#[utoipa::path(
+    get,
+    path = "/api/v1/organizations/{id}/features",
+    tag = "Organizations",
+    params(
+        ("id" = Uuid, Path, description = "Organization ID")
+    ),
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "List of features", body = ListOrganizationFeaturesResponse),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not authorized", body = ErrorResponse),
+        (status = 404, description = "Organization not found", body = ErrorResponse)
+    )
+)]
+pub async fn list_organization_features(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ListOrganizationFeaturesResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let token = extract_bearer_token(&headers)?;
+    let claims = validate_access_token(&state, &token)?;
+
+    let user_id: Uuid = claims.sub.parse().map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("INVALID_TOKEN", "Invalid token format")),
+        )
+    })?;
+
+    // Check membership
+    let _membership = match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
+        Ok(Some(m)) => m,
+        Ok(None) => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse::new(
+                    "NOT_MEMBER",
+                    "You are not a member of this organization",
+                )),
+            ));
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to check membership");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check membership",
+                )),
+            ));
+        }
+    };
+
+    // Get all feature flags
+    let flags = match state.feature_flag_repo.list_all().await {
+        Ok(flags) => flags,
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch feature flags");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to fetch feature flags",
+                )),
+            ));
+        }
+    };
+
+    // Build response with org-level preferences
+    let mut features = Vec::new();
+    for flag in flags {
+        // Get org-level override if exists
+        let org_enabled = match state
+            .feature_flag_repo
+            .is_enabled_for_context(&flag.key, None, Some(id), None)
+            .await
+        {
+            Ok(Some(enabled)) if enabled != flag.is_enabled => Some(enabled),
+            Ok(_) => None,
+            Err(_) => None,
+        };
+
+        // Resolve effective state
+        let effective_enabled = org_enabled.unwrap_or(flag.is_enabled);
+
+        features.push(OrganizationFeatureResponse {
+            key: flag.key,
+            name: flag.name,
+            description: flag.description,
+            global_enabled: flag.is_enabled,
+            org_enabled,
+            effective_enabled,
+            can_toggle: true, // All features can be toggled by org admins
+        });
+    }
+
+    Ok(Json(ListOrganizationFeaturesResponse { features }))
+}
+
+/// Bulk update feature preferences for an organization.
+#[utoipa::path(
+    put,
+    path = "/api/v1/organizations/{id}/features",
+    tag = "Organizations",
+    params(
+        ("id" = Uuid, Path, description = "Organization ID")
+    ),
+    request_body = BulkUpdateFeaturesRequest,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Features updated", body = UpdateFeaturesResponse),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not authorized", body = ErrorResponse),
+        (status = 404, description = "Organization not found", body = ErrorResponse)
+    )
+)]
+pub async fn bulk_update_organization_features(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<BulkUpdateFeaturesRequest>,
+) -> Result<Json<UpdateFeaturesResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let token = extract_bearer_token(&headers)?;
+    let claims = validate_access_token(&state, &token)?;
+
+    let user_id: Uuid = claims.sub.parse().map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("INVALID_TOKEN", "Invalid token format")),
+        )
+    })?;
+
+    // Check membership and permission
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
+        Ok(Some(m)) => m,
+        Ok(None) => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse::new(
+                    "NOT_MEMBER",
+                    "You are not a member of this organization",
+                )),
+            ));
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to check membership");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check membership",
+                )),
+            ));
+        }
+    };
+
+    // Get role and check permissions
+    let role = match membership.role_id {
+        Some(role_id) => match state.role_repo.find_by_id(role_id).await {
+            Ok(Some(r)) => r,
+            Ok(None) => {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse::new("ROLE_NOT_FOUND", "User role not found")),
+                ));
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to fetch role");
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new("DATABASE_ERROR", "Failed to fetch role")),
+                ));
+            }
+        },
+        None => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse::new("NO_ROLE", "User has no role assigned")),
+            ));
+        }
+    };
+
+    // Check for organization:manage_features or organization:update permission
+    if !role.has_permission("organization:manage_features")
+        && !role.has_permission("organization:update")
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "PERMISSION_DENIED",
+                "You do not have permission to manage feature preferences",
+            )),
+        ));
+    }
+
+    let mut updated = 0;
+    for (key, enabled) in req.features {
+        // Get flag by key
+        let flag = match state.feature_flag_repo.get_by_key(&key).await {
+            Ok(Some(f)) => f,
+            Ok(None) => {
+                tracing::warn!(key = %key, "Feature flag not found, skipping");
+                continue;
+            }
+            Err(e) => {
+                tracing::error!(error = %e, key = %key, "Failed to fetch feature flag");
+                continue;
+            }
+        };
+
+        // Create or update override for this organization
+        match state
+            .feature_flag_repo
+            .create_override(
+                flag.id,
+                db::models::platform_admin::FeatureFlagScope::Organization,
+                id,
+                enabled,
+            )
+            .await
+        {
+            Ok(_) => {
+                updated += 1;
+                tracing::info!(
+                    org_id = %id,
+                    flag_key = %key,
+                    enabled = enabled,
+                    "Feature preference updated"
+                );
+            }
+            Err(e) => {
+                tracing::error!(error = %e, key = %key, "Failed to update feature preference");
+            }
+        }
+    }
+
+    Ok(Json(UpdateFeaturesResponse {
+        updated,
+        message: format!("Updated {} feature preferences", updated),
+    }))
+}
+
+/// Toggle a single feature for an organization.
+#[utoipa::path(
+    put,
+    path = "/api/v1/organizations/{id}/features/{key}",
+    tag = "Organizations",
+    params(
+        ("id" = Uuid, Path, description = "Organization ID"),
+        ("key" = String, Path, description = "Feature flag key")
+    ),
+    request_body = UpdateFeaturePreferenceRequest,
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Feature updated", body = OrganizationFeatureResponse),
+        (status = 401, description = "Not authenticated", body = ErrorResponse),
+        (status = 403, description = "Not authorized", body = ErrorResponse),
+        (status = 404, description = "Organization or feature not found", body = ErrorResponse)
+    )
+)]
+pub async fn toggle_organization_feature(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+    Path((id, key)): Path<(Uuid, String)>,
+    Json(req): Json<UpdateFeaturePreferenceRequest>,
+) -> Result<Json<OrganizationFeatureResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let token = extract_bearer_token(&headers)?;
+    let claims = validate_access_token(&state, &token)?;
+
+    let user_id: Uuid = claims.sub.parse().map_err(|_| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new("INVALID_TOKEN", "Invalid token format")),
+        )
+    })?;
+
+    // Check membership and permission
+    let membership = match state
+        .org_member_repo
+        .find_by_org_and_user(id, user_id)
+        .await
+    {
+        Ok(Some(m)) => m,
+        Ok(None) => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse::new(
+                    "NOT_MEMBER",
+                    "You are not a member of this organization",
+                )),
+            ));
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to check membership");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check membership",
+                )),
+            ));
+        }
+    };
+
+    // Get role and check permissions
+    let role = match membership.role_id {
+        Some(role_id) => match state.role_repo.find_by_id(role_id).await {
+            Ok(Some(r)) => r,
+            Ok(None) => {
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse::new("ROLE_NOT_FOUND", "User role not found")),
+                ));
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to fetch role");
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new("DATABASE_ERROR", "Failed to fetch role")),
+                ));
+            }
+        },
+        None => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse::new("NO_ROLE", "User has no role assigned")),
+            ));
+        }
+    };
+
+    // Check for organization:manage_features or organization:update permission
+    if !role.has_permission("organization:manage_features")
+        && !role.has_permission("organization:update")
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "PERMISSION_DENIED",
+                "You do not have permission to manage feature preferences",
+            )),
+        ));
+    }
+
+    // Get flag by key
+    let flag = match state.feature_flag_repo.get_by_key(&key).await {
+        Ok(Some(f)) => f,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new(
+                    "FEATURE_NOT_FOUND",
+                    "Feature flag not found",
+                )),
+            ));
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to fetch feature flag");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to fetch feature flag",
+                )),
+            ));
+        }
+    };
+
+    // Create or update override for this organization
+    match state
+        .feature_flag_repo
+        .create_override(
+            flag.id,
+            db::models::platform_admin::FeatureFlagScope::Organization,
+            id,
+            req.is_enabled,
+        )
+        .await
+    {
+        Ok(_) => {
+            tracing::info!(
+                org_id = %id,
+                flag_key = %key,
+                enabled = req.is_enabled,
+                user_id = %user_id,
+                "Feature preference updated"
+            );
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "Failed to update feature preference");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to update feature preference",
+                )),
+            ));
+        }
+    }
+
+    // Return updated feature state
+    let feature_details = match state.feature_flag_repo.get_by_key(&key).await {
+        Ok(Some(f)) => f,
+        Ok(None) | Err(_) => flag.clone(),
+    };
+
+    Ok(Json(OrganizationFeatureResponse {
+        key: feature_details.key,
+        name: feature_details.name,
+        description: feature_details.description,
+        global_enabled: feature_details.is_enabled,
+        org_enabled: Some(req.is_enabled),
+        effective_enabled: req.is_enabled,
+        can_toggle: true,
+    }))
 }
