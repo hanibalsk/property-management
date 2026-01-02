@@ -763,6 +763,9 @@ pub use owner_analytics::{
 // Epic 77: Dispute Resolution
 pub mod disputes;
 
+// Epic 108: Feature Packages & Bundles
+pub mod feature_package;
+
 pub use disputes::{
     action_status, activity_type, dispute_category, dispute_priority, dispute_status,
     escalation_severity, party_role, resolution_status, session_status, session_type, ActionItem,
@@ -774,4 +777,13 @@ pub use disputes::{
     PriorityCount as DisputePriorityCount, ProposeResolution, RecordSessionNotes, ResolutionTerm,
     ResolutionVote, ResolutionWithVotes, ResolveEscalation, ScheduleSession, SessionAttendance,
     StatusCount as DisputeStatusCount, SubmitResponse, UpdateDisputeStatus, VoteOnResolution,
+};
+
+// Epic 108: Feature Packages & Bundles
+pub use feature_package::{
+    package_source, BatchAddFeatures, CreateFeaturePackage, CreateFeaturePackageItem,
+    CreateOrganizationPackage, FeatureComparisonRow, FeaturePackage, FeaturePackageItem,
+    FeaturePackageItemWithDetails, FeaturePackageQuery, FeaturePackageSummary,
+    FeaturePackageWithFeatures, OrganizationPackage, OrganizationPackageWithDetails,
+    PackageComparison, PackageType, PublicPackage, UpdateFeaturePackage, UpdateOrganizationPackage,
 };

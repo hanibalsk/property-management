@@ -11,18 +11,19 @@ use db::{
         CommunityRepository, CriticalNotificationRepository, DataExportRepository,
         DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
         EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
-        FaultRepository, FeatureFlagRepository, FinancialRepository, FormRepository,
-        GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
-        HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
-        LeaseRepository, LegalRepository, ListingRepository, LlmDocumentRepository,
-        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
-        OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
-        OwnerAnalyticsRepository, PackageVisitorRepository, PasswordResetRepository,
-        PersonMonthRepository, PlatformAdminRepository, RegistryRepository, RentalRepository,
-        RoleRepository, SensorRepository, SentimentRepository, SessionRepository,
-        SignatureRequestRepository, SubscriptionRepository, SystemAnnouncementRepository,
-        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
-        VendorRepository, VoteRepository, WorkOrderRepository, WorkflowRepository,
+        FaultRepository, FeatureFlagRepository, FeaturePackageRepository, FinancialRepository,
+        FormRepository, GovernmentPortalRepository, GranularNotificationRepository,
+        HealthMonitoringRepository, HelpRepository, InfrastructureRepository, InsuranceRepository,
+        IntegrationRepository, LeaseRepository, LegalRepository, ListingRepository,
+        LlmDocumentRepository, MeterRepository, NotificationPreferenceRepository, OAuthRepository,
+        OnboardingRepository, OperationsRepository, OrganizationMemberRepository,
+        OrganizationRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
+        PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
+        RegistryRepository, RentalRepository, RoleRepository, SensorRepository,
+        SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
+        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
+        UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
+        WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -124,6 +125,8 @@ pub struct AppState {
     pub background_job_repo: BackgroundJobRepository,
     // Epic 89: Feature Flags & Health Monitoring
     pub infrastructure_repo: InfrastructureRepository,
+    // Epic 108: Feature Packages & Bundles
+    pub feature_package_repo: FeaturePackageRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -232,6 +235,8 @@ impl AppState {
         let background_job_repo = BackgroundJobRepository::new(db.clone());
         // Epic 89: Feature Flags & Health Monitoring
         let infrastructure_repo = InfrastructureRepository::new(db.clone());
+        // Epic 108: Feature Packages & Bundles
+        let feature_package_repo = FeaturePackageRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -304,6 +309,7 @@ impl AppState {
             dispute_repo,
             background_job_repo,
             infrastructure_repo,
+            feature_package_repo,
             llm_client,
             auth_service,
             email_service,
