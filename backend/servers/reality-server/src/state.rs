@@ -1,10 +1,12 @@
 //! Application state for Reality Server.
 //!
 //! Contains shared services and configuration for SSO, user management, and portal repositories.
+//! Epic 104: Includes PM API health client and SSO token validation caching.
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::time::{Duration, Instant};
+use tokio::sync::{Mutex, RwLock};
 
 use db::{
     repositories::{PortalRepository, RealityPortalRepository},
@@ -32,6 +34,8 @@ pub struct AppConfig {
     pub sso_callback_url: String,
     /// JWT secret for session tokens
     pub jwt_secret: String,
+    /// PM API health check URL (Epic 104.1)
+    pub pm_api_health_url: String,
 }
 
 impl AppConfig {
@@ -78,6 +82,8 @@ impl AppConfig {
                 }
                 secret
             },
+            pm_api_health_url: std::env::var("PM_API_HEALTH_URL")
+                .unwrap_or_else(|_| "http://localhost:8080/health".to_string()),
         }
     }
 }
@@ -358,6 +364,334 @@ impl SsoTokenService {
     }
 }
 
+// ==================== Epic 104: Caching Infrastructure ====================
+
+/// PM API health check result (Story 104.1).
+#[derive(Clone, Debug)]
+pub struct PmApiHealthResult {
+    /// Health status from PM API
+    pub status: String,
+    /// Response latency in milliseconds
+    pub latency_ms: u64,
+    /// PM API version
+    pub version: Option<String>,
+    /// When the check was performed
+    pub checked_at: Instant,
+    /// Error message if unhealthy
+    pub error: Option<String>,
+}
+
+/// Cached health check with TTL (Story 104.1).
+#[derive(Clone, Debug)]
+pub struct CachedHealthCheck {
+    /// The health check result
+    pub result: PmApiHealthResult,
+    /// When the cache entry expires
+    pub expires_at: Instant,
+}
+
+/// SSO token validation cache entry (Story 104.2).
+#[derive(Clone, Debug)]
+pub struct CachedTokenValidation {
+    /// Whether the token is valid/active
+    pub active: bool,
+    /// Subject (user ID) from token
+    pub sub: Option<String>,
+    /// Token scope
+    pub scope: Option<String>,
+    /// When the cache entry expires
+    pub expires_at: Instant,
+}
+
+/// Cache metrics for monitoring (Story 104.2).
+#[derive(Clone, Debug, Default)]
+pub struct CacheMetrics {
+    /// Total cache hits
+    pub hits: u64,
+    /// Total cache misses
+    pub misses: u64,
+    /// Total evictions (expired entries)
+    pub evictions: u64,
+}
+
+/// Health check cache service (Story 104.1).
+#[derive(Clone)]
+pub struct HealthCheckCache {
+    /// Cached PM API health result
+    cache: Arc<RwLock<Option<CachedHealthCheck>>>,
+    /// Cache TTL in seconds (default: 30)
+    ttl_seconds: u64,
+    /// Cache metrics
+    metrics: Arc<RwLock<CacheMetrics>>,
+}
+
+impl Default for HealthCheckCache {
+    fn default() -> Self {
+        Self::new(30) // 30 second default TTL
+    }
+}
+
+impl HealthCheckCache {
+    /// Create a new health check cache with specified TTL.
+    pub fn new(ttl_seconds: u64) -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(None)),
+            ttl_seconds,
+            metrics: Arc::new(RwLock::new(CacheMetrics::default())),
+        }
+    }
+
+    /// Get cached health check if valid.
+    pub async fn get(&self) -> Option<PmApiHealthResult> {
+        let cache = self.cache.read().await;
+        if let Some(cached) = cache.as_ref() {
+            if Instant::now() < cached.expires_at {
+                let mut metrics = self.metrics.write().await;
+                metrics.hits += 1;
+                return Some(cached.result.clone());
+            }
+            // Entry expired
+            drop(cache);
+            let mut metrics = self.metrics.write().await;
+            metrics.evictions += 1;
+        } else {
+            let mut metrics = self.metrics.write().await;
+            metrics.misses += 1;
+        }
+        None
+    }
+
+    /// Store health check result in cache.
+    pub async fn set(&self, result: PmApiHealthResult) {
+        let mut cache = self.cache.write().await;
+        *cache = Some(CachedHealthCheck {
+            result,
+            expires_at: Instant::now() + Duration::from_secs(self.ttl_seconds),
+        });
+    }
+
+    /// Get cache metrics.
+    pub async fn get_metrics(&self) -> CacheMetrics {
+        self.metrics.read().await.clone()
+    }
+
+    /// Clear the cache.
+    pub async fn clear(&self) {
+        let mut cache = self.cache.write().await;
+        *cache = None;
+    }
+}
+
+/// SSO token validation cache service (Story 104.2).
+#[derive(Clone)]
+pub struct TokenValidationCache {
+    /// Cached token validations (token hash -> validation result)
+    cache: Arc<RwLock<HashMap<String, CachedTokenValidation>>>,
+    /// Cache TTL in seconds (default: 60)
+    ttl_seconds: u64,
+    /// Maximum cache entries
+    max_entries: usize,
+    /// Cache metrics
+    metrics: Arc<RwLock<CacheMetrics>>,
+}
+
+impl Default for TokenValidationCache {
+    fn default() -> Self {
+        Self::new(60, 10000) // 60 second TTL, 10000 max entries
+    }
+}
+
+impl TokenValidationCache {
+    /// Create a new token validation cache.
+    pub fn new(ttl_seconds: u64, max_entries: usize) -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            ttl_seconds,
+            max_entries,
+            metrics: Arc::new(RwLock::new(CacheMetrics::default())),
+        }
+    }
+
+    /// Hash a token for cache key (avoid storing raw tokens).
+    fn hash_token(token: &str) -> String {
+        use sha2::{Digest, Sha256};
+        let hash = Sha256::digest(token.as_bytes());
+        hex::encode(hash)
+    }
+
+    /// Get cached token validation if valid.
+    pub async fn get(&self, token: &str) -> Option<CachedTokenValidation> {
+        let token_hash = Self::hash_token(token);
+        let cache = self.cache.read().await;
+
+        if let Some(cached) = cache.get(&token_hash) {
+            if Instant::now() < cached.expires_at {
+                let mut metrics = self.metrics.write().await;
+                metrics.hits += 1;
+                return Some(cached.clone());
+            }
+        }
+
+        drop(cache);
+        let mut metrics = self.metrics.write().await;
+        metrics.misses += 1;
+        None
+    }
+
+    /// Store token validation result in cache.
+    pub async fn set(&self, token: &str, active: bool, sub: Option<String>, scope: Option<String>) {
+        let token_hash = Self::hash_token(token);
+        let mut cache = self.cache.write().await;
+
+        // Evict expired entries if cache is full
+        if cache.len() >= self.max_entries {
+            let now = Instant::now();
+            let expired_keys: Vec<String> = cache
+                .iter()
+                .filter(|(_, v)| v.expires_at < now)
+                .map(|(k, _)| k.clone())
+                .collect();
+
+            let mut metrics = self.metrics.write().await;
+            metrics.evictions += expired_keys.len() as u64;
+            drop(metrics);
+
+            for key in expired_keys {
+                cache.remove(&key);
+            }
+
+            // If still full after eviction, remove oldest entries
+            if cache.len() >= self.max_entries {
+                let entries_to_remove = cache.len() - self.max_entries + 1;
+                let keys_to_remove: Vec<String> = cache
+                    .iter()
+                    .take(entries_to_remove)
+                    .map(|(k, _)| k.clone())
+                    .collect();
+                for key in keys_to_remove {
+                    cache.remove(&key);
+                }
+            }
+        }
+
+        cache.insert(
+            token_hash,
+            CachedTokenValidation {
+                active,
+                sub,
+                scope,
+                expires_at: Instant::now() + Duration::from_secs(self.ttl_seconds),
+            },
+        );
+    }
+
+    /// Invalidate a cached token.
+    pub async fn invalidate(&self, token: &str) {
+        let token_hash = Self::hash_token(token);
+        let mut cache = self.cache.write().await;
+        cache.remove(&token_hash);
+    }
+
+    /// Get cache metrics.
+    pub async fn get_metrics(&self) -> CacheMetrics {
+        self.metrics.read().await.clone()
+    }
+
+    /// Get cache size.
+    pub async fn size(&self) -> usize {
+        self.cache.read().await.len()
+    }
+
+    /// Clear the cache.
+    pub async fn clear(&self) {
+        let mut cache = self.cache.write().await;
+        cache.clear();
+    }
+}
+
+/// HTTP client for PM API communication (Story 104.1).
+#[derive(Clone)]
+pub struct PmApiClient {
+    /// HTTP client
+    client: reqwest::Client,
+    /// Health check URL
+    health_url: String,
+}
+
+impl PmApiClient {
+    /// Create a new PM API client.
+    pub fn new(health_url: String, timeout_seconds: u64) -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(timeout_seconds))
+            .build()
+            .expect("Failed to create HTTP client");
+
+        Self { client, health_url }
+    }
+
+    /// Check PM API health.
+    pub async fn check_health(&self) -> PmApiHealthResult {
+        let start = Instant::now();
+
+        match self.client.get(&self.health_url).send().await {
+            Ok(response) => {
+                let latency_ms = start.elapsed().as_millis() as u64;
+
+                if response.status().is_success() {
+                    // Try to parse the health response
+                    match response.json::<serde_json::Value>().await {
+                        Ok(json) => {
+                            let status = json
+                                .get("status")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("unknown")
+                                .to_string();
+                            let version = json
+                                .get("version")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
+
+                            PmApiHealthResult {
+                                status,
+                                latency_ms,
+                                version,
+                                checked_at: Instant::now(),
+                                error: None,
+                            }
+                        }
+                        Err(e) => PmApiHealthResult {
+                            status: "degraded".to_string(),
+                            latency_ms,
+                            version: None,
+                            checked_at: Instant::now(),
+                            error: Some(format!("Failed to parse health response: {}", e)),
+                        },
+                    }
+                } else {
+                    PmApiHealthResult {
+                        status: "unhealthy".to_string(),
+                        latency_ms,
+                        version: None,
+                        checked_at: Instant::now(),
+                        error: Some(format!("HTTP {}", response.status())),
+                    }
+                }
+            }
+            Err(e) => {
+                let latency_ms = start.elapsed().as_millis() as u64;
+
+                PmApiHealthResult {
+                    status: "unhealthy".to_string(),
+                    latency_ms,
+                    version: None,
+                    checked_at: Instant::now(),
+                    error: Some(format!("Connection failed: {}", e)),
+                }
+            }
+        }
+    }
+}
+
 /// Application state shared across all handlers.
 #[derive(Clone)]
 pub struct AppState {
@@ -377,6 +711,12 @@ pub struct AppState {
     pub session_service: SessionService,
     /// SSO token service for mobile deep-link flow
     pub sso_token_service: SsoTokenService,
+    /// PM API HTTP client (Epic 104.1)
+    pub pm_api_client: PmApiClient,
+    /// PM API health check cache (Epic 104.1)
+    pub health_cache: HealthCheckCache,
+    /// SSO token validation cache (Epic 104.2)
+    pub token_cache: TokenValidationCache,
 }
 
 impl AppState {
@@ -387,6 +727,15 @@ impl AppState {
         let config = AppConfig::from_env();
         let jwt_secret = config.jwt_secret.clone();
 
+        // Epic 104.1: Create PM API client for health checks
+        let pm_api_client = PmApiClient::new(config.pm_api_health_url.clone(), 5);
+
+        // Epic 104.1: Health check cache with 30 second TTL
+        let health_cache = HealthCheckCache::new(30);
+
+        // Epic 104.2: Token validation cache with 60 second TTL, 10000 max entries
+        let token_cache = TokenValidationCache::new(60, 10000);
+
         Self {
             db,
             portal_repo,
@@ -396,6 +745,9 @@ impl AppState {
             user_service: UserService::new(),
             session_service: SessionService::new(jwt_secret),
             sso_token_service: SsoTokenService::new(),
+            pm_api_client,
+            health_cache,
+            token_cache,
         }
     }
 }

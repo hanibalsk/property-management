@@ -45,3 +45,6 @@ tracing-opentelemetry = { workspace = true }
 metrics = { workspace = true }
 metrics-exporter-prometheus = { workspace = true }
 sentry = { workspace = true }
+
+# Epic 104: Token hashing for cache
+hex = { workspace = true }
