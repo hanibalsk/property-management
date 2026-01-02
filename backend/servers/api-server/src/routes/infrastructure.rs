@@ -13,13 +13,14 @@ use common::errors::ErrorResponse;
 use db::models::{
     infrastructure::{
         CreateFeatureFlag, FeatureFlag, FeatureFlagOverride, FeatureFlagOverrideType,
-        PaginatedResponse, UpdateFeatureFlag,
+        PaginatedResponse, TraceQuery, UpdateFeatureFlag,
     },
     AcknowledgeAlert, BackgroundJob, BackgroundJobExecution, BackgroundJobQueueStats,
-    BackgroundJobTypeStats, CreateBackgroundJob, DependencyHealth, EvaluateFeatureFlag,
-    FeatureFlagAuditLog, FeatureFlagEvaluation, HealthAlert, HealthAlertRule, HealthCheckConfig,
-    HealthCheckResult, HealthStatus, InfrastructureDashboard, PrometheusMetric, ResolveAlert,
-    RetryBackgroundJob, Span, SystemHealth, SystemMetrics, Trace, TraceWithSpans,
+    BackgroundJobTypeStats, CreateBackgroundJob, CreateHealthAlertRule, DependencyHealth,
+    EvaluateFeatureFlag, FeatureFlagAuditLog, FeatureFlagEvaluation, HealthAlert, HealthAlertRule,
+    HealthCheckConfig, HealthCheckResult, HealthStatus, InfrastructureDashboard, PrometheusMetric,
+    ResolveAlert, RetryBackgroundJob, Span, SystemHealth, SystemMetrics, Trace, TraceWithSpans,
+    UpdateHealthAlertRule,
 };
 use serde::Deserialize;
 use utoipa::{IntoParams, ToSchema};
@@ -70,6 +71,11 @@ pub fn router() -> Router<AppState> {
         .route("/health/alerts/:id/acknowledge", post(acknowledge_alert))
         .route("/health/alerts/:id/resolve", post(resolve_alert))
         .route("/health/alert-rules", get(list_alert_rules))
+        .route("/health/alert-rules", post(create_alert_rule))
+        .route("/health/alert-rules/:id", get(get_alert_rule))
+        .route("/health/alert-rules/:id", put(update_alert_rule))
+        .route("/health/alert-rules/:id", delete(delete_alert_rule))
+        .route("/health/alert-rules/:id/toggle", post(toggle_alert_rule))
         .route("/health/metrics", get(get_prometheus_metrics))
 }
 
@@ -110,6 +116,18 @@ pub struct HealthCheckIdPath {
 #[derive(Debug, Deserialize, IntoParams)]
 pub struct AlertIdPath {
     pub id: Uuid,
+}
+
+/// Alert rule ID path parameter.
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct AlertRuleIdPath {
+    pub id: Uuid,
+}
+
+/// Toggle alert rule request.
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct ToggleAlertRuleRequest {
+    pub enabled: bool,
 }
 
 /// Trace query parameters.
@@ -287,18 +305,45 @@ pub async fn get_dashboard(
     tag = "Infrastructure - Tracing"
 )]
 pub async fn list_traces(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Query(query): Query<TraceQueryParams>,
 ) -> Result<Json<PaginatedResponse<Trace>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement actual trace storage and retrieval
-    let response = PaginatedResponse {
-        items: Vec::new(),
-        total: 0,
-        limit: query.limit,
-        offset: query.offset,
+    let trace_query = TraceQuery {
+        service_name: query.service_name,
+        operation_name: query.operation_name,
+        min_duration_ms: query.min_duration_ms,
+        max_duration_ms: query.max_duration_ms,
+        has_error: query.has_error,
+        user_id: query.user_id,
+        org_id: query.org_id,
+        http_status_code: None,
+        from_time: None,
+        to_time: None,
+        limit: Some(query.limit),
+        offset: Some(query.offset),
     };
 
-    Ok(Json(response))
+    match state.infrastructure_repo.list_traces(trace_query).await {
+        Ok((traces, total)) => {
+            let response = PaginatedResponse {
+                items: traces,
+                total,
+                limit: query.limit,
+                offset: query.offset,
+            };
+            Ok(Json(response))
+        }
+        Err(e) => {
+            tracing::error!("Failed to list traces: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to list traces",
+                )),
+            ))
+        }
+    }
 }
 
 /// Get a trace by ID with all spans.
@@ -315,13 +360,47 @@ pub async fn list_traces(
     tag = "Infrastructure - Tracing"
 )]
 pub async fn get_trace(
-    State(_state): State<AppState>,
-    Path(_path): Path<TraceIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<TraceIdPath>,
 ) -> Result<Json<TraceWithSpans>, (StatusCode, Json<ErrorResponse>)> {
-    Err((
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Trace not found")),
-    ))
+    // Get the trace
+    let trace = match state.infrastructure_repo.get_trace(path.trace_id).await {
+        Ok(Some(t)) => t,
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Trace not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to get trace: {:?}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DATABASE_ERROR", "Failed to get trace")),
+            ));
+        }
+    };
+
+    // Get all spans for the trace
+    let spans = match state
+        .infrastructure_repo
+        .get_trace_spans(path.trace_id)
+        .await
+    {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::error!("Failed to get trace spans: {:?}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get trace spans",
+                )),
+            ));
+        }
+    };
+
+    Ok(Json(TraceWithSpans { trace, spans }))
 }
 
 /// Get all spans for a trace.
@@ -338,13 +417,48 @@ pub async fn get_trace(
     tag = "Infrastructure - Tracing"
 )]
 pub async fn get_trace_spans(
-    State(_state): State<AppState>,
-    Path(_path): Path<TraceIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<TraceIdPath>,
 ) -> Result<Json<Vec<Span>>, (StatusCode, Json<ErrorResponse>)> {
-    Err((
-        StatusCode::NOT_FOUND,
-        Json(ErrorResponse::new("NOT_FOUND", "Trace not found")),
-    ))
+    // Check if trace exists
+    match state.infrastructure_repo.get_trace(path.trace_id).await {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Trace not found")),
+            ))
+        }
+        Err(e) => {
+            tracing::error!("Failed to check trace: {:?}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to check trace",
+                )),
+            ));
+        }
+    }
+
+    // Get spans
+    match state
+        .infrastructure_repo
+        .get_trace_spans(path.trace_id)
+        .await
+    {
+        Ok(spans) => Ok(Json(spans)),
+        Err(e) => {
+            tracing::error!("Failed to get trace spans: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get trace spans",
+                )),
+            ))
+        }
+    }
 }
 
 // ==================== Story 89.1: Feature Flag Storage ====================
@@ -1175,19 +1289,21 @@ pub async fn get_queue_stats(
     tag = "Infrastructure - Background Jobs"
 )]
 pub async fn get_job_type_stats(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<BackgroundJobTypeStats>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement actual job type stats query
-    let stats = vec![BackgroundJobTypeStats {
-        job_type: "email_send".to_string(),
-        total_count: 0,
-        success_rate: 0.0,
-        avg_duration_ms: None,
-        pending_count: 0,
-        failed_count: 0,
-    }];
-
-    Ok(Json(stats))
+    match state.infrastructure_repo.get_job_type_stats().await {
+        Ok(stats) => Ok(Json(stats)),
+        Err(e) => {
+            tracing::error!("Failed to get job type stats: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get job type stats",
+                )),
+            ))
+        }
+    }
 }
 
 // ==================== Story 89.3: Health Check Storage ====================
@@ -1549,10 +1665,209 @@ pub async fn resolve_alert(
     tag = "Infrastructure - Health"
 )]
 pub async fn list_alert_rules(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<HealthAlertRule>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement alert rules listing from database
-    Ok(Json(Vec::new()))
+    match state.infrastructure_repo.list_alert_rules().await {
+        Ok(rules) => Ok(Json(rules)),
+        Err(e) => {
+            tracing::error!("Failed to list alert rules: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to list alert rules",
+                )),
+            ))
+        }
+    }
+}
+
+/// Create a new alert rule.
+#[utoipa::path(
+    post,
+    path = "/api/v1/infrastructure/health/alert-rules",
+    request_body = CreateHealthAlertRule,
+    responses(
+        (status = 201, description = "Alert rule created", body = HealthAlertRule),
+        (status = 400, description = "Invalid request"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Infrastructure - Health"
+)]
+pub async fn create_alert_rule(
+    State(state): State<AppState>,
+    Json(data): Json<CreateHealthAlertRule>,
+) -> Result<(StatusCode, Json<HealthAlertRule>), (StatusCode, Json<ErrorResponse>)> {
+    match state.infrastructure_repo.create_alert_rule(data).await {
+        Ok(rule) => Ok((StatusCode::CREATED, Json(rule))),
+        Err(e) => {
+            tracing::error!("Failed to create alert rule: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to create alert rule",
+                )),
+            ))
+        }
+    }
+}
+
+/// Get an alert rule by ID.
+#[utoipa::path(
+    get,
+    path = "/api/v1/infrastructure/health/alert-rules/{id}",
+    params(AlertRuleIdPath),
+    responses(
+        (status = 200, description = "Alert rule retrieved", body = HealthAlertRule),
+        (status = 404, description = "Alert rule not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Infrastructure - Health"
+)]
+pub async fn get_alert_rule(
+    State(state): State<AppState>,
+    Path(path): Path<AlertRuleIdPath>,
+) -> Result<Json<HealthAlertRule>, (StatusCode, Json<ErrorResponse>)> {
+    match state.infrastructure_repo.get_alert_rule(path.id).await {
+        Ok(Some(rule)) => Ok(Json(rule)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Alert rule not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to get alert rule: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to get alert rule",
+                )),
+            ))
+        }
+    }
+}
+
+/// Update an alert rule.
+#[utoipa::path(
+    put,
+    path = "/api/v1/infrastructure/health/alert-rules/{id}",
+    params(AlertRuleIdPath),
+    request_body = UpdateHealthAlertRule,
+    responses(
+        (status = 200, description = "Alert rule updated", body = HealthAlertRule),
+        (status = 404, description = "Alert rule not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Infrastructure - Health"
+)]
+pub async fn update_alert_rule(
+    State(state): State<AppState>,
+    Path(path): Path<AlertRuleIdPath>,
+    Json(data): Json<UpdateHealthAlertRule>,
+) -> Result<Json<HealthAlertRule>, (StatusCode, Json<ErrorResponse>)> {
+    match state
+        .infrastructure_repo
+        .update_alert_rule(path.id, data)
+        .await
+    {
+        Ok(Some(rule)) => Ok(Json(rule)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Alert rule not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to update alert rule: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to update alert rule",
+                )),
+            ))
+        }
+    }
+}
+
+/// Delete an alert rule.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/infrastructure/health/alert-rules/{id}",
+    params(AlertRuleIdPath),
+    responses(
+        (status = 204, description = "Alert rule deleted"),
+        (status = 404, description = "Alert rule not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Infrastructure - Health"
+)]
+pub async fn delete_alert_rule(
+    State(state): State<AppState>,
+    Path(path): Path<AlertRuleIdPath>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    match state.infrastructure_repo.delete_alert_rule(path.id).await {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Alert rule not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to delete alert rule: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to delete alert rule",
+                )),
+            ))
+        }
+    }
+}
+
+/// Toggle an alert rule on/off.
+#[utoipa::path(
+    post,
+    path = "/api/v1/infrastructure/health/alert-rules/{id}/toggle",
+    params(AlertRuleIdPath),
+    request_body = ToggleAlertRuleRequest,
+    responses(
+        (status = 200, description = "Alert rule toggled", body = HealthAlertRule),
+        (status = 404, description = "Alert rule not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearer_auth" = [])),
+    tag = "Infrastructure - Health"
+)]
+pub async fn toggle_alert_rule(
+    State(state): State<AppState>,
+    Path(path): Path<AlertRuleIdPath>,
+    Json(data): Json<ToggleAlertRuleRequest>,
+) -> Result<Json<HealthAlertRule>, (StatusCode, Json<ErrorResponse>)> {
+    match state
+        .infrastructure_repo
+        .toggle_alert_rule(path.id, data.enabled)
+        .await
+    {
+        Ok(Some(rule)) => Ok(Json(rule)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::new("NOT_FOUND", "Alert rule not found")),
+        )),
+        Err(e) => {
+            tracing::error!("Failed to toggle alert rule: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "DATABASE_ERROR",
+                    "Failed to toggle alert rule",
+                )),
+            ))
+        }
+    }
 }
 
 /// Get Prometheus-compatible metrics.
@@ -1566,46 +1881,147 @@ pub async fn list_alert_rules(
     tag = "Infrastructure - Health"
 )]
 pub async fn get_prometheus_metrics(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<PrometheusMetric>>, (StatusCode, Json<ErrorResponse>)> {
-    let metrics = vec![
-        PrometheusMetric {
-            name: "http_requests_total".to_string(),
-            help: "Total number of HTTP requests".to_string(),
-            metric_type: "counter".to_string(),
-            labels: Some(serde_json::json!({
-                "method": "GET",
-                "status": "200"
-            })),
-            value: 0.0,
-        },
-        PrometheusMetric {
-            name: "http_request_duration_seconds".to_string(),
-            help: "HTTP request duration in seconds".to_string(),
-            metric_type: "histogram".to_string(),
-            labels: Some(serde_json::json!({
-                "method": "GET",
-                "le": "0.1"
-            })),
-            value: 0.0,
-        },
-        PrometheusMetric {
-            name: "database_connections_active".to_string(),
-            help: "Number of active database connections".to_string(),
+    let mut metrics = Vec::new();
+
+    // Uptime metric
+    let uptime_seconds = state.boot_time.elapsed().as_secs() as f64;
+    metrics.push(PrometheusMetric {
+        name: "api_server_uptime_seconds".to_string(),
+        help: "Time since server started in seconds".to_string(),
+        metric_type: "gauge".to_string(),
+        labels: Some(serde_json::json!({
+            "service": "api-server",
+            "version": env!("CARGO_PKG_VERSION")
+        })),
+        value: uptime_seconds,
+    });
+
+    // Database connection pool metrics
+    let db_stats = state.infrastructure_repo.get_db_pool_stats().await;
+    metrics.push(PrometheusMetric {
+        name: "database_connections_active".to_string(),
+        help: "Number of active database connections".to_string(),
+        metric_type: "gauge".to_string(),
+        labels: None,
+        value: db_stats.active_connections as f64,
+    });
+    metrics.push(PrometheusMetric {
+        name: "database_connections_idle".to_string(),
+        help: "Number of idle database connections".to_string(),
+        metric_type: "gauge".to_string(),
+        labels: None,
+        value: db_stats.idle_connections as f64,
+    });
+    metrics.push(PrometheusMetric {
+        name: "database_connections_max".to_string(),
+        help: "Maximum database connections".to_string(),
+        metric_type: "gauge".to_string(),
+        labels: None,
+        value: db_stats.max_connections as f64,
+    });
+
+    // Feature flag metrics
+    if let Ok(active_flags) = state
+        .infrastructure_repo
+        .get_active_feature_flag_count()
+        .await
+    {
+        metrics.push(PrometheusMetric {
+            name: "feature_flags_active".to_string(),
+            help: "Number of active feature flags".to_string(),
             metric_type: "gauge".to_string(),
             labels: None,
-            value: 0.0,
-        },
-        PrometheusMetric {
-            name: "background_jobs_pending".to_string(),
-            help: "Number of pending background jobs".to_string(),
+            value: active_flags as f64,
+        });
+    }
+
+    // Alert metrics
+    if let Ok(active_alerts) = state.infrastructure_repo.get_active_alert_count().await {
+        metrics.push(PrometheusMetric {
+            name: "health_alerts_active".to_string(),
+            help: "Number of active health alerts".to_string(),
             metric_type: "gauge".to_string(),
-            labels: Some(serde_json::json!({
-                "queue": "default"
-            })),
-            value: 0.0,
-        },
-    ];
+            labels: None,
+            value: active_alerts as f64,
+        });
+    }
+
+    // Background job queue metrics
+    if let Ok(queue_stats) = state.background_job_repo.get_all_queue_stats().await {
+        for qs in queue_stats {
+            metrics.push(PrometheusMetric {
+                name: "background_jobs_pending".to_string(),
+                help: "Number of pending background jobs".to_string(),
+                metric_type: "gauge".to_string(),
+                labels: Some(serde_json::json!({
+                    "queue": qs.queue
+                })),
+                value: qs.pending_count as f64,
+            });
+            metrics.push(PrometheusMetric {
+                name: "background_jobs_running".to_string(),
+                help: "Number of running background jobs".to_string(),
+                metric_type: "gauge".to_string(),
+                labels: Some(serde_json::json!({
+                    "queue": qs.queue
+                })),
+                value: qs.running_count as f64,
+            });
+            metrics.push(PrometheusMetric {
+                name: "background_jobs_failed_24h".to_string(),
+                help: "Number of failed background jobs in last 24 hours".to_string(),
+                metric_type: "gauge".to_string(),
+                labels: Some(serde_json::json!({
+                    "queue": qs.queue
+                })),
+                value: qs.failed_count_24h as f64,
+            });
+            if let Some(avg_duration) = qs.avg_duration_ms {
+                metrics.push(PrometheusMetric {
+                    name: "background_jobs_avg_duration_ms".to_string(),
+                    help: "Average job duration in milliseconds (last 24h)".to_string(),
+                    metric_type: "gauge".to_string(),
+                    labels: Some(serde_json::json!({
+                        "queue": qs.queue
+                    })),
+                    value: avg_duration,
+                });
+            }
+        }
+    }
+
+    // Trace metrics (last hour)
+    if let Ok(trace_count) = state.infrastructure_repo.get_recent_trace_count(1).await {
+        metrics.push(PrometheusMetric {
+            name: "traces_total_1h".to_string(),
+            help: "Total number of traces in the last hour".to_string(),
+            metric_type: "gauge".to_string(),
+            labels: None,
+            value: trace_count as f64,
+        });
+    }
+
+    if let Ok(error_rate) = state.infrastructure_repo.get_error_rate_percent(1).await {
+        metrics.push(PrometheusMetric {
+            name: "http_error_rate_percent".to_string(),
+            help: "HTTP error rate percentage (last hour)".to_string(),
+            metric_type: "gauge".to_string(),
+            labels: None,
+            value: error_rate,
+        });
+    }
+
+    if let Ok(avg_response) = state.infrastructure_repo.get_avg_response_time_ms(1).await {
+        metrics.push(PrometheusMetric {
+            name: "http_request_duration_avg_ms".to_string(),
+            help: "Average HTTP request duration in milliseconds (last hour)".to_string(),
+            metric_type: "gauge".to_string(),
+            labels: None,
+            value: avg_response,
+        });
+    }
 
     Ok(Json(metrics))
 }
