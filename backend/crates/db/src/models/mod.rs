@@ -766,6 +766,9 @@ pub mod disputes;
 // Epic 108: Feature Packages & Bundles
 pub mod feature_package;
 
+// Epic 109: User Type Feature Experience
+pub mod feature_analytics;
+
 pub use disputes::{
     action_status, activity_type, dispute_category, dispute_priority, dispute_status,
     escalation_severity, party_role, resolution_status, session_status, session_type, ActionItem,
@@ -781,9 +784,23 @@ pub use disputes::{
 
 // Epic 108: Feature Packages & Bundles
 pub use feature_package::{
-    package_source, BatchAddFeatures, CreateFeaturePackage, CreateFeaturePackageItem,
-    CreateOrganizationPackage, FeatureComparisonRow, FeaturePackage, FeaturePackageItem,
+    package_source, BatchAddFeatures, CreateFeaturePackage as CreateFeaturePackage108,
+    CreateFeaturePackageItem, CreateOrganizationPackage, FeatureComparisonRow,
+    FeaturePackage as FeaturePackage108, FeaturePackageItem as FeaturePackageItem108,
     FeaturePackageItemWithDetails, FeaturePackageQuery, FeaturePackageSummary,
-    FeaturePackageWithFeatures, OrganizationPackage, OrganizationPackageWithDetails,
-    PackageComparison, PackageType, PublicPackage, UpdateFeaturePackage, UpdateOrganizationPackage,
+    FeaturePackageWithFeatures as FeaturePackageWithFeatures108, OrganizationPackage,
+    OrganizationPackageWithDetails, PackageComparison, PackageType, PublicPackage,
+    UpdateFeaturePackage as UpdateFeaturePackage108, UpdateOrganizationPackage,
+};
+
+// Epic 109: User Type Feature Experience
+pub use feature_analytics::{
+    CreateFeaturePackage, FeatureAccessState as FeatureAccessState109,
+    FeatureDescriptor as FeatureDescriptor109, FeatureDescriptorSummary, FeatureEventType,
+    FeaturePackage, FeaturePackageFeature, FeaturePackageItem, FeaturePackageWithFeatures,
+    FeatureStatsByUserType, FeatureStatsQuery, FeatureUsageEvent, FeatureUsageStats,
+    LogFeatureEvent, OrganizationFeaturePackage, ResolvedFeature, ResolvedFeaturesQuery,
+    SetFeaturePreference, SetUserTypeAccess, SubscribeToPackage, UpdateFeaturePackage,
+    UpgradeOptionsResponse, UpsertFeatureDescriptor,
+    UserFeaturePreference as UserFeaturePreference109, UserTypeFeatureAccess,
 };

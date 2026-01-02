@@ -1000,6 +1000,21 @@ pub struct FeatureFlagWithCount {
     pub override_count: i64,
 }
 
+impl From<FeatureFlag> for FeatureFlagWithCount {
+    fn from(flag: FeatureFlag) -> Self {
+        Self {
+            id: flag.id,
+            key: flag.key,
+            name: flag.name,
+            description: flag.description,
+            is_enabled: flag.is_enabled,
+            created_at: flag.created_at,
+            updated_at: flag.updated_at,
+            override_count: 0,
+        }
+    }
+}
+
 /// Feature flag with all its overrides.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct FeatureFlagWithOverrides {
