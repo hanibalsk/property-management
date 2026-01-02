@@ -965,3 +965,24 @@ pub struct WebhookVerificationResult {
     /// Error message if invalid.
     pub error: Option<String>,
 }
+
+// =============================================================================
+// Story 103.5: pgvector RAG Statistics
+// =============================================================================
+
+/// RAG system statistics for an organization.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct RagStatistics {
+    /// Number of documents indexed for RAG.
+    pub indexed_documents: i64,
+    /// Total number of text chunks.
+    pub total_chunks: i64,
+    /// Chunks with vector embeddings (pgvector).
+    pub chunks_with_vector: i64,
+    /// Chunks pending migration from JSONB to vector.
+    pub chunks_pending_migration: i64,
+    /// Average chunk length in characters.
+    pub avg_chunk_length: i32,
+    /// Last time embeddings were updated.
+    pub last_updated: Option<DateTime<Utc>>,
+}
