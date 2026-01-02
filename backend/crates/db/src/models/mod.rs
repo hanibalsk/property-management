@@ -204,14 +204,19 @@ pub use person_month::{
     YearlyPersonMonthSummary,
 };
 pub use platform_admin::{
-    AdminOrganizationDetail, AdminOrganizationSummary, AnnouncementSeverity,
-    CreateFeatureFlagOverrideRequest, CreateFeatureFlagRequest, CreateHelpArticleRequest,
-    CreateMaintenanceRequest, CreateSystemAnnouncementRequest, FeatureFlag, FeatureFlagOverride,
-    FeatureFlagScope, HelpArticle, HelpArticleRevision, MetricAlert, MetricThreshold, MetricType,
-    OnboardingStep, OnboardingTour, OrganizationDetailMetrics, OrganizationMetrics, PlatformMetric,
-    ReactivateOrganizationRequest, ScheduledMaintenance, StepPlacement, SupportAccessLog,
-    SupportAccessRequest, SupportAccessStatus, SuspendOrganizationRequest, SystemAnnouncement,
-    SystemAnnouncementAcknowledgment, UserOnboardingProgress,
+    AdminOrganizationDetail, AdminOrganizationSummary, AnnouncementSeverity, CatalogPagination,
+    CategoryWithCount, CreateFeatureCategoryRequest, CreateFeatureFlagOverrideRequest,
+    CreateFeatureFlagRequest, CreateHelpArticleRequest, CreateMaintenanceRequest,
+    CreateSystemAnnouncementRequest, FeatureAccessState, FeatureCatalogItem, FeatureCatalogQuery,
+    FeatureCatalogResponse, FeatureCategory, FeatureCategorySummary, FeatureDescriptor,
+    FeatureDescriptorDisplay, FeatureFlag, FeatureFlagOverride, FeatureFlagScope, FeatureState,
+    FeatureUserTypeAccess, HelpArticle, HelpArticleRevision, MetricAlert, MetricThreshold,
+    MetricType, OnboardingStep, OnboardingTour, OrganizationDetailMetrics, OrganizationMetrics,
+    PlatformMetric, ReactivateOrganizationRequest, ScheduledMaintenance,
+    SetFeatureUserTypeAccessRequest, SetUserFeaturePreferenceRequest, StepPlacement,
+    SupportAccessLog, SupportAccessRequest, SupportAccessStatus, SuspendOrganizationRequest,
+    SystemAnnouncement, SystemAnnouncementAcknowledgment, UpdateFeatureCategoryRequest,
+    UpsertFeatureDescriptorRequest, UserFeaturePreference, UserOnboardingProgress,
 };
 pub use refresh_token::{CreateRefreshToken, LoginAttempt, RateLimitStatus, RefreshToken};
 pub use role::{permissions, system_roles, CreateRole, PermissionDefinition, Role, UpdateRole};
