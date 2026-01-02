@@ -758,6 +758,9 @@ pub use owner_analytics::{
 // Epic 77: Dispute Resolution
 pub mod disputes;
 
+// Epic 109: User Type Feature Experience
+pub mod feature_analytics;
+
 pub use disputes::{
     action_status, activity_type, dispute_category, dispute_priority, dispute_status,
     escalation_severity, party_role, resolution_status, session_status, session_type, ActionItem,
@@ -769,4 +772,15 @@ pub use disputes::{
     PriorityCount as DisputePriorityCount, ProposeResolution, RecordSessionNotes, ResolutionTerm,
     ResolutionVote, ResolutionWithVotes, ResolveEscalation, ScheduleSession, SessionAttendance,
     StatusCount as DisputeStatusCount, SubmitResponse, UpdateDisputeStatus, VoteOnResolution,
+};
+
+// Epic 109: User Type Feature Experience
+pub use feature_analytics::{
+    CreateFeaturePackage, FeatureAccessState, FeatureDescriptor, FeatureDescriptorSummary,
+    FeatureEventType, FeaturePackage, FeaturePackageFeature, FeaturePackageItem,
+    FeaturePackageWithFeatures, FeatureStatsByUserType, FeatureStatsQuery, FeatureUsageEvent,
+    FeatureUsageStats, LogFeatureEvent, OrganizationFeaturePackage, ResolvedFeature,
+    ResolvedFeaturesQuery, SetFeaturePreference, SetUserTypeAccess, SubscribeToPackage,
+    UpdateFeaturePackage, UpgradeOptionsResponse, UpsertFeatureDescriptor, UserFeaturePreference,
+    UserTypeFeatureAccess,
 };

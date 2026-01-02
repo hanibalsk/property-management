@@ -213,6 +213,8 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/webhooks/voice",
             routes::voice_webhooks::voice_webhook_router(),
         )
+        // Features routes (Epic 109)
+        .nest("/api/v1/features", routes::features::router())
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

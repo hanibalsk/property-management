@@ -253,3 +253,8 @@ pub use workflow_templates::WorkflowTemplateRepository;
 pub mod edd;
 
 pub use edd::{EddRepository, EddStatistics};
+
+// Epic 109: User Type Feature Experience
+pub mod feature_analytics;
+
+pub use feature_analytics::FeatureAnalyticsRepository;
