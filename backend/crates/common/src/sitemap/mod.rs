@@ -238,7 +238,7 @@ impl Sitemap {
             .filter(|e| {
                 e.tags
                     .as_ref()
-                    .map_or(false, |t| t.contains(&tag.to_string()))
+                    .is_some_and(|t| t.contains(&tag.to_string()))
             })
             .collect()
     }
