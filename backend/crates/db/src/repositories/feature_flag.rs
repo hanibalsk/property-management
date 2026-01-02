@@ -360,6 +360,7 @@ impl FeatureFlagRepository {
     }
 
     /// Create a new category.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_category(
         &self,
         key: &str,
@@ -394,6 +395,7 @@ impl FeatureFlagRepository {
     }
 
     /// Update a category.
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_category(
         &self,
         id: Uuid,
@@ -471,6 +473,7 @@ impl FeatureFlagRepository {
     }
 
     /// Create or update a feature descriptor.
+    #[allow(clippy::too_many_arguments)]
     pub async fn upsert_descriptor(
         &self,
         flag_id: Uuid,
@@ -779,7 +782,7 @@ impl FeatureFlagRepository {
                 bind_idx, bind_idx, bind_idx
             ));
             params.push(format!("%{}%", search));
-            bind_idx += 1;
+            // bind_idx would be incremented here if more filters were added
         }
 
         sql.push_str(" ORDER BY fd.display_order, fd.display_name");
