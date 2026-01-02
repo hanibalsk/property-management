@@ -44,63 +44,19 @@ CREATE POLICY health_alert_rules_read ON health_alert_rules
     FOR SELECT
     USING (true);
 
--- Insert some default alert rules
-INSERT INTO health_alert_rules (name, description, condition, severity, notification_channels, enabled)
-VALUES
-    (
-        'High CPU Usage',
-        'Alert when CPU usage exceeds 80%',
-        'cpu_usage > 80',
-        'warning',
-        '["email"]',
-        true
-    ),
-    (
-        'Critical CPU Usage',
-        'Alert when CPU usage exceeds 95%',
-        'cpu_usage > 95',
-        'critical',
-        '["email", "pagerduty"]',
-        true
-    ),
-    (
-        'High Error Rate',
-        'Alert when error rate exceeds 5%',
-        'error_rate > 5',
-        'warning',
-        '["email"]',
-        true
-    ),
-    (
-        'Critical Error Rate',
-        'Alert when error rate exceeds 10%',
-        'error_rate > 10',
-        'critical',
-        '["email", "pagerduty"]',
-        true
-    ),
-    (
-        'Database Connection Pool Low',
-        'Alert when available database connections are low',
-        'db_connections_available < 5',
-        'warning',
-        '["email"]',
-        true
-    ),
-    (
-        'Slow Response Time',
-        'Alert when average response time exceeds 2 seconds',
-        'avg_response_time_ms > 2000',
-        'warning',
-        '["email"]',
-        true
-    ),
-    (
-        'Failed Background Jobs',
-        'Alert when failed jobs count exceeds threshold',
-        'failed_jobs_24h > 100',
-        'warning',
-        '["email"]',
-        true
-    )
-ON CONFLICT (name) DO NOTHING;
+-- Insert some default alert rules (use DO block for idempotent inserts)
+DO $$
+BEGIN
+    -- Only insert if table is empty (first-time migration)
+    IF NOT EXISTS (SELECT 1 FROM health_alert_rules LIMIT 1) THEN
+        INSERT INTO health_alert_rules (name, description, condition, severity, notification_channels, enabled)
+        VALUES
+            ('High CPU Usage', 'Alert when CPU usage exceeds 80%', 'cpu_usage > 80', 'warning', '["email"]', true),
+            ('Critical CPU Usage', 'Alert when CPU usage exceeds 95%', 'cpu_usage > 95', 'critical', '["email", "pagerduty"]', true),
+            ('High Error Rate', 'Alert when error rate exceeds 5%', 'error_rate > 5', 'warning', '["email"]', true),
+            ('Critical Error Rate', 'Alert when error rate exceeds 10%', 'error_rate > 10', 'critical', '["email", "pagerduty"]', true),
+            ('Database Connection Pool Low', 'Alert when available database connections are low', 'db_connections_available < 5', 'warning', '["email"]', true),
+            ('Slow Response Time', 'Alert when average response time exceeds 2 seconds', 'avg_response_time_ms > 2000', 'warning', '["email"]', true),
+            ('Failed Background Jobs', 'Alert when failed jobs count exceeds threshold', 'failed_jobs_24h > 100', 'warning', '["email"]', true);
+    END IF;
+END $$;
