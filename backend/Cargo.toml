@@ -88,6 +88,9 @@ aws-credential-types = "1.1"
 # Redis (Epic 103)
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 
+# CLI (Epic 110)
+clap = { version = "4.4", features = ["derive"] }
+
 # Internal crates
 common = { path = "crates/common" }
 api-core = { path = "crates/api-core" }
