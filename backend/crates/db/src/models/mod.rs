@@ -801,6 +801,6 @@ pub use feature_analytics::{
     FeatureStatsByUserType, FeatureStatsQuery, FeatureUsageEvent, FeatureUsageStats,
     LogFeatureEvent, OrganizationFeaturePackage, ResolvedFeature, ResolvedFeaturesQuery,
     SetFeaturePreference, SetUserTypeAccess, SubscribeToPackage, UpdateFeaturePackage,
-    UpgradeOptionsResponse, UpsertFeatureDescriptor, UserFeaturePreference as UserFeaturePreference109,
-    UserTypeFeatureAccess,
+    UpgradeOptionsResponse, UpsertFeatureDescriptor,
+    UserFeaturePreference as UserFeaturePreference109, UserTypeFeatureAccess,
 };
