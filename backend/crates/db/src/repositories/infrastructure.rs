@@ -1,11 +1,12 @@
-//! Infrastructure repository (Epic 89).
+//! Infrastructure repository (Epic 89 & 102).
 //!
-//! Repository for feature flags, health monitoring, and alerts.
+//! Repository for feature flags, health monitoring, alerts, and distributed tracing.
 
 use crate::models::infrastructure::{
-    AlertSeverity, CreateFeatureFlag, FeatureFlag, FeatureFlagAuditAction, FeatureFlagAuditLog,
-    FeatureFlagOverride, FeatureFlagOverrideType, HealthAlert, HealthCheckConfig,
-    HealthCheckResult, HealthStatus, UpdateFeatureFlag,
+    AlertSeverity, BackgroundJobTypeStats, CreateFeatureFlag, CreateHealthAlertRule, CreateSpan,
+    CreateTrace, FeatureFlag, FeatureFlagAuditAction, FeatureFlagAuditLog, FeatureFlagOverride,
+    FeatureFlagOverrideType, HealthAlert, HealthAlertRule, HealthCheckConfig, HealthCheckResult,
+    HealthStatus, Span, Trace, TraceQuery, UpdateFeatureFlag, UpdateHealthAlertRule,
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
@@ -807,6 +808,503 @@ impl InfrastructureRepository {
 
         Ok(count)
     }
+
+    // ==================== Story 102.1: Distributed Tracing ====================
+
+    /// List traces with query filters.
+    pub async fn list_traces(&self, query: TraceQuery) -> Result<(Vec<Trace>, i64), SqlxError> {
+        let limit = query.limit.unwrap_or(50);
+        let offset = query.offset.unwrap_or(0);
+
+        // Count total matching traces
+        let total = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*) FROM distributed_traces
+            WHERE ($1::VARCHAR IS NULL OR service_name = $1)
+              AND ($2::VARCHAR IS NULL OR operation_name ILIKE '%' || $2 || '%')
+              AND ($3::BIGINT IS NULL OR duration_ms >= $3)
+              AND ($4::BIGINT IS NULL OR duration_ms <= $4)
+              AND ($5::BOOLEAN IS NULL OR has_error = $5)
+              AND ($6::UUID IS NULL OR user_id = $6)
+              AND ($7::UUID IS NULL OR org_id = $7)
+              AND ($8::INTEGER IS NULL OR http_status_code = $8)
+              AND ($9::TIMESTAMPTZ IS NULL OR started_at >= $9)
+              AND ($10::TIMESTAMPTZ IS NULL OR started_at <= $10)
+            "#,
+        )
+        .bind(&query.service_name)
+        .bind(&query.operation_name)
+        .bind(query.min_duration_ms)
+        .bind(query.max_duration_ms)
+        .bind(query.has_error)
+        .bind(query.user_id)
+        .bind(query.org_id)
+        .bind(query.http_status_code)
+        .bind(query.from_time)
+        .bind(query.to_time)
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Fetch traces
+        let traces = sqlx::query_as::<_, Trace>(
+            r#"
+            SELECT id, trace_id, root_span_id, service_name, operation_name,
+                   http_method, http_path, http_status_code, duration_ms, has_error,
+                   user_id, org_id, attributes, started_at, completed_at, created_at
+            FROM distributed_traces
+            WHERE ($1::VARCHAR IS NULL OR service_name = $1)
+              AND ($2::VARCHAR IS NULL OR operation_name ILIKE '%' || $2 || '%')
+              AND ($3::BIGINT IS NULL OR duration_ms >= $3)
+              AND ($4::BIGINT IS NULL OR duration_ms <= $4)
+              AND ($5::BOOLEAN IS NULL OR has_error = $5)
+              AND ($6::UUID IS NULL OR user_id = $6)
+              AND ($7::UUID IS NULL OR org_id = $7)
+              AND ($8::INTEGER IS NULL OR http_status_code = $8)
+              AND ($9::TIMESTAMPTZ IS NULL OR started_at >= $9)
+              AND ($10::TIMESTAMPTZ IS NULL OR started_at <= $10)
+            ORDER BY started_at DESC
+            LIMIT $11 OFFSET $12
+            "#,
+        )
+        .bind(&query.service_name)
+        .bind(&query.operation_name)
+        .bind(query.min_duration_ms)
+        .bind(query.max_duration_ms)
+        .bind(query.has_error)
+        .bind(query.user_id)
+        .bind(query.org_id)
+        .bind(query.http_status_code)
+        .bind(query.from_time)
+        .bind(query.to_time)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok((traces, total))
+    }
+
+    /// Get a trace by ID.
+    pub async fn get_trace(&self, id: Uuid) -> Result<Option<Trace>, SqlxError> {
+        let trace = sqlx::query_as::<_, Trace>(
+            r#"
+            SELECT id, trace_id, root_span_id, service_name, operation_name,
+                   http_method, http_path, http_status_code, duration_ms, has_error,
+                   user_id, org_id, attributes, started_at, completed_at, created_at
+            FROM distributed_traces
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(trace)
+    }
+
+    /// Get all spans for a trace.
+    pub async fn get_trace_spans(&self, trace_id: Uuid) -> Result<Vec<Span>, SqlxError> {
+        let spans = sqlx::query_as::<_, Span>(
+            r#"
+            SELECT id, trace_id, span_id, parent_span_id, service_name, operation_name,
+                   span_kind, duration_ms, status, error_message, attributes, events,
+                   started_at, ended_at, created_at
+            FROM distributed_spans
+            WHERE trace_id = $1
+            ORDER BY started_at ASC
+            "#,
+        )
+        .bind(trace_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(spans)
+    }
+
+    /// Create a new trace.
+    pub async fn create_trace(&self, data: CreateTrace) -> Result<Trace, SqlxError> {
+        let trace = sqlx::query_as::<_, Trace>(
+            r#"
+            INSERT INTO distributed_traces (
+                trace_id, root_span_id, service_name, operation_name,
+                http_method, http_path, http_status_code, duration_ms, has_error,
+                user_id, org_id, attributes, started_at, completed_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            RETURNING id, trace_id, root_span_id, service_name, operation_name,
+                      http_method, http_path, http_status_code, duration_ms, has_error,
+                      user_id, org_id, attributes, started_at, completed_at, created_at
+            "#,
+        )
+        .bind(&data.trace_id)
+        .bind(&data.root_span_id)
+        .bind(&data.service_name)
+        .bind(&data.operation_name)
+        .bind(&data.http_method)
+        .bind(&data.http_path)
+        .bind(data.http_status_code)
+        .bind(data.duration_ms)
+        .bind(data.has_error)
+        .bind(data.user_id)
+        .bind(data.org_id)
+        .bind(&data.attributes)
+        .bind(data.started_at)
+        .bind(data.completed_at)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(trace)
+    }
+
+    /// Create a new span.
+    pub async fn create_span(&self, data: CreateSpan) -> Result<Span, SqlxError> {
+        let span = sqlx::query_as::<_, Span>(
+            r#"
+            INSERT INTO distributed_spans (
+                trace_id, span_id, parent_span_id, service_name, operation_name,
+                span_kind, duration_ms, status, error_message, attributes, events,
+                started_at, ended_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            RETURNING id, trace_id, span_id, parent_span_id, service_name, operation_name,
+                      span_kind, duration_ms, status, error_message, attributes, events,
+                      started_at, ended_at, created_at
+            "#,
+        )
+        .bind(data.trace_id)
+        .bind(&data.span_id)
+        .bind(&data.parent_span_id)
+        .bind(&data.service_name)
+        .bind(&data.operation_name)
+        .bind(&data.span_kind)
+        .bind(data.duration_ms)
+        .bind(&data.status)
+        .bind(&data.error_message)
+        .bind(&data.attributes)
+        .bind(&data.events)
+        .bind(data.started_at)
+        .bind(data.ended_at)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(span)
+    }
+
+    /// Get trace statistics for dashboard.
+    pub async fn get_trace_statistics(&self, hours: i32) -> Result<TraceStatistics, SqlxError> {
+        let stats =
+            sqlx::query_as::<_, TraceStatisticsRow>("SELECT * FROM get_trace_statistics($1)")
+                .bind(hours)
+                .fetch_one(&self.pool)
+                .await?;
+
+        Ok(TraceStatistics {
+            total_traces: stats.total_traces,
+            error_traces: stats.error_traces,
+            error_rate_percent: stats.error_rate_percent,
+            avg_duration_ms: stats.avg_duration_ms,
+            p95_duration_ms: stats.p95_duration_ms,
+            p99_duration_ms: stats.p99_duration_ms,
+            requests_per_minute: stats.requests_per_minute,
+        })
+    }
+
+    /// Cleanup old traces based on retention policy.
+    pub async fn cleanup_old_traces(&self, retention_days: i32) -> Result<i64, SqlxError> {
+        let deleted = sqlx::query_scalar::<_, i64>("SELECT cleanup_old_traces($1)")
+            .bind(retention_days)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(deleted)
+    }
+
+    /// Get recent trace count for dashboard.
+    pub async fn get_recent_trace_count(&self, hours: i32) -> Result<i64, SqlxError> {
+        let count = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*) FROM distributed_traces
+            WHERE started_at > NOW() - ($1 || ' hours')::INTERVAL
+            "#,
+        )
+        .bind(hours)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(count)
+    }
+
+    // ==================== Story 102.2: Job Type Statistics ====================
+
+    /// Get statistics grouped by job type.
+    pub async fn get_job_type_stats(&self) -> Result<Vec<BackgroundJobTypeStats>, SqlxError> {
+        let stats = sqlx::query_as::<_, JobTypeStatsRow>(
+            r#"
+            SELECT
+                job_type,
+                COUNT(*)::BIGINT AS total_count,
+                COALESCE(
+                    COUNT(*) FILTER (WHERE status = 'completed')::DOUBLE PRECISION /
+                    NULLIF(COUNT(*) FILTER (WHERE status IN ('completed', 'failed'))::DOUBLE PRECISION, 0) * 100,
+                    0
+                ) AS success_rate,
+                AVG(duration_ms) FILTER (WHERE status = 'completed') AS avg_duration_ms,
+                COUNT(*) FILTER (WHERE status = 'pending')::BIGINT AS pending_count,
+                COUNT(*) FILTER (WHERE status = 'failed')::BIGINT AS failed_count
+            FROM background_jobs
+            GROUP BY job_type
+            ORDER BY total_count DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(stats
+            .into_iter()
+            .map(|s| BackgroundJobTypeStats {
+                job_type: s.job_type,
+                total_count: s.total_count,
+                success_rate: s.success_rate,
+                avg_duration_ms: s.avg_duration_ms,
+                pending_count: s.pending_count,
+                failed_count: s.failed_count,
+            })
+            .collect())
+    }
+
+    // ==================== Story 102.3: Alert Rules Management ====================
+
+    /// List all alert rules.
+    pub async fn list_alert_rules(&self) -> Result<Vec<HealthAlertRule>, SqlxError> {
+        let rules = sqlx::query_as::<_, HealthAlertRule>(
+            r#"
+            SELECT id, name, description, condition, severity, notification_channels,
+                   enabled, cooldown_seconds, last_triggered_at, created_at, updated_at
+            FROM health_alert_rules
+            ORDER BY name ASC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rules)
+    }
+
+    /// Get an alert rule by ID.
+    pub async fn get_alert_rule(&self, id: Uuid) -> Result<Option<HealthAlertRule>, SqlxError> {
+        let rule = sqlx::query_as::<_, HealthAlertRule>(
+            r#"
+            SELECT id, name, description, condition, severity, notification_channels,
+                   enabled, cooldown_seconds, last_triggered_at, created_at, updated_at
+            FROM health_alert_rules
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(rule)
+    }
+
+    /// Create a new alert rule.
+    pub async fn create_alert_rule(
+        &self,
+        data: CreateHealthAlertRule,
+    ) -> Result<HealthAlertRule, SqlxError> {
+        let rule = sqlx::query_as::<_, HealthAlertRule>(
+            r#"
+            INSERT INTO health_alert_rules (
+                name, description, condition, severity, notification_channels,
+                enabled, cooldown_seconds
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, name, description, condition, severity, notification_channels,
+                      enabled, cooldown_seconds, last_triggered_at, created_at, updated_at
+            "#,
+        )
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(&data.condition)
+        .bind(&data.severity)
+        .bind(&data.notification_channels)
+        .bind(data.enabled.unwrap_or(true))
+        .bind(data.cooldown_seconds.unwrap_or(300))
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(rule)
+    }
+
+    /// Update an alert rule.
+    pub async fn update_alert_rule(
+        &self,
+        id: Uuid,
+        data: UpdateHealthAlertRule,
+    ) -> Result<Option<HealthAlertRule>, SqlxError> {
+        let rule = sqlx::query_as::<_, HealthAlertRule>(
+            r#"
+            UPDATE health_alert_rules
+            SET name = COALESCE($2, name),
+                description = COALESCE($3, description),
+                condition = COALESCE($4, condition),
+                severity = COALESCE($5, severity),
+                notification_channels = COALESCE($6, notification_channels),
+                enabled = COALESCE($7, enabled),
+                cooldown_seconds = COALESCE($8, cooldown_seconds),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, name, description, condition, severity, notification_channels,
+                      enabled, cooldown_seconds, last_triggered_at, created_at, updated_at
+            "#,
+        )
+        .bind(id)
+        .bind(&data.name)
+        .bind(&data.description)
+        .bind(&data.condition)
+        .bind(&data.severity)
+        .bind(&data.notification_channels)
+        .bind(data.enabled)
+        .bind(data.cooldown_seconds)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(rule)
+    }
+
+    /// Delete an alert rule.
+    pub async fn delete_alert_rule(&self, id: Uuid) -> Result<bool, SqlxError> {
+        let result = sqlx::query("DELETE FROM health_alert_rules WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Toggle an alert rule enabled/disabled.
+    pub async fn toggle_alert_rule(
+        &self,
+        id: Uuid,
+        enabled: bool,
+    ) -> Result<Option<HealthAlertRule>, SqlxError> {
+        let rule = sqlx::query_as::<_, HealthAlertRule>(
+            r#"
+            UPDATE health_alert_rules
+            SET enabled = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING id, name, description, condition, severity, notification_channels,
+                      enabled, cooldown_seconds, last_triggered_at, created_at, updated_at
+            "#,
+        )
+        .bind(id)
+        .bind(enabled)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(rule)
+    }
+
+    /// Update last triggered timestamp for an alert rule.
+    pub async fn update_alert_rule_last_triggered(&self, id: Uuid) -> Result<(), SqlxError> {
+        sqlx::query("UPDATE health_alert_rules SET last_triggered_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    // ==================== Story 102.4: Prometheus Metrics ====================
+
+    /// Get database connection pool stats for metrics.
+    pub async fn get_db_pool_stats(&self) -> DbPoolStats {
+        DbPoolStats {
+            active_connections: self.pool.size() as i32,
+            idle_connections: self.pool.num_idle() as i32,
+            max_connections: self.pool.options().get_max_connections() as i32,
+        }
+    }
+
+    /// Get error rate from traces (last hour).
+    pub async fn get_error_rate_percent(&self, hours: i32) -> Result<f64, SqlxError> {
+        let rate = sqlx::query_scalar::<_, Option<f64>>(
+            r#"
+            SELECT
+                CASE
+                    WHEN COUNT(*) > 0 THEN
+                        (COUNT(*) FILTER (WHERE has_error)::DOUBLE PRECISION / COUNT(*)::DOUBLE PRECISION) * 100
+                    ELSE 0
+                END
+            FROM distributed_traces
+            WHERE started_at > NOW() - ($1 || ' hours')::INTERVAL
+            "#,
+        )
+        .bind(hours)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(rate.unwrap_or(0.0))
+    }
+
+    /// Get average response time from traces (last hour).
+    pub async fn get_avg_response_time_ms(&self, hours: i32) -> Result<f64, SqlxError> {
+        let avg = sqlx::query_scalar::<_, Option<f64>>(
+            r#"
+            SELECT AVG(duration_ms)
+            FROM distributed_traces
+            WHERE started_at > NOW() - ($1 || ' hours')::INTERVAL
+            "#,
+        )
+        .bind(hours)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(avg.unwrap_or(0.0))
+    }
+}
+
+/// Internal row type for trace statistics.
+#[derive(sqlx::FromRow)]
+struct TraceStatisticsRow {
+    total_traces: i64,
+    error_traces: i64,
+    error_rate_percent: f64,
+    avg_duration_ms: Option<f64>,
+    p95_duration_ms: Option<f64>,
+    p99_duration_ms: Option<f64>,
+    requests_per_minute: f64,
+}
+
+/// Trace statistics for dashboard.
+#[derive(Debug, Clone)]
+pub struct TraceStatistics {
+    pub total_traces: i64,
+    pub error_traces: i64,
+    pub error_rate_percent: f64,
+    pub avg_duration_ms: Option<f64>,
+    pub p95_duration_ms: Option<f64>,
+    pub p99_duration_ms: Option<f64>,
+    pub requests_per_minute: f64,
+}
+
+/// Internal row type for job type stats.
+#[derive(sqlx::FromRow)]
+struct JobTypeStatsRow {
+    job_type: String,
+    total_count: i64,
+    success_rate: f64,
+    avg_duration_ms: Option<f64>,
+    pending_count: i64,
+    failed_count: i64,
+}
+
+/// Database pool statistics for metrics.
+#[derive(Debug, Clone)]
+pub struct DbPoolStats {
+    pub active_connections: i32,
+    pub idle_connections: i32,
+    pub max_connections: i32,
 }
 
 /// Simple hash function for rollout percentage calculation.
