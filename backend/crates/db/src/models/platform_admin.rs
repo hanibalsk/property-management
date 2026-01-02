@@ -174,6 +174,298 @@ pub struct CreateFeatureFlagOverrideRequest {
     pub is_enabled: bool,
 }
 
+// ==================== Epic 107: Feature Descriptors & Catalog ====================
+
+/// Feature category for organizing features.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct FeatureCategory {
+    pub id: Uuid,
+    /// Unique key for the category (e.g., "ai_features")
+    pub key: String,
+    pub name: String,
+    pub description: Option<String>,
+    /// Icon identifier (e.g., "sparkles", "chart-bar")
+    pub icon: Option<String>,
+    /// Hex color for visual grouping (e.g., "#3B82F6")
+    pub color: Option<String>,
+    /// Parent category for hierarchy
+    pub parent_id: Option<Uuid>,
+    /// Display order within parent/root
+    pub display_order: i32,
+    /// Localization data
+    pub translations: serde_json::Value,
+    /// Additional metadata
+    pub metadata: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Feature descriptor with rich metadata for display.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct FeatureDescriptor {
+    pub id: Uuid,
+    /// Reference to the feature flag
+    pub feature_flag_id: Uuid,
+    /// Display name for UI
+    pub display_name: String,
+    /// Short description (max 255 chars)
+    pub short_description: Option<String>,
+    /// Full description with details
+    pub full_description: Option<String>,
+    /// Icon identifier
+    pub icon: Option<String>,
+    /// Preview image URL
+    pub preview_image_url: Option<String>,
+    /// Category reference
+    pub category_id: Option<Uuid>,
+    /// Subcategory key
+    pub subcategory: Option<String>,
+    /// Tags for filtering
+    pub tags: serde_json::Value,
+    /// Localization data
+    pub translations: serde_json::Value,
+    /// Marketing benefits list
+    pub benefits: serde_json::Value,
+    /// Use case examples
+    pub use_cases: serde_json::Value,
+    /// Required OAuth scopes
+    pub api_scopes: serde_json::Value,
+    /// Feature dependencies (flag keys)
+    pub depends_on: serde_json::Value,
+    /// Conflicting features (flag keys)
+    pub conflicts_with: serde_json::Value,
+    /// Display order in UI
+    pub display_order: i32,
+    /// Whether to highlight this feature
+    pub is_highlighted: bool,
+    /// Badge text (e.g., "NEW", "BETA")
+    pub badge_text: Option<String>,
+    /// Show as locked/teaser when disabled
+    pub show_teaser_when_disabled: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Access state for user type feature matrix.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[sqlx(type_name = "feature_access_state", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum FeatureAccessState {
+    /// Feature is always included for this user type
+    Included,
+    /// Feature is optional - user can toggle
+    Optional,
+    /// Feature is not available for this user type
+    Excluded,
+}
+
+impl FeatureAccessState {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Included => "included",
+            Self::Optional => "optional",
+            Self::Excluded => "excluded",
+        }
+    }
+}
+
+impl std::fmt::Display for FeatureAccessState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// User type-based feature access configuration.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct FeatureUserTypeAccess {
+    pub id: Uuid,
+    pub feature_flag_id: Uuid,
+    /// User type (e.g., "owner", "tenant", "manager")
+    pub user_type: String,
+    /// Access state for this user type
+    pub access_state: FeatureAccessState,
+    /// Can user override their preference for optional features
+    pub can_override: bool,
+    /// Default enabled state for optional features
+    pub default_enabled: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// User's preference for an optional feature.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
+pub struct UserFeaturePreference {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub feature_flag_id: Uuid,
+    /// User's preference
+    pub is_enabled: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Request to create a feature category.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct CreateFeatureCategoryRequest {
+    pub key: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub parent_id: Option<Uuid>,
+    #[serde(default)]
+    pub display_order: i32,
+    #[serde(default)]
+    pub translations: serde_json::Value,
+}
+
+/// Request to update a feature category.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct UpdateFeatureCategoryRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub parent_id: Option<Uuid>,
+    pub display_order: Option<i32>,
+    pub translations: Option<serde_json::Value>,
+}
+
+/// Request to create or update a feature descriptor.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct UpsertFeatureDescriptorRequest {
+    pub display_name: String,
+    pub short_description: Option<String>,
+    pub full_description: Option<String>,
+    pub icon: Option<String>,
+    pub preview_image_url: Option<String>,
+    pub category_id: Option<Uuid>,
+    pub subcategory: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub translations: serde_json::Value,
+    #[serde(default)]
+    pub benefits: Vec<String>,
+    #[serde(default)]
+    pub use_cases: serde_json::Value,
+    #[serde(default)]
+    pub api_scopes: Vec<String>,
+    #[serde(default)]
+    pub depends_on: Vec<String>,
+    #[serde(default)]
+    pub conflicts_with: Vec<String>,
+    #[serde(default)]
+    pub display_order: i32,
+    #[serde(default)]
+    pub is_highlighted: bool,
+    pub badge_text: Option<String>,
+    #[serde(default)]
+    pub show_teaser_when_disabled: bool,
+}
+
+/// Request to configure user type feature access.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct SetFeatureUserTypeAccessRequest {
+    pub user_type: String,
+    pub access_state: FeatureAccessState,
+    #[serde(default)]
+    pub can_override: bool,
+    #[serde(default = "default_true_fn")]
+    pub default_enabled: bool,
+}
+
+fn default_true_fn() -> bool {
+    true
+}
+
+/// Request to set user feature preference.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
+pub struct SetUserFeaturePreferenceRequest {
+    pub feature_key: String,
+    pub is_enabled: bool,
+}
+
+/// Feature with descriptor for catalog display.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct FeatureCatalogItem {
+    pub key: String,
+    pub descriptor: FeatureDescriptorDisplay,
+    pub state: FeatureState,
+    pub dependencies: Vec<String>,
+    pub conflicts_with: Vec<String>,
+}
+
+/// Descriptor fields for display.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct FeatureDescriptorDisplay {
+    pub display_name: String,
+    pub short_description: Option<String>,
+    pub full_description: Option<String>,
+    pub icon: Option<String>,
+    pub preview_image_url: Option<String>,
+    pub category: Option<FeatureCategorySummary>,
+    pub tags: Vec<String>,
+    pub benefits: Vec<String>,
+    pub badge_text: Option<String>,
+    pub is_highlighted: bool,
+}
+
+/// Feature state for the current user.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct FeatureState {
+    pub is_enabled: bool,
+    pub access_state: FeatureAccessState,
+    pub can_toggle: bool,
+}
+
+/// Category summary for display.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct FeatureCategorySummary {
+    pub key: String,
+    pub name: String,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+}
+
+/// Feature catalog query parameters.
+#[derive(Debug, Clone, Default, Deserialize, ToSchema)]
+pub struct FeatureCatalogQuery {
+    pub category: Option<String>,
+    pub user_type: Option<String>,
+    pub package_id: Option<Uuid>,
+    pub search: Option<String>,
+    pub locale: Option<String>,
+    pub page: Option<i64>,
+    pub per_page: Option<i64>,
+}
+
+/// Feature catalog response.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct FeatureCatalogResponse {
+    pub features: Vec<FeatureCatalogItem>,
+    pub categories: Vec<CategoryWithCount>,
+    pub pagination: CatalogPagination,
+}
+
+/// Category with feature count.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CategoryWithCount {
+    pub key: String,
+    pub name: String,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub count: i64,
+}
+
+/// Pagination info for catalog.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CatalogPagination {
+    pub total: i64,
+    pub page: i64,
+    pub per_page: i64,
+}
+
 // ==================== System Announcement Models ====================
 
 /// Severity levels for system announcements.
