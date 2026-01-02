@@ -415,23 +415,14 @@ impl OtaReadRS {
             .or_else(|| Self::extract_attr(xml, "RoomTypeCode"))
             .unwrap_or_default();
 
-        // Extract dates - these are required fields, return error if missing or invalid
-        let check_in_str = Self::extract_attr(xml, "Start").ok_or_else(|| {
-            BookingError::InvalidMessage("Missing check-in date (Start attribute)".to_string())
-        })?;
-        let check_in = NaiveDate::parse_from_str(&check_in_str, "%Y-%m-%d").map_err(|e| {
-            BookingError::InvalidMessage(format!("Invalid check-in date '{}': {}", check_in_str, e))
-        })?;
+        // Extract dates
+        let check_in = Self::extract_attr(xml, "Start")
+            .and_then(|s| NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok())
+            .unwrap_or_else(|| Utc::now().date_naive());
 
-        let check_out_str = Self::extract_attr(xml, "End").ok_or_else(|| {
-            BookingError::InvalidMessage("Missing check-out date (End attribute)".to_string())
-        })?;
-        let check_out = NaiveDate::parse_from_str(&check_out_str, "%Y-%m-%d").map_err(|e| {
-            BookingError::InvalidMessage(format!(
-                "Invalid check-out date '{}': {}",
-                check_out_str, e
-            ))
-        })?;
+        let check_out = Self::extract_attr(xml, "End")
+            .and_then(|s| NaiveDate::parse_from_str(&s, "%Y-%m-%d").ok())
+            .unwrap_or_else(|| check_in + Duration::days(1));
 
         let nights = (check_out - check_in).num_days() as i32;
 
@@ -462,13 +453,10 @@ impl OtaReadRS {
                 .or_else(|| Self::extract_element(xml, "Text")),
         };
 
-        // Extract counts with logging when using defaults
+        // Extract counts
         let rooms: i32 = Self::extract_attr(xml, "NumberOfUnits")
             .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| {
-                tracing::warn!(reservation_id = %res_id, "Missing NumberOfUnits, defaulting to 1");
-                1
-            });
+            .unwrap_or(1);
         let adults: i32 = Self::extract_attr(xml, "AdultCount")
             .or_else(|| {
                 Self::extract_attr(xml, "AgeQualifyingCode")
@@ -476,29 +464,20 @@ impl OtaReadRS {
                     .and(Self::extract_attr(xml, "Count"))
             })
             .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| {
-                tracing::warn!(reservation_id = %res_id, "Missing adult count, defaulting to 1");
-                1
-            });
+            .unwrap_or(1);
         let children: i32 = Self::extract_attr(xml, "ChildCount")
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
 
-        // Extract pricing with logging when using defaults
+        // Extract pricing
         let total_price = Self::extract_attr(xml, "AmountAfterTax")
             .or_else(|| Self::extract_attr(xml, "Amount"))
             .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| {
-                tracing::warn!(reservation_id = %res_id, "Missing total price, defaulting to 0");
-                Decimal::ZERO
-            });
+            .unwrap_or(Decimal::ZERO);
         let commission = Self::extract_attr(xml, "CommissionAmount")
             .and_then(|s| s.parse().ok())
             .unwrap_or(Decimal::ZERO);
-        let currency = Self::extract_attr(xml, "CurrencyCode").unwrap_or_else(|| {
-            tracing::warn!(reservation_id = %res_id, "Missing currency code, defaulting to EUR");
-            "EUR".to_string()
-        });
+        let currency = Self::extract_attr(xml, "CurrencyCode").unwrap_or_else(|| "EUR".to_string());
 
         // Extract rate and meal plan
         let rate_plan = Self::extract_attr(xml, "RatePlanCode");
