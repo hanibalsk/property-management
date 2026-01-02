@@ -605,11 +605,28 @@ async fn get_user_info(state: &AppState, access_token: &str) -> Result<SsoUserIn
     Ok(response.json().await?)
 }
 
-/// Introspect PM token.
+/// Introspect PM token with caching (Epic 104.2).
+///
+/// Uses cached validation result if available and not expired (60 second TTL).
+/// This reduces load on the PM API and improves response times for repeated
+/// token validations.
 async fn introspect_pm_token(
     state: &AppState,
     token: &str,
 ) -> Result<TokenIntrospectionResponse, anyhow::Error> {
+    // Story 104.2: Check cache first
+    if let Some(cached) = state.token_cache.get(token).await {
+        tracing::debug!(active = cached.active, "SSO token validation cache hit");
+        return Ok(TokenIntrospectionResponse {
+            active: cached.active,
+            sub: cached.sub,
+            client_id: None,
+            scope: cached.scope,
+        });
+    }
+
+    // Cache miss - perform actual introspection
+    tracing::debug!("SSO token validation cache miss, calling PM API");
     let client = reqwest::Client::new();
     let response = client
         .post(&state.config.pm_introspect_url)
@@ -623,13 +640,30 @@ async fn introspect_pm_token(
 
     if !response.status().is_success() {
         let error_text = response.text().await.unwrap_or_default();
+        // Cache inactive tokens too (to prevent repeated failed validations)
+        state.token_cache.set(token, false, None, None).await;
         return Err(anyhow::anyhow!(
             "Token introspection failed: {}",
             error_text
         ));
     }
 
-    Ok(response.json().await?)
+    let result: TokenIntrospectionResponse = response.json().await?;
+
+    // Story 104.2: Cache the validation result
+    state
+        .token_cache
+        .set(
+            token,
+            result.active,
+            result.sub.clone(),
+            result.scope.clone(),
+        )
+        .await;
+
+    tracing::debug!(active = result.active, "SSO token validated and cached");
+
+    Ok(result)
 }
 
 /// Extract session cookie from headers.

@@ -193,6 +193,8 @@ fn parse_default_origins() -> Vec<HeaderValue> {
     ),
     components(schemas(
         routes::health::HealthResponse,
+        routes::health::CacheMetricsResponse,
+        routes::health::CacheMetricsDetail,
         routes::listings::ListingSearchRequest,
         routes::listings::ListingSearchResponse,
         routes::listings::ListingSummary,
