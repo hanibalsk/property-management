@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK",
+    "search": "Search",
+    "refresh": "Refresh",
+    "submit": "Submit"
+  },
+  "tabs": {
+    "home": "Home",
+    "faults": "Faults",
+    "news": "News",
+    "vote": "Vote",
+    "docs": "Docs"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "forgotPassword": "Forgot Password?",
+    "emailRequired": "Email is required",
+    "passwordRequired": "Password is required",
+    "invalidCredentials": "Invalid email or password"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome",
+    "recentActivity": "Recent Activity",
+    "quickActions": "Quick Actions",
+    "notifications": "Notifications"
+  },
+  "faults": {
+    "title": "Fault Reports",
+    "newFault": "Report Fault",
+    "myFaults": "My Faults",
+    "allFaults": "All Faults",
+    "description": "Description",
+    "location": "Location",
+    "priority": "Priority",
+    "status": "Status",
+    "photo": "Photo",
+    "addPhoto": "Add Photo",
+    "submitFault": "Submit Fault",
+    "priorityLow": "Low",
+    "priorityMedium": "Medium",
+    "priorityHigh": "High",
+    "priorityUrgent": "Urgent",
+    "statusOpen": "Open",
+    "statusInProgress": "In Progress",
+    "statusResolved": "Resolved",
+    "statusClosed": "Closed"
+  },
+  "news": {
+    "title": "News",
+    "latest": "Latest News",
+    "readMore": "Read More",
+    "noNews": "No news available"
+  },
+  "voting": {
+    "title": "Voting",
+    "activePolls": "Active Polls",
+    "completedPolls": "Completed Polls",
+    "vote": "Vote",
+    "voted": "Voted",
+    "results": "Results",
+    "deadline": "Deadline",
+    "noPolls": "No active polls"
+  },
+  "documents": {
+    "title": "Documents",
+    "recent": "Recent Documents",
+    "categories": "Categories",
+    "download": "Download",
+    "view": "View",
+    "noDocuments": "No documents available"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "about": "About",
+    "version": "Version"
+  },
+  "errors": {
+    "generic": "An error occurred. Please try again.",
+    "network": "Network error. Please check your connection.",
+    "server": "Server error. Please try again later.",
+    "notFound": "Not found",
+    "unauthorized": "You are not authorized to perform this action."
+  },
+  "offline": {
+    "title": "You are offline",
+    "message": "Some features may not be available."
+  }
+}

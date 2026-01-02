@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "Načítá se...",
+    "error": "Chyba",
+    "retry": "Zkusit znovu",
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "delete": "Smazat",
+    "edit": "Upravit",
+    "confirm": "Potvrdit",
+    "back": "Zpět",
+    "next": "Další",
+    "done": "Hotovo",
+    "yes": "Ano",
+    "no": "Ne",
+    "ok": "OK",
+    "search": "Hledat",
+    "refresh": "Obnovit",
+    "submit": "Odeslat"
+  },
+  "tabs": {
+    "home": "Domů",
+    "faults": "Závady",
+    "news": "Zprávy",
+    "vote": "Hlasování",
+    "docs": "Dokumenty"
+  },
+  "auth": {
+    "login": "Přihlásit se",
+    "logout": "Odhlásit se",
+    "email": "E-mail",
+    "password": "Heslo",
+    "signIn": "Přihlásit se",
+    "signOut": "Odhlásit se",
+    "forgotPassword": "Zapomenuté heslo?",
+    "emailRequired": "E-mail je povinný",
+    "passwordRequired": "Heslo je povinné",
+    "invalidCredentials": "Neplatný e-mail nebo heslo"
+  },
+  "dashboard": {
+    "title": "Přehled",
+    "welcome": "Vítejte",
+    "recentActivity": "Poslední aktivita",
+    "quickActions": "Rychlé akce",
+    "notifications": "Oznámení"
+  },
+  "faults": {
+    "title": "Hlášení závad",
+    "newFault": "Nahlásit závadu",
+    "myFaults": "Moje závady",
+    "allFaults": "Všechny závady",
+    "description": "Popis",
+    "location": "Místo",
+    "priority": "Priorita",
+    "status": "Stav",
+    "photo": "Fotografie",
+    "addPhoto": "Přidat fotografii",
+    "submitFault": "Odeslat závadu",
+    "priorityLow": "Nízká",
+    "priorityMedium": "Střední",
+    "priorityHigh": "Vysoká",
+    "priorityUrgent": "Urgentní",
+    "statusOpen": "Otevřeno",
+    "statusInProgress": "Probíhá",
+    "statusResolved": "Vyřešeno",
+    "statusClosed": "Uzavřeno"
+  },
+  "news": {
+    "title": "Zprávy",
+    "latest": "Nejnovější zprávy",
+    "readMore": "Číst více",
+    "noNews": "Žádné zprávy"
+  },
+  "voting": {
+    "title": "Hlasování",
+    "activePolls": "Aktivní hlasování",
+    "completedPolls": "Ukončená hlasování",
+    "vote": "Hlasovat",
+    "voted": "Hlasováno",
+    "results": "Výsledky",
+    "deadline": "Termín",
+    "noPolls": "Žádná aktivní hlasování"
+  },
+  "documents": {
+    "title": "Dokumenty",
+    "recent": "Poslední dokumenty",
+    "categories": "Kategorie",
+    "download": "Stáhnout",
+    "view": "Zobrazit",
+    "noDocuments": "Žádné dokumenty"
+  },
+  "settings": {
+    "title": "Nastavení",
+    "language": "Jazyk",
+    "notifications": "Oznámení",
+    "privacy": "Soukromí",
+    "about": "O aplikaci",
+    "version": "Verze"
+  },
+  "errors": {
+    "generic": "Vyskytla se chyba. Zkuste to znovu.",
+    "network": "Chyba sítě. Zkontrolujte připojení.",
+    "server": "Chyba serveru. Zkuste to později.",
+    "notFound": "Nenalezeno",
+    "unauthorized": "Nemáte oprávnění k této akci."
+  },
+  "offline": {
+    "title": "Jste offline",
+    "message": "Některé funkce nemusí být dostupné."
+  }
+}

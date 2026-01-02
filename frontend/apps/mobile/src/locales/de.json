@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "Lädt...",
+    "error": "Fehler",
+    "retry": "Erneut versuchen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "confirm": "Bestätigen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "done": "Fertig",
+    "yes": "Ja",
+    "no": "Nein",
+    "ok": "OK",
+    "search": "Suchen",
+    "refresh": "Aktualisieren",
+    "submit": "Absenden"
+  },
+  "tabs": {
+    "home": "Startseite",
+    "faults": "Störungen",
+    "news": "Nachrichten",
+    "vote": "Abstimmung",
+    "docs": "Dokumente"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "forgotPassword": "Passwort vergessen?",
+    "emailRequired": "E-Mail ist erforderlich",
+    "passwordRequired": "Passwort ist erforderlich",
+    "invalidCredentials": "Ungültige E-Mail oder Passwort"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Willkommen",
+    "recentActivity": "Letzte Aktivität",
+    "quickActions": "Schnellaktionen",
+    "notifications": "Benachrichtigungen"
+  },
+  "faults": {
+    "title": "Störungsmeldungen",
+    "newFault": "Störung melden",
+    "myFaults": "Meine Störungen",
+    "allFaults": "Alle Störungen",
+    "description": "Beschreibung",
+    "location": "Ort",
+    "priority": "Priorität",
+    "status": "Status",
+    "photo": "Foto",
+    "addPhoto": "Foto hinzufügen",
+    "submitFault": "Störung absenden",
+    "priorityLow": "Niedrig",
+    "priorityMedium": "Mittel",
+    "priorityHigh": "Hoch",
+    "priorityUrgent": "Dringend",
+    "statusOpen": "Offen",
+    "statusInProgress": "In Bearbeitung",
+    "statusResolved": "Gelöst",
+    "statusClosed": "Geschlossen"
+  },
+  "news": {
+    "title": "Nachrichten",
+    "latest": "Neueste Nachrichten",
+    "readMore": "Mehr lesen",
+    "noNews": "Keine Nachrichten verfügbar"
+  },
+  "voting": {
+    "title": "Abstimmung",
+    "activePolls": "Aktive Abstimmungen",
+    "completedPolls": "Abgeschlossene Abstimmungen",
+    "vote": "Abstimmen",
+    "voted": "Abgestimmt",
+    "results": "Ergebnisse",
+    "deadline": "Frist",
+    "noPolls": "Keine aktiven Abstimmungen"
+  },
+  "documents": {
+    "title": "Dokumente",
+    "recent": "Neueste Dokumente",
+    "categories": "Kategorien",
+    "download": "Herunterladen",
+    "view": "Anzeigen",
+    "noDocuments": "Keine Dokumente verfügbar"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "notifications": "Benachrichtigungen",
+    "privacy": "Datenschutz",
+    "about": "Über",
+    "version": "Version"
+  },
+  "errors": {
+    "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
+    "server": "Serverfehler. Bitte versuchen Sie es später erneut.",
+    "notFound": "Nicht gefunden",
+    "unauthorized": "Sie sind nicht berechtigt, diese Aktion durchzuführen."
+  },
+  "offline": {
+    "title": "Sie sind offline",
+    "message": "Einige Funktionen sind möglicherweise nicht verfügbar."
+  }
+}

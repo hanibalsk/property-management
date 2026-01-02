@@ -1,0 +1,111 @@
+{
+  "common": {
+    "loading": "Načítava sa...",
+    "error": "Chyba",
+    "retry": "Skúsiť znova",
+    "save": "Uložiť",
+    "cancel": "Zrušiť",
+    "delete": "Vymazať",
+    "edit": "Upraviť",
+    "confirm": "Potvrdiť",
+    "back": "Späť",
+    "next": "Ďalej",
+    "done": "Hotovo",
+    "yes": "Áno",
+    "no": "Nie",
+    "ok": "OK",
+    "search": "Hľadať",
+    "refresh": "Obnoviť",
+    "submit": "Odoslať"
+  },
+  "tabs": {
+    "home": "Domov",
+    "faults": "Poruchy",
+    "news": "Správy",
+    "vote": "Hlasovanie",
+    "docs": "Dokumenty"
+  },
+  "auth": {
+    "login": "Prihlásiť sa",
+    "logout": "Odhlásiť sa",
+    "email": "E-mail",
+    "password": "Heslo",
+    "signIn": "Prihlásiť sa",
+    "signOut": "Odhlásiť sa",
+    "forgotPassword": "Zabudnuté heslo?",
+    "emailRequired": "E-mail je povinný",
+    "passwordRequired": "Heslo je povinné",
+    "invalidCredentials": "Neplatný e-mail alebo heslo"
+  },
+  "dashboard": {
+    "title": "Prehľad",
+    "welcome": "Vitajte",
+    "recentActivity": "Posledná aktivita",
+    "quickActions": "Rýchle akcie",
+    "notifications": "Oznámenia"
+  },
+  "faults": {
+    "title": "Hlásenia porúch",
+    "newFault": "Nahlásiť poruchu",
+    "myFaults": "Moje poruchy",
+    "allFaults": "Všetky poruchy",
+    "description": "Popis",
+    "location": "Miesto",
+    "priority": "Priorita",
+    "status": "Stav",
+    "photo": "Fotografia",
+    "addPhoto": "Pridať fotografiu",
+    "submitFault": "Odoslať poruchu",
+    "priorityLow": "Nízka",
+    "priorityMedium": "Stredná",
+    "priorityHigh": "Vysoká",
+    "priorityUrgent": "Urgentná",
+    "statusOpen": "Otvorené",
+    "statusInProgress": "Prebieha",
+    "statusResolved": "Vyriešené",
+    "statusClosed": "Uzavreté"
+  },
+  "news": {
+    "title": "Správy",
+    "latest": "Najnovšie správy",
+    "readMore": "Čítať viac",
+    "noNews": "Žiadne správy"
+  },
+  "voting": {
+    "title": "Hlasovanie",
+    "activePolls": "Aktívne hlasovania",
+    "completedPolls": "Ukončené hlasovania",
+    "vote": "Hlasovať",
+    "voted": "Hlasované",
+    "results": "Výsledky",
+    "deadline": "Termín",
+    "noPolls": "Žiadne aktívne hlasovania"
+  },
+  "documents": {
+    "title": "Dokumenty",
+    "recent": "Posledné dokumenty",
+    "categories": "Kategórie",
+    "download": "Stiahnuť",
+    "view": "Zobraziť",
+    "noDocuments": "Žiadne dokumenty"
+  },
+  "settings": {
+    "title": "Nastavenia",
+    "language": "Jazyk",
+    "notifications": "Oznámenia",
+    "privacy": "Súkromie",
+    "about": "O aplikácii",
+    "version": "Verzia"
+  },
+  "errors": {
+    "generic": "Vyskytla sa chyba. Skúste to znova.",
+    "network": "Chyba siete. Skontrolujte pripojenie.",
+    "server": "Chyba servera. Skúste to neskôr.",
+    "notFound": "Nenájdené",
+    "unauthorized": "Nemáte oprávnenie na túto akciu."
+  },
+  "offline": {
+    "title": "Ste offline",
+    "message": "Niektoré funkcie nemusia byť dostupné."
+  }
+}
