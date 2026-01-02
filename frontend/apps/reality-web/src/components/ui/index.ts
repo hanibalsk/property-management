@@ -4,5 +4,6 @@
  * Shared UI components for Reality Portal.
  */
 
-export { Header } from './Header';
 export { Footer } from './Footer';
+export { Header } from './Header';
+export { LanguageSwitcher } from './LanguageSwitcher';

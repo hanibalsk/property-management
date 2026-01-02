@@ -1,0 +1,82 @@
+import { AuthProvider } from '@/lib/auth-context';
+import { ComparisonProvider } from '@/lib/comparison-context';
+import { QueryProvider } from '@/lib/query-provider';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, setRequestLocale } from 'next-intl/server';
+import { notFound } from 'next/navigation';
+import { ComparisonTray } from '../../components/comparison';
+import { type Locale, locales } from '../../i18n/config';
+
+type Props = {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+};
+
+export function generateStaticParams() {
+  return locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+
+  const titles: Record<Locale, string> = {
+    en: 'Reality Portal - Find Your Perfect Property',
+    sk: 'Reality Portál - Nájdite svoju ideálnu nehnuteľnosť',
+    cs: 'Reality Portál - Najděte svou ideální nemovitost',
+    de: 'Reality Portal - Finden Sie Ihre perfekte Immobilie',
+  };
+
+  const descriptions: Record<Locale, string> = {
+    en: 'Search thousands of property listings across Slovakia, Czech Republic, and beyond.',
+    sk: 'Prehľadajte tisíce ponúk nehnuteľností na Slovensku, v Českej republike a ďalej.',
+    cs: 'Prohledejte tisíce nabídek nemovitostí v České republice, na Slovensku a dále.',
+    de: 'Durchsuchen Sie Tausende von Immobilienangeboten in der Slowakei, der Tschechischen Republik und darüber hinaus.',
+  };
+
+  return {
+    title: titles[locale as Locale] || titles.en,
+    description: descriptions[locale as Locale] || descriptions.en,
+    openGraph: {
+      title: titles[locale as Locale] || titles.en,
+      description: descriptions[locale as Locale] || descriptions.en,
+      type: 'website',
+      locale: locale,
+    },
+  };
+}
+
+export default async function LocaleLayout({ children, params }: Props) {
+  const { locale } = await params;
+
+  // Validate the locale
+  if (!locales.includes(locale as Locale)) {
+    notFound();
+  }
+
+  // Enable static rendering
+  setRequestLocale(locale);
+
+  // Get messages for the current locale
+  const messages = await getMessages();
+
+  return (
+    <html lang={locale}>
+      <body>
+        <NextIntlClientProvider messages={messages}>
+          <QueryProvider>
+            <AuthProvider>
+              <ComparisonProvider>
+                {children}
+                <ComparisonTray />
+              </ComparisonProvider>
+            </AuthProvider>
+          </QueryProvider>
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}

@@ -2,18 +2,22 @@
  * Header Component
  *
  * Main navigation header for Reality Portal (Epic 44).
+ * Includes language switcher for i18n support (Epic 111).
  */
 
 'use client';
 
 import { useAuth } from '@/lib/auth-context';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
+import { Link } from '../../i18n/routing';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 export function Header() {
   const { user, isLoading, isAuthenticated, login, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const t = useTranslations();
 
   return (
     <header className="header">
@@ -26,18 +30,20 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav className="nav-desktop">
           <Link href="/listings?transactionType=sale" className="nav-link">
-            For Sale
+            {t('search.sale')}
           </Link>
           <Link href="/listings?transactionType=rent" className="nav-link">
-            For Rent
+            {t('search.rent')}
           </Link>
           <Link href="/listings" className="nav-link">
-            All Listings
+            {t('nav.allListings')}
           </Link>
         </nav>
 
         {/* Auth Section */}
         <div className="auth-section">
+          <LanguageSwitcher />
+
           {isLoading ? (
             <div className="skeleton" />
           ) : isAuthenticated ? (
@@ -59,19 +65,19 @@ export function Header() {
                   </div>
                   <div className="dropdown-menu">
                     <Link href="/favorites" className="menu-item">
-                      My Favorites
+                      {t('common.favorites')}
                     </Link>
                     <Link href="/saved-searches" className="menu-item">
-                      Saved Searches
+                      {t('nav.savedSearches')}
                     </Link>
                     <Link href="/inquiries" className="menu-item">
-                      My Inquiries
+                      {t('nav.myInquiries')}
                     </Link>
                     <Link href="/profile" className="menu-item">
-                      Profile
+                      {t('nav.profile')}
                     </Link>
                     <button type="button" onClick={logout} className="sign-out-button">
-                      Sign Out
+                      {t('common.logout')}
                     </button>
                   </div>
                 </div>
@@ -79,7 +85,7 @@ export function Header() {
             </div>
           ) : (
             <button type="button" onClick={() => login()} className="sign-in-button">
-              Sign In
+              {t('common.login')}
             </button>
           )}
 
@@ -117,21 +123,21 @@ export function Header() {
             className="nav-link-mobile"
             onClick={() => setShowMobileMenu(false)}
           >
-            For Sale
+            {t('search.sale')}
           </Link>
           <Link
             href="/listings?transactionType=rent"
             className="nav-link-mobile"
             onClick={() => setShowMobileMenu(false)}
           >
-            For Rent
+            {t('search.rent')}
           </Link>
           <Link
             href="/listings"
             className="nav-link-mobile"
             onClick={() => setShowMobileMenu(false)}
           >
-            All Listings
+            {t('nav.allListings')}
           </Link>
           {isAuthenticated && (
             <>
@@ -140,21 +146,21 @@ export function Header() {
                 className="nav-link-mobile"
                 onClick={() => setShowMobileMenu(false)}
               >
-                My Favorites
+                {t('common.favorites')}
               </Link>
               <Link
                 href="/saved-searches"
                 className="nav-link-mobile"
                 onClick={() => setShowMobileMenu(false)}
               >
-                Saved Searches
+                {t('nav.savedSearches')}
               </Link>
               <Link
                 href="/inquiries"
                 className="nav-link-mobile"
                 onClick={() => setShowMobileMenu(false)}
               >
-                My Inquiries
+                {t('nav.myInquiries')}
               </Link>
             </>
           )}

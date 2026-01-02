@@ -5,12 +5,26 @@
     "register": "Registrieren",
     "logout": "Abmelden",
     "favorites": "Favoriten",
-    "contact": "Kontakt"
+    "contact": "Kontakt",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "loading": "Wird geladen...",
+    "error": "Fehler",
+    "success": "Erfolg"
+  },
+  "nav": {
+    "allListings": "Alle Angebote",
+    "savedSearches": "Gespeicherte Suchen",
+    "myInquiries": "Meine Anfragen",
+    "profile": "Profil"
   },
   "home": {
     "title": "Finden Sie Ihr perfektes Zuhause",
     "subtitle": "Durchsuchen Sie tausende Angebote",
-    "searchPlaceholder": "Stadt, Adresse oder Stichwort eingeben..."
+    "searchPlaceholder": "Stadt, Adresse oder Stichwort eingeben...",
+    "featuredListings": "Empfohlene Angebote",
+    "viewAll": "Alle anzeigen"
   },
   "listing": {
     "price": "Preis",
@@ -20,7 +34,13 @@
     "features": "Ausstattung",
     "description": "Beschreibung",
     "contact_agent": "Makler kontaktieren",
-    "schedule_viewing": "Besichtigung planen"
+    "schedule_viewing": "Besichtigung planen",
+    "perMonth": "/Monat",
+    "sqm": "m²",
+    "bedroom": "Schlafzimmer",
+    "bedrooms": "Schlafzimmer",
+    "bathroom": "Badezimmer",
+    "bathrooms": "Badezimmer"
   },
   "search": {
     "filters": "Filter",
@@ -33,6 +53,31 @@
     "apartment": "Wohnung",
     "house": "Haus",
     "land": "Grundstück",
-    "commercial": "Gewerblich"
+    "commercial": "Gewerblich",
+    "minPrice": "Min. Preis",
+    "maxPrice": "Max. Preis",
+    "minArea": "Min. Fläche",
+    "maxArea": "Max. Fläche",
+    "applyFilters": "Filter anwenden",
+    "clearFilters": "Filter löschen",
+    "noResults": "Keine Angebote gefunden",
+    "resultsCount": "{count} Angebote gefunden"
+  },
+  "contact": {
+    "name": "Ihr Name",
+    "email": "E-Mail",
+    "phone": "Telefon",
+    "message": "Nachricht",
+    "send": "Nachricht senden",
+    "scheduleViewing": "Besichtigung planen",
+    "preferredDate": "Bevorzugtes Datum",
+    "preferredTime": "Bevorzugte Uhrzeit"
+  },
+  "footer": {
+    "about": "Über uns",
+    "terms": "Nutzungsbedingungen",
+    "privacy": "Datenschutz",
+    "help": "Hilfe",
+    "copyright": "© {year} Reality Portal. Alle Rechte vorbehalten."
   }
 }

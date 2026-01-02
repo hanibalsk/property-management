@@ -5,12 +5,26 @@
     "register": "Register",
     "logout": "Logout",
     "favorites": "Favorites",
-    "contact": "Contact"
+    "contact": "Contact",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  },
+  "nav": {
+    "allListings": "All Listings",
+    "savedSearches": "Saved Searches",
+    "myInquiries": "My Inquiries",
+    "profile": "Profile"
   },
   "home": {
     "title": "Find Your Perfect Property",
     "subtitle": "Search thousands of listings",
-    "searchPlaceholder": "Enter city, address, or keyword..."
+    "searchPlaceholder": "Enter city, address, or keyword...",
+    "featuredListings": "Featured Listings",
+    "viewAll": "View All"
   },
   "listing": {
     "price": "Price",
@@ -20,7 +34,13 @@
     "features": "Features",
     "description": "Description",
     "contact_agent": "Contact Agent",
-    "schedule_viewing": "Schedule Viewing"
+    "schedule_viewing": "Schedule Viewing",
+    "perMonth": "/month",
+    "sqm": "m\u00b2",
+    "bedroom": "Bedroom",
+    "bedrooms": "Bedrooms",
+    "bathroom": "Bathroom",
+    "bathrooms": "Bathrooms"
   },
   "search": {
     "filters": "Filters",
@@ -33,6 +53,31 @@
     "apartment": "Apartment",
     "house": "House",
     "land": "Land",
-    "commercial": "Commercial"
+    "commercial": "Commercial",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "minArea": "Min Area",
+    "maxArea": "Max Area",
+    "applyFilters": "Apply Filters",
+    "clearFilters": "Clear Filters",
+    "noResults": "No listings found",
+    "resultsCount": "{count} listings found"
+  },
+  "contact": {
+    "name": "Your Name",
+    "email": "Email",
+    "phone": "Phone",
+    "message": "Message",
+    "send": "Send Message",
+    "scheduleViewing": "Schedule a Viewing",
+    "preferredDate": "Preferred Date",
+    "preferredTime": "Preferred Time"
+  },
+  "footer": {
+    "about": "About",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "help": "Help",
+    "copyright": "\u00a9 {year} Reality Portal. All rights reserved."
   }
 }

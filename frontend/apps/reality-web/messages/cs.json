@@ -5,12 +5,26 @@
     "register": "Registrovat se",
     "logout": "Odhlásit se",
     "favorites": "Oblíbené",
-    "contact": "Kontakt"
+    "contact": "Kontakt",
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "close": "Zavřít",
+    "loading": "Načítá se...",
+    "error": "Chyba",
+    "success": "Úspěch"
+  },
+  "nav": {
+    "allListings": "Všechny nabídky",
+    "savedSearches": "Uložená vyhledávání",
+    "myInquiries": "Moje dotazy",
+    "profile": "Profil"
   },
   "home": {
     "title": "Najděte svůj ideální domov",
     "subtitle": "Prohledejte tisíce nabídek",
-    "searchPlaceholder": "Zadejte město, adresu nebo klíčové slovo..."
+    "searchPlaceholder": "Zadejte město, adresu nebo klíčové slovo...",
+    "featuredListings": "Doporučené nabídky",
+    "viewAll": "Zobrazit vše"
   },
   "listing": {
     "price": "Cena",
@@ -20,7 +34,13 @@
     "features": "Vybavení",
     "description": "Popis",
     "contact_agent": "Kontaktovat makléře",
-    "schedule_viewing": "Naplánovat prohlídku"
+    "schedule_viewing": "Naplánovat prohlídku",
+    "perMonth": "/měsíc",
+    "sqm": "m²",
+    "bedroom": "Ložnice",
+    "bedrooms": "Ložnice",
+    "bathroom": "Koupelna",
+    "bathrooms": "Koupelny"
   },
   "search": {
     "filters": "Filtry",
@@ -33,6 +53,31 @@
     "apartment": "Byt",
     "house": "Dům",
     "land": "Pozemek",
-    "commercial": "Komerční"
+    "commercial": "Komerční",
+    "minPrice": "Min. cena",
+    "maxPrice": "Max. cena",
+    "minArea": "Min. plocha",
+    "maxArea": "Max. plocha",
+    "applyFilters": "Použít filtry",
+    "clearFilters": "Vyčistit filtry",
+    "noResults": "Nebyly nalezeny žádné nabídky",
+    "resultsCount": "Nalezeno {count} nabídek"
+  },
+  "contact": {
+    "name": "Vaše jméno",
+    "email": "E-mail",
+    "phone": "Telefon",
+    "message": "Zpráva",
+    "send": "Odeslat zprávu",
+    "scheduleViewing": "Naplánovat prohlídku",
+    "preferredDate": "Preferovaný datum",
+    "preferredTime": "Preferovaný čas"
+  },
+  "footer": {
+    "about": "O nás",
+    "terms": "Obchodní podmínky",
+    "privacy": "Ochrana soukromí",
+    "help": "Nápověda",
+    "copyright": "© {year} Reality Portál. Všechna práva vyhrazena."
   }
 }
