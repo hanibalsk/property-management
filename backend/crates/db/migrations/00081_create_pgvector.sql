@@ -2,12 +2,57 @@
 -- Epic 103: Storage & Caching Integration
 -- Story 103.5: pgvector migration for RAG (Retrieval Augmented Generation)
 --
--- This migration enables vector similarity search for document embeddings.
--- pgvector extension must be available on the PostgreSQL server.
--- If pgvector is not installed, this migration skips gracefully to allow
--- CI environments without pgvector to pass.
+-- This migration:
+-- 1. Creates the document_embeddings table for storing document chunks
+-- 2. Optionally enables pgvector for vector similarity search (if available)
+-- 3. Adds vector-specific columns and indexes only if pgvector is available
+--
+-- If pgvector is not installed, this migration still succeeds but without
+-- vector search capabilities (JSONB fallback for embeddings).
 
--- Check if pgvector extension is available and create it if so
+-- Step 1: Create the document_embeddings table (always runs)
+-- This table stores chunked document text with embeddings for RAG
+CREATE TABLE IF NOT EXISTS document_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    chunk_index INT NOT NULL DEFAULT 0,
+    chunk_text TEXT NOT NULL,
+    -- JSONB embedding for fallback when pgvector is not available
+    embedding JSONB,
+    -- Metadata about the chunk (e.g., page number, section, etc.)
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    -- Ensure unique chunks per document
+    UNIQUE(document_id, chunk_index)
+);
+
+-- Create indexes for the base table
+CREATE INDEX IF NOT EXISTS idx_document_embeddings_org ON document_embeddings(organization_id);
+CREATE INDEX IF NOT EXISTS idx_document_embeddings_doc ON document_embeddings(document_id);
+CREATE INDEX IF NOT EXISTS idx_document_embeddings_updated ON document_embeddings(updated_at);
+
+-- Enable RLS on document_embeddings
+ALTER TABLE document_embeddings ENABLE ROW LEVEL SECURITY;
+
+-- RLS policy for document_embeddings (organization-scoped access)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE tablename = 'document_embeddings'
+        AND policyname = 'document_embeddings_org_isolation'
+    ) THEN
+        CREATE POLICY document_embeddings_org_isolation ON document_embeddings
+            FOR ALL
+            USING (organization_id = current_setting('app.current_organization_id', true)::UUID)
+            WITH CHECK (organization_id = current_setting('app.current_organization_id', true)::UUID);
+    END IF;
+END $$;
+
+-- Step 2: Optionally enable pgvector if available
 DO $$
 DECLARE
     v_extension_available BOOLEAN;
@@ -26,9 +71,7 @@ BEGIN
     END IF;
 END $$;
 
--- Add vector column to document_embeddings table for efficient similarity search
--- Using 1536 dimensions (OpenAI ada-002 embedding size)
--- Only run if pgvector extension exists
+-- Step 3: Add vector column if pgvector extension exists
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
@@ -37,15 +80,14 @@ BEGIN
             WHERE table_name = 'document_embeddings'
             AND column_name = 'embedding_vector'
         ) THEN
-            -- Add the vector column for pgvector
+            -- Add the vector column for pgvector (1536 dims = OpenAI ada-002)
             EXECUTE 'ALTER TABLE document_embeddings ADD COLUMN embedding_vector vector(1536)';
             RAISE NOTICE 'Added embedding_vector column to document_embeddings';
         END IF;
     END IF;
 END $$;
 
--- Create an index for cosine similarity search (IVFFlat index)
--- Only if pgvector extension exists
+-- Step 4: Create IVFFlat index for cosine similarity search (only if pgvector exists)
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
@@ -59,7 +101,7 @@ BEGIN
     END IF;
 END $$;
 
--- Create helper functions only if pgvector is available
+-- Step 5: Create helper functions only if pgvector is available
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
@@ -183,7 +225,8 @@ BEGIN
     END IF;
 END $$;
 
--- Create statistics view for RAG system monitoring (works without pgvector)
+-- Step 6: Create statistics view for RAG system monitoring
+-- This view works regardless of whether pgvector is available
 CREATE OR REPLACE VIEW v_rag_statistics AS
 SELECT
     organization_id,
@@ -199,6 +242,7 @@ GROUP BY organization_id;
 GRANT SELECT ON v_rag_statistics TO PUBLIC;
 
 -- Add comments for documentation
+COMMENT ON TABLE document_embeddings IS 'Story 103.5: Document chunks with embeddings for RAG (Retrieval Augmented Generation)';
 COMMENT ON VIEW v_rag_statistics IS 'Story 103.5: RAG system statistics per organization';
 
 -- Add comments for functions if they exist
