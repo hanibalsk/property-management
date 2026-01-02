@@ -11,10 +11,7 @@
           "required": false
         },
         "component": "Home",
-        "tags": [
-          "navigation",
-          "public"
-        ]
+        "tags": ["navigation", "public"]
       },
       {
         "id": "ppt-login",
@@ -25,15 +22,10 @@
         "auth": {
           "required": false
         },
-        "apiEndpoints": [
-          "auth_login"
-        ],
+        "apiEndpoints": ["auth_login"],
         "component": "LoginPage",
         "feature": "UC-14",
-        "tags": [
-          "auth",
-          "public"
-        ]
+        "tags": ["auth", "public"]
       },
       {
         "id": "ppt-documents",
@@ -43,25 +35,15 @@
         "description": "Document management dashboard",
         "auth": {
           "required": true,
-          "roles": [
-            "owner",
-            "tenant",
-            "manager",
-            "organization_admin"
-          ],
+          "roles": ["owner", "tenant", "manager", "organization_admin"],
           "tenantContext": {
             "required": true
           }
         },
-        "apiEndpoints": [
-          "documents_list"
-        ],
+        "apiEndpoints": ["documents_list"],
         "component": "DocumentsPage",
         "feature": "Epic-39",
-        "tags": [
-          "documents",
-          "protected"
-        ]
+        "tags": ["documents", "protected"]
       },
       {
         "id": "ppt-document-upload",
@@ -71,26 +53,16 @@
         "description": "Document upload page",
         "auth": {
           "required": true,
-          "roles": [
-            "owner",
-            "manager",
-            "organization_admin"
-          ],
+          "roles": ["owner", "manager", "organization_admin"],
           "tenantContext": {
             "required": true
           }
         },
-        "apiEndpoints": [
-          "documents_upload"
-        ],
+        "apiEndpoints": ["documents_upload"],
         "component": "DocumentUploadPage",
         "parentId": "ppt-documents",
         "feature": "Epic-39",
-        "tags": [
-          "documents",
-          "protected",
-          "create"
-        ]
+        "tags": ["documents", "protected", "create"]
       },
       {
         "id": "ppt-document-detail",
@@ -112,18 +84,11 @@
             "required": true
           }
         },
-        "apiEndpoints": [
-          "documents_get",
-          "documents_get_versions"
-        ],
+        "apiEndpoints": ["documents_get", "documents_get_versions"],
         "component": "DocumentDetailPage",
         "parentId": "ppt-documents",
         "feature": "Epic-39",
-        "tags": [
-          "documents",
-          "protected",
-          "detail"
-        ]
+        "tags": ["documents", "protected", "detail"]
       },
       {
         "id": "ppt-news",
@@ -137,15 +102,10 @@
             "required": true
           }
         },
-        "apiEndpoints": [
-          "news_list"
-        ],
+        "apiEndpoints": ["news_list"],
         "component": "NewsListPage",
         "feature": "Epic-59",
-        "tags": [
-          "news",
-          "protected"
-        ]
+        "tags": ["news", "protected"]
       },
       {
         "id": "ppt-news-detail",
@@ -167,17 +127,11 @@
             "required": true
           }
         },
-        "apiEndpoints": [
-          "news_get"
-        ],
+        "apiEndpoints": ["news_get"],
         "component": "ArticleDetailPage",
         "parentId": "ppt-news",
         "feature": "Epic-59",
-        "tags": [
-          "news",
-          "protected",
-          "detail"
-        ]
+        "tags": ["news", "protected", "detail"]
       },
       {
         "id": "ppt-emergency",
@@ -191,15 +145,10 @@
             "required": true
           }
         },
-        "apiEndpoints": [
-          "emergency_list"
-        ],
+        "apiEndpoints": ["emergency_list"],
         "component": "EmergencyContactDirectoryPage",
         "feature": "Epic-62",
-        "tags": [
-          "emergency",
-          "protected"
-        ]
+        "tags": ["emergency", "protected"]
       },
       {
         "id": "ppt-settings-accessibility",
@@ -212,10 +161,7 @@
         },
         "component": "AccessibilitySettingsPage",
         "feature": "Epic-60",
-        "tags": [
-          "settings",
-          "protected"
-        ]
+        "tags": ["settings", "protected"]
       },
       {
         "id": "ppt-settings-privacy",
@@ -228,10 +174,7 @@
         },
         "component": "PrivacySettingsPage",
         "feature": "Epic-63",
-        "tags": [
-          "settings",
-          "protected"
-        ]
+        "tags": ["settings", "protected"]
       },
       {
         "id": "ppt-disputes",
@@ -245,15 +188,10 @@
             "required": true
           }
         },
-        "apiEndpoints": [
-          "disputes_list"
-        ],
+        "apiEndpoints": ["disputes_list"],
         "component": "DisputesPage",
         "feature": "Epic-77",
-        "tags": [
-          "disputes",
-          "protected"
-        ]
+        "tags": ["disputes", "protected"]
       },
       {
         "id": "ppt-dispute-new",
@@ -263,26 +201,16 @@
         "description": "File a new dispute",
         "auth": {
           "required": true,
-          "roles": [
-            "owner",
-            "tenant",
-            "resident"
-          ],
+          "roles": ["owner", "tenant", "resident"],
           "tenantContext": {
             "required": true
           }
         },
-        "apiEndpoints": [
-          "disputes_create"
-        ],
+        "apiEndpoints": ["disputes_create"],
         "component": "FileDisputePage",
         "parentId": "ppt-disputes",
         "feature": "Epic-77",
-        "tags": [
-          "disputes",
-          "protected",
-          "create"
-        ]
+        "tags": ["disputes", "protected", "create"]
       },
       {
         "id": "ppt-dispute-detail",
@@ -304,17 +232,11 @@
             "required": true
           }
         },
-        "apiEndpoints": [
-          "disputes_get"
-        ],
+        "apiEndpoints": ["disputes_get"],
         "component": "DisputeDetailPage",
         "parentId": "ppt-disputes",
         "feature": "Epic-77",
-        "tags": [
-          "disputes",
-          "protected",
-          "detail"
-        ]
+        "tags": ["disputes", "protected", "detail"]
       }
     ],
     "reality-web": [
@@ -328,10 +250,7 @@
           "required": false
         },
         "component": "HomePage",
-        "tags": [
-          "navigation",
-          "public"
-        ]
+        "tags": ["navigation", "public"]
       },
       {
         "id": "reality-listings",
@@ -380,15 +299,9 @@
         "auth": {
           "required": false
         },
-        "apiEndpoints": [
-          "listings_search"
-        ],
+        "apiEndpoints": ["listings_search"],
         "component": "ListingsPage",
-        "tags": [
-          "listings",
-          "public",
-          "search"
-        ]
+        "tags": ["listings", "public", "search"]
       },
       {
         "id": "reality-listing-detail",
@@ -407,16 +320,10 @@
         "auth": {
           "required": false
         },
-        "apiEndpoints": [
-          "listings_get"
-        ],
+        "apiEndpoints": ["listings_get"],
         "component": "ListingDetailPage",
         "parentId": "reality-listings",
-        "tags": [
-          "listings",
-          "public",
-          "detail"
-        ]
+        "tags": ["listings", "public", "detail"]
       },
       {
         "id": "reality-favorites",
@@ -427,14 +334,9 @@
         "auth": {
           "required": true
         },
-        "apiEndpoints": [
-          "favorites_list"
-        ],
+        "apiEndpoints": ["favorites_list"],
         "component": "FavoritesPage",
-        "tags": [
-          "favorites",
-          "protected"
-        ]
+        "tags": ["favorites", "protected"]
       },
       {
         "id": "reality-saved-searches",
@@ -445,14 +347,9 @@
         "auth": {
           "required": true
         },
-        "apiEndpoints": [
-          "saved_searches_list"
-        ],
+        "apiEndpoints": ["saved_searches_list"],
         "component": "SavedSearchesPage",
-        "tags": [
-          "saved-searches",
-          "protected"
-        ]
+        "tags": ["saved-searches", "protected"]
       },
       {
         "id": "reality-inquiries",
@@ -463,14 +360,9 @@
         "auth": {
           "required": true
         },
-        "apiEndpoints": [
-          "inquiries_list"
-        ],
+        "apiEndpoints": ["inquiries_list"],
         "component": "InquiriesPage",
-        "tags": [
-          "inquiries",
-          "protected"
-        ]
+        "tags": ["inquiries", "protected"]
       },
       {
         "id": "reality-auth-callback",
@@ -482,10 +374,7 @@
           "required": false
         },
         "component": "OAuthCallbackPage",
-        "tags": [
-          "auth",
-          "public"
-        ]
+        "tags": ["auth", "public"]
       },
       {
         "id": "reality-agency",
@@ -495,20 +384,12 @@
         "description": "Agency management dashboard",
         "auth": {
           "required": true,
-          "roles": [
-            "real_estate_agent",
-            "organization_admin"
-          ]
+          "roles": ["real_estate_agent", "organization_admin"]
         },
-        "apiEndpoints": [
-          "agencies_get"
-        ],
+        "apiEndpoints": ["agencies_get"],
         "component": "AgencyPage",
         "feature": "Epic-32",
-        "tags": [
-          "agency",
-          "protected"
-        ]
+        "tags": ["agency", "protected"]
       },
       {
         "id": "reality-compare",
@@ -520,10 +401,7 @@
           "required": false
         },
         "component": "ComparePage",
-        "tags": [
-          "compare",
-          "public"
-        ]
+        "tags": ["compare", "public"]
       }
     ]
   },
@@ -540,15 +418,9 @@
         "auth": {
           "required": true
         },
-        "apiEndpoints": [
-          "dashboard_get"
-        ],
+        "apiEndpoints": ["dashboard_get"],
         "component": "DashboardScreen",
-        "tags": [
-          "dashboard",
-          "protected",
-          "navigation"
-        ]
+        "tags": ["dashboard", "protected", "navigation"]
       },
       {
         "id": "mobile-faults-list",
@@ -561,16 +433,10 @@
         "auth": {
           "required": true
         },
-        "apiEndpoints": [
-          "faults_list"
-        ],
+        "apiEndpoints": ["faults_list"],
         "component": "FaultsListScreen",
         "feature": "UC-03",
-        "tags": [
-          "faults",
-          "protected",
-          "navigation"
-        ]
+        "tags": ["faults", "protected", "navigation"]
       },
       {
         "id": "mobile-report-fault",
@@ -582,23 +448,13 @@
         "tabIcon": "🔧",
         "auth": {
           "required": true,
-          "roles": [
-            "owner",
-            "tenant",
-            "resident"
-          ]
+          "roles": ["owner", "tenant", "resident"]
         },
-        "apiEndpoints": [
-          "faults_create"
-        ],
+        "apiEndpoints": ["faults_create"],
         "component": "ReportFaultScreen",
         "feature": "UC-03",
         "stack": "Faults",
-        "tags": [
-          "faults",
-          "protected",
-          "create"
-        ]
+        "tags": ["faults", "protected", "create"]
       },
       {
         "id": "mobile-announcements",
@@ -611,16 +467,10 @@
         "auth": {
           "required": true
         },
-        "apiEndpoints": [
-          "announcements_list"
-        ],
+        "apiEndpoints": ["announcements_list"],
         "component": "AnnouncementsScreen",
         "feature": "Epic-6",
-        "tags": [
-          "announcements",
-          "protected",
-          "navigation"
-        ]
+        "tags": ["announcements", "protected", "navigation"]
       },
       {
         "id": "mobile-voting",
@@ -633,16 +483,10 @@
         "auth": {
           "required": true
         },
-        "apiEndpoints": [
-          "voting_list"
-        ],
+        "apiEndpoints": ["voting_list"],
         "component": "VotingScreen",
         "feature": "UC-04",
-        "tags": [
-          "voting",
-          "protected",
-          "navigation"
-        ]
+        "tags": ["voting", "protected", "navigation"]
       },
       {
         "id": "mobile-documents",
@@ -655,16 +499,10 @@
         "auth": {
           "required": true
         },
-        "apiEndpoints": [
-          "documents_list"
-        ],
+        "apiEndpoints": ["documents_list"],
         "component": "DocumentsScreen",
         "feature": "Epic-7",
-        "tags": [
-          "documents",
-          "protected",
-          "navigation"
-        ]
+        "tags": ["documents", "protected", "navigation"]
       }
     ]
   },
@@ -676,9 +514,7 @@
         "method": "GET",
         "path": "/health",
         "description": "Health check endpoint",
-        "tags": [
-          "Health"
-        ],
+        "tags": ["Health"],
         "responses": [
           {
             "statusCode": 200,
@@ -695,9 +531,7 @@
         "method": "POST",
         "path": "/api/v1/auth/login",
         "description": "Login with email and password",
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "requestBody": {
           "ref": "Auth.LoginRequest",
           "contentType": "application/json",
@@ -725,9 +559,7 @@
         "method": "POST",
         "path": "/api/v1/auth/register",
         "description": "Register new user account",
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "requestBody": {
           "ref": "Auth.RegisterRequest",
           "contentType": "application/json",
@@ -758,9 +590,7 @@
         "method": "POST",
         "path": "/api/v1/auth/logout",
         "description": "Logout user",
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "responses": [
           {
             "statusCode": 200,
@@ -778,9 +608,7 @@
         "method": "POST",
         "path": "/api/v1/auth/refresh",
         "description": "Refresh access token",
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "responses": [
           {
             "statusCode": 200,
@@ -802,9 +630,7 @@
         "method": "GET",
         "path": "/api/v1/documents",
         "description": "List documents",
-        "tags": [
-          "Documents"
-        ],
+        "tags": ["Documents"],
         "queryParams": [
           {
             "name": "page",
@@ -839,9 +665,7 @@
         "method": "GET",
         "path": "/api/v1/documents/:id",
         "description": "Get document details",
-        "tags": [
-          "Documents"
-        ],
+        "tags": ["Documents"],
         "pathParams": [
           {
             "name": "id",
@@ -873,9 +697,7 @@
         "method": "POST",
         "path": "/api/v1/documents",
         "description": "Upload a new document",
-        "tags": [
-          "Documents"
-        ],
+        "tags": ["Documents"],
         "requestBody": {
           "contentType": "multipart/form-data",
           "required": true
@@ -904,9 +726,7 @@
         "method": "GET",
         "path": "/api/v1/documents/:id/versions",
         "description": "Get document versions",
-        "tags": [
-          "Documents"
-        ],
+        "tags": ["Documents"],
         "pathParams": [
           {
             "name": "id",
@@ -934,9 +754,7 @@
         "method": "GET",
         "path": "/api/v1/faults",
         "description": "List faults",
-        "tags": [
-          "Faults"
-        ],
+        "tags": ["Faults"],
         "queryParams": [
           {
             "name": "page",
@@ -976,9 +794,7 @@
         "method": "GET",
         "path": "/api/v1/faults/:id",
         "description": "Get fault details",
-        "tags": [
-          "Faults"
-        ],
+        "tags": ["Faults"],
         "pathParams": [
           {
             "name": "id",
@@ -1010,9 +826,7 @@
         "method": "POST",
         "path": "/api/v1/faults",
         "description": "Report a new fault",
-        "tags": [
-          "Faults"
-        ],
+        "tags": ["Faults"],
         "requestBody": {
           "ref": "Faults.CreateRequest",
           "contentType": "application/json",
@@ -1042,9 +856,7 @@
         "method": "GET",
         "path": "/api/v1/voting",
         "description": "List votes",
-        "tags": [
-          "Voting"
-        ],
+        "tags": ["Voting"],
         "queryParams": [
           {
             "name": "page",
@@ -1084,9 +896,7 @@
         "method": "GET",
         "path": "/api/v1/voting/:id",
         "description": "Get vote details",
-        "tags": [
-          "Voting"
-        ],
+        "tags": ["Voting"],
         "pathParams": [
           {
             "name": "id",
@@ -1118,9 +928,7 @@
         "method": "POST",
         "path": "/api/v1/voting/:id/cast",
         "description": "Cast a vote",
-        "tags": [
-          "Voting"
-        ],
+        "tags": ["Voting"],
         "pathParams": [
           {
             "name": "id",
@@ -1161,9 +969,7 @@
         "method": "GET",
         "path": "/api/v1/announcements",
         "description": "List announcements",
-        "tags": [
-          "Announcements"
-        ],
+        "tags": ["Announcements"],
         "queryParams": [
           {
             "name": "page",
@@ -1198,9 +1004,7 @@
         "method": "GET",
         "path": "/api/v1/announcements/:id",
         "description": "Get announcement details",
-        "tags": [
-          "Announcements"
-        ],
+        "tags": ["Announcements"],
         "pathParams": [
           {
             "name": "id",
@@ -1232,9 +1036,7 @@
         "method": "GET",
         "path": "/api/v1/news",
         "description": "List news articles",
-        "tags": [
-          "News"
-        ],
+        "tags": ["News"],
         "queryParams": [
           {
             "name": "page",
@@ -1269,9 +1071,7 @@
         "method": "GET",
         "path": "/api/v1/news/:id",
         "description": "Get news article details",
-        "tags": [
-          "News"
-        ],
+        "tags": ["News"],
         "pathParams": [
           {
             "name": "id",
@@ -1303,9 +1103,7 @@
         "method": "GET",
         "path": "/api/v1/emergency",
         "description": "List emergency contacts",
-        "tags": [
-          "Emergency"
-        ],
+        "tags": ["Emergency"],
         "responses": [
           {
             "statusCode": 200,
@@ -1326,9 +1124,7 @@
         "method": "GET",
         "path": "/api/v1/disputes",
         "description": "List disputes",
-        "tags": [
-          "Disputes"
-        ],
+        "tags": ["Disputes"],
         "queryParams": [
           {
             "name": "page",
@@ -1368,9 +1164,7 @@
         "method": "GET",
         "path": "/api/v1/disputes/:id",
         "description": "Get dispute details",
-        "tags": [
-          "Disputes"
-        ],
+        "tags": ["Disputes"],
         "pathParams": [
           {
             "name": "id",
@@ -1402,9 +1196,7 @@
         "method": "POST",
         "path": "/api/v1/disputes",
         "description": "File a new dispute",
-        "tags": [
-          "Disputes"
-        ],
+        "tags": ["Disputes"],
         "requestBody": {
           "ref": "Disputes.CreateRequest",
           "contentType": "application/json",
@@ -1434,9 +1226,7 @@
         "method": "GET",
         "path": "/api/v1/dashboard",
         "description": "Get dashboard data",
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "responses": [
           {
             "statusCode": 200,
@@ -1458,9 +1248,7 @@
         "method": "GET",
         "path": "/health",
         "description": "Health check endpoint",
-        "tags": [
-          "Health"
-        ],
+        "tags": ["Health"],
         "responses": [
           {
             "statusCode": 200,
@@ -1477,9 +1265,7 @@
         "method": "GET",
         "path": "/api/v1/listings",
         "description": "Search property listings",
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "queryParams": [
           {
             "name": "type",
@@ -1552,9 +1338,7 @@
         "method": "GET",
         "path": "/api/v1/listings/:slug",
         "description": "Get listing details by slug",
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "pathParams": [
           {
             "name": "slug",
@@ -1583,9 +1367,7 @@
         "method": "GET",
         "path": "/api/v1/listings/suggestions",
         "description": "Get search suggestions",
-        "tags": [
-          "Listings"
-        ],
+        "tags": ["Listings"],
         "queryParams": [
           {
             "name": "q",
@@ -1610,9 +1392,7 @@
         "method": "GET",
         "path": "/api/v1/favorites",
         "description": "List user's favorites",
-        "tags": [
-          "Favorites"
-        ],
+        "tags": ["Favorites"],
         "responses": [
           {
             "statusCode": 200,
@@ -1629,9 +1409,7 @@
         "method": "POST",
         "path": "/api/v1/favorites",
         "description": "Add to favorites",
-        "tags": [
-          "Favorites"
-        ],
+        "tags": ["Favorites"],
         "requestBody": {
           "ref": "Favorites.AddRequest",
           "contentType": "application/json",
@@ -1657,9 +1435,7 @@
         "method": "DELETE",
         "path": "/api/v1/favorites/:id",
         "description": "Remove from favorites",
-        "tags": [
-          "Favorites"
-        ],
+        "tags": ["Favorites"],
         "pathParams": [
           {
             "name": "id",
@@ -1687,9 +1463,7 @@
         "method": "GET",
         "path": "/api/v1/saved-searches",
         "description": "List saved searches",
-        "tags": [
-          "SavedSearches"
-        ],
+        "tags": ["SavedSearches"],
         "responses": [
           {
             "statusCode": 200,
@@ -1706,9 +1480,7 @@
         "method": "POST",
         "path": "/api/v1/saved-searches",
         "description": "Create saved search",
-        "tags": [
-          "SavedSearches"
-        ],
+        "tags": ["SavedSearches"],
         "requestBody": {
           "ref": "SavedSearches.CreateRequest",
           "contentType": "application/json",
@@ -1730,9 +1502,7 @@
         "method": "DELETE",
         "path": "/api/v1/saved-searches/:id",
         "description": "Delete saved search",
-        "tags": [
-          "SavedSearches"
-        ],
+        "tags": ["SavedSearches"],
         "pathParams": [
           {
             "name": "id",
@@ -1756,9 +1526,7 @@
         "method": "GET",
         "path": "/api/v1/inquiries",
         "description": "List inquiries",
-        "tags": [
-          "Inquiries"
-        ],
+        "tags": ["Inquiries"],
         "responses": [
           {
             "statusCode": 200,
@@ -1775,9 +1543,7 @@
         "method": "POST",
         "path": "/api/v1/inquiries/contact/:listing_id",
         "description": "Send contact message",
-        "tags": [
-          "Inquiries"
-        ],
+        "tags": ["Inquiries"],
         "pathParams": [
           {
             "name": "listing_id",
@@ -1807,9 +1573,7 @@
         "method": "POST",
         "path": "/api/v1/inquiries/viewing/:listing_id",
         "description": "Request viewing",
-        "tags": [
-          "Inquiries"
-        ],
+        "tags": ["Inquiries"],
         "pathParams": [
           {
             "name": "listing_id",
@@ -1839,9 +1603,7 @@
         "method": "GET",
         "path": "/api/v1/sso/login",
         "description": "Initiate SSO login",
-        "tags": [
-          "SSO"
-        ],
+        "tags": ["SSO"],
         "responses": [
           {
             "statusCode": 302,
@@ -1859,9 +1621,7 @@
         "method": "GET",
         "path": "/api/v1/sso/callback",
         "description": "SSO callback",
-        "tags": [
-          "SSO"
-        ],
+        "tags": ["SSO"],
         "responses": [
           {
             "statusCode": 302,
@@ -1879,9 +1639,7 @@
         "method": "GET",
         "path": "/api/v1/sso/session",
         "description": "Get current session",
-        "tags": [
-          "SSO"
-        ],
+        "tags": ["SSO"],
         "responses": [
           {
             "statusCode": 200,
@@ -1899,9 +1657,7 @@
         "method": "GET",
         "path": "/api/v1/agencies/:id",
         "description": "Get agency details",
-        "tags": [
-          "Agencies"
-        ],
+        "tags": ["Agencies"],
         "pathParams": [
           {
             "name": "id",
@@ -1930,9 +1686,7 @@
         "method": "POST",
         "path": "/api/v1/agencies",
         "description": "Create agency",
-        "tags": [
-          "Agencies"
-        ],
+        "tags": ["Agencies"],
         "requestBody": {
           "ref": "Agencies.CreateRequest",
           "contentType": "application/json",
@@ -1946,9 +1700,7 @@
         ],
         "auth": {
           "required": true,
-          "roles": [
-            "organization_admin"
-          ]
+          "roles": ["organization_admin"]
         },
         "feature": "Epic-32"
       }
@@ -1958,16 +1710,11 @@
     {
       "id": "flow-login-basic",
       "name": "Basic Login Flow",
-      "apps": [
-        "ppt-web",
-        "api-server"
-      ],
+      "apps": ["ppt-web", "api-server"],
       "description": "User logs in with email and password",
       "category": "authentication",
       "requiredRole": "anonymous",
-      "useCases": [
-        "UC-14.1"
-      ],
+      "useCases": ["UC-14.1"],
       "steps": [
         {
           "order": 1,
@@ -2049,25 +1796,16 @@
         "authenticated": true,
         "redirectedTo": "/"
       },
-      "tags": [
-        "auth",
-        "critical",
-        "smoke"
-      ]
+      "tags": ["auth", "critical", "smoke"]
     },
     {
       "id": "flow-logout",
       "name": "Logout Flow",
-      "apps": [
-        "ppt-web",
-        "api-server"
-      ],
+      "apps": ["ppt-web", "api-server"],
       "description": "User logs out of the system",
       "category": "authentication",
       "requiredRole": "tenant",
-      "prerequisites": [
-        "flow-login-basic"
-      ],
+      "prerequisites": ["flow-login-basic"],
       "steps": [
         {
           "order": 1,
@@ -2109,27 +1847,17 @@
         "authenticated": false,
         "redirectedTo": "/login"
       },
-      "tags": [
-        "auth",
-        "smoke"
-      ]
+      "tags": ["auth", "smoke"]
     },
     {
       "id": "flow-document-upload",
       "name": "Document Upload Flow",
-      "apps": [
-        "ppt-web",
-        "api-server"
-      ],
+      "apps": ["ppt-web", "api-server"],
       "description": "User uploads a new document",
       "category": "documents",
       "requiredRole": "owner",
-      "prerequisites": [
-        "flow-login-basic"
-      ],
-      "useCases": [
-        "UC-08.1"
-      ],
+      "prerequisites": ["flow-login-basic"],
+      "useCases": ["UC-08.1"],
       "steps": [
         {
           "order": 1,
@@ -2205,25 +1933,16 @@
       "expectedOutcome": {
         "documentUploaded": true
       },
-      "tags": [
-        "documents",
-        "upload",
-        "smoke"
-      ]
+      "tags": ["documents", "upload", "smoke"]
     },
     {
       "id": "flow-document-view",
       "name": "Document View Flow",
-      "apps": [
-        "ppt-web",
-        "api-server"
-      ],
+      "apps": ["ppt-web", "api-server"],
       "description": "User views document details",
       "category": "documents",
       "requiredRole": "tenant",
-      "prerequisites": [
-        "flow-login-basic"
-      ],
+      "prerequisites": ["flow-login-basic"],
       "steps": [
         {
           "order": 1,
@@ -2265,27 +1984,17 @@
       "expectedOutcome": {
         "documentViewed": true
       },
-      "tags": [
-        "documents",
-        "view"
-      ]
+      "tags": ["documents", "view"]
     },
     {
       "id": "flow-report-fault",
       "name": "Report Fault Flow",
-      "apps": [
-        "mobile",
-        "api-server"
-      ],
+      "apps": ["mobile", "api-server"],
       "description": "User reports a new fault",
       "category": "fault_management",
       "requiredRole": "tenant",
-      "prerequisites": [
-        "flow-login-basic"
-      ],
-      "useCases": [
-        "UC-03.1"
-      ],
+      "prerequisites": ["flow-login-basic"],
+      "useCases": ["UC-03.1"],
       "steps": [
         {
           "order": 1,
@@ -2337,25 +2046,16 @@
       "expectedOutcome": {
         "faultCreated": true
       },
-      "tags": [
-        "faults",
-        "create",
-        "smoke"
-      ]
+      "tags": ["faults", "create", "smoke"]
     },
     {
       "id": "flow-file-dispute",
       "name": "File Dispute Flow",
-      "apps": [
-        "ppt-web",
-        "api-server"
-      ],
+      "apps": ["ppt-web", "api-server"],
       "description": "User files a new dispute",
       "category": "disputes",
       "requiredRole": "tenant",
-      "prerequisites": [
-        "flow-login-basic"
-      ],
+      "prerequisites": ["flow-login-basic"],
       "steps": [
         {
           "order": 1,
@@ -2413,28 +2113,17 @@
       "expectedOutcome": {
         "disputeFiled": true
       },
-      "tags": [
-        "disputes",
-        "create",
-        "smoke"
-      ]
+      "tags": ["disputes", "create", "smoke"]
     },
     {
       "id": "flow-cast-vote",
       "name": "Cast Vote Flow",
-      "apps": [
-        "mobile",
-        "api-server"
-      ],
+      "apps": ["mobile", "api-server"],
       "description": "User casts a vote on a poll",
       "category": "voting",
       "requiredRole": "owner",
-      "prerequisites": [
-        "flow-login-basic"
-      ],
-      "useCases": [
-        "UC-04.1"
-      ],
+      "prerequisites": ["flow-login-basic"],
+      "useCases": ["UC-04.1"],
       "steps": [
         {
           "order": 1,
@@ -2482,19 +2171,12 @@
       "expectedOutcome": {
         "voteCast": true
       },
-      "tags": [
-        "voting",
-        "cast",
-        "smoke"
-      ]
+      "tags": ["voting", "cast", "smoke"]
     },
     {
       "id": "flow-search-listings",
       "name": "Search Listings Flow",
-      "apps": [
-        "reality-web",
-        "reality-server"
-      ],
+      "apps": ["reality-web", "reality-server"],
       "description": "User searches for property listings",
       "category": "listings",
       "requiredRole": "anonymous",
@@ -2557,25 +2239,16 @@
         "searchPerformed": true,
         "resultsDisplayed": true
       },
-      "tags": [
-        "listings",
-        "search",
-        "smoke"
-      ]
+      "tags": ["listings", "search", "smoke"]
     },
     {
       "id": "flow-add-favorite",
       "name": "Add to Favorites Flow",
-      "apps": [
-        "reality-web",
-        "reality-server"
-      ],
+      "apps": ["reality-web", "reality-server"],
       "description": "User adds a listing to favorites",
       "category": "listings",
       "requiredRole": "portal_user",
-      "prerequisites": [
-        "flow-search-listings"
-      ],
+      "prerequisites": ["flow-search-listings"],
       "steps": [
         {
           "order": 1,
@@ -2618,10 +2291,7 @@
       "expectedOutcome": {
         "favoriteAdded": true
       },
-      "tags": [
-        "favorites",
-        "add"
-      ]
+      "tags": ["favorites", "add"]
     }
   ],
   "metadata": {
