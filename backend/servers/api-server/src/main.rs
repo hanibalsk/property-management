@@ -318,9 +318,22 @@ async fn main() -> anyhow::Result<()> {
             .and_then(|v| v.parse().ok())
             .unwrap_or(60),
         enabled: scheduler_enabled,
+        vote_reminder_days_before: std::env::var("VOTE_REMINDER_DAYS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1),
+        meter_reminder_days_before: std::env::var("METER_REMINDER_DAYS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(3),
+        payment_reminder_days_before: std::env::var("PAYMENT_REMINDER_DAYS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(7),
     };
-    let announcement_repo = AnnouncementRepository::new(db_pool);
-    let scheduler = Scheduler::new(announcement_repo, scheduler_config);
+    let scheduler_pool = state.db.clone();
+    let announcement_repo = AnnouncementRepository::new(scheduler_pool.clone());
+    let scheduler = Scheduler::new(scheduler_pool, announcement_repo, scheduler_config);
     let _scheduler_handle = scheduler.start();
 
     // Build router
