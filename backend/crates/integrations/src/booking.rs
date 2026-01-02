@@ -473,10 +473,10 @@ impl OtaReadRS {
         let total_price = Self::extract_attr(xml, "AmountAfterTax")
             .or_else(|| Self::extract_attr(xml, "Amount"))
             .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| Decimal::ZERO);
+            .unwrap_or(Decimal::ZERO);
         let commission = Self::extract_attr(xml, "CommissionAmount")
             .and_then(|s| s.parse().ok())
-            .unwrap_or_else(|| Decimal::ZERO);
+            .unwrap_or(Decimal::ZERO);
         let currency = Self::extract_attr(xml, "CurrencyCode").unwrap_or_else(|| "EUR".to_string());
 
         // Extract rate and meal plan

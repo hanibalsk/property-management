@@ -330,7 +330,7 @@ async fn oauth_token_exchange(
                     StatusCode::BAD_REQUEST,
                     Json(ErrorResponse::new(
                         "OAUTH_EXCHANGE_FAILED",
-                        &format!("Failed to exchange authorization code: {}", e),
+                        format!("Failed to exchange authorization code: {}", e),
                     )),
                 )
             })?;
@@ -491,7 +491,7 @@ async fn oauth_token_refresh(
                         StatusCode::INTERNAL_SERVER_ERROR,
                         Json(ErrorResponse::new(
                             "TOKEN_REFRESH_FAILED",
-                            &format!("Failed to refresh token: {}", e),
+                            format!("Failed to refresh token: {}", e),
                         )),
                     )
                 })?;

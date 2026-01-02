@@ -119,7 +119,7 @@ impl VoiceOAuthConfig {
     pub fn get_token_endpoint(&self) -> &str {
         self.token_endpoint
             .as_deref()
-            .unwrap_or_else(|| match self.platform {
+            .unwrap_or(match self.platform {
                 VoicePlatform::Alexa => "https://api.amazon.com/auth/o2/token",
                 VoicePlatform::GoogleAssistant => "https://oauth2.googleapis.com/token",
             })
