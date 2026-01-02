@@ -3,7 +3,7 @@
 
 use crate::models::owner_analytics::*;
 use crate::DbPool;
-use chrono::Utc;
+// Note: DateTime types are used from chrono
 use common::errors::AppError;
 use rust_decimal::Decimal;
 use sqlx::Row;
@@ -45,7 +45,7 @@ impl OwnerAnalyticsRepository {
         .bind(req.estimated_value)
         .bind(&req.valuation_method)
         .bind(&req.notes)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -53,7 +53,7 @@ impl OwnerAnalyticsRepository {
         sqlx::query("INSERT INTO property_value_history (unit_id, value) VALUES ($1, $2)")
             .bind(req.unit_id)
             .bind(req.estimated_value)
-            .execute(&*self.pool)
+            .execute(&self.pool)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -76,7 +76,7 @@ impl OwnerAnalyticsRepository {
             "#,
         )
         .bind(unit_id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -97,7 +97,7 @@ impl OwnerAnalyticsRepository {
             "#,
         )
         .bind(valuation_id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -113,7 +113,7 @@ impl OwnerAnalyticsRepository {
                     "#,
                 )
                 .bind(valuation_id)
-                .fetch_all(&*self.pool)
+                .fetch_all(&self.pool)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -148,7 +148,7 @@ impl OwnerAnalyticsRepository {
         .bind(req.distance_km)
         .bind(req.similarity_score)
         .bind(&req.source)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -172,7 +172,7 @@ impl OwnerAnalyticsRepository {
         )
         .bind(q.unit_id)
         .bind(limit)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -233,7 +233,7 @@ impl OwnerAnalyticsRepository {
         .bind(req.unit_id)
         .bind(req.from_date)
         .bind(req.to_date)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .unwrap_or(Decimal::ZERO);
 
@@ -249,7 +249,7 @@ impl OwnerAnalyticsRepository {
         .bind(req.unit_id)
         .bind(req.from_date)
         .bind(req.to_date)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .unwrap_or(Decimal::ZERO);
 
@@ -297,7 +297,7 @@ impl OwnerAnalyticsRepository {
         .bind(unit_id)
         .bind(from)
         .bind(to)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .unwrap_or(Decimal::ZERO);
 
@@ -313,7 +313,7 @@ impl OwnerAnalyticsRepository {
         .bind(unit_id)
         .bind(from)
         .bind(to)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .unwrap_or(Decimal::ZERO);
 
@@ -423,7 +423,7 @@ impl OwnerAnalyticsRepository {
             "#,
         )
         .bind(q.organization_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -488,7 +488,7 @@ impl OwnerAnalyticsRepository {
                 "#,
             )
             .bind(unit_id)
-            .fetch_optional(&*self.pool)
+            .fetch_optional(&self.pool)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?
             .unwrap_or(Decimal::ZERO);
@@ -551,7 +551,7 @@ impl OwnerAnalyticsRepository {
             req.allowed_categories
                 .unwrap_or_else(|| vec!["maintenance".to_string()]),
         )
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -574,7 +574,7 @@ impl OwnerAnalyticsRepository {
         )
         .bind(owner_id)
         .bind(org_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -607,7 +607,7 @@ impl OwnerAnalyticsRepository {
         .bind(req.max_monthly_total)
         .bind(&req.allowed_categories)
         .bind(req.is_active)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -622,7 +622,7 @@ impl OwnerAnalyticsRepository {
         sqlx::query("DELETE FROM expense_auto_approval_rules WHERE id = $1 AND owner_id = $2")
             .bind(id)
             .bind(owner_id)
-            .execute(&*self.pool)
+            .execute(&self.pool)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -652,7 +652,7 @@ impl OwnerAnalyticsRepository {
         .bind(req.unit_id)
         .bind(req.amount)
         .bind(&req.category)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -670,7 +670,7 @@ impl OwnerAnalyticsRepository {
                 )
                 .bind(req.unit_id)
                 .bind(rule.id)
-                .fetch_one(&*self.pool)
+                .fetch_one(&self.pool)
                 .await
                 .unwrap_or(Decimal::ZERO);
 
@@ -699,7 +699,7 @@ impl OwnerAnalyticsRepository {
         .bind(&req.description)
         .bind(&status)
         .bind(rule_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -737,7 +737,7 @@ impl OwnerAnalyticsRepository {
         .bind(&q.status)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -751,7 +751,7 @@ impl OwnerAnalyticsRepository {
         )
         .bind(q.property_id)
         .bind(&q.status)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -783,7 +783,7 @@ impl OwnerAnalyticsRepository {
         .bind(status)
         .bind(reviewed_by)
         .bind(&req.notes)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 

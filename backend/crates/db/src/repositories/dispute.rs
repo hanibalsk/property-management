@@ -61,7 +61,7 @@ impl DisputeRepository {
         .bind(&req.description)
         .bind(&req.desired_resolution)
         .bind(req.filed_by)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -132,7 +132,7 @@ impl DisputeRepository {
         .bind(query.to_date)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -154,7 +154,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -173,7 +173,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -198,21 +198,21 @@ impl DisputeRepository {
         let evidence_count: i64 =
             sqlx::query_scalar("SELECT COUNT(*) FROM dispute_evidence WHERE dispute_id = $1")
                 .bind(id)
-                .fetch_one(&*self.pool)
+                .fetch_one(&self.pool)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
         let activity_count: i64 =
             sqlx::query_scalar("SELECT COUNT(*) FROM dispute_activities WHERE dispute_id = $1")
                 .bind(id)
-                .fetch_one(&*self.pool)
+                .fetch_one(&self.pool)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
         let session_count: i64 =
             sqlx::query_scalar("SELECT COUNT(*) FROM mediation_sessions WHERE dispute_id = $1")
                 .bind(id)
-                .fetch_one(&*self.pool)
+                .fetch_one(&self.pool)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -228,7 +228,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -244,7 +244,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -272,7 +272,7 @@ impl DisputeRepository {
         )
         .bind(&req.status)
         .bind(req.dispute_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -296,7 +296,7 @@ impl DisputeRepository {
     pub async fn withdraw(&self, id: Uuid, user_id: Uuid) -> Result<(), AppError> {
         sqlx::query("UPDATE disputes SET status = 'withdrawn' WHERE id = $1")
             .bind(id)
-            .execute(&*self.pool)
+            .execute(&self.pool)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -322,7 +322,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(dispute_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -346,7 +346,7 @@ impl DisputeRepository {
         .bind(dispute_id)
         .bind(user_id)
         .bind(role)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -364,7 +364,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(dispute_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -389,7 +389,7 @@ impl DisputeRepository {
         .bind(req.size_bytes)
         .bind(&req.storage_url)
         .bind(&req.description)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -413,7 +413,7 @@ impl DisputeRepository {
         let result = sqlx::query("DELETE FROM dispute_evidence WHERE id = $1 AND dispute_id = $2")
             .bind(evidence_id)
             .bind(dispute_id)
-            .execute(&*self.pool)
+            .execute(&self.pool)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -438,7 +438,7 @@ impl DisputeRepository {
         .bind(dispute_id)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -464,7 +464,7 @@ impl DisputeRepository {
         .bind(activity_type)
         .bind(&description)
         .bind(&metadata)
-        .execute(&*self.pool)
+        .execute(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -475,7 +475,7 @@ impl DisputeRepository {
         let total_disputes: i64 =
             sqlx::query_scalar("SELECT COUNT(*) FROM disputes WHERE organization_id = $1")
                 .bind(org_id)
-                .fetch_one(&*self.pool)
+                .fetch_one(&self.pool)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -488,7 +488,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -501,7 +501,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -514,7 +514,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -526,7 +526,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -539,7 +539,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -552,7 +552,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -580,7 +580,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(dispute_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -607,7 +607,7 @@ impl DisputeRepository {
         .bind(req.duration_minutes)
         .bind(&req.location)
         .bind(&req.meeting_url)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -616,7 +616,7 @@ impl DisputeRepository {
             sqlx::query("INSERT INTO session_attendances (session_id, party_id) VALUES ($1, $2)")
                 .bind(session.id)
                 .bind(party_id)
-                .execute(&*self.pool)
+                .execute(&self.pool)
                 .await
                 .map_err(|e| AppError::Database(e.to_string()))?;
         }
@@ -648,7 +648,7 @@ impl DisputeRepository {
         )
         .bind(session_id)
         .bind(dispute_id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -679,7 +679,7 @@ impl DisputeRepository {
         .bind(&data.meeting_url)
         .bind(&data.status)
         .bind(id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -697,7 +697,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -716,7 +716,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(session_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -744,7 +744,7 @@ impl DisputeRepository {
         .bind(&data.notes)
         .bind(session_id)
         .bind(party_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -767,7 +767,7 @@ impl DisputeRepository {
         .bind(&req.notes)
         .bind(&req.outcome)
         .bind(req.session_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -787,7 +787,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(dispute_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -807,7 +807,7 @@ impl DisputeRepository {
         .bind(&req.submission_type)
         .bind(&req.content)
         .bind(req.is_visible_to_all)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -828,7 +828,7 @@ impl DisputeRepository {
         )
         .bind(dispute_id)
         .bind(user_id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -850,7 +850,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(dispute_id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -858,13 +858,13 @@ impl DisputeRepository {
             return Ok(None);
         };
 
-        let sessions = self.list_sessions(dispute_id).await?;
+        let _sessions = self.list_sessions(dispute_id).await?;
         let submissions = self.list_submissions(dispute_id).await?;
         let resolutions = self.list_resolutions(dispute_id).await?;
 
         Ok(Some(MediationCase {
             dispute,
-            sessions: vec![], // TODO: Include attendance
+            sessions: vec![], // TODO: Include attendance from _sessions
             submissions,
             resolutions,
         }))
@@ -886,7 +886,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(dispute_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -909,7 +909,7 @@ impl DisputeRepository {
         .bind(req.proposed_by)
         .bind(&req.resolution_text)
         .bind(sqlx::types::Json(&req.terms))
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -938,7 +938,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -954,7 +954,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -988,7 +988,7 @@ impl DisputeRepository {
         .bind(req.party_id)
         .bind(req.accepted)
         .bind(&req.comments)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1013,7 +1013,7 @@ impl DisputeRepository {
         )
         .bind(now)
         .bind(id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1038,7 +1038,7 @@ impl DisputeRepository {
         )
         .bind(now)
         .bind(id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1059,7 +1059,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(dispute_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1084,7 +1084,7 @@ impl DisputeRepository {
         .bind(&req.title)
         .bind(&req.description)
         .bind(req.due_date)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1102,7 +1102,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&*self.pool)
+        .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1135,7 +1135,7 @@ impl DisputeRepository {
         .bind(due_date)
         .bind(&status)
         .bind(id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1161,7 +1161,7 @@ impl DisputeRepository {
         .bind(now)
         .bind(&req.completion_notes)
         .bind(req.action_item_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1183,7 +1183,7 @@ impl DisputeRepository {
         )
         .bind(now)
         .bind(action_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1203,7 +1203,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1221,7 +1221,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(dispute_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1243,7 +1243,7 @@ impl DisputeRepository {
         .bind(req.escalated_to)
         .bind(&req.reason)
         .bind(&req.severity)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1253,7 +1253,7 @@ impl DisputeRepository {
                 "UPDATE action_items SET escalated_at = NOW(), status = 'escalated' WHERE id = $1",
             )
             .bind(action_id)
-            .execute(&*self.pool)
+            .execute(&self.pool)
             .await
             .map_err(|e| AppError::Database(e.to_string()))?;
         }
@@ -1285,7 +1285,7 @@ impl DisputeRepository {
         .bind(now)
         .bind(&req.resolution_notes)
         .bind(req.escalation_id)
-        .fetch_one(&*self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1310,7 +1310,7 @@ impl DisputeRepository {
         )
         .bind(user_id)
         .bind(now)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1326,7 +1326,7 @@ impl DisputeRepository {
         )
         .bind(user_id)
         .bind(now)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -1342,7 +1342,7 @@ impl DisputeRepository {
             "#,
         )
         .bind(user_id)
-        .fetch_all(&*self.pool)
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
