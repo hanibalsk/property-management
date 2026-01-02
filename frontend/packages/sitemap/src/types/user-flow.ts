@@ -1,5 +1,5 @@
-import type { Application } from './route';
 import type { UserRole } from './auth';
+import type { Application } from './route';
 
 /**
  * Categories for user flows

@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  sitemap,
-  getRoute,
-  getScreen,
   getEndpoint,
   getFlow,
   getProtectedRoutes,
   getPublicRoutes,
+  getRoute,
+  getScreen,
+  sitemap,
 } from '../src';
 import { SitemapTestHelper, buildUrl } from '../src/utils';
 

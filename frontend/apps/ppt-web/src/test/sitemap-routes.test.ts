@@ -4,15 +4,15 @@
  * Tests route accessibility and API mapping using @ppt/sitemap
  */
 
-import { describe, it, expect } from 'vitest';
 import {
-  sitemap,
-  getRoute,
-  getProtectedRoutes,
-  getPublicRoutes,
   SitemapTestHelper,
   buildUrl,
+  getProtectedRoutes,
+  getPublicRoutes,
+  getRoute,
+  sitemap,
 } from '@ppt/sitemap';
+import { describe, expect, it } from 'vitest';
 
 describe('PPT-Web Route Definitions', () => {
   const app = 'ppt-web' as const;
@@ -213,9 +213,7 @@ describe('API Endpoint Definitions', () => {
 
   describe('Authentication Endpoints', () => {
     it('should have login endpoint', () => {
-      const endpoint = sitemap.endpoints[server].find(
-        (e) => e.operationId === 'auth_login'
-      );
+      const endpoint = sitemap.endpoints[server].find((e) => e.operationId === 'auth_login');
       expect(endpoint).toBeDefined();
       expect(endpoint?.method).toBe('POST');
       expect(endpoint?.path).toBe('/api/v1/auth/login');
@@ -223,9 +221,7 @@ describe('API Endpoint Definitions', () => {
     });
 
     it('should have logout endpoint', () => {
-      const endpoint = sitemap.endpoints[server].find(
-        (e) => e.operationId === 'auth_logout'
-      );
+      const endpoint = sitemap.endpoints[server].find((e) => e.operationId === 'auth_logout');
       expect(endpoint).toBeDefined();
       expect(endpoint?.method).toBe('POST');
       expect(endpoint?.auth.required).toBe(true);
@@ -234,9 +230,7 @@ describe('API Endpoint Definitions', () => {
 
   describe('Document Endpoints', () => {
     it('should have document list endpoint', () => {
-      const endpoint = sitemap.endpoints[server].find(
-        (e) => e.operationId === 'documents_list'
-      );
+      const endpoint = sitemap.endpoints[server].find((e) => e.operationId === 'documents_list');
       expect(endpoint).toBeDefined();
       expect(endpoint?.method).toBe('GET');
       expect(endpoint?.auth.required).toBe(true);
@@ -244,9 +238,7 @@ describe('API Endpoint Definitions', () => {
     });
 
     it('should have document upload endpoint', () => {
-      const endpoint = sitemap.endpoints[server].find(
-        (e) => e.operationId === 'documents_upload'
-      );
+      const endpoint = sitemap.endpoints[server].find((e) => e.operationId === 'documents_upload');
       expect(endpoint).toBeDefined();
       expect(endpoint?.method).toBe('POST');
     });
@@ -254,9 +246,7 @@ describe('API Endpoint Definitions', () => {
 
   describe('Fault Endpoints', () => {
     it('should have fault create endpoint', () => {
-      const endpoint = sitemap.endpoints[server].find(
-        (e) => e.operationId === 'faults_create'
-      );
+      const endpoint = sitemap.endpoints[server].find((e) => e.operationId === 'faults_create');
       expect(endpoint).toBeDefined();
       expect(endpoint?.method).toBe('POST');
       expect(endpoint?.auth.required).toBe(true);

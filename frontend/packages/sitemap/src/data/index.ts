@@ -1,10 +1,10 @@
-import { pptWebRoutes } from './ppt-web';
-import { realityWebRoutes } from './reality-web';
-import { mobileScreens } from './mobile';
+import type { ApiEndpoint, FrontendRoute, MobileScreen, UserFlow } from '../types';
 import { apiServerEndpoints } from './api-server';
-import { realityServerEndpoints } from './reality-server';
 import { allFlows } from './flows';
-import type { FrontendRoute, MobileScreen, ApiEndpoint, UserFlow } from '../types';
+import { mobileScreens } from './mobile';
+import { pptWebRoutes } from './ppt-web';
+import { realityServerEndpoints } from './reality-server';
+import { realityWebRoutes } from './reality-web';
 
 /**
  * Complete sitemap structure
@@ -27,10 +27,7 @@ export const sitemap = {
 /**
  * Get a frontend route by ID
  */
-export function getRoute(
-  app: 'ppt-web' | 'reality-web',
-  id: string
-): FrontendRoute | undefined {
+export function getRoute(app: 'ppt-web' | 'reality-web', id: string): FrontendRoute | undefined {
   return sitemap.routes[app].find((r) => r.id === id);
 }
 
@@ -62,12 +59,8 @@ export function getFlow(id: string): UserFlow | undefined {
  * Get all routes by tag
  */
 export function getRoutesByTag(tag: string): FrontendRoute[] {
-  const pptRoutes = sitemap.routes['ppt-web'].filter((r) =>
-    r.tags?.includes(tag)
-  );
-  const realityRoutes = sitemap.routes['reality-web'].filter((r) =>
-    r.tags?.includes(tag)
-  );
+  const pptRoutes = sitemap.routes['ppt-web'].filter((r) => r.tags?.includes(tag));
+  const realityRoutes = sitemap.routes['reality-web'].filter((r) => r.tags?.includes(tag));
   return [...pptRoutes, ...realityRoutes];
 }
 
@@ -75,30 +68,22 @@ export function getRoutesByTag(tag: string): FrontendRoute[] {
  * Get all endpoints by tag
  */
 export function getEndpointsByTag(tag: string): ApiEndpoint[] {
-  const apiEndpoints = sitemap.endpoints['api-server'].filter((e) =>
-    e.tags?.includes(tag)
-  );
-  const realityEndpoints = sitemap.endpoints['reality-server'].filter((e) =>
-    e.tags?.includes(tag)
-  );
+  const apiEndpoints = sitemap.endpoints['api-server'].filter((e) => e.tags?.includes(tag));
+  const realityEndpoints = sitemap.endpoints['reality-server'].filter((e) => e.tags?.includes(tag));
   return [...apiEndpoints, ...realityEndpoints];
 }
 
 /**
  * Get all protected routes for an app
  */
-export function getProtectedRoutes(
-  app: 'ppt-web' | 'reality-web'
-): FrontendRoute[] {
+export function getProtectedRoutes(app: 'ppt-web' | 'reality-web'): FrontendRoute[] {
   return sitemap.routes[app].filter((r) => r.auth.required);
 }
 
 /**
  * Get all public routes for an app
  */
-export function getPublicRoutes(
-  app: 'ppt-web' | 'reality-web'
-): FrontendRoute[] {
+export function getPublicRoutes(app: 'ppt-web' | 'reality-web'): FrontendRoute[] {
   return sitemap.routes[app].filter((r) => !r.auth.required);
 }
 

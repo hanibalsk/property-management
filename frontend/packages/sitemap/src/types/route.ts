@@ -3,12 +3,7 @@ import type { AuthRequirement } from './auth';
 /**
  * Represents an application (frontend or backend)
  */
-export type Application =
-  | 'ppt-web'
-  | 'reality-web'
-  | 'mobile'
-  | 'api-server'
-  | 'reality-server';
+export type Application = 'ppt-web' | 'reality-web' | 'mobile' | 'api-server' | 'reality-server';
 
 /**
  * Frontend application types

@@ -1,16 +1,38 @@
 import type { FrontendRoute, MobileScreen, RouteParam } from '../types';
 
 /**
- * Build a URL from a route definition and parameters
+ * Build a URL from a route definition and parameters.
+ *
+ * @param route - The route or screen definition
+ * @param params - Path parameters to substitute
+ * @param queryParams - Query string parameters
+ * @param options - Build options
+ * @param options.validateRequired - If true, throws an error if required parameters are missing (default: false)
+ * @returns The constructed URL
+ * @throws Error if validateRequired is true and a required parameter is missing
  */
 export function buildUrl(
   route: FrontendRoute | MobileScreen,
   params: Record<string, string> = {},
-  queryParams: Record<string, string | number | boolean> = {}
+  queryParams: Record<string, string | number | boolean> = {},
+  options: { validateRequired?: boolean } = {}
 ): string {
   // Mobile screens don't have paths
   if ('screenName' in route) {
     return route.screenName;
+  }
+
+  // Validate required parameters if requested
+  if (options.validateRequired && 'params' in route && route.params) {
+    const missingParams = route.params
+      .filter((p) => p.required && !params[p.name])
+      .map((p) => p.name);
+
+    if (missingParams.length > 0) {
+      throw new Error(
+        `Missing required parameters for route '${route.id}': ${missingParams.join(', ')}`
+      );
+    }
   }
 
   let url = route.path;
@@ -105,7 +127,7 @@ export function validateParams(
           }
           break;
         case 'number':
-          if (isNaN(Number(value))) {
+          if (Number.isNaN(Number(value))) {
             errors.push(`Invalid number for parameter: ${paramDef.name}`);
           }
           break;
@@ -119,10 +141,7 @@ export function validateParams(
 /**
  * Get the full path including parent routes
  */
-export function getFullPath(
-  route: FrontendRoute,
-  allRoutes: FrontendRoute[]
-): string {
+export function getFullPath(route: FrontendRoute, allRoutes: FrontendRoute[]): string {
   if (!route.parentId) {
     return route.path;
   }
@@ -139,10 +158,7 @@ export function getFullPath(
 /**
  * Get all child routes of a parent route
  */
-export function getChildRoutes(
-  parentId: string,
-  allRoutes: FrontendRoute[]
-): FrontendRoute[] {
+export function getChildRoutes(parentId: string, allRoutes: FrontendRoute[]): FrontendRoute[] {
   return allRoutes.filter((r) => r.parentId === parentId);
 }
 

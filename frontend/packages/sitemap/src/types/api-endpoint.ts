@@ -1,5 +1,5 @@
 import type { AuthRequirement } from './auth';
-import type { RouteParam, QueryParam } from './route';
+import type { QueryParam, RouteParam } from './route';
 
 /**
  * HTTP methods for API endpoints

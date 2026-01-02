@@ -22,7 +22,12 @@ export type UserRole =
 export interface AuthRequirement {
   /** Whether authentication is required */
   required: boolean;
-  /** Allowed roles (empty means any authenticated user) */
+  /**
+   * Allowed roles.
+   * When auth.required is true, an empty or omitted array means any authenticated user is allowed.
+   * When auth.required is false, roles are ignored (route is public).
+   * Callers must check `required` first before interpreting the roles array.
+   */
   roles?: UserRole[];
   /** Required scopes (OAuth) */
   scopes?: string[];

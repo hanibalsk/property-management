@@ -131,9 +131,7 @@ export const allFlows: UserFlow[] = [
       {
         order: 5,
         name: 'Verify success',
-        assertions: [
-          { type: 'visible', target: '[data-testid="toast-success"]', expected: true },
-        ],
+        assertions: [{ type: 'visible', target: '[data-testid="toast-success"]', expected: true }],
       },
     ],
     expectedOutcome: { documentUploaded: true },
@@ -379,7 +377,11 @@ export const allFlows: UserFlow[] = [
         order: 3,
         name: 'Verify favorite added',
         assertions: [
-          { type: 'visible', target: '[data-testid="favorite-btn"][data-favorited="true"]', expected: true },
+          {
+            type: 'visible',
+            target: '[data-testid="favorite-btn"][data-favorited="true"]',
+            expected: true,
+          },
         ],
       },
     ],
