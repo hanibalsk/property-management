@@ -10,7 +10,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.248"
+version = "0.2.250"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT"
@@ -79,6 +79,14 @@ metrics-exporter-prometheus = "0.12"
 
 # Error tracking (Epic 95)
 sentry = { version = "0.32", features = ["tracing", "tower", "tower-http"] }
+
+# AWS SDK for S3 (Epic 103)
+aws-config = { version = "1.1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1.17"
+aws-credential-types = "1.1"
+
+# Redis (Epic 103)
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 
 # Internal crates
 common = { path = "crates/common" }

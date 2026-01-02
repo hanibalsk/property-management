@@ -66,6 +66,9 @@ sentry = { workspace = true }
 async-trait = "0.1"
 regex = "1.10"
 
+# Epic 103: Redis Integration (for health check types)
+redis = { workspace = true }
+
 [dev-dependencies]
 # Testing infrastructure (Epic 99)
 tower = { workspace = true, features = ["util"] }
