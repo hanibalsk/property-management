@@ -504,6 +504,11 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/webhooks/voice",
             routes::voice_webhooks::voice_webhook_router(),
         )
+        // Portal Webhooks routes (Epic 105)
+        .nest(
+            "/api/v1/webhooks/portals",
+            routes::portal_webhooks::router(),
+        )
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
