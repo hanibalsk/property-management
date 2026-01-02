@@ -3391,7 +3391,7 @@ pub async fn sync_airbnb(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "SYNC_ERROR",
-                &format!("Failed to sync: {}", e),
+                format!("Failed to sync: {}", e),
             )),
         )
     })?;
@@ -3790,7 +3790,7 @@ pub async fn sync_booking(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 "SYNC_ERROR",
-                &format!("Failed to sync: {}", e),
+                format!("Failed to sync: {}", e),
             )),
         )
     })?;

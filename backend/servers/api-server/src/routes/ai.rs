@@ -2878,7 +2878,7 @@ async fn exchange_voice_oauth_tokens(
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
                     "OAUTH_EXCHANGE_FAILED",
-                    &format!("Failed to exchange authorization code: {}", e),
+                    format!("Failed to exchange authorization code: {}", e),
                 )),
             )
         })?;

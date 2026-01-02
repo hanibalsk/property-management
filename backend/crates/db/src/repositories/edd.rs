@@ -323,6 +323,7 @@ impl EddRepository {
     }
 
     /// Update verification status for an assessment.
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_assessment_verification(
         &self,
         id: Uuid,
@@ -371,8 +372,7 @@ impl EddRepository {
     ) -> Result<EnhancedDueDiligence, SqlxError> {
         let documents_requested = data
             .documents_requested
-            .map(|d| serde_json::to_value(d).ok())
-            .flatten();
+            .and_then(|d| serde_json::to_value(d).ok());
         let next_review_date = Utc::now() + Duration::days(365);
 
         let edd = sqlx::query_as::<_, EnhancedDueDiligence>(
