@@ -1,10 +1,19 @@
-//! S3 Storage integration with presigned URL support (Story 84.1).
+//! S3 Storage integration with presigned URL support (Story 84.1, Epic 103).
 //!
 //! Provides secure, time-limited access to files stored in S3-compatible storage
 //! without exposing storage credentials to clients.
+//!
+//! Story 103.1: Real S3 upload implementation using aws-sdk-s3.
 
+use aws_config::BehaviorVersion;
+use aws_credential_types::Credentials;
+use aws_sdk_s3::config::Region;
+use aws_sdk_s3::presigning::PresigningConfig;
+use aws_sdk_s3::primitives::ByteStream;
+use aws_sdk_s3::Client as S3Client;
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
+use std::time::Duration as StdDuration;
 use thiserror::Error;
 
 // ============================================================================
@@ -69,6 +78,22 @@ pub enum StorageError {
     /// Underlying HTTP client error.
     #[error("HTTP client error: {0}")]
     HttpError(String),
+
+    /// S3 SDK error (Story 103.1).
+    #[error("S3 error: {0}")]
+    S3Error(String),
+
+    /// Upload error (Story 103.1).
+    #[error("Upload failed: {0}")]
+    UploadError(String),
+
+    /// Download error (Story 103.1).
+    #[error("Download failed: {0}")]
+    DownloadError(String),
+
+    /// Delete error (Story 103.1).
+    #[error("Delete failed: {0}")]
+    DeleteError(String),
 }
 
 // ============================================================================
@@ -198,20 +223,102 @@ impl StorageConfig {
 // ============================================================================
 
 /// Storage service for S3 operations with presigned URL support.
-#[derive(Debug, Clone)]
+///
+/// Story 103.1: Now includes real S3 client for actual file uploads.
+#[derive(Clone)]
 pub struct StorageService {
     config: StorageConfig,
+    /// S3 client for actual file operations (Story 103.1)
+    s3_client: Option<S3Client>,
+}
+
+impl std::fmt::Debug for StorageService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageService")
+            .field("config", &self.config)
+            .field("s3_client", &self.s3_client.is_some())
+            .finish()
+    }
 }
 
 impl StorageService {
     /// Create a new storage service with the given configuration.
+    ///
+    /// Note: This creates the service without an S3 client. Use `with_s3_client()`
+    /// or `from_env_async()` to enable actual S3 operations.
     pub fn new(config: StorageConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            s3_client: None,
+        }
     }
 
-    /// Create a storage service from environment variables.
+    /// Create a storage service from environment variables (synchronous, no S3 client).
     pub fn from_env() -> Result<Self, StorageError> {
         Ok(Self::new(StorageConfig::from_env()?))
+    }
+
+    /// Create a storage service from environment variables with S3 client (Story 103.1).
+    ///
+    /// This is the preferred constructor for production use as it initializes
+    /// the AWS S3 client for actual file operations.
+    pub async fn from_env_async() -> Result<Self, StorageError> {
+        let config = StorageConfig::from_env()?;
+        Self::with_s3_client(config).await
+    }
+
+    /// Create a storage service with an initialized S3 client (Story 103.1).
+    pub async fn with_s3_client(config: StorageConfig) -> Result<Self, StorageError> {
+        let credentials = Credentials::new(
+            &config.access_key_id,
+            &config.secret_access_key,
+            None,
+            None,
+            "property-management",
+        );
+
+        let region = Region::new(config.region.clone());
+
+        let mut s3_config_builder = aws_sdk_s3::Config::builder()
+            .behavior_version(BehaviorVersion::latest())
+            .region(region)
+            .credentials_provider(credentials);
+
+        // Set custom endpoint for S3-compatible services (e.g., MinIO)
+        if let Some(ref endpoint) = config.endpoint {
+            s3_config_builder = s3_config_builder
+                .endpoint_url(endpoint)
+                .force_path_style(true);
+        }
+
+        let s3_config = s3_config_builder.build();
+        let s3_client = S3Client::from_conf(s3_config);
+
+        tracing::info!(
+            bucket = %config.bucket,
+            region = %config.region,
+            endpoint = ?config.endpoint,
+            "Initialized S3 client"
+        );
+
+        Ok(Self {
+            config,
+            s3_client: Some(s3_client),
+        })
+    }
+
+    /// Check if S3 client is initialized.
+    pub fn has_s3_client(&self) -> bool {
+        self.s3_client.is_some()
+    }
+
+    /// Get the S3 client, returning an error if not initialized.
+    fn get_s3_client(&self) -> Result<&S3Client, StorageError> {
+        self.s3_client.as_ref().ok_or_else(|| {
+            StorageError::Configuration(
+                "S3 client not initialized. Use from_env_async() or with_s3_client()".to_string(),
+            )
+        })
     }
 
     /// Generate a presigned URL for downloading a file.
@@ -358,6 +465,292 @@ impl StorageService {
     /// Get the region.
     pub fn region(&self) -> &str {
         &self.config.region
+    }
+
+    // =========================================================================
+    // Story 103.1: Real S3 Operations
+    // =========================================================================
+
+    /// Upload a file to S3 (Story 103.1).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The S3 object key (file path in bucket)
+    /// * `content` - The file content as bytes
+    /// * `content_type` - MIME type of the file
+    ///
+    /// # Returns
+    ///
+    /// The storage key on success.
+    pub async fn upload(
+        &self,
+        key: &str,
+        content: Vec<u8>,
+        content_type: &str,
+    ) -> Result<String, StorageError> {
+        let client = self.get_s3_client()?;
+        let size = content.len();
+
+        // Validate content type
+        if !is_allowed_content_type(content_type) {
+            return Err(StorageError::InvalidContentType(content_type.to_string()));
+        }
+
+        // Validate size
+        if size as i64 > MAX_UPLOAD_SIZE_BYTES {
+            return Err(StorageError::FileTooLarge(
+                size as i64,
+                MAX_UPLOAD_SIZE_BYTES,
+            ));
+        }
+
+        let body = ByteStream::from(content);
+
+        client
+            .put_object()
+            .bucket(&self.config.bucket)
+            .key(key)
+            .body(body)
+            .content_type(content_type)
+            .send()
+            .await
+            .map_err(|e| StorageError::UploadError(format!("S3 PutObject failed: {}", e)))?;
+
+        tracing::info!(
+            key = %key,
+            content_type = %content_type,
+            size_bytes = %size,
+            "Uploaded file to S3"
+        );
+
+        Ok(key.to_string())
+    }
+
+    /// Download a file from S3 (Story 103.1).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The S3 object key (file path in bucket)
+    ///
+    /// # Returns
+    ///
+    /// The file content as bytes and the content type.
+    pub async fn download(&self, key: &str) -> Result<(Vec<u8>, String), StorageError> {
+        let client = self.get_s3_client()?;
+
+        let response = client
+            .get_object()
+            .bucket(&self.config.bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.to_string().contains("NoSuchKey") {
+                    StorageError::NotFound(key.to_string())
+                } else {
+                    StorageError::DownloadError(format!("S3 GetObject failed: {}", e))
+                }
+            })?;
+
+        let content_type = response
+            .content_type()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "application/octet-stream".to_string());
+
+        let body = response
+            .body
+            .collect()
+            .await
+            .map_err(|e| StorageError::DownloadError(format!("Failed to read body: {}", e)))?;
+
+        let content = body.into_bytes().to_vec();
+
+        tracing::debug!(
+            key = %key,
+            content_type = %content_type,
+            size_bytes = %content.len(),
+            "Downloaded file from S3"
+        );
+
+        Ok((content, content_type))
+    }
+
+    /// Delete a file from S3 (Story 103.1).
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The S3 object key (file path in bucket)
+    pub async fn delete(&self, key: &str) -> Result<(), StorageError> {
+        let client = self.get_s3_client()?;
+
+        client
+            .delete_object()
+            .bucket(&self.config.bucket)
+            .key(key)
+            .send()
+            .await
+            .map_err(|e| StorageError::DeleteError(format!("S3 DeleteObject failed: {}", e)))?;
+
+        tracing::info!(key = %key, "Deleted file from S3");
+
+        Ok(())
+    }
+
+    /// Check if a file exists in S3 (Story 103.1).
+    pub async fn exists(&self, key: &str) -> Result<bool, StorageError> {
+        let client = self.get_s3_client()?;
+
+        let result = client
+            .head_object()
+            .bucket(&self.config.bucket)
+            .key(key)
+            .send()
+            .await;
+
+        match result {
+            Ok(_) => Ok(true),
+            Err(e) if e.to_string().contains("NotFound") => Ok(false),
+            Err(e) => Err(StorageError::S3Error(format!("HeadObject failed: {}", e))),
+        }
+    }
+
+    /// Generate a presigned download URL using the AWS SDK (Story 103.1).
+    ///
+    /// This uses proper AWS Signature V4 signing for production use.
+    pub async fn generate_presigned_download_url(
+        &self,
+        key: &str,
+        expires_in_secs: Option<i64>,
+    ) -> Result<PresignedUrl, StorageError> {
+        let client = self.get_s3_client()?;
+        let expires_in = expires_in_secs.unwrap_or(DEFAULT_DOWNLOAD_EXPIRATION_SECS);
+        let expires_at = Utc::now() + Duration::seconds(expires_in);
+
+        let presigning_config =
+            PresigningConfig::expires_in(StdDuration::from_secs(expires_in as u64))
+                .map_err(|e| StorageError::PresignError(format!("Invalid expiration: {}", e)))?;
+
+        let presigned_request = client
+            .get_object()
+            .bucket(&self.config.bucket)
+            .key(key)
+            .presigned(presigning_config)
+            .await
+            .map_err(|e| StorageError::PresignError(format!("Presigning failed: {}", e)))?;
+
+        let url = presigned_request.uri().to_string();
+
+        tracing::debug!(
+            key = %key,
+            expires_in = %expires_in,
+            "Generated presigned download URL"
+        );
+
+        Ok(PresignedUrl { url, expires_at })
+    }
+
+    /// Generate a presigned upload URL using the AWS SDK (Story 103.1).
+    ///
+    /// This uses proper AWS Signature V4 signing for production use.
+    pub async fn generate_presigned_upload_url(
+        &self,
+        key: &str,
+        content_type: &str,
+        expires_in_secs: Option<i64>,
+    ) -> Result<PresignedUrl, StorageError> {
+        let client = self.get_s3_client()?;
+        let expires_in = expires_in_secs.unwrap_or(DEFAULT_UPLOAD_EXPIRATION_SECS);
+        let expires_at = Utc::now() + Duration::seconds(expires_in);
+
+        // Validate content type
+        if !is_allowed_content_type(content_type) {
+            return Err(StorageError::InvalidContentType(content_type.to_string()));
+        }
+
+        let presigning_config =
+            PresigningConfig::expires_in(StdDuration::from_secs(expires_in as u64))
+                .map_err(|e| StorageError::PresignError(format!("Invalid expiration: {}", e)))?;
+
+        let presigned_request = client
+            .put_object()
+            .bucket(&self.config.bucket)
+            .key(key)
+            .content_type(content_type)
+            .presigned(presigning_config)
+            .await
+            .map_err(|e| StorageError::PresignError(format!("Presigning failed: {}", e)))?;
+
+        let url = presigned_request.uri().to_string();
+
+        tracing::debug!(
+            key = %key,
+            content_type = %content_type,
+            expires_in = %expires_in,
+            "Generated presigned upload URL"
+        );
+
+        Ok(PresignedUrl { url, expires_at })
+    }
+
+    /// Check S3 connectivity (Story 103.1).
+    ///
+    /// Used for health checks to verify S3 is accessible.
+    pub async fn health_check(&self) -> Result<bool, StorageError> {
+        let client = self.get_s3_client()?;
+
+        client
+            .head_bucket()
+            .bucket(&self.config.bucket)
+            .send()
+            .await
+            .map_err(|e| StorageError::S3Error(format!("Bucket health check failed: {}", e)))?;
+
+        Ok(true)
+    }
+
+    /// Copy an object within S3 (Story 103.1).
+    pub async fn copy(&self, source_key: &str, dest_key: &str) -> Result<(), StorageError> {
+        let client = self.get_s3_client()?;
+
+        let copy_source = format!("{}/{}", self.config.bucket, source_key);
+
+        client
+            .copy_object()
+            .bucket(&self.config.bucket)
+            .copy_source(&copy_source)
+            .key(dest_key)
+            .send()
+            .await
+            .map_err(|e| StorageError::S3Error(format!("CopyObject failed: {}", e)))?;
+
+        tracing::info!(
+            source = %source_key,
+            dest = %dest_key,
+            "Copied object in S3"
+        );
+
+        Ok(())
+    }
+
+    /// List objects with a prefix (Story 103.1).
+    pub async fn list_objects(&self, prefix: &str) -> Result<Vec<String>, StorageError> {
+        let client = self.get_s3_client()?;
+
+        let response = client
+            .list_objects_v2()
+            .bucket(&self.config.bucket)
+            .prefix(prefix)
+            .send()
+            .await
+            .map_err(|e| StorageError::S3Error(format!("ListObjects failed: {}", e)))?;
+
+        let keys: Vec<String> = response
+            .contents()
+            .iter()
+            .filter_map(|obj| obj.key().map(|k| k.to_string()))
+            .collect();
+
+        Ok(keys)
     }
 }
 
