@@ -318,6 +318,7 @@ pub mod feature_guards {
 ///     .route("/ai/suggest", post(ai_suggest_handler))
 ///     .layer(middleware::from_fn(feature_guard("ai_suggestions")));
 /// ```
+#[allow(clippy::type_complexity)]
 pub fn feature_guard(
     feature_key: &'static str,
 ) -> impl Fn(
@@ -349,6 +350,7 @@ pub fn feature_guard(
 ///         "Upgrade to Pro for AI features"
 ///     )));
 /// ```
+#[allow(clippy::type_complexity)]
 pub fn feature_guard_with_upgrade(
     feature_key: &'static str,
     upgrade_path: &'static str,
