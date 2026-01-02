@@ -1,10 +1,11 @@
 //! Dispute resolution repository (Epic 77).
-//! Stub implementation - returns mock data for API development.
+//! Provides database operations for disputes, mediation, resolutions, and enforcement.
 
 use crate::models::disputes::*;
 use crate::DbPool;
 use chrono::Utc;
 use common::errors::AppError;
+use sqlx::Row;
 use uuid::Uuid;
 
 /// Update session request.
@@ -27,7 +28,6 @@ pub struct UpdateAttendanceData {
 
 #[derive(Clone)]
 pub struct DisputeRepository {
-    #[allow(dead_code)]
     pool: DbPool,
 }
 
@@ -39,68 +39,294 @@ impl DisputeRepository {
     // ======================== Disputes (Story 77.1) ========================
 
     pub async fn file_dispute(&self, _org_id: Uuid, req: FileDispute) -> Result<Dispute, AppError> {
-        let now = Utc::now();
-        Ok(Dispute {
-            id: Uuid::new_v4(),
-            organization_id: req.organization_id,
-            building_id: req.building_id,
-            unit_id: req.unit_id,
-            reference_number: format!("DSP-{}", Uuid::new_v4().to_string()[..8].to_uppercase()),
-            category: req.category,
-            title: req.title,
-            description: req.description,
-            desired_resolution: req.desired_resolution,
-            status: dispute_status::FILED.to_string(),
-            priority: dispute_priority::MEDIUM.to_string(),
-            filed_by: req.filed_by,
-            assigned_to: None,
-            created_at: now,
-            updated_at: now,
-        })
+        // Generate reference number
+        let reference_number = format!("DSP-{}", Uuid::new_v4().to_string()[..8].to_uppercase());
+
+        let dispute = sqlx::query_as::<_, Dispute>(
+            r#"
+            INSERT INTO disputes (organization_id, building_id, unit_id, reference_number, category,
+                                  title, description, desired_resolution, filed_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING id, organization_id, building_id, unit_id, reference_number, category,
+                      title, description, desired_resolution, status, priority, filed_by,
+                      assigned_to, created_at, updated_at
+            "#,
+        )
+        .bind(req.organization_id)
+        .bind(req.building_id)
+        .bind(req.unit_id)
+        .bind(&reference_number)
+        .bind(&req.category)
+        .bind(&req.title)
+        .bind(&req.description)
+        .bind(&req.desired_resolution)
+        .bind(req.filed_by)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // Add complainant as party
+        self.add_party(dispute.id, req.filed_by, party_role::COMPLAINANT)
+            .await?;
+
+        // Add respondents as parties
+        for respondent_id in req.respondent_ids {
+            self.add_party(dispute.id, respondent_id, party_role::RESPONDENT)
+                .await?;
+        }
+
+        // Record activity
+        self.record_activity(
+            dispute.id,
+            req.filed_by,
+            activity_type::DISPUTE_FILED,
+            format!("Dispute filed: {}", dispute.title),
+            None,
+        )
+        .await?;
+
+        Ok(dispute)
     }
 
     pub async fn list(
         &self,
-        _org_id: Uuid,
-        _query: DisputeQuery,
+        org_id: Uuid,
+        query: DisputeQuery,
     ) -> Result<Vec<DisputeSummary>, AppError> {
-        Ok(vec![])
+        let limit = query.limit.unwrap_or(50);
+        let offset = query.offset.unwrap_or(0);
+
+        let disputes = sqlx::query_as::<_, DisputeSummary>(
+            r#"
+            SELECT d.id, d.reference_number, d.category, d.title, d.status, d.priority,
+                   u.name as filed_by_name,
+                   a.name as assigned_to_name,
+                   (SELECT COUNT(*) FROM dispute_parties WHERE dispute_id = d.id) as party_count,
+                   d.created_at, d.updated_at
+            FROM disputes d
+            JOIN users u ON u.id = d.filed_by
+            LEFT JOIN users a ON a.id = d.assigned_to
+            WHERE d.organization_id = $1
+              AND ($2::uuid IS NULL OR d.building_id = $2)
+              AND ($3::varchar IS NULL OR d.category = $3)
+              AND ($4::varchar IS NULL OR d.status = $4)
+              AND ($5::varchar IS NULL OR d.priority = $5)
+              AND ($6::uuid IS NULL OR d.filed_by = $6)
+              AND ($7::uuid IS NULL OR d.assigned_to = $7)
+              AND ($8::text IS NULL OR d.title ILIKE '%' || $8 || '%' OR d.description ILIKE '%' || $8 || '%')
+              AND ($9::timestamptz IS NULL OR d.created_at >= $9)
+              AND ($10::timestamptz IS NULL OR d.created_at <= $10)
+            ORDER BY d.created_at DESC
+            LIMIT $11 OFFSET $12
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.building_id)
+        .bind(&query.category)
+        .bind(&query.status)
+        .bind(&query.priority)
+        .bind(query.filed_by)
+        .bind(query.assigned_to)
+        .bind(&query.search)
+        .bind(query.from_date)
+        .bind(query.to_date)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(disputes)
     }
 
     pub async fn find_by_id_with_details(
         &self,
-        _id: Uuid,
+        id: Uuid,
     ) -> Result<Option<DisputeWithDetails>, AppError> {
-        Ok(None)
+        // Get dispute
+        let dispute = sqlx::query_as::<_, Dispute>(
+            r#"
+            SELECT id, organization_id, building_id, unit_id, reference_number, category,
+                   title, description, desired_resolution, status, priority, filed_by,
+                   assigned_to, created_at, updated_at
+            FROM disputes
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let Some(dispute) = dispute else {
+            return Ok(None);
+        };
+
+        // Get parties with user details
+        let party_rows = sqlx::query(
+            r#"
+            SELECT dp.id, dp.dispute_id, dp.user_id, dp.role, dp.notified_at, dp.responded_at, dp.created_at,
+                   u.name as user_name, u.email as user_email
+            FROM dispute_parties dp
+            JOIN users u ON u.id = dp.user_id
+            WHERE dp.dispute_id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let parties: Vec<DisputePartyWithUser> = party_rows
+            .iter()
+            .map(|row| DisputePartyWithUser {
+                party: DisputeParty {
+                    id: row.get("id"),
+                    dispute_id: row.get("dispute_id"),
+                    user_id: row.get("user_id"),
+                    role: row.get("role"),
+                    notified_at: row.get("notified_at"),
+                    responded_at: row.get("responded_at"),
+                    created_at: row.get("created_at"),
+                },
+                user_name: row.get("user_name"),
+                user_email: row.get("user_email"),
+            })
+            .collect();
+
+        // Get counts
+        let evidence_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM dispute_evidence WHERE dispute_id = $1")
+                .bind(id)
+                .fetch_one(&*self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let activity_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM dispute_activities WHERE dispute_id = $1")
+                .bind(id)
+                .fetch_one(&*self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let session_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM mediation_sessions WHERE dispute_id = $1")
+                .bind(id)
+                .fetch_one(&*self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // Get active resolution
+        let active_resolution = sqlx::query_as::<_, DisputeResolution>(
+            r#"
+            SELECT id, dispute_id, proposed_by, resolution_text, terms, status,
+                   proposed_at, accepted_at, implemented_at, created_at, updated_at
+            FROM dispute_resolutions
+            WHERE dispute_id = $1 AND status NOT IN ('rejected', 'implemented')
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // Get pending actions
+        let pending_actions = sqlx::query_as::<_, ActionItem>(
+            r#"
+            SELECT id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                   description, due_date, status, completed_at, completion_notes,
+                   reminder_sent_at, escalated_at, created_at, updated_at
+            FROM action_items
+            WHERE dispute_id = $1 AND status IN ('pending', 'in_progress')
+            ORDER BY due_date ASC
+            "#,
+        )
+        .bind(id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(Some(DisputeWithDetails {
+            dispute,
+            parties,
+            evidence_count,
+            activity_count,
+            session_count,
+            active_resolution,
+            pending_actions,
+        }))
     }
 
     pub async fn update_status(&self, req: UpdateDisputeStatus) -> Result<Dispute, AppError> {
-        let now = Utc::now();
-        Ok(Dispute {
-            id: req.dispute_id,
-            organization_id: Uuid::new_v4(),
-            building_id: None,
-            unit_id: None,
-            reference_number: "DSP-12345678".to_string(),
-            category: dispute_category::OTHER.to_string(),
-            title: "Updated Dispute".to_string(),
-            description: "Description".to_string(),
-            desired_resolution: None,
-            status: req.status,
-            priority: dispute_priority::MEDIUM.to_string(),
-            filed_by: Uuid::new_v4(),
-            assigned_to: None,
-            created_at: now,
-            updated_at: now,
-        })
+        let dispute = sqlx::query_as::<_, Dispute>(
+            r#"
+            UPDATE disputes
+            SET status = $1
+            WHERE id = $2
+            RETURNING id, organization_id, building_id, unit_id, reference_number, category,
+                      title, description, desired_resolution, status, priority, filed_by,
+                      assigned_to, created_at, updated_at
+            "#,
+        )
+        .bind(&req.status)
+        .bind(req.dispute_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // Record activity
+        let description = match &req.reason {
+            Some(reason) => format!("Status changed to '{}': {}", req.status, reason),
+            None => format!("Status changed to '{}'", req.status),
+        };
+        self.record_activity(
+            req.dispute_id,
+            req.updated_by,
+            activity_type::STATUS_CHANGED,
+            description,
+            None,
+        )
+        .await?;
+
+        Ok(dispute)
     }
 
-    pub async fn withdraw(&self, _id: Uuid, _user_id: Uuid) -> Result<(), AppError> {
+    pub async fn withdraw(&self, id: Uuid, user_id: Uuid) -> Result<(), AppError> {
+        sqlx::query("UPDATE disputes SET status = 'withdrawn' WHERE id = $1")
+            .bind(id)
+            .execute(&*self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        self.record_activity(
+            id,
+            user_id,
+            activity_type::STATUS_CHANGED,
+            "Dispute withdrawn".to_string(),
+            None,
+        )
+        .await?;
+
         Ok(())
     }
 
-    pub async fn list_parties(&self, _dispute_id: Uuid) -> Result<Vec<DisputeParty>, AppError> {
-        Ok(vec![])
+    pub async fn list_parties(&self, dispute_id: Uuid) -> Result<Vec<DisputeParty>, AppError> {
+        let parties = sqlx::query_as::<_, DisputeParty>(
+            r#"
+            SELECT id, dispute_id, user_id, role, notified_at, responded_at, created_at
+            FROM dispute_parties
+            WHERE dispute_id = $1
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(dispute_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(parties)
     }
 
     pub async fn add_party(
@@ -109,153 +335,392 @@ impl DisputeRepository {
         user_id: Uuid,
         role: &str,
     ) -> Result<DisputeParty, AppError> {
-        let now = Utc::now();
-        Ok(DisputeParty {
-            id: Uuid::new_v4(),
-            dispute_id,
-            user_id,
-            role: role.to_string(),
-            notified_at: None,
-            responded_at: None,
-            created_at: now,
-        })
+        let party = sqlx::query_as::<_, DisputeParty>(
+            r#"
+            INSERT INTO dispute_parties (dispute_id, user_id, role)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (dispute_id, user_id) DO UPDATE SET role = $3
+            RETURNING id, dispute_id, user_id, role, notified_at, responded_at, created_at
+            "#,
+        )
+        .bind(dispute_id)
+        .bind(user_id)
+        .bind(role)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(party)
     }
 
-    pub async fn list_evidence(&self, _dispute_id: Uuid) -> Result<Vec<DisputeEvidence>, AppError> {
-        Ok(vec![])
+    pub async fn list_evidence(&self, dispute_id: Uuid) -> Result<Vec<DisputeEvidence>, AppError> {
+        let evidence = sqlx::query_as::<_, DisputeEvidence>(
+            r#"
+            SELECT id, dispute_id, uploaded_by, filename, original_filename, content_type,
+                   size_bytes, storage_url, description, created_at
+            FROM dispute_evidence
+            WHERE dispute_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(dispute_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(evidence)
     }
 
     pub async fn add_evidence(&self, req: AddEvidence) -> Result<DisputeEvidence, AppError> {
-        let now = Utc::now();
-        Ok(DisputeEvidence {
-            id: Uuid::new_v4(),
-            dispute_id: req.dispute_id,
-            uploaded_by: req.uploaded_by,
-            filename: req.filename,
-            original_filename: req.original_filename,
-            content_type: req.content_type,
-            size_bytes: req.size_bytes,
-            storage_url: req.storage_url,
-            description: req.description,
-            created_at: now,
-        })
+        let evidence = sqlx::query_as::<_, DisputeEvidence>(
+            r#"
+            INSERT INTO dispute_evidence (dispute_id, uploaded_by, filename, original_filename,
+                                          content_type, size_bytes, storage_url, description)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING id, dispute_id, uploaded_by, filename, original_filename, content_type,
+                      size_bytes, storage_url, description, created_at
+            "#,
+        )
+        .bind(req.dispute_id)
+        .bind(req.uploaded_by)
+        .bind(&req.filename)
+        .bind(&req.original_filename)
+        .bind(&req.content_type)
+        .bind(req.size_bytes)
+        .bind(&req.storage_url)
+        .bind(&req.description)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        self.record_activity(
+            req.dispute_id,
+            req.uploaded_by,
+            activity_type::EVIDENCE_ADDED,
+            format!("Evidence added: {}", req.original_filename),
+            None,
+        )
+        .await?;
+
+        Ok(evidence)
     }
 
     pub async fn delete_evidence(
         &self,
-        _dispute_id: Uuid,
-        _evidence_id: Uuid,
+        dispute_id: Uuid,
+        evidence_id: Uuid,
     ) -> Result<bool, AppError> {
-        Ok(true)
+        let result = sqlx::query("DELETE FROM dispute_evidence WHERE id = $1 AND dispute_id = $2")
+            .bind(evidence_id)
+            .bind(dispute_id)
+            .execute(&*self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
     }
 
     pub async fn list_activities(
         &self,
-        _dispute_id: Uuid,
-        _limit: i32,
-        _offset: i32,
+        dispute_id: Uuid,
+        limit: i32,
+        offset: i32,
     ) -> Result<Vec<DisputeActivity>, AppError> {
-        Ok(vec![])
+        let activities = sqlx::query_as::<_, DisputeActivity>(
+            r#"
+            SELECT id, dispute_id, actor_id, activity_type, description, metadata, created_at
+            FROM dispute_activities
+            WHERE dispute_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(dispute_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(activities)
     }
 
-    pub async fn get_statistics(&self, _org_id: Uuid) -> Result<DisputeStatistics, AppError> {
+    async fn record_activity(
+        &self,
+        dispute_id: Uuid,
+        actor_id: Uuid,
+        activity_type: &str,
+        description: String,
+        metadata: Option<serde_json::Value>,
+    ) -> Result<(), AppError> {
+        sqlx::query(
+            r#"
+            INSERT INTO dispute_activities (dispute_id, actor_id, activity_type, description, metadata)
+            VALUES ($1, $2, $3, $4, $5)
+            "#,
+        )
+        .bind(dispute_id)
+        .bind(actor_id)
+        .bind(activity_type)
+        .bind(&description)
+        .bind(&metadata)
+        .execute(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn get_statistics(&self, org_id: Uuid) -> Result<DisputeStatistics, AppError> {
+        let total_disputes: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM disputes WHERE organization_id = $1")
+                .bind(org_id)
+                .fetch_one(&*self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let by_status = sqlx::query_as::<_, StatusCount>(
+            r#"
+            SELECT status, COUNT(*) as count
+            FROM disputes
+            WHERE organization_id = $1
+            GROUP BY status
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let by_category = sqlx::query_as::<_, CategoryCount>(
+            r#"
+            SELECT category, COUNT(*) as count
+            FROM disputes
+            WHERE organization_id = $1
+            GROUP BY category
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let by_priority = sqlx::query_as::<_, PriorityCount>(
+            r#"
+            SELECT priority, COUNT(*) as count
+            FROM disputes
+            WHERE organization_id = $1
+            GROUP BY priority
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let avg_resolution_days: Option<f64> = sqlx::query_scalar(
+            r#"
+            SELECT AVG(EXTRACT(DAY FROM (updated_at - created_at)))
+            FROM disputes
+            WHERE organization_id = $1 AND status = 'resolved'
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let pending_actions: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM action_items ai
+            JOIN disputes d ON d.id = ai.dispute_id
+            WHERE d.organization_id = $1 AND ai.status = 'pending'
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let overdue_actions: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM action_items ai
+            JOIN disputes d ON d.id = ai.dispute_id
+            WHERE d.organization_id = $1 AND ai.status = 'pending' AND ai.due_date < NOW()
+            "#,
+        )
+        .bind(org_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
         Ok(DisputeStatistics {
-            total_disputes: 0,
-            by_status: vec![],
-            by_category: vec![],
-            by_priority: vec![],
-            avg_resolution_days: None,
-            pending_actions: 0,
-            overdue_actions: 0,
+            total_disputes,
+            by_status,
+            by_category,
+            by_priority,
+            avg_resolution_days,
+            pending_actions,
+            overdue_actions,
         })
     }
 
     // ======================== Mediation (Story 77.2) ========================
 
-    pub async fn list_sessions(
-        &self,
-        _dispute_id: Uuid,
-    ) -> Result<Vec<MediationSession>, AppError> {
-        Ok(vec![])
+    pub async fn list_sessions(&self, dispute_id: Uuid) -> Result<Vec<MediationSession>, AppError> {
+        let sessions = sqlx::query_as::<_, MediationSession>(
+            r#"
+            SELECT id, dispute_id, mediator_id, session_type, scheduled_at, duration_minutes,
+                   location, meeting_url, status, notes, outcome, created_at, updated_at
+            FROM mediation_sessions
+            WHERE dispute_id = $1
+            ORDER BY scheduled_at DESC
+            "#,
+        )
+        .bind(dispute_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(sessions)
     }
 
     pub async fn schedule_session(
         &self,
         req: ScheduleSession,
     ) -> Result<MediationSession, AppError> {
-        let now = Utc::now();
-        Ok(MediationSession {
-            id: Uuid::new_v4(),
-            dispute_id: req.dispute_id,
-            mediator_id: req.mediator_id,
-            session_type: req.session_type,
-            scheduled_at: req.scheduled_at,
-            duration_minutes: req.duration_minutes,
-            location: req.location,
-            meeting_url: req.meeting_url,
-            status: session_status::SCHEDULED.to_string(),
-            notes: None,
-            outcome: None,
-            created_at: now,
-            updated_at: now,
-        })
+        let session = sqlx::query_as::<_, MediationSession>(
+            r#"
+            INSERT INTO mediation_sessions (dispute_id, mediator_id, session_type, scheduled_at,
+                                            duration_minutes, location, meeting_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, dispute_id, mediator_id, session_type, scheduled_at, duration_minutes,
+                      location, meeting_url, status, notes, outcome, created_at, updated_at
+            "#,
+        )
+        .bind(req.dispute_id)
+        .bind(req.mediator_id)
+        .bind(&req.session_type)
+        .bind(req.scheduled_at)
+        .bind(req.duration_minutes)
+        .bind(&req.location)
+        .bind(&req.meeting_url)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // Create attendance records for attendees
+        for party_id in req.attendee_party_ids {
+            sqlx::query("INSERT INTO session_attendances (session_id, party_id) VALUES ($1, $2)")
+                .bind(session.id)
+                .bind(party_id)
+                .execute(&*self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+        }
+
+        self.record_activity(
+            req.dispute_id,
+            req.mediator_id,
+            activity_type::SESSION_SCHEDULED,
+            format!("Mediation session scheduled for {}", req.scheduled_at),
+            None,
+        )
+        .await?;
+
+        Ok(session)
     }
 
     pub async fn find_session_by_id(
         &self,
-        _dispute_id: Uuid,
-        _session_id: Uuid,
+        dispute_id: Uuid,
+        session_id: Uuid,
     ) -> Result<Option<MediationSession>, AppError> {
-        Ok(None)
+        let session = sqlx::query_as::<_, MediationSession>(
+            r#"
+            SELECT id, dispute_id, mediator_id, session_type, scheduled_at, duration_minutes,
+                   location, meeting_url, status, notes, outcome, created_at, updated_at
+            FROM mediation_sessions
+            WHERE id = $1 AND dispute_id = $2
+            "#,
+        )
+        .bind(session_id)
+        .bind(dispute_id)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(session)
     }
 
     pub async fn update_session(
         &self,
         id: Uuid,
-        _data: UpdateSessionData,
+        data: UpdateSessionData,
     ) -> Result<MediationSession, AppError> {
-        let now = Utc::now();
-        Ok(MediationSession {
-            id,
-            dispute_id: Uuid::new_v4(),
-            mediator_id: Uuid::new_v4(),
-            session_type: session_type::VIDEO_CALL.to_string(),
-            scheduled_at: now,
-            duration_minutes: Some(60),
-            location: None,
-            meeting_url: None,
-            status: session_status::SCHEDULED.to_string(),
-            notes: None,
-            outcome: None,
-            created_at: now,
-            updated_at: now,
-        })
+        let session = sqlx::query_as::<_, MediationSession>(
+            r#"
+            UPDATE mediation_sessions
+            SET scheduled_at = COALESCE($1, scheduled_at),
+                duration_minutes = COALESCE($2, duration_minutes),
+                location = COALESCE($3, location),
+                meeting_url = COALESCE($4, meeting_url),
+                status = COALESCE($5, status)
+            WHERE id = $6
+            RETURNING id, dispute_id, mediator_id, session_type, scheduled_at, duration_minutes,
+                      location, meeting_url, status, notes, outcome, created_at, updated_at
+            "#,
+        )
+        .bind(data.scheduled_at)
+        .bind(data.duration_minutes)
+        .bind(&data.location)
+        .bind(&data.meeting_url)
+        .bind(&data.status)
+        .bind(id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(session)
     }
 
     pub async fn cancel_session(&self, id: Uuid) -> Result<MediationSession, AppError> {
-        let now = Utc::now();
-        Ok(MediationSession {
-            id,
-            dispute_id: Uuid::new_v4(),
-            mediator_id: Uuid::new_v4(),
-            session_type: session_type::VIDEO_CALL.to_string(),
-            scheduled_at: now,
-            duration_minutes: Some(60),
-            location: None,
-            meeting_url: None,
-            status: session_status::CANCELLED.to_string(),
-            notes: None,
-            outcome: None,
-            created_at: now,
-            updated_at: now,
-        })
+        let session = sqlx::query_as::<_, MediationSession>(
+            r#"
+            UPDATE mediation_sessions
+            SET status = 'cancelled'
+            WHERE id = $1
+            RETURNING id, dispute_id, mediator_id, session_type, scheduled_at, duration_minutes,
+                      location, meeting_url, status, notes, outcome, created_at, updated_at
+            "#,
+        )
+        .bind(id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(session)
     }
 
     pub async fn list_attendance(
         &self,
-        _session_id: Uuid,
+        session_id: Uuid,
     ) -> Result<Vec<SessionAttendance>, AppError> {
-        Ok(vec![])
+        let attendance = sqlx::query_as::<_, SessionAttendance>(
+            r#"
+            SELECT id, session_id, party_id, confirmed, attended, notes, created_at, updated_at
+            FROM session_attendances
+            WHERE session_id = $1
+            "#,
+        )
+        .bind(session_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(attendance)
     }
 
     pub async fn update_attendance(
@@ -264,105 +729,144 @@ impl DisputeRepository {
         party_id: Uuid,
         data: UpdateAttendanceData,
     ) -> Result<SessionAttendance, AppError> {
-        let now = Utc::now();
-        Ok(SessionAttendance {
-            id: Uuid::new_v4(),
-            session_id,
-            party_id,
-            confirmed: data.confirmed.unwrap_or(false),
-            attended: data.attended,
-            notes: data.notes,
-            created_at: now,
-            updated_at: now,
-        })
+        let attendance = sqlx::query_as::<_, SessionAttendance>(
+            r#"
+            UPDATE session_attendances
+            SET confirmed = COALESCE($1, confirmed),
+                attended = COALESCE($2, attended),
+                notes = COALESCE($3, notes)
+            WHERE session_id = $4 AND party_id = $5
+            RETURNING id, session_id, party_id, confirmed, attended, notes, created_at, updated_at
+            "#,
+        )
+        .bind(data.confirmed)
+        .bind(data.attended)
+        .bind(&data.notes)
+        .bind(session_id)
+        .bind(party_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(attendance)
     }
 
     pub async fn record_session_notes(
         &self,
         req: RecordSessionNotes,
     ) -> Result<MediationSession, AppError> {
-        let now = Utc::now();
-        Ok(MediationSession {
-            id: req.session_id,
-            dispute_id: Uuid::new_v4(),
-            mediator_id: Uuid::new_v4(),
-            session_type: session_type::VIDEO_CALL.to_string(),
-            scheduled_at: now,
-            duration_minutes: Some(60),
-            location: None,
-            meeting_url: None,
-            status: session_status::COMPLETED.to_string(),
-            notes: Some(req.notes),
-            outcome: req.outcome,
-            created_at: now,
-            updated_at: now,
-        })
+        let session = sqlx::query_as::<_, MediationSession>(
+            r#"
+            UPDATE mediation_sessions
+            SET notes = $1, outcome = $2, status = 'completed'
+            WHERE id = $3
+            RETURNING id, dispute_id, mediator_id, session_type, scheduled_at, duration_minutes,
+                      location, meeting_url, status, notes, outcome, created_at, updated_at
+            "#,
+        )
+        .bind(&req.notes)
+        .bind(&req.outcome)
+        .bind(req.session_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(session)
     }
 
     pub async fn list_submissions(
         &self,
-        _dispute_id: Uuid,
+        dispute_id: Uuid,
     ) -> Result<Vec<PartySubmission>, AppError> {
-        Ok(vec![])
+        let submissions = sqlx::query_as::<_, PartySubmission>(
+            r#"
+            SELECT id, dispute_id, party_id, submission_type, content, is_visible_to_all, created_at
+            FROM party_submissions
+            WHERE dispute_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(dispute_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(submissions)
     }
 
     pub async fn submit_response(&self, req: SubmitResponse) -> Result<PartySubmission, AppError> {
-        let now = Utc::now();
-        Ok(PartySubmission {
-            id: Uuid::new_v4(),
-            dispute_id: req.dispute_id,
-            party_id: req.party_id,
-            submission_type: req.submission_type,
-            content: req.content,
-            is_visible_to_all: req.is_visible_to_all,
-            created_at: now,
-        })
+        let submission = sqlx::query_as::<_, PartySubmission>(
+            r#"
+            INSERT INTO party_submissions (dispute_id, party_id, submission_type, content, is_visible_to_all)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, dispute_id, party_id, submission_type, content, is_visible_to_all, created_at
+            "#,
+        )
+        .bind(req.dispute_id)
+        .bind(req.party_id)
+        .bind(&req.submission_type)
+        .bind(&req.content)
+        .bind(req.is_visible_to_all)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(submission)
     }
 
     pub async fn find_party_by_user(
         &self,
-        _dispute_id: Uuid,
+        dispute_id: Uuid,
         user_id: Uuid,
     ) -> Result<Option<DisputeParty>, AppError> {
-        let now = Utc::now();
-        // Return a mock party for the user
-        Ok(Some(DisputeParty {
-            id: Uuid::new_v4(),
-            dispute_id: Uuid::new_v4(),
-            user_id,
-            role: party_role::COMPLAINANT.to_string(),
-            notified_at: None,
-            responded_at: None,
-            created_at: now,
-        }))
+        let party = sqlx::query_as::<_, DisputeParty>(
+            r#"
+            SELECT id, dispute_id, user_id, role, notified_at, responded_at, created_at
+            FROM dispute_parties
+            WHERE dispute_id = $1 AND user_id = $2
+            "#,
+        )
+        .bind(dispute_id)
+        .bind(user_id)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(party)
     }
 
     pub async fn get_mediation_case(
         &self,
         dispute_id: Uuid,
     ) -> Result<Option<MediationCase>, AppError> {
-        let now = Utc::now();
+        // Get dispute
+        let dispute = sqlx::query_as::<_, Dispute>(
+            r#"
+            SELECT id, organization_id, building_id, unit_id, reference_number, category,
+                   title, description, desired_resolution, status, priority, filed_by,
+                   assigned_to, created_at, updated_at
+            FROM disputes
+            WHERE id = $1
+            "#,
+        )
+        .bind(dispute_id)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let Some(dispute) = dispute else {
+            return Ok(None);
+        };
+
+        let sessions = self.list_sessions(dispute_id).await?;
+        let submissions = self.list_submissions(dispute_id).await?;
+        let resolutions = self.list_resolutions(dispute_id).await?;
+
         Ok(Some(MediationCase {
-            dispute: Dispute {
-                id: dispute_id,
-                organization_id: Uuid::new_v4(),
-                building_id: None,
-                unit_id: None,
-                reference_number: "DSP-12345678".to_string(),
-                category: dispute_category::OTHER.to_string(),
-                title: "Mock Dispute".to_string(),
-                description: "Description".to_string(),
-                desired_resolution: None,
-                status: dispute_status::MEDIATION.to_string(),
-                priority: dispute_priority::MEDIUM.to_string(),
-                filed_by: Uuid::new_v4(),
-                assigned_to: None,
-                created_at: now,
-                updated_at: now,
-            },
-            sessions: vec![],
-            submissions: vec![],
-            resolutions: vec![],
+            dispute,
+            sessions: vec![], // TODO: Include attendance
+            submissions,
+            resolutions,
         }))
     }
 
@@ -370,52 +874,100 @@ impl DisputeRepository {
 
     pub async fn list_resolutions(
         &self,
-        _dispute_id: Uuid,
+        dispute_id: Uuid,
     ) -> Result<Vec<DisputeResolution>, AppError> {
-        Ok(vec![])
+        let resolutions = sqlx::query_as::<_, DisputeResolution>(
+            r#"
+            SELECT id, dispute_id, proposed_by, resolution_text, terms, status,
+                   proposed_at, accepted_at, implemented_at, created_at, updated_at
+            FROM dispute_resolutions
+            WHERE dispute_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(dispute_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(resolutions)
     }
 
     pub async fn propose_resolution(
         &self,
         req: ProposeResolution,
     ) -> Result<DisputeResolution, AppError> {
-        let now = Utc::now();
-        Ok(DisputeResolution {
-            id: Uuid::new_v4(),
-            dispute_id: req.dispute_id,
-            proposed_by: req.proposed_by,
-            resolution_text: req.resolution_text,
-            terms: sqlx::types::Json(req.terms),
-            status: resolution_status::PROPOSED.to_string(),
-            proposed_at: now,
-            accepted_at: None,
-            implemented_at: None,
-            created_at: now,
-            updated_at: now,
-        })
+        let resolution = sqlx::query_as::<_, DisputeResolution>(
+            r#"
+            INSERT INTO dispute_resolutions (dispute_id, proposed_by, resolution_text, terms)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, dispute_id, proposed_by, resolution_text, terms, status,
+                      proposed_at, accepted_at, implemented_at, created_at, updated_at
+            "#,
+        )
+        .bind(req.dispute_id)
+        .bind(req.proposed_by)
+        .bind(&req.resolution_text)
+        .bind(sqlx::types::Json(&req.terms))
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        self.record_activity(
+            req.dispute_id,
+            req.proposed_by,
+            activity_type::RESOLUTION_PROPOSED,
+            "Resolution proposed".to_string(),
+            None,
+        )
+        .await?;
+
+        Ok(resolution)
     }
 
     pub async fn get_resolution_with_votes(
         &self,
         id: Uuid,
     ) -> Result<Option<ResolutionWithVotes>, AppError> {
-        let now = Utc::now();
+        let resolution = sqlx::query_as::<_, DisputeResolution>(
+            r#"
+            SELECT id, dispute_id, proposed_by, resolution_text, terms, status,
+                   proposed_at, accepted_at, implemented_at, created_at, updated_at
+            FROM dispute_resolutions
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let Some(resolution) = resolution else {
+            return Ok(None);
+        };
+
+        let votes = sqlx::query_as::<_, ResolutionVote>(
+            r#"
+            SELECT id, resolution_id, party_id, accepted, comments, voted_at
+            FROM resolution_votes
+            WHERE resolution_id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let acceptance_rate = if votes.is_empty() {
+            0.0
+        } else {
+            votes.iter().filter(|v| v.accepted).count() as f64 / votes.len() as f64
+        };
+
         Ok(Some(ResolutionWithVotes {
-            resolution: DisputeResolution {
-                id,
-                dispute_id: Uuid::new_v4(),
-                proposed_by: Uuid::new_v4(),
-                resolution_text: "Mock resolution".to_string(),
-                terms: sqlx::types::Json(vec![]),
-                status: resolution_status::PROPOSED.to_string(),
-                proposed_at: now,
-                accepted_at: None,
-                implemented_at: None,
-                created_at: now,
-                updated_at: now,
-            },
-            votes: vec![],
-            acceptance_rate: 0.0,
+            resolution,
+            votes,
+            acceptance_rate,
         }))
     }
 
@@ -423,15 +975,24 @@ impl DisputeRepository {
         &self,
         req: VoteOnResolution,
     ) -> Result<ResolutionVote, AppError> {
-        let now = Utc::now();
-        Ok(ResolutionVote {
-            id: Uuid::new_v4(),
-            resolution_id: req.resolution_id,
-            party_id: req.party_id,
-            accepted: req.accepted,
-            comments: req.comments,
-            voted_at: now,
-        })
+        let vote = sqlx::query_as::<_, ResolutionVote>(
+            r#"
+            INSERT INTO resolution_votes (resolution_id, party_id, accepted, comments)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (resolution_id, party_id) DO UPDATE
+            SET accepted = $3, comments = $4, voted_at = NOW()
+            RETURNING id, resolution_id, party_id, accepted, comments, voted_at
+            "#,
+        )
+        .bind(req.resolution_id)
+        .bind(req.party_id)
+        .bind(req.accepted)
+        .bind(&req.comments)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(vote)
     }
 
     pub async fn accept_resolution(
@@ -440,19 +1001,23 @@ impl DisputeRepository {
         _user_id: Uuid,
     ) -> Result<DisputeResolution, AppError> {
         let now = Utc::now();
-        Ok(DisputeResolution {
-            id,
-            dispute_id: Uuid::new_v4(),
-            proposed_by: Uuid::new_v4(),
-            resolution_text: "Accepted resolution".to_string(),
-            terms: sqlx::types::Json(vec![]),
-            status: resolution_status::ACCEPTED.to_string(),
-            proposed_at: now,
-            accepted_at: Some(now),
-            implemented_at: None,
-            created_at: now,
-            updated_at: now,
-        })
+
+        let resolution = sqlx::query_as::<_, DisputeResolution>(
+            r#"
+            UPDATE dispute_resolutions
+            SET status = 'accepted', accepted_at = $1
+            WHERE id = $2
+            RETURNING id, dispute_id, proposed_by, resolution_text, terms, status,
+                      proposed_at, accepted_at, implemented_at, created_at, updated_at
+            "#,
+        )
+        .bind(now)
+        .bind(id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(resolution)
     }
 
     pub async fn implement_resolution(
@@ -461,78 +1026,120 @@ impl DisputeRepository {
         _user_id: Uuid,
     ) -> Result<DisputeResolution, AppError> {
         let now = Utc::now();
-        Ok(DisputeResolution {
-            id,
-            dispute_id: Uuid::new_v4(),
-            proposed_by: Uuid::new_v4(),
-            resolution_text: "Implemented resolution".to_string(),
-            terms: sqlx::types::Json(vec![]),
-            status: resolution_status::IMPLEMENTED.to_string(),
-            proposed_at: now,
-            accepted_at: Some(now),
-            implemented_at: Some(now),
-            created_at: now,
-            updated_at: now,
-        })
+
+        let resolution = sqlx::query_as::<_, DisputeResolution>(
+            r#"
+            UPDATE dispute_resolutions
+            SET status = 'implemented', implemented_at = $1
+            WHERE id = $2
+            RETURNING id, dispute_id, proposed_by, resolution_text, terms, status,
+                      proposed_at, accepted_at, implemented_at, created_at, updated_at
+            "#,
+        )
+        .bind(now)
+        .bind(id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(resolution)
     }
 
     // ======================== Resolution Enforcement (Story 77.4) ========================
 
-    pub async fn list_action_items(&self, _dispute_id: Uuid) -> Result<Vec<ActionItem>, AppError> {
-        Ok(vec![])
+    pub async fn list_action_items(&self, dispute_id: Uuid) -> Result<Vec<ActionItem>, AppError> {
+        let items = sqlx::query_as::<_, ActionItem>(
+            r#"
+            SELECT id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                   description, due_date, status, completed_at, completion_notes,
+                   reminder_sent_at, escalated_at, created_at, updated_at
+            FROM action_items
+            WHERE dispute_id = $1
+            ORDER BY due_date ASC
+            "#,
+        )
+        .bind(dispute_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(items)
     }
 
     pub async fn create_action_item(&self, req: CreateActionItem) -> Result<ActionItem, AppError> {
-        let now = Utc::now();
-        Ok(ActionItem {
-            id: Uuid::new_v4(),
-            dispute_id: req.dispute_id,
-            resolution_id: req.resolution_id,
-            resolution_term_id: req.resolution_term_id,
-            assigned_to: req.assigned_to,
-            title: req.title,
-            description: req.description,
-            due_date: req.due_date,
-            status: action_status::PENDING.to_string(),
-            completed_at: None,
-            completion_notes: None,
-            reminder_sent_at: None,
-            escalated_at: None,
-            created_at: now,
-            updated_at: now,
-        })
+        let item = sqlx::query_as::<_, ActionItem>(
+            r#"
+            INSERT INTO action_items (dispute_id, resolution_id, resolution_term_id, assigned_to,
+                                      title, description, due_date)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                      description, due_date, status, completed_at, completion_notes,
+                      reminder_sent_at, escalated_at, created_at, updated_at
+            "#,
+        )
+        .bind(req.dispute_id)
+        .bind(req.resolution_id)
+        .bind(&req.resolution_term_id)
+        .bind(req.assigned_to)
+        .bind(&req.title)
+        .bind(&req.description)
+        .bind(req.due_date)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(item)
     }
 
-    pub async fn find_action_item(&self, _id: Uuid) -> Result<Option<ActionItem>, AppError> {
-        Ok(None)
+    pub async fn find_action_item(&self, id: Uuid) -> Result<Option<ActionItem>, AppError> {
+        let item = sqlx::query_as::<_, ActionItem>(
+            r#"
+            SELECT id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                   description, due_date, status, completed_at, completion_notes,
+                   reminder_sent_at, escalated_at, created_at, updated_at
+            FROM action_items
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(item)
     }
 
     pub async fn update_action_item(
         &self,
         id: Uuid,
-        _title: Option<String>,
-        _description: Option<String>,
-        _due_date: Option<chrono::DateTime<Utc>>,
-        _status: Option<String>,
+        title: Option<String>,
+        description: Option<String>,
+        due_date: Option<chrono::DateTime<Utc>>,
+        status: Option<String>,
     ) -> Result<ActionItem, AppError> {
-        let now = Utc::now();
-        Ok(ActionItem {
-            id,
-            dispute_id: Uuid::new_v4(),
-            resolution_id: None,
-            resolution_term_id: None,
-            assigned_to: Uuid::new_v4(),
-            title: "Updated Action".to_string(),
-            description: "Description".to_string(),
-            due_date: now,
-            status: action_status::PENDING.to_string(),
-            completed_at: None,
-            completion_notes: None,
-            reminder_sent_at: None,
-            escalated_at: None,
-            created_at: now,
-            updated_at: now,
-        })
+        let item = sqlx::query_as::<_, ActionItem>(
+            r#"
+            UPDATE action_items
+            SET title = COALESCE($1, title),
+                description = COALESCE($2, description),
+                due_date = COALESCE($3, due_date),
+                status = COALESCE($4, status)
+            WHERE id = $5
+            RETURNING id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                      description, due_date, status, completed_at, completion_notes,
+                      reminder_sent_at, escalated_at, created_at, updated_at
+            "#,
+        )
+        .bind(&title)
+        .bind(&description)
+        .bind(due_date)
+        .bind(&status)
+        .bind(id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(item)
     }
 
     pub async fn complete_action_item(
@@ -540,101 +1147,215 @@ impl DisputeRepository {
         req: CompleteActionItem,
     ) -> Result<ActionItem, AppError> {
         let now = Utc::now();
-        Ok(ActionItem {
-            id: req.action_item_id,
-            dispute_id: Uuid::new_v4(),
-            resolution_id: None,
-            resolution_term_id: None,
-            assigned_to: Uuid::new_v4(),
-            title: "Completed Action".to_string(),
-            description: "Description".to_string(),
-            due_date: now,
-            status: action_status::COMPLETED.to_string(),
-            completed_at: Some(now),
-            completion_notes: req.completion_notes,
-            reminder_sent_at: None,
-            escalated_at: None,
-            created_at: now,
-            updated_at: now,
-        })
+
+        let item = sqlx::query_as::<_, ActionItem>(
+            r#"
+            UPDATE action_items
+            SET status = 'completed', completed_at = $1, completion_notes = $2
+            WHERE id = $3
+            RETURNING id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                      description, due_date, status, completed_at, completion_notes,
+                      reminder_sent_at, escalated_at, created_at, updated_at
+            "#,
+        )
+        .bind(now)
+        .bind(&req.completion_notes)
+        .bind(req.action_item_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(item)
     }
 
-    pub async fn send_action_reminder(&self, _action_id: Uuid) -> Result<ActionItem, AppError> {
+    pub async fn send_action_reminder(&self, action_id: Uuid) -> Result<ActionItem, AppError> {
         let now = Utc::now();
-        Ok(ActionItem {
-            id: Uuid::new_v4(),
-            dispute_id: Uuid::new_v4(),
-            resolution_id: None,
-            resolution_term_id: None,
-            assigned_to: Uuid::new_v4(),
-            title: "Reminded Action".to_string(),
-            description: "Description".to_string(),
-            due_date: now,
-            status: action_status::PENDING.to_string(),
-            completed_at: None,
-            completion_notes: None,
-            reminder_sent_at: Some(now),
-            escalated_at: None,
-            created_at: now,
-            updated_at: now,
-        })
+
+        let item = sqlx::query_as::<_, ActionItem>(
+            r#"
+            UPDATE action_items
+            SET reminder_sent_at = $1
+            WHERE id = $2
+            RETURNING id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                      description, due_date, status, completed_at, completion_notes,
+                      reminder_sent_at, escalated_at, created_at, updated_at
+            "#,
+        )
+        .bind(now)
+        .bind(action_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(item)
     }
 
-    pub async fn list_overdue_actions(&self, _org_id: Uuid) -> Result<Vec<ActionItem>, AppError> {
-        Ok(vec![])
+    pub async fn list_overdue_actions(&self, org_id: Uuid) -> Result<Vec<ActionItem>, AppError> {
+        let items = sqlx::query_as::<_, ActionItem>(
+            r#"
+            SELECT ai.id, ai.dispute_id, ai.resolution_id, ai.resolution_term_id, ai.assigned_to,
+                   ai.title, ai.description, ai.due_date, ai.status, ai.completed_at,
+                   ai.completion_notes, ai.reminder_sent_at, ai.escalated_at, ai.created_at, ai.updated_at
+            FROM action_items ai
+            JOIN disputes d ON d.id = ai.dispute_id
+            WHERE d.organization_id = $1 AND ai.status = 'pending' AND ai.due_date < NOW()
+            ORDER BY ai.due_date ASC
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(items)
     }
 
-    pub async fn list_escalations(&self, _dispute_id: Uuid) -> Result<Vec<Escalation>, AppError> {
-        Ok(vec![])
+    pub async fn list_escalations(&self, dispute_id: Uuid) -> Result<Vec<Escalation>, AppError> {
+        let escalations = sqlx::query_as::<_, Escalation>(
+            r#"
+            SELECT id, dispute_id, action_item_id, escalated_by, escalated_to, reason,
+                   severity, resolved, resolved_at, resolution_notes, created_at, updated_at
+            FROM escalations
+            WHERE dispute_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(dispute_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(escalations)
     }
 
     pub async fn create_escalation(&self, req: CreateEscalation) -> Result<Escalation, AppError> {
-        let now = Utc::now();
-        Ok(Escalation {
-            id: Uuid::new_v4(),
-            dispute_id: req.dispute_id,
-            action_item_id: req.action_item_id,
-            escalated_by: req.escalated_by,
-            escalated_to: req.escalated_to,
-            reason: req.reason,
-            severity: req.severity,
-            resolved: false,
-            resolved_at: None,
-            resolution_notes: None,
-            created_at: now,
-            updated_at: now,
-        })
+        let escalation = sqlx::query_as::<_, Escalation>(
+            r#"
+            INSERT INTO escalations (dispute_id, action_item_id, escalated_by, escalated_to, reason, severity)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, dispute_id, action_item_id, escalated_by, escalated_to, reason,
+                      severity, resolved, resolved_at, resolution_notes, created_at, updated_at
+            "#,
+        )
+        .bind(req.dispute_id)
+        .bind(req.action_item_id)
+        .bind(req.escalated_by)
+        .bind(req.escalated_to)
+        .bind(&req.reason)
+        .bind(&req.severity)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        // Update action item if linked
+        if let Some(action_id) = req.action_item_id {
+            sqlx::query(
+                "UPDATE action_items SET escalated_at = NOW(), status = 'escalated' WHERE id = $1",
+            )
+            .bind(action_id)
+            .execute(&*self.pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?;
+        }
+
+        self.record_activity(
+            req.dispute_id,
+            req.escalated_by,
+            activity_type::ESCALATED,
+            format!("Escalation created: {}", req.reason),
+            None,
+        )
+        .await?;
+
+        Ok(escalation)
     }
 
     pub async fn resolve_escalation(&self, req: ResolveEscalation) -> Result<Escalation, AppError> {
         let now = Utc::now();
-        Ok(Escalation {
-            id: req.escalation_id,
-            dispute_id: Uuid::new_v4(),
-            action_item_id: None,
-            escalated_by: Uuid::new_v4(),
-            escalated_to: None,
-            reason: "Original reason".to_string(),
-            severity: escalation_severity::WARNING.to_string(),
-            resolved: true,
-            resolved_at: Some(now),
-            resolution_notes: Some(req.resolution_notes),
-            created_at: now,
-            updated_at: now,
-        })
+
+        let escalation = sqlx::query_as::<_, Escalation>(
+            r#"
+            UPDATE escalations
+            SET resolved = true, resolved_at = $1, resolution_notes = $2
+            WHERE id = $3
+            RETURNING id, dispute_id, action_item_id, escalated_by, escalated_to, reason,
+                      severity, resolved, resolved_at, resolution_notes, created_at, updated_at
+            "#,
+        )
+        .bind(now)
+        .bind(&req.resolution_notes)
+        .bind(req.escalation_id)
+        .fetch_one(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(escalation)
     }
 
     pub async fn get_party_actions_dashboard(
         &self,
         user_id: Uuid,
     ) -> Result<PartyActionsDashboard, AppError> {
+        let now = Utc::now();
+
+        let pending = sqlx::query_as::<_, ActionItem>(
+            r#"
+            SELECT id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                   description, due_date, status, completed_at, completion_notes,
+                   reminder_sent_at, escalated_at, created_at, updated_at
+            FROM action_items
+            WHERE assigned_to = $1 AND status = 'pending' AND due_date >= $2
+            ORDER BY due_date ASC
+            "#,
+        )
+        .bind(user_id)
+        .bind(now)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let overdue = sqlx::query_as::<_, ActionItem>(
+            r#"
+            SELECT id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                   description, due_date, status, completed_at, completion_notes,
+                   reminder_sent_at, escalated_at, created_at, updated_at
+            FROM action_items
+            WHERE assigned_to = $1 AND status = 'pending' AND due_date < $2
+            ORDER BY due_date ASC
+            "#,
+        )
+        .bind(user_id)
+        .bind(now)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let completed_recently = sqlx::query_as::<_, ActionItem>(
+            r#"
+            SELECT id, dispute_id, resolution_id, resolution_term_id, assigned_to, title,
+                   description, due_date, status, completed_at, completion_notes,
+                   reminder_sent_at, escalated_at, created_at, updated_at
+            FROM action_items
+            WHERE assigned_to = $1 AND status = 'completed' AND completed_at > NOW() - INTERVAL '7 days'
+            ORDER BY completed_at DESC
+            LIMIT 10
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&*self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let total_pending = pending.len() as i64;
+        let total_overdue = overdue.len() as i64;
+
         Ok(PartyActionsDashboard {
             user_id,
-            pending: vec![],
-            overdue: vec![],
-            completed_recently: vec![],
-            total_pending: 0,
-            total_overdue: 0,
+            pending,
+            overdue,
+            completed_recently,
+            total_pending,
+            total_overdue,
         })
     }
 
@@ -643,13 +1364,6 @@ impl DisputeRepository {
         _org_id: Uuid,
         user_id: Uuid,
     ) -> Result<PartyActionsDashboard, AppError> {
-        Ok(PartyActionsDashboard {
-            user_id,
-            pending: vec![],
-            overdue: vec![],
-            completed_recently: vec![],
-            total_pending: 0,
-            total_overdue: 0,
-        })
+        self.get_party_actions_dashboard(user_id).await
     }
 }
