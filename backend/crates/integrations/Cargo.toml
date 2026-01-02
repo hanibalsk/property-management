@@ -26,3 +26,11 @@ sha2 = "0.10"
 rust_decimal = { workspace = true }
 # Lightweight regex for variable interpolation
 regex-lite = "0.1"
+# AWS SDK for S3 (Epic 103)
+aws-config = { workspace = true }
+aws-sdk-s3 = { workspace = true }
+aws-credential-types = { workspace = true }
+# Redis (Epic 103)
+redis = { workspace = true }
+# Async stream utilities
+futures-lite = "2.2"

@@ -26,7 +26,7 @@ use db::{
     },
     DbPool,
 };
-use integrations::LlmClient;
+use integrations::{LlmClient, PubSubService, RedisClient, SessionStore, StorageService};
 
 /// Application state shared across all handlers.
 #[derive(Clone)]
@@ -131,6 +131,12 @@ pub struct AppState {
     pub jwt_service: JwtService,
     pub totp_service: TotpService,
     pub oauth_service: OAuthService,
+    // Epic 103: Redis Integration
+    pub redis_client: Option<RedisClient>,
+    pub session_store: Option<SessionStore>,
+    pub pubsub_service: Option<PubSubService>,
+    // Epic 103: S3 Storage Service
+    pub storage_service: Option<StorageService>,
 }
 
 impl AppState {
@@ -304,7 +310,34 @@ impl AppState {
             jwt_service,
             totp_service,
             oauth_service,
+            // Epic 103: Redis services (initialized separately if available)
+            redis_client: None,
+            session_store: None,
+            pubsub_service: None,
+            // Epic 103: S3 Storage Service
+            storage_service: None,
         }
+    }
+
+    /// Set Redis client and derived services (Epic 103).
+    ///
+    /// Call this after creating the AppState if Redis is available.
+    pub fn with_redis(mut self, redis_client: RedisClient) -> Self {
+        let session_store = SessionStore::new(redis_client.clone());
+        let pubsub_service = PubSubService::new(redis_client.clone());
+
+        self.redis_client = Some(redis_client);
+        self.session_store = Some(session_store);
+        self.pubsub_service = Some(pubsub_service);
+        self
+    }
+
+    /// Set S3 storage service (Epic 103).
+    ///
+    /// Call this after creating the AppState if S3 is configured.
+    pub fn with_storage(mut self, storage_service: StorageService) -> Self {
+        self.storage_service = Some(storage_service);
+        self
     }
 }
 

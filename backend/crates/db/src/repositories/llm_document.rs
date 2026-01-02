@@ -3,7 +3,7 @@
 use crate::models::llm_document::{
     generation_status, AiEscalationConfig, AiUsageStatistics, DocumentEmbedding,
     GeneratedListingDescription, LlmGenerationRequest, LlmPromptTemplate, PhotoEnhancement,
-    ProviderStats, RequestTypeStats, UpdateEscalationConfig, VoiceAssistantDevice,
+    ProviderStats, RagStatistics, RequestTypeStats, UpdateEscalationConfig, VoiceAssistantDevice,
     VoiceCommandHistory,
 };
 use crate::DbPool;
@@ -431,9 +431,10 @@ impl LlmDocumentRepository {
         .bind(document_id)
         .bind(chunk_index)
         .bind(chunk_text)
-        // TODO: For production RAG systems, migrate to pgvector extension for efficient vector storage.
-        // Current JSONB approach is inefficient for vector similarity operations.
-        // See: https://github.com/pgvector/pgvector
+        // Story 103.5: For production RAG systems, use pgvector extension.
+        // The embedding is stored as JSONB for compatibility, but vector operations
+        // should use the embedding_vector column when pgvector is enabled.
+        // See: migration 00079_create_pgvector.sql
         .bind(
             embedding
                 .as_ref()
@@ -681,6 +682,7 @@ impl LlmDocumentRepository {
 
     /// Count documents with and without embeddings for an organization.
     /// Story 97.2: Used to track RAG indexing progress.
+    /// Story 103.5: Now also tracks pgvector migration status.
     pub async fn count_embedding_status(
         &self,
         organization_id: Uuid,
@@ -688,8 +690,8 @@ impl LlmDocumentRepository {
         let counts: (i64, i64) = sqlx::query_as(
             r#"
             SELECT
-                COUNT(*) FILTER (WHERE embedding IS NOT NULL) as with_embedding,
-                COUNT(*) FILTER (WHERE embedding IS NULL) as without_embedding
+                COUNT(*) FILTER (WHERE embedding IS NOT NULL OR embedding_vector IS NOT NULL) as with_embedding,
+                COUNT(*) FILTER (WHERE embedding IS NULL AND embedding_vector IS NULL) as without_embedding
             FROM document_embeddings
             WHERE organization_id = $1
             "#,
@@ -699,6 +701,175 @@ impl LlmDocumentRepository {
         .await?;
 
         Ok(counts)
+    }
+
+    // =========================================================================
+    // Story 103.5: pgvector RAG Operations
+    // =========================================================================
+
+    /// Search documents using pgvector native similarity search (Story 103.5).
+    ///
+    /// This method uses the SQL function created in migration 00079_create_pgvector.sql.
+    /// Falls back to application-level search if pgvector is not available.
+    pub async fn search_documents_pgvector(
+        &self,
+        organization_id: Uuid,
+        query_embedding: &[f32],
+        limit: i32,
+        min_similarity: Option<f64>,
+    ) -> Result<Vec<(DocumentEmbedding, f64)>, SqlxError> {
+        let min_sim = min_similarity.unwrap_or(0.5);
+
+        // Check if pgvector extension and function exist
+        let pgvector_available: Option<bool> = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM pg_proc WHERE proname = 'search_similar_documents')",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if pgvector_available == Some(true) {
+            // Use the pgvector SQL function for efficient search
+            let embedding_str = format!(
+                "[{}]",
+                query_embedding
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
+
+            let results: Vec<(Uuid, Uuid, i32, String, serde_json::Value, f64)> = sqlx::query_as(
+                r#"
+                SELECT id, document_id, chunk_index, chunk_text, metadata, similarity
+                FROM search_similar_documents($1, $2::vector, $3, $4)
+                "#,
+            )
+            .bind(organization_id)
+            .bind(&embedding_str)
+            .bind(limit)
+            .bind(min_sim)
+            .fetch_all(&self.pool)
+            .await?;
+
+            // Convert to DocumentEmbedding format
+            let mut embeddings = Vec::new();
+            for (id, document_id, chunk_index, chunk_text, metadata, similarity) in results {
+                let emb = DocumentEmbedding {
+                    id,
+                    organization_id,
+                    document_id,
+                    chunk_index,
+                    chunk_text,
+                    embedding: None,
+                    metadata,
+                    created_at: chrono::Utc::now(),
+                    updated_at: chrono::Utc::now(),
+                };
+                embeddings.push((emb, similarity));
+            }
+
+            return Ok(embeddings);
+        }
+
+        // Fallback to the existing application-level search
+        self.search_documents_by_embedding(organization_id, query_embedding, limit, min_similarity)
+            .await
+    }
+
+    /// Get RAG statistics for an organization using the v_rag_statistics view (Story 103.5).
+    #[allow(clippy::type_complexity)]
+    pub async fn get_rag_statistics(
+        &self,
+        organization_id: Uuid,
+    ) -> Result<RagStatistics, SqlxError> {
+        // Check if the view exists
+        let view_exists: Option<bool> = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.views WHERE table_name = 'v_rag_statistics')",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if view_exists == Some(true) {
+            // Query the v_rag_statistics view
+            let row: Option<(i64, i64, i64, i64, Option<i32>, Option<DateTime<Utc>>)> =
+                sqlx::query_as(
+                    r#"
+                SELECT indexed_documents, total_chunks, chunks_with_vector,
+                       chunks_pending_migration, avg_chunk_length, last_updated
+                FROM v_rag_statistics
+                WHERE organization_id = $1
+                "#,
+                )
+                .bind(organization_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+            if let Some((
+                indexed_documents,
+                total_chunks,
+                chunks_with_vector,
+                chunks_pending_migration,
+                avg_chunk_length,
+                last_updated,
+            )) = row
+            {
+                return Ok(RagStatistics {
+                    indexed_documents,
+                    total_chunks,
+                    chunks_with_vector,
+                    chunks_pending_migration,
+                    avg_chunk_length: avg_chunk_length.unwrap_or(0),
+                    last_updated,
+                });
+            }
+        }
+
+        // Return empty statistics if view doesn't exist or no data
+        Ok(RagStatistics {
+            indexed_documents: 0,
+            total_chunks: 0,
+            chunks_with_vector: 0,
+            chunks_pending_migration: 0,
+            avg_chunk_length: 0,
+            last_updated: None,
+        })
+    }
+
+    /// Migrate pending JSONB embeddings to pgvector format (Story 103.5).
+    ///
+    /// Returns the number of embeddings migrated.
+    pub async fn migrate_embeddings_to_pgvector(&self) -> Result<i64, SqlxError> {
+        // Check if the migration function exists
+        let function_exists: Option<bool> = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM pg_proc WHERE proname = 'migrate_jsonb_to_vector')",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if function_exists == Some(true) {
+            // Get count before migration
+            let before_count: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM document_embeddings WHERE embedding_vector IS NOT NULL",
+            )
+            .fetch_one(&self.pool)
+            .await?;
+
+            // Run migration function
+            sqlx::query("SELECT migrate_jsonb_to_vector()")
+                .execute(&self.pool)
+                .await?;
+
+            // Get count after migration
+            let after_count: i64 = sqlx::query_scalar(
+                "SELECT COUNT(*) FROM document_embeddings WHERE embedding_vector IS NOT NULL",
+            )
+            .fetch_one(&self.pool)
+            .await?;
+
+            return Ok(after_count - before_count);
+        }
+
+        Ok(0)
     }
 
     // =========================================================================

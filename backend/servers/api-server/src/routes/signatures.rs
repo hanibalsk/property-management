@@ -601,9 +601,21 @@ async fn store_signed_document(
     // Generate storage key for the signed document
     let file_key = generate_storage_key(original_doc.organization_id, &signed_filename);
 
-    // TODO: In production, upload content_bytes to S3 storage using file_key
-    // For now, we store the metadata and the file_key can be used for later upload
-    // This allows the webhook to succeed even if S3 is not configured
+    // Story 103.1: Upload signed document to S3 if storage service is available
+    if let Some(ref storage_service) = state.storage_service {
+        if storage_service.has_s3_client() {
+            storage_service
+                .upload(&file_key, content_bytes.to_vec(), &content_type)
+                .await
+                .map_err(|e| format!("Failed to upload signed document to S3: {}", e))?;
+
+            info!(
+                file_key = %file_key,
+                size_bytes = size_bytes,
+                "Uploaded signed document to S3"
+            );
+        }
+    }
 
     // Create the signed document record
     let create_doc = CreateDocument {
