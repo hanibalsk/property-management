@@ -5,6 +5,7 @@ pub mod auth;
 pub mod document_generation;
 pub mod email;
 pub mod jwt;
+pub mod notification;
 pub mod oauth;
 pub mod scheduler;
 pub mod totp;
@@ -16,6 +17,8 @@ pub use auth::AuthService;
 pub use document_generation::DocumentGenerationService;
 pub use email::EmailService;
 pub use jwt::JwtService;
+#[allow(unused_imports)]
+pub use notification::{NotificationService, NotificationServiceConfig};
 pub use oauth::OAuthService;
 pub use scheduler::{Scheduler, SchedulerConfig};
 pub use totp::TotpService;

@@ -1,10 +1,19 @@
-//! Background scheduler service for periodic tasks.
+//! Background scheduler service for periodic tasks (Epic 106).
 //!
-//! Handles scheduled announcements publishing and other background jobs.
+//! Handles scheduled announcements publishing, vote management, reminders,
+//! and session cleanup.
 
-use db::repositories::AnnouncementRepository;
+use db::repositories::{
+    AnnouncementRepository, MeterRepository, SessionRepository, UnitResidentRepository,
+    VoteRepository,
+};
+use db::DbPool;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::interval;
+
+use super::notification::{NotificationService, NotificationServiceConfig};
+use super::EmailService;
 
 /// Scheduler service configuration.
 #[derive(Clone)]
@@ -13,6 +22,12 @@ pub struct SchedulerConfig {
     pub interval_secs: u64,
     /// Whether the scheduler is enabled.
     pub enabled: bool,
+    /// Days before vote end to send reminder (default: 1).
+    pub vote_reminder_days_before: i64,
+    /// Days before meter reading due to send reminder (default: 3).
+    pub meter_reminder_days_before: i64,
+    /// Days before payment due to send reminder (default: 7).
+    pub payment_reminder_days_before: i64,
 }
 
 impl Default for SchedulerConfig {
@@ -20,22 +35,100 @@ impl Default for SchedulerConfig {
         Self {
             interval_secs: 60, // Check every minute
             enabled: true,
+            vote_reminder_days_before: 1,
+            meter_reminder_days_before: 3,
+            payment_reminder_days_before: 7,
         }
     }
 }
 
+/// Metrics for scheduler operations.
+#[derive(Debug, Default)]
+pub struct SchedulerMetrics {
+    pub announcements_published: u64,
+    pub votes_activated: u64,
+    pub votes_closed: u64,
+    pub vote_reminders_sent: u64,
+    pub meter_reminders_sent: u64,
+    pub payment_reminders_sent: u64,
+    pub sessions_cleaned: u64,
+    pub login_attempts_cleaned: u64,
+    pub errors: u64,
+}
+
 /// Background scheduler for periodic tasks.
 pub struct Scheduler {
+    pool: DbPool,
     announcement_repo: AnnouncementRepository,
+    vote_repo: VoteRepository,
+    session_repo: SessionRepository,
+    meter_repo: MeterRepository,
+    unit_resident_repo: UnitResidentRepository,
+    notification_service: Arc<NotificationService>,
     config: SchedulerConfig,
+    metrics: std::sync::Mutex<SchedulerMetrics>,
 }
 
 impl Scheduler {
     /// Create a new scheduler.
-    pub fn new(announcement_repo: AnnouncementRepository, config: SchedulerConfig) -> Self {
+    pub fn new(
+        pool: DbPool,
+        announcement_repo: AnnouncementRepository,
+        config: SchedulerConfig,
+    ) -> Self {
+        let email_service = EmailService::development();
+        let notification_service = Arc::new(NotificationService::new(
+            pool.clone(),
+            email_service,
+            NotificationServiceConfig::default(),
+        ));
+
         Self {
+            vote_repo: VoteRepository::new(pool.clone()),
+            session_repo: SessionRepository::new(pool.clone()),
+            meter_repo: MeterRepository::new(pool.clone()),
+            unit_resident_repo: UnitResidentRepository::new(pool.clone()),
+            pool,
             announcement_repo,
+            notification_service,
             config,
+            metrics: std::sync::Mutex::new(SchedulerMetrics::default()),
+        }
+    }
+
+    /// Create a scheduler with a custom notification service.
+    pub fn with_notification_service(
+        pool: DbPool,
+        announcement_repo: AnnouncementRepository,
+        notification_service: Arc<NotificationService>,
+        config: SchedulerConfig,
+    ) -> Self {
+        Self {
+            vote_repo: VoteRepository::new(pool.clone()),
+            session_repo: SessionRepository::new(pool.clone()),
+            meter_repo: MeterRepository::new(pool.clone()),
+            unit_resident_repo: UnitResidentRepository::new(pool.clone()),
+            pool,
+            announcement_repo,
+            notification_service,
+            config,
+            metrics: std::sync::Mutex::new(SchedulerMetrics::default()),
+        }
+    }
+
+    /// Get current metrics.
+    pub fn get_metrics(&self) -> SchedulerMetrics {
+        let guard = self.metrics.lock().unwrap();
+        SchedulerMetrics {
+            announcements_published: guard.announcements_published,
+            votes_activated: guard.votes_activated,
+            votes_closed: guard.votes_closed,
+            vote_reminders_sent: guard.vote_reminders_sent,
+            meter_reminders_sent: guard.meter_reminders_sent,
+            payment_reminders_sent: guard.payment_reminders_sent,
+            sessions_cleaned: guard.sessions_cleaned,
+            login_attempts_cleaned: guard.login_attempts_cleaned,
+            errors: guard.errors,
         }
     }
 
@@ -66,18 +159,42 @@ impl Scheduler {
 
     /// Run all scheduled tasks.
     async fn run_scheduled_tasks(&self) {
-        // Publish scheduled announcements
+        // Story 106.1: Publish scheduled announcements and send notifications
         if let Err(e) = self.publish_scheduled_announcements().await {
             tracing::error!("Failed to publish scheduled announcements: {}", e);
+            self.increment_errors();
         }
 
-        // TODO: Add other scheduled tasks here as needed
-        // - Close expired votes (Epic 5)
-        // - Send reminder notifications
-        // - Clean up old sessions
+        // Story 106.2: Activate scheduled votes
+        if let Err(e) = self.activate_scheduled_votes().await {
+            tracing::error!("Failed to activate scheduled votes: {}", e);
+            self.increment_errors();
+        }
+
+        // Story 106.2: Close expired votes and notify results
+        if let Err(e) = self.close_expired_votes().await {
+            tracing::error!("Failed to close expired votes: {}", e);
+            self.increment_errors();
+        }
+
+        // Story 106.3: Send vote reminders
+        if let Err(e) = self.send_vote_reminders().await {
+            tracing::error!("Failed to send vote reminders: {}", e);
+            self.increment_errors();
+        }
+
+        // Story 106.4: Clean up expired sessions
+        if let Err(e) = self.cleanup_sessions().await {
+            tracing::error!("Failed to cleanup sessions: {}", e);
+            self.increment_errors();
+        }
     }
 
-    /// Publish all scheduled announcements that are due.
+    // ========================================================================
+    // Story 106.1: Announcement Notification Triggers
+    // ========================================================================
+
+    /// Publish all scheduled announcements that are due and send notifications.
     async fn publish_scheduled_announcements(&self) -> Result<(), sqlx::Error> {
         let published = self.announcement_repo.publish_scheduled().await?;
 
@@ -88,30 +205,432 @@ impl Scheduler {
                 published.iter().map(|a| a.id).collect::<Vec<_>>()
             );
 
-            // TODO(Epic-2B): Trigger notifications for each published announcement
-            // Integration point with notification service from Epic 2B:
-            //
-            // for announcement in &published {
-            //     notification_service.send_announcement_notification(
-            //         &announcement,
-            //         NotificationType::AnnouncementPublished,
-            //     ).await?;
-            // }
-            //
-            // The notification should:
-            // 1. Determine target users based on announcement.target_type and target_ids
-            // 2. Send push notifications (mobile), email, and/or in-app notifications
-            // 3. Respect user notification preferences
+            // Update metrics
+            {
+                let mut metrics = self.metrics.lock().unwrap();
+                metrics.announcements_published += published.len() as u64;
+            }
+
+            // Send notifications for each published announcement
             for announcement in &published {
+                // Get target users based on target_type and target_ids
+                let target_user_ids = self
+                    .get_announcement_target_users(announcement)
+                    .await
+                    .unwrap_or_default();
+
+                if !target_user_ids.is_empty() {
+                    match self
+                        .notification_service
+                        .notify_announcement_published(announcement, &target_user_ids)
+                        .await
+                    {
+                        Ok(sent) => {
+                            tracing::info!(
+                                announcement_id = %announcement.id,
+                                sent_count = sent,
+                                "Sent announcement notifications"
+                            );
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                announcement_id = %announcement.id,
+                                error = %e,
+                                "Failed to send announcement notifications"
+                            );
+                        }
+                    }
+                }
+
                 tracing::info!(
                     announcement_id = %announcement.id,
                     title = %announcement.title,
                     target_type = %announcement.target_type,
-                    "Scheduled announcement published - notification integration pending Epic 2B"
+                    "Scheduled announcement published"
                 );
             }
         }
 
         Ok(())
+    }
+
+    /// Get target users for an announcement based on target_type and target_ids.
+    async fn get_announcement_target_users(
+        &self,
+        announcement: &db::models::Announcement,
+    ) -> Result<Vec<uuid::Uuid>, sqlx::Error> {
+        // Parse target_ids from JSON
+        let target_ids: Vec<uuid::Uuid> =
+            serde_json::from_value(announcement.target_ids.clone()).unwrap_or_default();
+
+        match announcement.target_type.as_str() {
+            "all" => {
+                // Get all users in the organization
+                let users: Vec<(uuid::Uuid,)> = sqlx::query_as(
+                    "SELECT id FROM users WHERE organization_id = $1 AND status = 'active'",
+                )
+                .bind(announcement.organization_id)
+                .fetch_all(&self.pool)
+                .await?;
+
+                Ok(users.into_iter().map(|(id,)| id).collect())
+            }
+            "building" => {
+                // Get all users associated with the specified buildings
+                let mut user_ids = Vec::new();
+                for building_id in target_ids {
+                    let users: Vec<(uuid::Uuid,)> = sqlx::query_as(
+                        r#"
+                        SELECT DISTINCT ur.user_id
+                        FROM unit_residents ur
+                        JOIN units u ON ur.unit_id = u.id
+                        WHERE u.building_id = $1 AND ur.move_out_date IS NULL
+                        "#,
+                    )
+                    .bind(building_id)
+                    .fetch_all(&self.pool)
+                    .await?;
+
+                    user_ids.extend(users.into_iter().map(|(id,)| id));
+                }
+                Ok(user_ids)
+            }
+            "units" => {
+                // Get all users associated with the specified units
+                let users: Vec<(uuid::Uuid,)> = sqlx::query_as(
+                    r#"
+                    SELECT DISTINCT user_id FROM unit_residents
+                    WHERE unit_id = ANY($1) AND move_out_date IS NULL
+                    "#,
+                )
+                .bind(&target_ids)
+                .fetch_all(&self.pool)
+                .await?;
+
+                Ok(users.into_iter().map(|(id,)| id).collect())
+            }
+            "roles" => {
+                // Get all users with the specified roles in the organization
+                // Role IDs would be stored in target_ids
+                let users: Vec<(uuid::Uuid,)> = sqlx::query_as(
+                    r#"
+                    SELECT DISTINCT om.user_id
+                    FROM organization_members om
+                    WHERE om.organization_id = $1
+                      AND om.role_id = ANY($2)
+                      AND om.status = 'active'
+                    "#,
+                )
+                .bind(announcement.organization_id)
+                .bind(&target_ids)
+                .fetch_all(&self.pool)
+                .await?;
+
+                Ok(users.into_iter().map(|(id,)| id).collect())
+            }
+            _ => {
+                tracing::warn!(
+                    target_type = %announcement.target_type,
+                    "Unknown announcement target type"
+                );
+                Ok(Vec::new())
+            }
+        }
+    }
+
+    // ========================================================================
+    // Story 106.2: Vote Expiry Handler
+    // ========================================================================
+
+    /// Activate scheduled votes that have reached their start time.
+    async fn activate_scheduled_votes(&self) -> Result<(), sqlx::Error> {
+        let activated = self.vote_repo.activate_scheduled_votes().await?;
+
+        if !activated.is_empty() {
+            tracing::info!(
+                "Activated {} scheduled vote(s): {:?}",
+                activated.len(),
+                activated.iter().map(|v| v.id).collect::<Vec<_>>()
+            );
+
+            // Update metrics
+            {
+                let mut metrics = self.metrics.lock().unwrap();
+                metrics.votes_activated += activated.len() as u64;
+            }
+
+            // Send notifications for each activated vote
+            for vote in &activated {
+                let eligible_user_ids = self
+                    .get_vote_eligible_users(vote.building_id)
+                    .await
+                    .unwrap_or_default();
+
+                if !eligible_user_ids.is_empty() {
+                    match self
+                        .notification_service
+                        .notify_vote_started(vote, &eligible_user_ids)
+                        .await
+                    {
+                        Ok(sent) => {
+                            tracing::info!(
+                                vote_id = %vote.id,
+                                sent_count = sent,
+                                "Sent vote started notifications"
+                            );
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                vote_id = %vote.id,
+                                error = %e,
+                                "Failed to send vote started notifications"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Close expired votes and send result notifications.
+    async fn close_expired_votes(&self) -> Result<(), sqlx::Error> {
+        let closed_ids = self.vote_repo.close_expired_votes().await?;
+
+        if !closed_ids.is_empty() {
+            tracing::info!(
+                "Closed {} expired vote(s): {:?}",
+                closed_ids.len(),
+                closed_ids
+            );
+
+            // Update metrics
+            {
+                let mut metrics = self.metrics.lock().unwrap();
+                metrics.votes_closed += closed_ids.len() as u64;
+            }
+
+            // Send notifications for each closed vote
+            for vote_id in &closed_ids {
+                // Get the vote with results
+                if let Ok(Some(vote)) = self.vote_repo.find_by_id(*vote_id).await {
+                    if let Ok(Some(results)) = self.vote_repo.get_results(*vote_id).await {
+                        // Get participants (users who voted)
+                        let participant_ids = self
+                            .get_vote_participants(*vote_id)
+                            .await
+                            .unwrap_or_default();
+
+                        if !participant_ids.is_empty() {
+                            match self
+                                .notification_service
+                                .notify_vote_closed(&vote, &results, &participant_ids)
+                                .await
+                            {
+                                Ok(sent) => {
+                                    tracing::info!(
+                                        vote_id = %vote_id,
+                                        sent_count = sent,
+                                        "Sent vote closed notifications"
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::error!(
+                                        vote_id = %vote_id,
+                                        error = %e,
+                                        "Failed to send vote closed notifications"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get eligible users for a vote (owners in the building).
+    async fn get_vote_eligible_users(
+        &self,
+        building_id: uuid::Uuid,
+    ) -> Result<Vec<uuid::Uuid>, sqlx::Error> {
+        let users: Vec<(uuid::Uuid,)> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT ur.user_id
+            FROM unit_residents ur
+            JOIN units u ON ur.unit_id = u.id
+            WHERE u.building_id = $1
+              AND ur.resident_type = 'owner'
+              AND ur.move_out_date IS NULL
+            "#,
+        )
+        .bind(building_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(users.into_iter().map(|(id,)| id).collect())
+    }
+
+    /// Get users who participated in a vote.
+    async fn get_vote_participants(
+        &self,
+        vote_id: uuid::Uuid,
+    ) -> Result<Vec<uuid::Uuid>, sqlx::Error> {
+        let users: Vec<(uuid::Uuid,)> =
+            sqlx::query_as("SELECT DISTINCT user_id FROM vote_responses WHERE vote_id = $1")
+                .bind(vote_id)
+                .fetch_all(&self.pool)
+                .await?;
+
+        Ok(users.into_iter().map(|(id,)| id).collect())
+    }
+
+    /// Get eligible users who have NOT voted yet.
+    async fn get_users_not_voted(
+        &self,
+        vote_id: uuid::Uuid,
+        building_id: uuid::Uuid,
+    ) -> Result<Vec<uuid::Uuid>, sqlx::Error> {
+        let users: Vec<(uuid::Uuid,)> = sqlx::query_as(
+            r#"
+            SELECT DISTINCT ur.user_id
+            FROM unit_residents ur
+            JOIN units u ON ur.unit_id = u.id
+            WHERE u.building_id = $1
+              AND ur.resident_type = 'owner'
+              AND ur.move_out_date IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM vote_responses vr
+                  WHERE vr.vote_id = $2 AND vr.unit_id = ur.unit_id
+              )
+            "#,
+        )
+        .bind(building_id)
+        .bind(vote_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(users.into_iter().map(|(id,)| id).collect())
+    }
+
+    // ========================================================================
+    // Story 106.3: Reminder Notifications
+    // ========================================================================
+
+    /// Send reminders for votes ending soon.
+    async fn send_vote_reminders(&self) -> Result<(), sqlx::Error> {
+        // Find active votes ending within the reminder window
+        let reminder_cutoff =
+            chrono::Utc::now() + chrono::Duration::days(self.config.vote_reminder_days_before);
+
+        let votes_ending_soon: Vec<db::models::Vote> = sqlx::query_as(
+            r#"
+            SELECT * FROM votes
+            WHERE status = 'active'
+              AND end_at <= $1
+              AND end_at > NOW()
+            "#,
+        )
+        .bind(reminder_cutoff)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut reminders_sent = 0u64;
+
+        for vote in votes_ending_soon {
+            // Get users who haven't voted yet
+            let users_not_voted = self
+                .get_users_not_voted(vote.id, vote.building_id)
+                .await
+                .unwrap_or_default();
+
+            if !users_not_voted.is_empty() {
+                match self
+                    .notification_service
+                    .notify_vote_reminder(&vote, &users_not_voted)
+                    .await
+                {
+                    Ok(sent) => {
+                        reminders_sent += sent as u64;
+                        tracing::info!(
+                            vote_id = %vote.id,
+                            sent_count = sent,
+                            "Sent vote reminder notifications"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            vote_id = %vote.id,
+                            error = %e,
+                            "Failed to send vote reminder notifications"
+                        );
+                    }
+                }
+            }
+        }
+
+        if reminders_sent > 0 {
+            let mut metrics = self.metrics.lock().unwrap();
+            metrics.vote_reminders_sent += reminders_sent;
+        }
+
+        Ok(())
+    }
+
+    // ========================================================================
+    // Story 106.4: Session Cleanup Task
+    // ========================================================================
+
+    /// Cleanup expired sessions and old login attempts.
+    async fn cleanup_sessions(&self) -> Result<(), sqlx::Error> {
+        // Cleanup expired refresh tokens
+        let tokens_cleaned = self.session_repo.cleanup_expired_tokens().await?;
+
+        // Cleanup old login attempts
+        let attempts_cleaned = self.session_repo.cleanup_old_attempts().await?;
+
+        if tokens_cleaned > 0 || attempts_cleaned > 0 {
+            tracing::info!(
+                tokens_cleaned = tokens_cleaned,
+                attempts_cleaned = attempts_cleaned,
+                "Session cleanup completed"
+            );
+
+            let mut metrics = self.metrics.lock().unwrap();
+            metrics.sessions_cleaned += tokens_cleaned;
+            metrics.login_attempts_cleaned += attempts_cleaned;
+        }
+
+        Ok(())
+    }
+
+    /// Helper to increment error count in metrics.
+    fn increment_errors(&self) {
+        let mut metrics = self.metrics.lock().unwrap();
+        metrics.errors += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scheduler_config_default() {
+        let config = SchedulerConfig::default();
+        assert_eq!(config.interval_secs, 60);
+        assert!(config.enabled);
+        assert_eq!(config.vote_reminder_days_before, 1);
+    }
+
+    #[test]
+    fn test_scheduler_metrics_default() {
+        let metrics = SchedulerMetrics::default();
+        assert_eq!(metrics.announcements_published, 0);
+        assert_eq!(metrics.votes_closed, 0);
+        assert_eq!(metrics.errors, 0);
     }
 }
