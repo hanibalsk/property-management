@@ -16,6 +16,7 @@
   "dependencies": {
     "@ppt/api-client": "workspace:*",
     "@ppt/shared": "workspace:*",
+    "@ppt/sitemap": "workspace:*",
     "@ppt/ui-kit": "workspace:*",
     "@tanstack/react-query": "^5.17.0",
     "axios": "^1.6.0",
@@ -38,5 +39,5 @@
     "vite": "^5.0.0",
     "vitest": "^2.1.8"
   },
-  "version": "0.2.247"
+  "version": "0.2.244"
 }

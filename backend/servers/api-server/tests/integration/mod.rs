@@ -4,5 +4,11 @@
 //! - Authentication (register, login, logout, token refresh)
 //! - Authorization (role-based access)
 //! - Error handling
+//! - Document access control
+//! - Integration sync flows
+//! - Health checks
 
 pub mod auth_tests;
+pub mod document_access_tests;
+pub mod health_tests;
+pub mod integration_sync_tests;
