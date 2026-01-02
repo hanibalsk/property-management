@@ -1,0 +1,83 @@
+{
+  "common": {
+    "search": "Szukaj",
+    "login": "Zaloguj się",
+    "register": "Zarejestruj się",
+    "logout": "Wyloguj się",
+    "favorites": "Ulubione",
+    "contact": "Kontakt",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "close": "Zamknij",
+    "loading": "Ładowanie...",
+    "error": "Błąd",
+    "success": "Sukces"
+  },
+  "nav": {
+    "allListings": "Wszystkie oferty",
+    "savedSearches": "Zapisane wyszukiwania",
+    "myInquiries": "Moje zapytania",
+    "profile": "Profil"
+  },
+  "home": {
+    "title": "Znajdź swoją idealną nieruchomość",
+    "subtitle": "Przeszukaj tysiące ofert",
+    "searchPlaceholder": "Wpisz miasto, adres lub słowo kluczowe...",
+    "featuredListings": "Polecane oferty",
+    "viewAll": "Zobacz wszystkie"
+  },
+  "listing": {
+    "price": "Cena",
+    "area": "Powierzchnia",
+    "rooms": "Pokoje",
+    "floor": "Piętro",
+    "features": "Wyposażenie",
+    "description": "Opis",
+    "contact_agent": "Skontaktuj się z agentem",
+    "schedule_viewing": "Umów oglądanie",
+    "perMonth": "/miesiąc",
+    "sqm": "m²",
+    "bedroom": "Sypialnia",
+    "bedrooms": "Sypialnie",
+    "bathroom": "Łazienka",
+    "bathrooms": "Łazienki"
+  },
+  "search": {
+    "filters": "Filtry",
+    "property_type": "Typ nieruchomości",
+    "transaction_type": "Typ transakcji",
+    "price_range": "Zakres cen",
+    "area_range": "Zakres powierzchni",
+    "sale": "Na sprzedaż",
+    "rent": "Do wynajęcia",
+    "apartment": "Mieszkanie",
+    "house": "Dom",
+    "land": "Działka",
+    "commercial": "Komercyjne",
+    "minPrice": "Cena min.",
+    "maxPrice": "Cena maks.",
+    "minArea": "Pow. min.",
+    "maxArea": "Pow. maks.",
+    "applyFilters": "Zastosuj filtry",
+    "clearFilters": "Wyczyść filtry",
+    "noResults": "Nie znaleziono ofert",
+    "resultsCount": "Znaleziono {count} ofert"
+  },
+  "contact": {
+    "name": "Twoje imię",
+    "email": "E-mail",
+    "phone": "Telefon",
+    "message": "Wiadomość",
+    "send": "Wyślij wiadomość",
+    "scheduleViewing": "Umów oglądanie",
+    "preferredDate": "Preferowana data",
+    "preferredTime": "Preferowana godzina"
+  },
+  "footer": {
+    "about": "O nas",
+    "terms": "Regulamin",
+    "privacy": "Polityka prywatności",
+    "help": "Pomoc",
+    "copyright": "© {year} Reality Portal. Wszelkie prawa zastrzeżone."
+  }
+}

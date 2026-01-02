@@ -1,0 +1,83 @@
+{
+  "common": {
+    "search": "Keresés",
+    "login": "Bejelentkezés",
+    "register": "Regisztráció",
+    "logout": "Kijelentkezés",
+    "favorites": "Kedvencek",
+    "contact": "Kapcsolat",
+    "save": "Mentés",
+    "cancel": "Mégse",
+    "close": "Bezárás",
+    "loading": "Betöltés...",
+    "error": "Hiba",
+    "success": "Siker"
+  },
+  "nav": {
+    "allListings": "Összes hirdetés",
+    "savedSearches": "Mentett keresések",
+    "myInquiries": "Érdeklődéseim",
+    "profile": "Profil"
+  },
+  "home": {
+    "title": "Találja meg tökéletes ingatlanát",
+    "subtitle": "Keressen több ezer hirdetés között",
+    "searchPlaceholder": "Adja meg a várost, címet vagy kulcsszót...",
+    "featuredListings": "Kiemelt hirdetések",
+    "viewAll": "Összes megtekintése"
+  },
+  "listing": {
+    "price": "Ár",
+    "area": "Terület",
+    "rooms": "Szobák",
+    "floor": "Emelet",
+    "features": "Felszereltség",
+    "description": "Leírás",
+    "contact_agent": "Kapcsolatfelvétel az ügynökkel",
+    "schedule_viewing": "Megtekintés időpontja",
+    "perMonth": "/hó",
+    "sqm": "m²",
+    "bedroom": "Hálószoba",
+    "bedrooms": "Hálószobák",
+    "bathroom": "Fürdőszoba",
+    "bathrooms": "Fürdőszobák"
+  },
+  "search": {
+    "filters": "Szűrők",
+    "property_type": "Ingatlan típusa",
+    "transaction_type": "Tranzakció típusa",
+    "price_range": "Ártartomány",
+    "area_range": "Területtartomány",
+    "sale": "Eladó",
+    "rent": "Kiadó",
+    "apartment": "Lakás",
+    "house": "Ház",
+    "land": "Telek",
+    "commercial": "Üzleti",
+    "minPrice": "Min. ár",
+    "maxPrice": "Max. ár",
+    "minArea": "Min. terület",
+    "maxArea": "Max. terület",
+    "applyFilters": "Szűrők alkalmazása",
+    "clearFilters": "Szűrők törlése",
+    "noResults": "Nem található hirdetés",
+    "resultsCount": "{count} hirdetés található"
+  },
+  "contact": {
+    "name": "Az Ön neve",
+    "email": "E-mail",
+    "phone": "Telefon",
+    "message": "Üzenet",
+    "send": "Üzenet küldése",
+    "scheduleViewing": "Megtekintés időpontja",
+    "preferredDate": "Preferált dátum",
+    "preferredTime": "Preferált időpont"
+  },
+  "footer": {
+    "about": "Rólunk",
+    "terms": "Felhasználási feltételek",
+    "privacy": "Adatvédelmi irányelvek",
+    "help": "Súgó",
+    "copyright": "© {year} Reality Portal. Minden jog fenntartva."
+  }
+}

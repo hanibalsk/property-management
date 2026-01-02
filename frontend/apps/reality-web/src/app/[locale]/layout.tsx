@@ -28,6 +28,8 @@ export async function generateMetadata({
     sk: 'Reality Portál - Nájdite svoju ideálnu nehnuteľnosť',
     cs: 'Reality Portál - Najděte svou ideální nemovitost',
     de: 'Reality Portal - Finden Sie Ihre perfekte Immobilie',
+    pl: 'Reality Portal - Znajdź swoją idealną nieruchomość',
+    hu: 'Reality Portal - Találja meg tökéletes ingatlanát',
   };
 
   const descriptions: Record<Locale, string> = {
@@ -35,6 +37,8 @@ export async function generateMetadata({
     sk: 'Prehľadajte tisíce ponúk nehnuteľností na Slovensku, v Českej republike a ďalej.',
     cs: 'Prohledejte tisíce nabídek nemovitostí v České republice, na Slovensku a dále.',
     de: 'Durchsuchen Sie Tausende von Immobilienangeboten in der Slowakei, der Tschechischen Republik und darüber hinaus.',
+    pl: 'Przeszukaj tysiące ofert nieruchomości na Słowacji, w Czechach i nie tylko.',
+    hu: 'Keressen több ezer ingatlanhirdetés között Szlovákiában, Csehországban és azon túl.',
   };
 
   return {
