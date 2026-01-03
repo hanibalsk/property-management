@@ -14,6 +14,7 @@
     "success": "Success"
   },
   "nav": {
+    "home": "Home",
     "allListings": "All Listings",
     "savedSearches": "Saved Searches",
     "myInquiries": "My Inquiries",
@@ -61,7 +62,40 @@
     "amenities": "Amenities",
     "location": "Location",
     "viewOnMap": "View on Map",
-    "contactAgent": "Contact Agent"
+    "contactAgent": "Contact Agent",
+    "built": "Built",
+    "additionalInfo": "Additional Information",
+    "energyRating": "Energy Rating",
+    "monthlyCharges": "Monthly Charges",
+    "availableFrom": "Available From",
+    "listed": "Listed",
+    "additionalResources": "Additional Resources",
+    "virtualTour": "Virtual Tour",
+    "floorPlan": "Floor Plan"
+  },
+  "features": {
+    "balcony": "Balcony",
+    "terrace": "Terrace",
+    "garden": "Garden",
+    "parking": "Parking",
+    "garage": "Garage",
+    "elevator": "Elevator",
+    "cellar": "Cellar",
+    "airConditioning": "Air Conditioning",
+    "furnished": "Furnished",
+    "petFriendly": "Pet Friendly",
+    "disabledAccess": "Disabled Access"
+  },
+  "gallery": {
+    "noPhotos": "No photos available",
+    "viewFullscreen": "View {title} photos in fullscreen",
+    "viewPhoto": "View photo {number}",
+    "photoGallery": "Photo gallery",
+    "closeGallery": "Close gallery",
+    "previousPhoto": "Previous photo",
+    "nextPhoto": "Next photo",
+    "photoNumber": "Photo {number}",
+    "photoOf": "Photo {number} of {title}"
   },
   "search": {
     "filters": "Filters",
@@ -84,12 +118,13 @@
     "noResults": "No listings found",
     "resultsCount": "{count} listings found",
     "buy": "Buy",
-    "placeholder": "Enter city, address, or keyword...",
+    "placeholder": "Search by city, address, or keyword...",
     "button": "Search",
     "popular": "Popular:",
     "searching": "Searching...",
     "noResultsTip": "Try adjusting your search or filters",
-    "recentSearches": "Recent Searches"
+    "recentSearches": "Recent Searches",
+    "listingsCount": "{count} listings"
   },
   "filters": {
     "title": "Filters",
@@ -142,6 +177,21 @@
     "inquirySent": "Your inquiry has been sent. They will get back to you soon.",
     "sendAnother": "Send another message",
     "failedToSend": "Failed to send message. Please try again."
+  },
+  "agency": {
+    "dashboard": "Agency Dashboard",
+    "period7d": "7 Days",
+    "period30d": "30 Days",
+    "period90d": "90 Days",
+    "period1y": "1 Year",
+    "performanceOverview": "Performance Overview",
+    "topRealtors": "Top Realtors",
+    "viewAll": "View All",
+    "quickActions": "Quick Actions",
+    "manageRealtors": "Manage Realtors",
+    "allListings": "All Listings",
+    "branding": "Branding",
+    "inviteRealtor": "Invite Realtor"
   },
   "footer": {
     "about": "About",

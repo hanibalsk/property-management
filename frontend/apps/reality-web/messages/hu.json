@@ -14,6 +14,7 @@
     "success": "Siker"
   },
   "nav": {
+    "home": "Főoldal",
     "allListings": "Összes hirdetés",
     "savedSearches": "Mentett keresések",
     "myInquiries": "Érdeklődéseim",
@@ -61,7 +62,40 @@
     "amenities": "Felszereltség",
     "location": "Helyszín",
     "viewOnMap": "Megtekintés a térképen",
-    "contactAgent": "Kapcsolatfelvétel az ügynökkel"
+    "contactAgent": "Kapcsolatfelvétel az ügynökkel",
+    "built": "Építés éve",
+    "additionalInfo": "További információk",
+    "energyRating": "Energetikai besorolás",
+    "monthlyCharges": "Havi költségek",
+    "availableFrom": "Elérhető ettől",
+    "listed": "Közzétéve",
+    "additionalResources": "További források",
+    "virtualTour": "Virtuális túra",
+    "floorPlan": "Alaprajz"
+  },
+  "features": {
+    "balcony": "Erkély",
+    "terrace": "Terasz",
+    "garden": "Kert",
+    "parking": "Parkoló",
+    "garage": "Garázs",
+    "elevator": "Lift",
+    "cellar": "Pince",
+    "airConditioning": "Légkondicionáló",
+    "furnished": "Bútorozott",
+    "petFriendly": "Kisállat barát",
+    "disabledAccess": "Akadálymentes"
+  },
+  "gallery": {
+    "noPhotos": "Nincsenek elérhető fotók",
+    "viewFullscreen": "{title} fotók megtekintése teljes képernyőn",
+    "viewPhoto": "{number}. fotó megtekintése",
+    "photoGallery": "Fotógaléria",
+    "closeGallery": "Galéria bezárása",
+    "previousPhoto": "Előző fotó",
+    "nextPhoto": "Következő fotó",
+    "photoNumber": "{number}. fotó",
+    "photoOf": "{number}. fotó - {title}"
   },
   "search": {
     "filters": "Szűrők",
@@ -84,12 +118,13 @@
     "noResults": "Nem található hirdetés",
     "resultsCount": "{count} hirdetés található",
     "buy": "Vásárlás",
-    "placeholder": "Adja meg a várost, címet vagy kulcsszót...",
+    "placeholder": "Keresés város, cím vagy kulcsszó alapján...",
     "button": "Keresés",
     "popular": "Népszerű:",
     "searching": "Keresés folyamatban...",
     "noResultsTip": "Próbálja módosítani a keresést vagy a szűrőket",
-    "recentSearches": "Legutóbbi keresések"
+    "recentSearches": "Legutóbbi keresések",
+    "listingsCount": "{count} hirdetés"
   },
   "filters": {
     "title": "Szűrők",
@@ -142,6 +177,21 @@
     "inquirySent": "Érdeklődését elküldtük. Hamarosan felveszik Önnel a kapcsolatot.",
     "sendAnother": "Másik üzenet küldése",
     "failedToSend": "Nem sikerült elküldeni az üzenetet. Kérjük, próbálja újra."
+  },
+  "agency": {
+    "dashboard": "Ügynökség irányítópult",
+    "period7d": "7 nap",
+    "period30d": "30 nap",
+    "period90d": "90 nap",
+    "period1y": "1 év",
+    "performanceOverview": "Teljesítmény áttekintés",
+    "topRealtors": "Legjobb ügynökök",
+    "viewAll": "Összes megtekintése",
+    "quickActions": "Gyors műveletek",
+    "manageRealtors": "Ügynökök kezelése",
+    "allListings": "Összes hirdetés",
+    "branding": "Arculat",
+    "inviteRealtor": "Ügynök meghívása"
   },
   "footer": {
     "about": "Rólunk",

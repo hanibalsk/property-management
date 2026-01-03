@@ -7,6 +7,7 @@
 'use client';
 
 import type { ListingPhoto } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 
 interface PhotoGalleryProps {
@@ -15,6 +16,7 @@ interface PhotoGalleryProps {
 }
 
 export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
+  const t = useTranslations('gallery');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showLightbox, setShowLightbox] = useState(false);
 
@@ -66,7 +68,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
           <circle cx="8.5" cy="8.5" r="1.5" />
           <polyline points="21 15 16 10 5 21" />
         </svg>
-        <p>No photos available</p>
+        <p>{t('noPhotos')}</p>
         <style jsx>{`
           .empty-gallery {
             display: flex;
@@ -96,7 +98,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
           type="button"
           className="main-image-container"
           onClick={() => setShowLightbox(true)}
-          aria-label={`View ${title} photos in fullscreen`}
+          aria-label={t('viewFullscreen', { title })}
         >
           <img src={mainPhoto.url} alt={mainPhoto.caption || title} className="main-image" />
           <div className="image-count">
@@ -128,9 +130,12 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
                 type="button"
                 className={`thumbnail ${index === selectedIndex ? 'active' : ''}`}
                 onClick={() => setSelectedIndex(index)}
-                aria-label={`View photo ${index + 1}`}
+                aria-label={t('viewPhoto', { number: index + 1 })}
               >
-                <img src={photo.thumbnailUrl} alt={photo.caption || `Photo ${index + 1}`} />
+                <img
+                  src={photo.thumbnailUrl}
+                  alt={photo.caption || t('photoNumber', { number: index + 1 })}
+                />
                 {index === 4 && photos.length > 5 && (
                   <div className="more-overlay">+{photos.length - 5}</div>
                 )}
@@ -142,12 +147,12 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
 
       {/* Lightbox */}
       {showLightbox && (
-        <dialog className="lightbox" open aria-label="Photo gallery">
+        <dialog className="lightbox" open aria-label={t('photoGallery')}>
           <button
             type="button"
             className="lightbox-close"
             onClick={() => setShowLightbox(false)}
-            aria-label="Close gallery"
+            aria-label={t('closeGallery')}
           >
             <svg
               width="24"
@@ -166,7 +171,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
             type="button"
             className="lightbox-nav prev"
             onClick={() => setSelectedIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1))}
-            aria-label="Previous photo"
+            aria-label={t('previousPhoto')}
           >
             <svg
               width="32"
@@ -184,7 +189,9 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
           <div className="lightbox-content">
             <img
               src={photos[selectedIndex].url}
-              alt={photos[selectedIndex].caption || `Photo ${selectedIndex + 1} of ${title}`}
+              alt={
+                photos[selectedIndex].caption || t('photoOf', { number: selectedIndex + 1, title })
+              }
               className="lightbox-image"
             />
             {photos[selectedIndex].caption && (
@@ -196,7 +203,7 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
             type="button"
             className="lightbox-nav next"
             onClick={() => setSelectedIndex((prev) => (prev < photos.length - 1 ? prev + 1 : 0))}
-            aria-label="Next photo"
+            aria-label={t('nextPhoto')}
           >
             <svg
               width="32"
@@ -223,9 +230,12 @@ export function PhotoGallery({ photos, title }: PhotoGalleryProps) {
                 type="button"
                 className={`lightbox-thumbnail ${index === selectedIndex ? 'active' : ''}`}
                 onClick={() => setSelectedIndex(index)}
-                aria-label={`View photo ${index + 1}`}
+                aria-label={t('viewPhoto', { number: index + 1 })}
               >
-                <img src={photo.thumbnailUrl} alt={photo.caption || `Photo ${index + 1}`} />
+                <img
+                  src={photo.thumbnailUrl}
+                  alt={photo.caption || t('photoNumber', { number: index + 1 })}
+                />
               </button>
             ))}
           </div>

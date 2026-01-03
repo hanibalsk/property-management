@@ -14,6 +14,7 @@
     "success": "Sukces"
   },
   "nav": {
+    "home": "Strona główna",
     "allListings": "Wszystkie oferty",
     "savedSearches": "Zapisane wyszukiwania",
     "myInquiries": "Moje zapytania",
@@ -61,7 +62,40 @@
     "amenities": "Udogodnienia",
     "location": "Lokalizacja",
     "viewOnMap": "Zobacz na mapie",
-    "contactAgent": "Skontaktuj się z agentem"
+    "contactAgent": "Skontaktuj się z agentem",
+    "built": "Rok budowy",
+    "additionalInfo": "Dodatkowe informacje",
+    "energyRating": "Klasa energetyczna",
+    "monthlyCharges": "Opłaty miesięczne",
+    "availableFrom": "Dostępne od",
+    "listed": "Opublikowano",
+    "additionalResources": "Dodatkowe zasoby",
+    "virtualTour": "Wirtualny spacer",
+    "floorPlan": "Plan piętra"
+  },
+  "features": {
+    "balcony": "Balkon",
+    "terrace": "Taras",
+    "garden": "Ogród",
+    "parking": "Parking",
+    "garage": "Garaż",
+    "elevator": "Winda",
+    "cellar": "Piwnica",
+    "airConditioning": "Klimatyzacja",
+    "furnished": "Umeblowane",
+    "petFriendly": "Zwierzęta dozwolone",
+    "disabledAccess": "Dostęp dla niepełnosprawnych"
+  },
+  "gallery": {
+    "noPhotos": "Brak dostępnych zdjęć",
+    "viewFullscreen": "Zobacz zdjęcia {title} na pełnym ekranie",
+    "viewPhoto": "Zobacz zdjęcie {number}",
+    "photoGallery": "Galeria zdjęć",
+    "closeGallery": "Zamknij galerię",
+    "previousPhoto": "Poprzednie zdjęcie",
+    "nextPhoto": "Następne zdjęcie",
+    "photoNumber": "Zdjęcie {number}",
+    "photoOf": "Zdjęcie {number} z {title}"
   },
   "search": {
     "filters": "Filtry",
@@ -84,12 +118,13 @@
     "noResults": "Nie znaleziono ofert",
     "resultsCount": "Znaleziono {count} ofert",
     "buy": "Kup",
-    "placeholder": "Wpisz miasto, adres lub słowo kluczowe...",
+    "placeholder": "Szukaj według miasta, adresu lub słowa kluczowego...",
     "button": "Szukaj",
     "popular": "Popularne:",
     "searching": "Wyszukiwanie...",
     "noResultsTip": "Spróbuj dostosować wyszukiwanie lub filtry",
-    "recentSearches": "Ostatnie wyszukiwania"
+    "recentSearches": "Ostatnie wyszukiwania",
+    "listingsCount": "{count} ofert"
   },
   "filters": {
     "title": "Filtry",
@@ -142,6 +177,21 @@
     "inquirySent": "Twoje zapytanie zostało wysłane. Wkrótce się z Tobą skontaktują.",
     "sendAnother": "Wyślij kolejną wiadomość",
     "failedToSend": "Nie udało się wysłać wiadomości. Spróbuj ponownie."
+  },
+  "agency": {
+    "dashboard": "Panel agencji",
+    "period7d": "7 dni",
+    "period30d": "30 dni",
+    "period90d": "90 dni",
+    "period1y": "1 rok",
+    "performanceOverview": "Przegląd wydajności",
+    "topRealtors": "Najlepsi agenci",
+    "viewAll": "Zobacz wszystkie",
+    "quickActions": "Szybkie akcje",
+    "manageRealtors": "Zarządzaj agentami",
+    "allListings": "Wszystkie oferty",
+    "branding": "Branding",
+    "inviteRealtor": "Zaproś agenta"
   },
   "footer": {
     "about": "O nas",

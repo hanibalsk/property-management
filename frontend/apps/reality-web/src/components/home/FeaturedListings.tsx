@@ -8,10 +8,12 @@
 
 import type { ListingSummary } from '@ppt/reality-api-client';
 import { useFeaturedListings, useToggleFavorite } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ListingCard } from '../listings/ListingCard';
 
 export function FeaturedListings() {
+  const t = useTranslations('home');
   const { data, isLoading, error } = useFeaturedListings();
   const toggleFavorite = useToggleFavorite();
 
@@ -67,17 +69,17 @@ export function FeaturedListings() {
 
   const sections: { title: string; listings: ListingSummary[]; link: string }[] = [
     {
-      title: 'Featured Properties for Sale',
+      title: t('featuredForSale'),
       listings: data.sale,
       link: '/listings?transactionType=sale',
     },
     {
-      title: 'Featured Properties for Rent',
+      title: t('featuredForRent'),
       listings: data.rent,
       link: '/listings?transactionType=rent',
     },
     {
-      title: 'New Listings',
+      title: t('newListings'),
       listings: data.new,
       link: '/listings?sortBy=createdAt&sortOrder=desc',
     },
@@ -93,7 +95,7 @@ export function FeaturedListings() {
                 <div className="section-header">
                   <h2 className="section-title">{section.title}</h2>
                   <Link href={section.link} className="view-all-link">
-                    View all
+                    {t('viewAll')}
                     <svg
                       width="16"
                       height="16"

@@ -14,6 +14,7 @@
     "success": "Úspěch"
   },
   "nav": {
+    "home": "Domů",
     "allListings": "Všechny nabídky",
     "savedSearches": "Uložená vyhledávání",
     "myInquiries": "Moje dotazy",
@@ -61,7 +62,40 @@
     "amenities": "Vybavení",
     "location": "Poloha",
     "viewOnMap": "Zobrazit na mapě",
-    "contactAgent": "Kontaktovat makléře"
+    "contactAgent": "Kontaktovat makléře",
+    "built": "Postaveno",
+    "additionalInfo": "Další informace",
+    "energyRating": "Energetická třída",
+    "monthlyCharges": "Měsíční poplatky",
+    "availableFrom": "K dispozici od",
+    "listed": "Zveřejněno",
+    "additionalResources": "Další zdroje",
+    "virtualTour": "Virtuální prohlídka",
+    "floorPlan": "Půdorys"
+  },
+  "features": {
+    "balcony": "Balkón",
+    "terrace": "Terasa",
+    "garden": "Zahrada",
+    "parking": "Parkování",
+    "garage": "Garáž",
+    "elevator": "Výtah",
+    "cellar": "Sklep",
+    "airConditioning": "Klimatizace",
+    "furnished": "Zařízený",
+    "petFriendly": "Domácí mazlíčci povoleni",
+    "disabledAccess": "Bezbariérový přístup"
+  },
+  "gallery": {
+    "noPhotos": "Žádné fotografie nejsou k dispozici",
+    "viewFullscreen": "Zobrazit fotografie {title} na celou obrazovku",
+    "viewPhoto": "Zobrazit fotografii {number}",
+    "photoGallery": "Fotogalerie",
+    "closeGallery": "Zavřít galerii",
+    "previousPhoto": "Předchozí fotografie",
+    "nextPhoto": "Další fotografie",
+    "photoNumber": "Fotografie {number}",
+    "photoOf": "Fotografie {number} z {title}"
   },
   "search": {
     "filters": "Filtry",
@@ -84,12 +118,13 @@
     "noResults": "Nebyly nalezeny žádné nabídky",
     "resultsCount": "Nalezeno {count} nabídek",
     "buy": "Koupit",
-    "placeholder": "Zadejte město, adresu nebo klíčové slovo...",
+    "placeholder": "Hledat podle města, adresy nebo klíčového slova...",
     "button": "Hledat",
     "popular": "Populární:",
     "searching": "Vyhledávání...",
     "noResultsTip": "Zkuste upravit vyhledávání nebo filtry",
-    "recentSearches": "Nedávná vyhledávání"
+    "recentSearches": "Nedávná vyhledávání",
+    "listingsCount": "{count} nabídek"
   },
   "filters": {
     "title": "Filtry",
@@ -142,6 +177,21 @@
     "inquirySent": "Váš dotaz byl odeslán. Brzy vás budou kontaktovat.",
     "sendAnother": "Odeslat další zprávu",
     "failedToSend": "Nepodařilo se odeslat zprávu. Zkuste to prosím znovu."
+  },
+  "agency": {
+    "dashboard": "Panel agentury",
+    "period7d": "7 dní",
+    "period30d": "30 dní",
+    "period90d": "90 dní",
+    "period1y": "1 rok",
+    "performanceOverview": "Přehled výkonnosti",
+    "topRealtors": "Nejlepší makléři",
+    "viewAll": "Zobrazit vše",
+    "quickActions": "Rychlé akce",
+    "manageRealtors": "Spravovat makléře",
+    "allListings": "Všechny nabídky",
+    "branding": "Branding",
+    "inviteRealtor": "Pozvat makléře"
   },
   "footer": {
     "about": "O nás",
