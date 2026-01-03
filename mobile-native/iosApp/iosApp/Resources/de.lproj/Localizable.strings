@@ -245,7 +245,7 @@
 "notification_marketing" = "Marketing";
 "language_english" = "Englisch";
 "terms" = "Bedingungen";
-"version_format %@" = "Version %@";
+"version_format" = "Version %@";
 "help_support" = "Hilfe und Support";
 "send_feedback" = "Feedback senden";
 

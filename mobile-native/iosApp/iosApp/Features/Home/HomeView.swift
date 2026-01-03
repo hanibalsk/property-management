@@ -392,7 +392,7 @@ private struct FeaturedListingCard: View {
                                 .font(.caption)
                         }
                         if let rooms = listing.rooms {
-                            Text(String(localized: "rooms_count", defaultValue: "\(rooms) rooms").replacingOccurrences(of: "%d", with: "\(rooms)"))
+                            Text(String(format: String(localized: "rooms_count"), rooms))
                                 .font(.caption)
                         }
                     }

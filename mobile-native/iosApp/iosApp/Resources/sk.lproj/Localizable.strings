@@ -245,7 +245,7 @@
 "notification_marketing" = "Marketing";
 "language_english" = "Angličtina";
 "terms" = "Podmienky";
-"version_format %@" = "Verzia %@";
+"version_format" = "Verzia %@";
 "help_support" = "Pomoc a podpora";
 "send_feedback" = "Poslať spätnú väzbu";
 

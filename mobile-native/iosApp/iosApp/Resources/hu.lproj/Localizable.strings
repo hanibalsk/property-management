@@ -245,7 +245,7 @@
 "notification_marketing" = "Marketing";
 "language_english" = "Angol";
 "terms" = "Feltételek";
-"version_format %@" = "Verzió %@";
+"version_format" = "Verzió %@";
 "help_support" = "Súgó és támogatás";
 "send_feedback" = "Visszajelzés küldése";
 

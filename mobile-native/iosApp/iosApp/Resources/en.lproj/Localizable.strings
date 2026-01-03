@@ -245,7 +245,7 @@
 "notification_marketing" = "Marketing";
 "language_english" = "English";
 "terms" = "Terms";
-"version_format %@" = "Version %@";
+"version_format" = "Version %@";
 "help_support" = "Help & Support";
 "send_feedback" = "Send Feedback";
 
@@ -273,8 +273,3 @@
 "enter_password" = "Enter your password";
 "no_account_prompt" = "Don't have an account?";
 
-/* Localization additions for Swift views */
-"quick_actions" = "Quick Actions";
-"my_favorites" = "My Favorites";
-"my_inquiries" = "My Inquiries";
-"saved_searches" = "Saved Searches";

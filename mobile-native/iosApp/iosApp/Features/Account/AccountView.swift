@@ -278,7 +278,7 @@ struct AccountView: View {
                 }
                 .foregroundStyle(.secondary)
 
-                Text(String(localized: "version_format \(Configuration.shared.version)"))
+                Text(String(format: String(localized: "version_format"), Configuration.shared.version))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
