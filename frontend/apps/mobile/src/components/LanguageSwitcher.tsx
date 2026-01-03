@@ -33,7 +33,10 @@ export function LanguageSwitcher() {
             {locales.map((locale) => (
               <Pressable
                 key={locale}
-                style={[styles.languageOption, currentLocale === locale && styles.languageOptionActive]}
+                style={[
+                  styles.languageOption,
+                  currentLocale === locale && styles.languageOptionActive,
+                ]}
                 onPress={() => handleLanguageChange(locale)}
               >
                 <Text style={styles.languageFlag}>{localeFlags[locale]}</Text>
@@ -48,10 +51,7 @@ export function LanguageSwitcher() {
                 {currentLocale === locale && <Text style={styles.checkmark}>✓</Text>}
               </Pressable>
             ))}
-            <Pressable
-              style={styles.closeButton}
-              onPress={() => setModalVisible(false)}
-            >
+            <Pressable style={styles.closeButton} onPress={() => setModalVisible(false)}>
               <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
             </Pressable>
           </View>

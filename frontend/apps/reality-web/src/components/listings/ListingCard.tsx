@@ -7,6 +7,7 @@
 'use client';
 
 import type { ListingSummary } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 interface ListingCardProps {
@@ -20,6 +21,8 @@ export function ListingCard({
   onToggleFavorite,
   showFavoriteButton = true,
 }: ListingCardProps) {
+  const t = useTranslations('listing');
+
   const formatPrice = (price: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -60,9 +63,9 @@ export function ListingCard({
 
         {/* Badges */}
         <div className="badges">
-          {listing.isFeatured && <span className="badge featured">Featured</span>}
+          {listing.isFeatured && <span className="badge featured">{t('featured')}</span>}
           <span className={`badge ${listing.transactionType}`}>
-            {listing.transactionType === 'sale' ? 'For Sale' : 'For Rent'}
+            {listing.transactionType === 'sale' ? t('forSale') : t('forRent')}
           </span>
         </div>
 
@@ -93,7 +96,9 @@ export function ListingCard({
       <div className="content">
         <div className="price-row">
           <span className="price">{formatPrice(listing.price, listing.currency)}</span>
-          {listing.transactionType === 'rent' && <span className="price-suffix">/month</span>}
+          {listing.transactionType === 'rent' && (
+            <span className="price-suffix">{t('perMonth')}</span>
+          )}
         </div>
 
         <h3 className="title">{listing.title}</h3>
@@ -130,7 +135,7 @@ export function ListingCard({
               >
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               </svg>
-              <span>{listing.rooms} rooms</span>
+              <span>{t('roomsCount', { count: listing.rooms })}</span>
             </div>
           )}
           <div className="feature">
@@ -145,7 +150,9 @@ export function ListingCard({
             >
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
             </svg>
-            <span>{listing.area} m²</span>
+            <span>
+              {listing.area} {t('sqm')}
+            </span>
           </div>
           {listing.floor !== undefined && (
             <div className="feature">
@@ -161,7 +168,7 @@ export function ListingCard({
                 <path d="M18 20V4H6v16" />
                 <path d="M2 20h20" />
               </svg>
-              <span>Floor {listing.floor}</span>
+              <span>{t('floorNumber', { number: listing.floor })}</span>
             </div>
           )}
         </div>

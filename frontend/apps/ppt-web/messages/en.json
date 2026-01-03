@@ -35,7 +35,11 @@
     "pleaseWait": "Please wait while we fetch the details.",
     "reloadPage": "Reload Page",
     "copyErrorDetails": "Copy Error Details",
-    "add": "Add"
+    "add": "Add",
+    "copied": "Copied",
+    "copyErrorMessage": "Copy error message",
+    "dismissNotification": "Dismiss notification",
+    "notifications": "Notifications"
   },
   "nav": {
     "home": "Home",
@@ -60,15 +64,23 @@
     "signOut": "Sign Out",
     "email": "Email",
     "password": "Password",
+    "emailAddress": "Email address",
     "emailRequired": "Email is required",
     "passwordRequired": "Password is required",
     "invalidEmail": "Please enter a valid email address",
     "invalidCredentials": "Invalid email or password. Please try again.",
-    "accountLocked": "Your account has been locked due to too many failed attempts.",
+    "accountLocked": "Your account has been locked due to too many failed attempts. Please contact support.",
+    "accountDisabled": "Your account has been disabled. Please contact support.",
+    "sessionExpired": "Your session has expired. Please log in again.",
+    "networkError": "Unable to connect to the server. Please check your internet connection.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
     "welcomeBack": "Welcome back! Please enter your credentials to continue.",
     "signingIn": "Signing in...",
+    "checkingAuth": "Checking authentication status",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
+    "show": "Show",
+    "hide": "Hide",
     "forgotPassword": "Forgot password?",
     "rememberMe": "Remember me"
   },
@@ -193,7 +205,10 @@
     "errorLoadingDispute": "Error loading dispute",
     "disputeLoadError": "We encountered an error while loading the dispute details.",
     "disputeNotExist": "The dispute you're looking for does not exist.",
-    "waitBeforeRetry": "Please wait before trying again."
+    "waitBeforeRetry": "Please wait before trying again.",
+    "somethingWentWrong": "Something went wrong",
+    "unexpectedError": "We apologize for the inconvenience. An unexpected error has occurred.",
+    "copyErrorDetailsSupport": "Copy error details for support"
   },
   "notifications": {
     "title": "Notifications",

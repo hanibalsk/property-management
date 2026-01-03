@@ -31,7 +31,8 @@
     "featuredForRent": "Doporučené nemovitosti k pronájmu",
     "newListings": "Nové nabídky",
     "browseByType": "Procházet podle typu nemovitosti",
-    "viewAllProperties": "Zobrazit všechny nemovitosti"
+    "viewAllProperties": "Zobrazit všechny nemovitosti",
+    "listingsCount": "{count} nabídek"
   },
   "listing": {
     "price": "Cena",
@@ -101,7 +102,23 @@
     "minimumRooms": "Minimální počet pokojů",
     "showResults": "Zobrazit výsledky",
     "office": "Kancelář",
-    "garage": "Garáž"
+    "garage": "Garáž",
+    "apartment": "Byt",
+    "house": "Dům",
+    "land": "Pozemek",
+    "commercial": "Komerční",
+    "anyRooms": "Libovolný",
+    "roomsPlus": "{count}+",
+    "priceUnder50k": "Do {currency}50 000",
+    "price50kTo100k": "{currency}50 000 - {currency}100 000",
+    "price100kTo200k": "{currency}100 000 - {currency}200 000",
+    "price200kTo500k": "{currency}200 000 - {currency}500 000",
+    "price500kPlus": "{currency}500 000+",
+    "areaUnder50": "Do 50 m²",
+    "area50To100": "50 - 100 m²",
+    "area100To150": "100 - 150 m²",
+    "area150To200": "150 - 200 m²",
+    "area200Plus": "200+ m²"
   },
   "contact": {
     "name": "Vaše jméno",
@@ -138,11 +155,13 @@
     "company": "Společnost",
     "propertiesForSale": "Nemovitosti k prodeji",
     "propertiesForRent": "Nemovitosti k pronájmu",
+    "allListings": "Všechny nabídky",
     "apartments": "Byty",
     "houses": "Domy",
     "land": "Pozemky",
     "commercial": "Komerční",
     "aboutUs": "O nás",
-    "contact": "Kontakt"
+    "contact": "Kontakt",
+    "brandName": "Reality Portál"
   }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.R
 import three.two.bit.ppt.reality.listing.*
 import three.two.bit.ppt.reality.util.FormatUtils
 
@@ -112,7 +114,7 @@ fun SearchScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search properties...") },
+                        placeholder = { Text(stringResource(R.string.search_placeholder)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -123,7 +125,12 @@ fun SearchScreen(
                                     performSearch()
                                 }
                             ),
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = stringResource(R.string.cd_search)
+                            )
+                        },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(
@@ -132,7 +139,10 @@ fun SearchScreen(
                                         performSearch()
                                     }
                                 ) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = stringResource(R.string.cd_clear)
+                                    )
                                 }
                             }
                         },
@@ -145,14 +155,17 @@ fun SearchScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.cd_back)
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = { showFilters = !showFilters }) {
                         Icon(
                             Icons.Default.FilterList,
-                            contentDescription = "Filters",
+                            contentDescription = stringResource(R.string.cd_filters),
                             tint =
                                 if (showFilters) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.onSurface
@@ -197,7 +210,7 @@ fun SearchScreen(
             // Results count
             if (totalResults > 0) {
                 Text(
-                    text = "$totalResults properties found",
+                    text = stringResource(R.string.properties_found, totalResults),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -256,7 +269,7 @@ fun SearchScreen(
                                     CircularProgressIndicator()
                                 } else {
                                     Button(onClick = { performSearch(currentPage + 1) }) {
-                                        Text("Load More")
+                                        Text(stringResource(R.string.action_load_more))
                                     }
                                 }
                             }
@@ -284,6 +297,16 @@ private fun FilterSection(
     onSortChange: (ListingSortOption) -> Unit,
     onApplyPrice: () -> Unit
 ) {
+    val filterAllLabel = stringResource(R.string.filter_all)
+    val filterAnyLabel = stringResource(R.string.filter_any)
+    val sortNewestLabel = stringResource(R.string.sort_newest)
+    val sortOldestLabel = stringResource(R.string.sort_oldest)
+    val sortPriceAscLabel = stringResource(R.string.sort_price_asc)
+    val sortPriceDescLabel = stringResource(R.string.sort_price_desc)
+    val sortAreaAscLabel = stringResource(R.string.sort_area_asc)
+    val sortAreaDescLabel = stringResource(R.string.sort_area_desc)
+    val sortRelevanceLabel = stringResource(R.string.sort_relevance)
+
     Column(
         modifier =
             Modifier.fillMaxWidth()
@@ -292,7 +315,7 @@ private fun FilterSection(
     ) {
         // Type filter
         Text(
-            text = "Type",
+            text = stringResource(R.string.filter_type),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -301,7 +324,7 @@ private fun FilterSection(
                 FilterChip(
                     selected = selectedType == null,
                     onClick = { onTypeChange(null) },
-                    label = { Text("All") }
+                    label = { Text(filterAllLabel) }
                 )
             }
             items(ListingType.entries) { type ->
@@ -317,7 +340,7 @@ private fun FilterSection(
 
         // Category filter
         Text(
-            text = "Category",
+            text = stringResource(R.string.filter_category),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -326,7 +349,7 @@ private fun FilterSection(
                 FilterChip(
                     selected = selectedCategory == null,
                     onClick = { onCategoryChange(null) },
-                    label = { Text("All") }
+                    label = { Text(filterAllLabel) }
                 )
             }
             items(PropertyCategory.entries) { category ->
@@ -342,7 +365,7 @@ private fun FilterSection(
 
         // Price range
         Text(
-            text = "Price Range (€)",
+            text = stringResource(R.string.filter_price_range_eur),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -354,7 +377,7 @@ private fun FilterSection(
             OutlinedTextField(
                 value = minPrice,
                 onValueChange = onMinPriceChange,
-                placeholder = { Text("Min") },
+                placeholder = { Text(stringResource(R.string.filter_min)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
@@ -363,14 +386,17 @@ private fun FilterSection(
             OutlinedTextField(
                 value = maxPrice,
                 onValueChange = onMaxPriceChange,
-                placeholder = { Text("Max") },
+                placeholder = { Text(stringResource(R.string.filter_max)) },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { onApplyPrice() })
             )
             IconButton(onClick = onApplyPrice) {
-                Icon(Icons.Default.Check, contentDescription = "Apply")
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = stringResource(R.string.filter_apply)
+                )
             }
         }
 
@@ -378,7 +404,7 @@ private fun FilterSection(
 
         // Rooms filter
         Text(
-            text = "Rooms",
+            text = stringResource(R.string.filter_rooms),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -387,7 +413,7 @@ private fun FilterSection(
                 FilterChip(
                     selected = minRooms == null,
                     onClick = { onMinRoomsChange(null) },
-                    label = { Text("Any") }
+                    label = { Text(filterAnyLabel) }
                 )
             }
             items(listOf(1, 2, 3, 4, 5)) { rooms ->
@@ -403,7 +429,7 @@ private fun FilterSection(
 
         // Sort
         Text(
-            text = "Sort By",
+            text = stringResource(R.string.sort_by),
             style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -411,13 +437,13 @@ private fun FilterSection(
             items(ListingSortOption.entries) { sort ->
                 val label =
                     when (sort) {
-                        ListingSortOption.NEWEST -> "Newest"
-                        ListingSortOption.OLDEST -> "Oldest"
-                        ListingSortOption.PRICE_ASC -> "Price ↑"
-                        ListingSortOption.PRICE_DESC -> "Price ↓"
-                        ListingSortOption.AREA_ASC -> "Area ↑"
-                        ListingSortOption.AREA_DESC -> "Area ↓"
-                        ListingSortOption.RELEVANCE -> "Relevance"
+                        ListingSortOption.NEWEST -> sortNewestLabel
+                        ListingSortOption.OLDEST -> sortOldestLabel
+                        ListingSortOption.PRICE_ASC -> sortPriceAscLabel
+                        ListingSortOption.PRICE_DESC -> sortPriceDescLabel
+                        ListingSortOption.AREA_ASC -> sortAreaAscLabel
+                        ListingSortOption.AREA_DESC -> sortAreaDescLabel
+                        ListingSortOption.RELEVANCE -> sortRelevanceLabel
                     }
                 FilterChip(
                     selected = selectedSort == sort,
@@ -444,13 +470,13 @@ private fun EmptySearchResults() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No properties found",
+            text = stringResource(R.string.empty_search_results),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Try adjusting your search or filters",
+            text = stringResource(R.string.empty_search_tip),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -491,17 +517,26 @@ fun ListingCard(
                 ) {
                     if (listing.isFeatured) {
                         Badge(containerColor = MaterialTheme.colorScheme.primary) {
-                            Text("Featured", modifier = Modifier.padding(horizontal = 4.dp))
+                            Text(
+                                stringResource(R.string.label_featured),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
                         }
                     }
                     if (listing.isNew) {
                         Badge(containerColor = MaterialTheme.colorScheme.tertiary) {
-                            Text("New", modifier = Modifier.padding(horizontal = 4.dp))
+                            Text(
+                                stringResource(R.string.label_new),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
                         }
                     }
                     if (listing.isPriceReduced) {
                         Badge(containerColor = MaterialTheme.colorScheme.error) {
-                            Text("Reduced", modifier = Modifier.padding(horizontal = 4.dp))
+                            Text(
+                                stringResource(R.string.label_reduced),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
                         }
                     }
                 }
@@ -519,8 +554,8 @@ fun ListingCard(
                     Text(
                         text =
                             when (listing.type) {
-                                ListingType.SALE -> "For Sale"
-                                ListingType.RENT -> "For Rent"
+                                ListingType.SALE -> stringResource(R.string.for_sale)
+                                ListingType.RENT -> stringResource(R.string.for_rent)
                             },
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
@@ -539,7 +574,8 @@ fun ListingCard(
                                 if (isFavorite) Icons.Default.Favorite
                                 else Icons.Default.FavoriteBorder,
                             contentDescription =
-                                if (isFavorite) "Remove from favorites" else "Add to favorites",
+                                if (isFavorite) stringResource(R.string.remove_from_favorites)
+                                else stringResource(R.string.add_to_favorites),
                             tint = if (isFavorite) MaterialTheme.colorScheme.error else Color.White
                         )
                     }
@@ -623,17 +659,26 @@ fun ListingCard(
                     listing.areaSqm?.let { area ->
                         PropertyDetail(
                             icon = Icons.Default.SquareFoot,
-                            value = "${area.toInt()} m²"
+                            value = "${area.toInt()} ${stringResource(R.string.sqm)}"
                         )
                     }
                     listing.rooms?.let { rooms ->
-                        PropertyDetail(icon = Icons.Default.MeetingRoom, value = "$rooms rooms")
+                        PropertyDetail(
+                            icon = Icons.Default.MeetingRoom,
+                            value = stringResource(R.string.rooms_count, rooms)
+                        )
                     }
                     listing.bedrooms?.let { bedrooms ->
-                        PropertyDetail(icon = Icons.Default.Bed, value = "$bedrooms bed")
+                        PropertyDetail(
+                            icon = Icons.Default.Bed,
+                            value = stringResource(R.string.bed_count, bedrooms)
+                        )
                     }
                     listing.bathrooms?.let { bathrooms ->
-                        PropertyDetail(icon = Icons.Default.Bathtub, value = "$bathrooms bath")
+                        PropertyDetail(
+                            icon = Icons.Default.Bathtub,
+                            value = stringResource(R.string.bath_count, bathrooms)
+                        )
                     }
                 }
             }

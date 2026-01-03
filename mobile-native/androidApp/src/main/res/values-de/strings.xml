@@ -199,4 +199,41 @@
     <string name="label_email_required">E-Mail *</string>
     <string name="label_phone_optional">Telefon (optional)</string>
     <string name="label_message">Nachricht</string>
+
+    <!-- Home Screen (additional) -->
+    <string name="recently_added">Kürzlich hinzugefügt</string>
+    <string name="loading_listings">Angebote werden geladen...</string>
+    <string name="no_listings_available">Keine Angebote verfügbar</string>
+
+    <!-- Search Screen (additional) -->
+    <string name="filter_type">Typ</string>
+    <string name="filter_category">Kategorie</string>
+    <string name="filter_all">Alle</string>
+    <string name="filter_any">Beliebig</string>
+    <string name="filter_rooms">Zimmer</string>
+    <string name="filter_price_range_eur">Preisspanne (EUR)</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_apply">Anwenden</string>
+    <string name="sort_by">Sortieren nach</string>
+    <string name="sort_newest">Neueste</string>
+    <string name="sort_oldest">Älteste</string>
+    <string name="sort_price_asc">Preis (aufsteigend)</string>
+    <string name="sort_price_desc">Preis (absteigend)</string>
+    <string name="sort_area_asc">Fläche (aufsteigend)</string>
+    <string name="sort_area_desc">Fläche (absteigend)</string>
+    <string name="sort_relevance">Relevanz</string>
+    <string name="properties_found">%1$d Immobilien gefunden</string>
+    <string name="rooms_count">%1$d Zimmer</string>
+    <string name="bed_count">%1$d Schlafzimmer</string>
+    <string name="bath_count">%1$d Bad</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_inquiries">Anfragen</string>
+    <string name="cd_favorites">Favoriten</string>
+    <string name="cd_account">Konto</string>
+    <string name="cd_search">Suchen</string>
+    <string name="cd_clear">Löschen</string>
+    <string name="cd_back">Zurück</string>
+    <string name="cd_filters">Filter</string>
 </resources>

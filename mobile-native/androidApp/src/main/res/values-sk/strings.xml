@@ -199,4 +199,41 @@
     <string name="label_email_required">E-mail *</string>
     <string name="label_phone_optional">Telefón (voliteľné)</string>
     <string name="label_message">Správa</string>
+
+    <!-- Home Screen (additional) -->
+    <string name="recently_added">Nedávno pridané</string>
+    <string name="loading_listings">Načítavajú sa ponuky...</string>
+    <string name="no_listings_available">Žiadne dostupné ponuky</string>
+
+    <!-- Search Screen (additional) -->
+    <string name="filter_type">Typ</string>
+    <string name="filter_category">Kategória</string>
+    <string name="filter_all">Všetky</string>
+    <string name="filter_any">Akékoľvek</string>
+    <string name="filter_rooms">Izby</string>
+    <string name="filter_price_range_eur">Cenové rozpätie (EUR)</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_apply">Použiť</string>
+    <string name="sort_by">Zoradiť podľa</string>
+    <string name="sort_newest">Najnovšie</string>
+    <string name="sort_oldest">Najstaršie</string>
+    <string name="sort_price_asc">Cena (od najnižšej)</string>
+    <string name="sort_price_desc">Cena (od najvyššej)</string>
+    <string name="sort_area_asc">Plocha (od najmenšej)</string>
+    <string name="sort_area_desc">Plocha (od najväčšej)</string>
+    <string name="sort_relevance">Relevancia</string>
+    <string name="properties_found">%1$d nájdených nehnuteľností</string>
+    <string name="rooms_count">%1$d izieb</string>
+    <string name="bed_count">%1$d spálňa</string>
+    <string name="bath_count">%1$d kúpeľňa</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_inquiries">Dopyty</string>
+    <string name="cd_favorites">Obľúbené</string>
+    <string name="cd_account">Účet</string>
+    <string name="cd_search">Hľadať</string>
+    <string name="cd_clear">Vymazať</string>
+    <string name="cd_back">Späť</string>
+    <string name="cd_filters">Filtre</string>
 </resources>

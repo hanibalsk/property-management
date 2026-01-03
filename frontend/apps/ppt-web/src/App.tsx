@@ -8,7 +8,13 @@ import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { ConnectionStatus, LanguageSwitcher, OfflineIndicator, ToastProvider, useToast } from './components';
+import {
+  ConnectionStatus,
+  LanguageSwitcher,
+  OfflineIndicator,
+  ToastProvider,
+  useToast,
+} from './components';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
 import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
@@ -192,16 +198,14 @@ function DocumentsPageRoute() {
 
 /** Route wrapper for document detail page to extract params */
 function DocumentDetailRoute() {
+  const { t } = useTranslation();
   const { documentId } = useParams<{ documentId: string }>();
   if (!documentId) {
     return (
       <div className="error-page">
-        <h1>Document not found</h1>
-        <p>
-          We couldn&apos;t find the document you&apos;re looking for. It may have been moved,
-          deleted, or the link might be incorrect.
-        </p>
-        <Link to="/documents">Back to documents</Link>
+        <h1>{t('errors.documentNotFound')}</h1>
+        <p>{t('errors.documentNotFoundDesc')}</p>
+        <Link to="/documents">{t('common.backToDocuments')}</Link>
       </div>
     );
   }
@@ -210,8 +214,9 @@ function DocumentDetailRoute() {
 
 /** Route wrapper for article detail page to extract params */
 function ArticleDetailRoute() {
+  const { t } = useTranslation();
   const { articleId } = useParams<{ articleId: string }>();
-  if (!articleId) return <div>Article not found</div>;
+  if (!articleId) return <div>{t('errors.articleNotFound')}</div>;
   return <ArticleDetailPage articleId={articleId} />;
 }
 
@@ -223,6 +228,7 @@ function ArticleDetailRoute() {
  * Transforms API types to UI types for component compatibility.
  */
 function DisputesPageRoute() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -231,9 +237,9 @@ function DisputesPageRoute() {
   if (!user?.organizationId) {
     return (
       <div className="error-page">
-        <h1>Authentication Required</h1>
-        <p>Unable to load disputes: missing organization context. Please sign in again.</p>
-        <Link to="/login">Sign In</Link>
+        <h1>{t('errors.authenticationRequired')}</h1>
+        <p>{t('errors.missingOrgContext')}</p>
+        <Link to="/login">{t('auth.signIn')}</Link>
       </div>
     );
   }
@@ -271,11 +277,11 @@ function DisputesPageRoute() {
     if (error) {
       showToast({
         type: 'error',
-        title: 'Failed to load disputes',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        title: t('disputes.failedToLoad'),
+        message: error instanceof Error ? error.message : t('auth.unexpectedError'),
       });
     }
-  }, [error, showToast]);
+  }, [error, showToast, t]);
 
   // Transform API response to match component interface
   const disputes: DisputeSummary[] = (data?.data ?? []).map(transformDisputeToSummary);
@@ -322,6 +328,7 @@ function DisputesPageRoute() {
  * Transforms UI form data to API CreateDisputeRequest format.
  */
 function FileDisputePageRoute() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -330,9 +337,9 @@ function FileDisputePageRoute() {
   if (!user?.organizationId) {
     return (
       <div className="error-page">
-        <h1>Authentication Required</h1>
-        <p>Unable to file dispute: missing organization context. Please sign in again.</p>
-        <Link to="/login">Sign In</Link>
+        <h1>{t('errors.authenticationRequired')}</h1>
+        <p>{t('errors.missingOrgContext')}</p>
+        <Link to="/login">{t('auth.signIn')}</Link>
       </div>
     );
   }
@@ -355,8 +362,8 @@ function FileDisputePageRoute() {
     if (!formData.unitId) {
       showToast({
         type: 'error',
-        title: 'Unit required',
-        message: 'Please select a unit for this dispute.',
+        title: t('disputes.unitRequired'),
+        message: t('disputes.selectUnit'),
       });
       return;
     }
@@ -365,8 +372,8 @@ function FileDisputePageRoute() {
     if (formData.respondentIds.length > 1) {
       showToast({
         type: 'warning',
-        title: 'Multiple respondents',
-        message: `Only the first respondent will be recorded. ${formData.respondentIds.length - 1} additional respondent(s) will not be included.`,
+        title: t('disputes.multipleRespondents'),
+        message: t('disputes.multipleRespondentsMsg'),
       });
     }
 
@@ -386,15 +393,15 @@ function FileDisputePageRoute() {
       await createDispute.mutateAsync(apiRequest);
       showToast({
         type: 'success',
-        title: 'Dispute filed successfully',
-        message: 'Your dispute has been submitted and will be reviewed.',
+        title: t('disputes.filedSuccessfully'),
+        message: t('disputes.submittedMsg'),
       });
       navigate('/disputes');
     } catch (error) {
       showToast({
         type: 'error',
-        title: 'Failed to file dispute',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        title: t('disputes.failedToFile'),
+        message: error instanceof Error ? error.message : t('auth.unexpectedError'),
       });
     }
   };
@@ -420,6 +427,7 @@ function FileDisputePageRoute() {
  * Maps API DisputeWithDetails to UI-friendly display format.
  */
 function DisputeDetailRoute() {
+  const { t } = useTranslation();
   const { disputeId } = useParams<{ disputeId: string }>();
   const { showToast } = useToast();
 
@@ -430,18 +438,18 @@ function DisputeDetailRoute() {
     if (error) {
       showToast({
         type: 'error',
-        title: 'Failed to load dispute',
-        message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        title: t('disputes.failedToLoadDetail'),
+        message: error instanceof Error ? error.message : t('auth.unexpectedError'),
       });
     }
-  }, [error, showToast]);
+  }, [error, showToast, t]);
 
   if (!disputeId) {
     return (
       <div className="error-page">
-        <h1>Dispute not found</h1>
-        <p>We couldn't find the dispute you're looking for.</p>
-        <Link to="/disputes">Back to disputes</Link>
+        <h1>{t('errors.disputeNotFound')}</h1>
+        <p>{t('errors.disputeNotFoundDesc')}</p>
+        <Link to="/disputes">{t('common.backToDisputes')}</Link>
       </div>
     );
   }
@@ -449,8 +457,8 @@ function DisputeDetailRoute() {
   if (isLoading) {
     return (
       <div className="loading-page">
-        <h1>Loading dispute...</h1>
-        <p>Please wait while we fetch the dispute details.</p>
+        <h1>{t('common.loadingDispute')}</h1>
+        <p>{t('common.pleaseWait')}</p>
       </div>
     );
   }
@@ -459,18 +467,18 @@ function DisputeDetailRoute() {
   if (error) {
     return (
       <div className="error-page">
-        <h1>Error loading dispute</h1>
-        <p>We encountered an error while loading the dispute details.</p>
+        <h1>{t('errors.errorLoadingDispute')}</h1>
+        <p>{t('errors.disputeLoadError')}</p>
         <div className="error-actions">
           <button
             type="button"
             onClick={() => refetch()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-2"
           >
-            Try Again
+            {t('common.tryAgain')}
           </button>
           <Link to="/disputes" className="px-4 py-2 border border-gray-300 rounded-lg">
-            Back to disputes
+            {t('common.backToDisputes')}
           </Link>
         </div>
       </div>
@@ -480,9 +488,9 @@ function DisputeDetailRoute() {
   if (!dispute) {
     return (
       <div className="error-page">
-        <h1>Dispute not found</h1>
-        <p>The dispute you're looking for does not exist.</p>
-        <Link to="/disputes">Back to disputes</Link>
+        <h1>{t('errors.disputeNotFound')}</h1>
+        <p>{t('errors.disputeNotExist')}</p>
+        <Link to="/disputes">{t('common.backToDisputes')}</Link>
       </div>
     );
   }
@@ -521,16 +529,17 @@ function DisputeDetailRoute() {
           </p>
         )}
       </div>
-      <Link to="/disputes">Back to disputes</Link>
+      <Link to="/disputes">{t('common.backToDisputes')}</Link>
     </div>
   );
 }
 
 function Home() {
+  const { t } = useTranslation();
   return (
     <div>
-      <h1>Property Management System</h1>
-      <p>Welcome to the Property Management System.</p>
+      <h1>{t('home.title')}</h1>
+      <p>{t('home.welcome')}</p>
     </div>
   );
 }

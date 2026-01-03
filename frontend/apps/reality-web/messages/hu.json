@@ -31,7 +31,8 @@
     "featuredForRent": "Kiemelt kiadó ingatlanok",
     "newListings": "Új hirdetések",
     "browseByType": "Böngészés ingatlantípus szerint",
-    "viewAllProperties": "Összes ingatlan megtekintése"
+    "viewAllProperties": "Összes ingatlan megtekintése",
+    "listingsCount": "{count} hirdetés"
   },
   "listing": {
     "price": "Ár",
@@ -101,7 +102,23 @@
     "minimumRooms": "Minimum szobaszám",
     "showResults": "Eredmények megjelenítése",
     "office": "Iroda",
-    "garage": "Garázs"
+    "garage": "Garázs",
+    "apartment": "Lakás",
+    "house": "Ház",
+    "land": "Telek",
+    "commercial": "Üzleti",
+    "anyRooms": "Bármennyi",
+    "roomsPlus": "{count}+",
+    "priceUnder50k": "{currency}50 000 alatt",
+    "price50kTo100k": "{currency}50 000 - {currency}100 000",
+    "price100kTo200k": "{currency}100 000 - {currency}200 000",
+    "price200kTo500k": "{currency}200 000 - {currency}500 000",
+    "price500kPlus": "{currency}500 000+",
+    "areaUnder50": "50 m² alatt",
+    "area50To100": "50 - 100 m²",
+    "area100To150": "100 - 150 m²",
+    "area150To200": "150 - 200 m²",
+    "area200Plus": "200+ m²"
   },
   "contact": {
     "name": "Az Ön neve",
@@ -138,11 +155,13 @@
     "company": "Cég",
     "propertiesForSale": "Eladó ingatlanok",
     "propertiesForRent": "Kiadó ingatlanok",
+    "allListings": "Összes hirdetés",
     "apartments": "Lakások",
     "houses": "Házak",
     "land": "Telkek",
     "commercial": "Üzleti",
     "aboutUs": "Rólunk",
-    "contact": "Kapcsolat"
+    "contact": "Kapcsolat",
+    "brandName": "Reality Portal"
   }
 }

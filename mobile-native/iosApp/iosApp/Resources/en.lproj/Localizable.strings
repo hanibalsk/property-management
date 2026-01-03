@@ -197,3 +197,31 @@
 "label_email_required" = "Email *";
 "label_phone_optional" = "Phone (optional)";
 "label_message" = "Message";
+
+/* Home Screen (additional) */
+"recently_added" = "Recently Added";
+"loading_listings" = "Loading listings...";
+"no_listings_available" = "No listings available";
+
+/* Search Screen (additional) */
+"filter_type" = "Type";
+"filter_category" = "Category";
+"filter_all" = "All";
+"filter_any" = "Any";
+"filter_rooms" = "Rooms";
+"filter_price_range_eur" = "Price Range (EUR)";
+"filter_min" = "Min";
+"filter_max" = "Max";
+"filter_apply" = "Apply";
+"sort_by" = "Sort By";
+"sort_newest" = "Newest";
+"sort_oldest" = "Oldest";
+"sort_price_asc" = "Price (Low to High)";
+"sort_price_desc" = "Price (High to Low)";
+"sort_area_asc" = "Area (Small to Large)";
+"sort_area_desc" = "Area (Large to Small)";
+"sort_relevance" = "Relevance";
+"properties_found" = "%d properties found";
+"rooms_count" = "%d rooms";
+"bed_count" = "%d bed";
+"bath_count" = "%d bath";

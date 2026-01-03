@@ -10,11 +10,13 @@
  * - Logs error details for debugging
  * - Optional error reporting callback for external services
  * - Supports custom fallback UI
+ * - Internationalized error messages via i18n
  *
  * @see https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
  */
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import './ErrorBoundary.css';
 
 /** Props for the ErrorBoundary component */
@@ -29,6 +31,18 @@ export interface ErrorBoundaryProps {
   title?: string;
 }
 
+/** Internal props including translations */
+interface ErrorBoundaryInternalProps extends ErrorBoundaryProps {
+  translations: {
+    title: string;
+    message: string;
+    tryAgain: string;
+    reloadPage: string;
+    copyErrorDetails: string;
+    copyErrorDetailsTitle: string;
+  };
+}
+
 /** State for the ErrorBoundary component */
 interface ErrorBoundaryState {
   /** Whether an error has been caught */
@@ -40,30 +54,13 @@ interface ErrorBoundaryState {
 }
 
 /**
- * Error Boundary component for catching and handling React errors.
- *
- * @example
- * ```tsx
- * // Basic usage
- * <ErrorBoundary>
- *   <App />
- * </ErrorBoundary>
- *
- * // With custom fallback
- * <ErrorBoundary fallback={<div>Custom error message</div>}>
- *   <App />
- * </ErrorBoundary>
- *
- * // With error reporting
- * <ErrorBoundary onError={(error) => reportToSentry(error)}>
- *   <App />
- * </ErrorBoundary>
- * ```
+ * Internal Error Boundary class component.
+ * Wrapped by the functional ErrorBoundary for i18n support.
  */
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  static displayName = 'ErrorBoundary';
+class ErrorBoundaryInternal extends Component<ErrorBoundaryInternalProps, ErrorBoundaryState> {
+  static displayName = 'ErrorBoundaryInternal';
 
-  constructor(props: ErrorBoundaryProps) {
+  constructor(props: ErrorBoundaryInternalProps) {
     super(props);
     this.state = {
       hasError: false,
@@ -133,13 +130,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render(): ReactNode {
     const { hasError, error } = this.state;
-    const { children, fallback, title = 'Something went wrong' } = this.props;
+    const { children, fallback, title, translations } = this.props;
 
     if (hasError) {
       // Use custom fallback if provided
       if (fallback) {
         return fallback;
       }
+
+      // Use provided title or fall back to translation
+      const displayTitle = title || translations.title;
 
       // Default error UI
       return (
@@ -161,10 +161,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
             </div>
-            <h1 className="error-boundary-title">{title}</h1>
-            <p className="error-boundary-message">
-              We apologize for the inconvenience. An unexpected error has occurred.
-            </p>
+            <h1 className="error-boundary-title">{displayTitle}</h1>
+            <p className="error-boundary-message">{translations.message}</p>
             {error && (
               <p className="error-boundary-details">
                 <code>{error.message}</code>
@@ -176,22 +174,22 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 className="error-boundary-button error-boundary-button--primary"
                 onClick={this.handleRetry}
               >
-                Try Again
+                {translations.tryAgain}
               </button>
               <button
                 type="button"
                 className="error-boundary-button error-boundary-button--secondary"
                 onClick={() => window.location.reload()}
               >
-                Reload Page
+                {translations.reloadPage}
               </button>
               <button
                 type="button"
                 className="error-boundary-button error-boundary-button--tertiary"
                 onClick={this.handleCopyError}
-                title="Copy error details for support"
+                title={translations.copyErrorDetailsTitle}
               >
-                Copy Error Details
+                {translations.copyErrorDetails}
               </button>
             </div>
           </div>
@@ -202,5 +200,44 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return children;
   }
 }
+
+/**
+ * Error Boundary component for catching and handling React errors.
+ * Wraps the class component to provide i18n support.
+ *
+ * @example
+ * ```tsx
+ * // Basic usage
+ * <ErrorBoundary>
+ *   <App />
+ * </ErrorBoundary>
+ *
+ * // With custom fallback
+ * <ErrorBoundary fallback={<div>Custom error message</div>}>
+ *   <App />
+ * </ErrorBoundary>
+ *
+ * // With error reporting
+ * <ErrorBoundary onError={(error) => reportToSentry(error)}>
+ *   <App />
+ * </ErrorBoundary>
+ * ```
+ */
+export function ErrorBoundary(props: ErrorBoundaryProps): ReactNode {
+  const { t } = useTranslation();
+
+  const translations = {
+    title: t('errors.somethingWentWrong'),
+    message: t('errors.unexpectedError'),
+    tryAgain: t('common.tryAgain'),
+    reloadPage: t('common.reloadPage'),
+    copyErrorDetails: t('common.copyErrorDetails'),
+    copyErrorDetailsTitle: t('errors.copyErrorDetailsSupport'),
+  };
+
+  return <ErrorBoundaryInternal {...props} translations={translations} />;
+}
+
+ErrorBoundary.displayName = 'ErrorBoundary';
 
 export default ErrorBoundary;

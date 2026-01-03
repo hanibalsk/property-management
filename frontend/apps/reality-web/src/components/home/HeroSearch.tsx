@@ -6,11 +6,14 @@
 
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export function HeroSearch() {
   const router = useRouter();
+  const tHome = useTranslations('home');
+  const tSearch = useTranslations('search');
   const [query, setQuery] = useState('');
   const [transactionType, setTransactionType] = useState<'sale' | 'rent'>('sale');
 
@@ -27,10 +30,8 @@ export function HeroSearch() {
   return (
     <section className="hero">
       <div className="hero-content">
-        <h1 className="hero-title">Find Your Perfect Property</h1>
-        <p className="hero-subtitle">
-          Search thousands of listings across Slovakia, Czech Republic, and beyond.
-        </p>
+        <h1 className="hero-title">{tHome('heroTitle')}</h1>
+        <p className="hero-subtitle">{tHome('heroSubtitle')}</p>
 
         <form className="search-form" onSubmit={handleSearch}>
           {/* Transaction Type Toggle */}
@@ -40,14 +41,14 @@ export function HeroSearch() {
               className={`toggle-button ${transactionType === 'sale' ? 'active' : ''}`}
               onClick={() => setTransactionType('sale')}
             >
-              Buy
+              {tSearch('buy')}
             </button>
             <button
               type="button"
               className={`toggle-button ${transactionType === 'rent' ? 'active' : ''}`}
               onClick={() => setTransactionType('rent')}
             >
-              Rent
+              {tSearch('rent')}
             </button>
           </div>
 
@@ -69,19 +70,19 @@ export function HeroSearch() {
             <input
               type="text"
               className="search-input"
-              placeholder="Enter city, address, or keyword..."
+              placeholder={tSearch('placeholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             <button type="submit" className="search-button">
-              Search
+              {tSearch('button')}
             </button>
           </div>
         </form>
 
         {/* Quick Links */}
         <div className="quick-links">
-          <span className="quick-links-label">Popular:</span>
+          <span className="quick-links-label">{tSearch('popular')}</span>
           <button
             type="button"
             className="quick-link"

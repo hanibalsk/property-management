@@ -199,4 +199,41 @@
     <string name="label_email_required">Email *</string>
     <string name="label_phone_optional">Phone (optional)</string>
     <string name="label_message">Message</string>
+
+    <!-- Home Screen (additional) -->
+    <string name="recently_added">Recently Added</string>
+    <string name="loading_listings">Loading listings...</string>
+    <string name="no_listings_available">No listings available</string>
+
+    <!-- Search Screen (additional) -->
+    <string name="filter_type">Type</string>
+    <string name="filter_category">Category</string>
+    <string name="filter_all">All</string>
+    <string name="filter_any">Any</string>
+    <string name="filter_rooms">Rooms</string>
+    <string name="filter_price_range_eur">Price Range (EUR)</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_apply">Apply</string>
+    <string name="sort_by">Sort By</string>
+    <string name="sort_newest">Newest</string>
+    <string name="sort_oldest">Oldest</string>
+    <string name="sort_price_asc">Price (Low to High)</string>
+    <string name="sort_price_desc">Price (High to Low)</string>
+    <string name="sort_area_asc">Area (Small to Large)</string>
+    <string name="sort_area_desc">Area (Large to Small)</string>
+    <string name="sort_relevance">Relevance</string>
+    <string name="properties_found">%1$d properties found</string>
+    <string name="rooms_count">%1$d rooms</string>
+    <string name="bed_count">%1$d bed</string>
+    <string name="bath_count">%1$d bath</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_inquiries">Inquiries</string>
+    <string name="cd_favorites">Favorites</string>
+    <string name="cd_account">Account</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_clear">Clear</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_filters">Filters</string>
 </resources>

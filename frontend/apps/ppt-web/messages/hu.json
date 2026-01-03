@@ -35,7 +35,11 @@
     "pleaseWait": "Kérem várjon, amíg betöltjük az adatokat.",
     "reloadPage": "Oldal újratöltése",
     "copyErrorDetails": "Hibarészletek másolása",
-    "add": "Hozzáadás"
+    "add": "Hozzáadás",
+    "copied": "Másolva",
+    "copyErrorMessage": "Hibaüzenet másolása",
+    "dismissNotification": "Értesítés bezárása",
+    "notifications": "Értesítések"
   },
   "nav": {
     "home": "Főoldal",
@@ -60,15 +64,23 @@
     "signOut": "Kijelentkezés",
     "email": "E-mail",
     "password": "Jelszó",
+    "emailAddress": "E-mail cím",
     "emailRequired": "E-mail kötelező",
     "passwordRequired": "Jelszó kötelező",
     "invalidEmail": "Érvényes e-mail címet adjon meg",
     "invalidCredentials": "Hibás e-mail vagy jelszó. Próbálja újra.",
-    "accountLocked": "Fiókja zárolva lett túl sok sikertelen kísérlet miatt.",
+    "accountLocked": "Fiókja zárolva lett túl sok sikertelen kísérlet miatt. Kérjük, lépjen kapcsolatba az ügyfélszolgálattal.",
+    "accountDisabled": "Fiókja letiltásra került. Kérjük, lépjen kapcsolatba az ügyfélszolgálattal.",
+    "sessionExpired": "Munkamenete lejárt. Jelentkezzen be újra.",
+    "networkError": "Nem sikerült csatlakozni a szerverhez. Ellenőrizze az internetkapcsolatot.",
+    "unexpectedError": "Váratlan hiba történt. Próbálja újra.",
     "welcomeBack": "Üdvözöljük újra! Adja meg bejelentkezési adatait.",
     "signingIn": "Bejelentkezés...",
+    "checkingAuth": "Hitelesítési állapot ellenőrzése",
     "showPassword": "Jelszó megjelenítése",
     "hidePassword": "Jelszó elrejtése",
+    "show": "Megjelenítés",
+    "hide": "Elrejtés",
     "forgotPassword": "Elfelejtette jelszavát?",
     "rememberMe": "Emlékezzen rám"
   },
@@ -193,7 +205,10 @@
     "errorLoadingDispute": "Hiba a vita betöltésekor",
     "disputeLoadError": "Hiba történt a vita részleteinek betöltésekor.",
     "disputeNotExist": "A keresett vita nem létezik.",
-    "waitBeforeRetry": "Kérem várjon az újrapróbálkozás előtt."
+    "waitBeforeRetry": "Kérem várjon az újrapróbálkozás előtt.",
+    "somethingWentWrong": "Valami hiba történt",
+    "unexpectedError": "Elnézést kérünk a kellemetlenségért. Váratlan hiba történt.",
+    "copyErrorDetailsSupport": "Hibarészletek másolása az ügyfélszolgálatnak"
   },
   "notifications": {
     "title": "Értesítések",

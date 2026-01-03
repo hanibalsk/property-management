@@ -36,6 +36,8 @@
     "emailRequired": "E-mail kotelezo",
     "passwordRequired": "Jelszo kotelezo",
     "invalidCredentials": "Hibas e-mail vagy jelszo",
+    "invalidEmailFormat": "Ervenytelen e-mail formatum",
+    "passwordMinLength": "A jelsznak legalabb 8 karakterbol kell allnia",
     "propertyManagement": "Ingatlankezeles",
     "signInPrompt": "Jelentkezzen be fiokjaba",
     "emailPlaceholder": "Adja meg e-mail cimet",
@@ -46,14 +48,32 @@
     "contactManager": "Lepjen kapcsolatba az epuletkezzalovel",
     "biometricFailed": "A biometrikus hitelesites sikertelen",
     "loginFailed": "Bejelentkezes sikertelen",
-    "checkCredentials": "Kerem ellenorizze bejelentkezesi adatait"
+    "checkCredentials": "Kerem ellenorizze bejelentkezesi adatait",
+    "authenticationFailed": "Hitelesites sikertelen",
+    "biometricNotSuccessful": "A biometrikus hitelesites nem sikerult",
+    "signInWith": "Bejelentkezes ezzel: {{provider}}",
+    "faceIdTouchId": "Face ID / Touch ID",
+    "biometrics": "Biometria"
   },
   "dashboard": {
     "title": "Iranyitopult",
     "welcome": "Udvozoljuk",
+    "welcomeBack": "Udvozoljuk ujra,",
     "recentActivity": "Legutobbi tevekenyseg",
     "quickActions": "Gyors muveletek",
-    "notifications": "Ertesitesek"
+    "notifications": "Ertesitesek",
+    "openFaults": "Nyitott hibak",
+    "newAnnouncements": "Uj kozlemenyek",
+    "activeVotes": "Aktiv szavazasok",
+    "unreadMessages": "Olvasatlan uzenetek",
+    "pendingActions": "Fuggo muveletek",
+    "due": "Hatarido: {{date}}",
+    "recentAnnouncements": "Legutobbi kozlemenyek",
+    "seeAll": "Osszes megtekintese",
+    "reportFault": "Hiba jelentese",
+    "documents": "Dokumentumok",
+    "meterReading": "Meroora leolvasas",
+    "payments": "Fizetesek"
   },
   "faults": {
     "title": "Hibajelentesek",
@@ -98,7 +118,11 @@
     "successSubmit": "Hibajelentes sikeresen elkuldve",
     "failedSubmit": "Nem sikerult elkuldeni a hibajelentest",
     "cameraPermissionDenied": "Kamera engedelyre van szukseg",
-    "photoLibraryPermissionDenied": "Fotokozyvtar engedelyre van szukseg"
+    "photoLibraryPermissionDenied": "Fotokozyvtar engedelyre van szukseg",
+    "selectCategory": "Kerem valasszon kategoriat",
+    "locationDetected": "Helyszin eszlelve",
+    "failedToPickImage": "Nem sikerult kepet valasztani",
+    "failedToDetectLocation": "Nem sikerult helyszint erzekelni"
   },
   "news": {
     "title": "Hirek",
@@ -137,7 +161,11 @@
     "network": "Halozati hiba. Ellenorizze a kapcsolatot.",
     "server": "Szerverhiba. Probaja kesobb.",
     "notFound": "Nem talalhato",
-    "unauthorized": "Nincs jogosultsaga a muvelet vegrehajtasahoz."
+    "unauthorized": "Nincs jogosultsaga a muvelet vegrehajtasahoz.",
+    "pleaseEnterTitle": "Kerem adjon meg cimet",
+    "pleaseEnterDescription": "Kerem adjon meg leirast",
+    "invalidEmailFormat": "Kerem adjon meg ervenyes e-mail cimet",
+    "nothingToSave": "Nincs mit menteni"
   },
   "offline": {
     "title": "Offline",
@@ -178,7 +206,9 @@
     "footerText": "Visszajelzese segit az alkalmazas fejleszteseben.",
     "successTitle": "Koszonjuk!",
     "successMessage": "Visszajelzeset sikeresen elkuldtuk.",
-    "draftSaved": "Visszajelzes piszkozata elmentve."
+    "draftSaved": "Visszajelzes piszkozata elmentve.",
+    "savedForLater": "Kesobbre mentve",
+    "savedForLaterMessage": "Visszajelzeset elmentettuk es elkuldjuk amint lesz internetkapcsolata."
   },
   "announcements": {
     "title": "Kozlemenyek",

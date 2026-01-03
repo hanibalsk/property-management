@@ -31,7 +31,8 @@
     "featuredForRent": "Featured Properties for Rent",
     "newListings": "New Listings",
     "browseByType": "Browse by Property Type",
-    "viewAllProperties": "View All Properties"
+    "viewAllProperties": "View All Properties",
+    "listingsCount": "{count} listings"
   },
   "listing": {
     "price": "Price",
@@ -101,7 +102,23 @@
     "minimumRooms": "Minimum Rooms",
     "showResults": "Show Results",
     "office": "Office",
-    "garage": "Garage"
+    "garage": "Garage",
+    "apartment": "Apartment",
+    "house": "House",
+    "land": "Land",
+    "commercial": "Commercial",
+    "anyRooms": "Any",
+    "roomsPlus": "{count}+",
+    "priceUnder50k": "Under {currency}50,000",
+    "price50kTo100k": "{currency}50,000 - {currency}100,000",
+    "price100kTo200k": "{currency}100,000 - {currency}200,000",
+    "price200kTo500k": "{currency}200,000 - {currency}500,000",
+    "price500kPlus": "{currency}500,000+",
+    "areaUnder50": "Under 50 m\u00b2",
+    "area50To100": "50 - 100 m\u00b2",
+    "area100To150": "100 - 150 m\u00b2",
+    "area150To200": "150 - 200 m\u00b2",
+    "area200Plus": "200+ m\u00b2"
   },
   "contact": {
     "name": "Your Name",
@@ -138,11 +155,13 @@
     "company": "Company",
     "propertiesForSale": "Properties for Sale",
     "propertiesForRent": "Properties for Rent",
+    "allListings": "All Listings",
     "apartments": "Apartments",
     "houses": "Houses",
     "land": "Land",
     "commercial": "Commercial",
     "aboutUs": "About Us",
-    "contact": "Contact"
+    "contact": "Contact",
+    "brandName": "Reality Portal"
   }
 }

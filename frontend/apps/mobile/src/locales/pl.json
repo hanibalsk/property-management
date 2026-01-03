@@ -36,6 +36,8 @@
     "emailRequired": "E-mail jest wymagany",
     "passwordRequired": "Haslo jest wymagane",
     "invalidCredentials": "Nieprawidlowy e-mail lub haslo",
+    "invalidEmailFormat": "Nieprawidlowy format e-mail",
+    "passwordMinLength": "Haslo musi miec co najmniej 8 znakow",
     "propertyManagement": "Zarzadzanie nieruchomosciami",
     "signInPrompt": "Zaloguj sie na swoje konto",
     "emailPlaceholder": "Wprowadz swoj e-mail",
@@ -46,14 +48,32 @@
     "contactManager": "Skontaktuj sie z administratorem budynku",
     "biometricFailed": "Uwierzytelnianie biometryczne nie powiodlo sie",
     "loginFailed": "Logowanie nie powiodlo sie",
-    "checkCredentials": "Sprawdz swoje dane logowania"
+    "checkCredentials": "Sprawdz swoje dane logowania",
+    "authenticationFailed": "Uwierzytelnianie nie powiodlo sie",
+    "biometricNotSuccessful": "Uwierzytelnianie biometryczne nie bylo udane",
+    "signInWith": "Zaloguj sie przez {{provider}}",
+    "faceIdTouchId": "Face ID / Touch ID",
+    "biometrics": "Biometria"
   },
   "dashboard": {
     "title": "Panel",
     "welcome": "Witaj",
+    "welcomeBack": "Witaj ponownie,",
     "recentActivity": "Ostatnia aktywnosc",
     "quickActions": "Szybkie akcje",
-    "notifications": "Powiadomienia"
+    "notifications": "Powiadomienia",
+    "openFaults": "Otwarte usterki",
+    "newAnnouncements": "Nowe ogloszenia",
+    "activeVotes": "Aktywne glosowania",
+    "unreadMessages": "Nieprzeczytane wiadomosci",
+    "pendingActions": "Oczekujace akcje",
+    "due": "Termin: {{date}}",
+    "recentAnnouncements": "Ostatnie ogloszenia",
+    "seeAll": "Zobacz wszystko",
+    "reportFault": "Zglos usterke",
+    "documents": "Dokumenty",
+    "meterReading": "Odczyt licznika",
+    "payments": "Platnosci"
   },
   "faults": {
     "title": "Zgloszenia usterek",
@@ -98,7 +118,11 @@
     "successSubmit": "Zgloszenie usterki zostalo pomyslnie wyslane",
     "failedSubmit": "Nie udalo sie wyslac zgloszenia usterki",
     "cameraPermissionDenied": "Wymagane jest uprawnienie do aparatu",
-    "photoLibraryPermissionDenied": "Wymagane jest uprawnienie do biblioteki zdjec"
+    "photoLibraryPermissionDenied": "Wymagane jest uprawnienie do biblioteki zdjec",
+    "selectCategory": "Prosze wybrac kategorie",
+    "locationDetected": "Lokalizacja wykryta",
+    "failedToPickImage": "Nie udalo sie wybrac obrazu",
+    "failedToDetectLocation": "Nie udalo sie wykryc lokalizacji"
   },
   "news": {
     "title": "Aktualnosci",
@@ -137,7 +161,11 @@
     "network": "Blad sieci. Sprawdz polaczenie.",
     "server": "Blad serwera. Sprobuj pozniej.",
     "notFound": "Nie znaleziono",
-    "unauthorized": "Nie masz uprawnien do wykonania tej czynnosci."
+    "unauthorized": "Nie masz uprawnien do wykonania tej czynnosci.",
+    "pleaseEnterTitle": "Prosze podac tytul",
+    "pleaseEnterDescription": "Prosze podac opis",
+    "invalidEmailFormat": "Prosze podac prawidlowy adres e-mail",
+    "nothingToSave": "Nie ma czego zapisac"
   },
   "offline": {
     "title": "Jestes offline",
@@ -178,7 +206,9 @@
     "footerText": "Twoja opinia pomaga nam ulepszac aplikacje.",
     "successTitle": "Dziekujemy!",
     "successMessage": "Twoja opinia zostala pomyslnie wyslana.",
-    "draftSaved": "Twoja wersja robocza opinii zostala zapisana."
+    "draftSaved": "Twoja wersja robocza opinii zostala zapisana.",
+    "savedForLater": "Zapisane na pozniej",
+    "savedForLaterMessage": "Twoja opinia zostala zapisana i zostanie wyslana gdy bedziesz miec polaczenie z internetem."
   },
   "announcements": {
     "title": "Ogloszenia",

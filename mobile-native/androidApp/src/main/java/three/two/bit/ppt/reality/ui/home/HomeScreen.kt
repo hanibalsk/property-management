@@ -15,11 +15,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import three.two.bit.ppt.reality.R
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.listing.*
@@ -77,7 +79,7 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Reality Portal",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -86,17 +88,28 @@ fun HomeScreen(
                     when (authState) {
                         is AuthState.Authenticated -> {
                             IconButton(onClick = onInquiriesClick) {
-                                Icon(Icons.Default.Email, contentDescription = "Inquiries")
+                                Icon(
+                                    Icons.Default.Email,
+                                    contentDescription = stringResource(R.string.cd_inquiries)
+                                )
                             }
                             IconButton(onClick = onFavoritesClick) {
-                                Icon(Icons.Default.Favorite, contentDescription = "Favorites")
+                                Icon(
+                                    Icons.Default.Favorite,
+                                    contentDescription = stringResource(R.string.cd_favorites)
+                                )
                             }
                             IconButton(onClick = onAccountClick) {
-                                Icon(Icons.Default.AccountCircle, contentDescription = "Account")
+                                Icon(
+                                    Icons.Default.AccountCircle,
+                                    contentDescription = stringResource(R.string.cd_account)
+                                )
                             }
                         }
                         else -> {
-                            TextButton(onClick = onAccountClick) { Text("Sign In") }
+                            TextButton(onClick = onAccountClick) {
+                                Text(stringResource(R.string.sign_in))
+                            }
                         }
                     }
                 }
@@ -152,7 +165,12 @@ fun HomeScreen(
 
             // Featured listings section
             if (featuredListings.isNotEmpty()) {
-                item { SectionHeader(title = "Featured Properties", onSeeAllClick = onSearchClick) }
+                item {
+                    SectionHeader(
+                        title = stringResource(R.string.featured_properties),
+                        onSeeAllClick = onSearchClick
+                    )
+                }
 
                 item {
                     FeaturedListingsRow(
@@ -164,7 +182,12 @@ fun HomeScreen(
 
             // Recent listings section
             if (recentListings.isNotEmpty()) {
-                item { SectionHeader(title = "Recently Added", onSeeAllClick = onSearchClick) }
+                item {
+                    SectionHeader(
+                        title = stringResource(R.string.recently_added),
+                        onSeeAllClick = onSearchClick
+                    )
+                }
 
                 items(recentListings.take(5)) { listing ->
                     ListingCard(
@@ -184,7 +207,7 @@ fun HomeScreen(
                     Button(onClick = onSearchClick) {
                         Icon(Icons.Default.Search, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("View All Properties")
+                        Text(stringResource(R.string.view_all_properties))
                     }
                 }
             }
@@ -209,7 +232,7 @@ private fun SearchBar(onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "Search for properties...",
+                text = stringResource(R.string.search_properties),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -225,35 +248,35 @@ private fun QuickFilters(onFilterClick: (String) -> Unit) {
     ) {
         item {
             QuickFilterChip(
-                label = "For Sale",
+                label = stringResource(R.string.filter_for_sale),
                 icon = Icons.Default.Sell,
                 onClick = { onFilterClick("sale") }
             )
         }
         item {
             QuickFilterChip(
-                label = "For Rent",
+                label = stringResource(R.string.filter_for_rent),
                 icon = Icons.Default.Home,
                 onClick = { onFilterClick("rent") }
             )
         }
         item {
             QuickFilterChip(
-                label = "Apartments",
+                label = stringResource(R.string.filter_apartments),
                 icon = Icons.Default.Apartment,
                 onClick = { onFilterClick("apartment") }
             )
         }
         item {
             QuickFilterChip(
-                label = "Houses",
+                label = stringResource(R.string.filter_houses),
                 icon = Icons.Default.House,
                 onClick = { onFilterClick("house") }
             )
         }
         item {
             QuickFilterChip(
-                label = "Land",
+                label = stringResource(R.string.filter_land),
                 icon = Icons.Default.Landscape,
                 onClick = { onFilterClick("land") }
             )
@@ -288,7 +311,7 @@ private fun SectionHeader(title: String, onSeeAllClick: () -> Unit) {
             fontWeight = FontWeight.Bold
         )
         TextButton(onClick = onSeeAllClick) {
-            Text("See All")
+            Text(stringResource(R.string.see_all))
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
@@ -339,7 +362,7 @@ private fun FeaturedListingCard(listing: ListingSummary, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.primary
                 ) {
                     Text(
-                        text = "Featured",
+                        text = stringResource(R.string.label_featured),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -388,14 +411,14 @@ private fun FeaturedListingCard(listing: ListingSummary, onClick: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     listing.areaSqm?.let { area ->
                         Text(
-                            text = "${area.toInt()} m²",
+                            text = "${area.toInt()} ${stringResource(R.string.sqm)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     listing.rooms?.let { rooms ->
                         Text(
-                            text = "$rooms rooms",
+                            text = stringResource(R.string.rooms_count, rooms),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -35,7 +35,11 @@
     "pleaseWait": "Proszę czekać, pobieramy dane.",
     "reloadPage": "Odśwież stronę",
     "copyErrorDetails": "Kopiuj szczegóły błędu",
-    "add": "Dodaj"
+    "add": "Dodaj",
+    "copied": "Skopiowano",
+    "copyErrorMessage": "Kopiuj komunikat błędu",
+    "dismissNotification": "Zamknij powiadomienie",
+    "notifications": "Powiadomienia"
   },
   "nav": {
     "home": "Strona główna",
@@ -60,15 +64,23 @@
     "signOut": "Wyloguj się",
     "email": "E-mail",
     "password": "Hasło",
+    "emailAddress": "Adres e-mail",
     "emailRequired": "E-mail jest wymagany",
     "passwordRequired": "Hasło jest wymagane",
     "invalidEmail": "Wprowadź poprawny adres e-mail",
     "invalidCredentials": "Nieprawidłowy e-mail lub hasło. Spróbuj ponownie.",
-    "accountLocked": "Twoje konto zostało zablokowane z powodu zbyt wielu nieudanych prób.",
+    "accountLocked": "Twoje konto zostało zablokowane z powodu zbyt wielu nieudanych prób. Skontaktuj się z pomocą techniczną.",
+    "accountDisabled": "Twoje konto zostało dezaktywowane. Skontaktuj się z pomocą techniczną.",
+    "sessionExpired": "Twoja sesja wygasła. Zaloguj się ponownie.",
+    "networkError": "Nie można połączyć się z serwerem. Sprawdź połączenie internetowe.",
+    "unexpectedError": "Wystąpił nieoczekiwany błąd. Spróbuj ponownie.",
     "welcomeBack": "Witaj ponownie! Wprowadź swoje dane logowania.",
     "signingIn": "Logowanie...",
+    "checkingAuth": "Sprawdzanie stanu uwierzytelnienia",
     "showPassword": "Pokaż hasło",
     "hidePassword": "Ukryj hasło",
+    "show": "Pokaż",
+    "hide": "Ukryj",
     "forgotPassword": "Zapomniałeś hasła?",
     "rememberMe": "Zapamiętaj mnie"
   },
@@ -193,7 +205,10 @@
     "errorLoadingDispute": "Błąd ładowania sporu",
     "disputeLoadError": "Wystąpił błąd podczas ładowania szczegółów sporu.",
     "disputeNotExist": "Szukany spór nie istnieje.",
-    "waitBeforeRetry": "Proszę poczekać przed ponowną próbą."
+    "waitBeforeRetry": "Proszę poczekać przed ponowną próbą.",
+    "somethingWentWrong": "Coś poszło nie tak",
+    "unexpectedError": "Przepraszamy za niedogodności. Wystąpił nieoczekiwany błąd.",
+    "copyErrorDetailsSupport": "Kopiuj szczegóły błędu dla wsparcia"
   },
   "notifications": {
     "title": "Powiadomienia",

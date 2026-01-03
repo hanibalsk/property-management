@@ -14,6 +14,7 @@
 
 import type React from 'react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import './Toast.css';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -90,6 +91,7 @@ interface ToastProviderProps {
  * Wrap your app with this to enable toast notifications.
  */
 export function ToastProvider({ children }: ToastProviderProps) {
+  const { t } = useTranslation();
   const [toasts, setToasts] = useState<Toast[]>([]);
   // Track timeout IDs for cleanup on unmount (using ReturnType for browser compatibility)
   const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -144,7 +146,7 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ showToast, removeToast }}>
       {children}
-      <div className="toast-container" role="region" aria-label="Notifications">
+      <div className="toast-container" role="region" aria-label={t('common.notifications')}>
         {visibleToasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={() => removeToast(toast.id)} />
         ))}
@@ -164,6 +166,7 @@ interface ToastItemProps {
  * Individual toast item component.
  */
 function ToastItem({ toast, onDismiss }: ToastItemProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
@@ -186,6 +189,9 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
   }, [toast.title, toast.message]);
 
   const ariaLive = toast.type === 'error' ? 'assertive' : 'polite';
+  const copiedLabel = t('common.copied');
+  const copyLabel = t('common.copyErrorMessage');
+  const dismissLabel = t('common.dismissNotification');
 
   return (
     <output className={`toast toast--${toast.type}`} role="alert" aria-live={ariaLive}>
@@ -205,8 +211,8 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
             type="button"
             className="toast-copy-btn"
             onClick={handleCopy}
-            aria-label={copied ? 'Copied' : 'Copy error message'}
-            title={copied ? 'Copied!' : 'Copy error details'}
+            aria-label={copied ? copiedLabel : copyLabel}
+            title={copied ? copiedLabel : copyLabel}
           >
             {copied ? (
               <svg
@@ -234,12 +240,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
             )}
           </button>
         )}
-        <button
-          type="button"
-          className="toast-close"
-          onClick={onDismiss}
-          aria-label="Dismiss notification"
-        >
+        <button type="button" className="toast-close" onClick={onDismiss} aria-label={dismissLabel}>
           <svg
             width="16"
             height="16"

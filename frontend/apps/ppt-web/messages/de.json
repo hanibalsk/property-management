@@ -35,7 +35,11 @@
     "pleaseWait": "Bitte warten Sie, während wir die Daten laden.",
     "reloadPage": "Seite neu laden",
     "copyErrorDetails": "Fehlerdetails kopieren",
-    "add": "Hinzufügen"
+    "add": "Hinzufügen",
+    "copied": "Kopiert",
+    "copyErrorMessage": "Fehlermeldung kopieren",
+    "dismissNotification": "Benachrichtigung schließen",
+    "notifications": "Benachrichtigungen"
   },
   "nav": {
     "home": "Startseite",
@@ -60,15 +64,23 @@
     "signOut": "Abmelden",
     "email": "E-Mail",
     "password": "Passwort",
+    "emailAddress": "E-Mail-Adresse",
     "emailRequired": "E-Mail ist erforderlich",
     "passwordRequired": "Passwort ist erforderlich",
     "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
     "invalidCredentials": "Ungültige E-Mail oder Passwort. Bitte versuchen Sie es erneut.",
-    "accountLocked": "Ihr Konto wurde aufgrund zu vieler fehlgeschlagener Versuche gesperrt.",
+    "accountLocked": "Ihr Konto wurde aufgrund zu vieler fehlgeschlagener Versuche gesperrt. Bitte kontaktieren Sie den Support.",
+    "accountDisabled": "Ihr Konto wurde deaktiviert. Bitte kontaktieren Sie den Support.",
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "networkError": "Verbindung zum Server nicht möglich. Bitte überprüfen Sie Ihre Internetverbindung.",
+    "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
     "welcomeBack": "Willkommen zurück! Bitte geben Sie Ihre Anmeldedaten ein.",
     "signingIn": "Anmeldung...",
+    "checkingAuth": "Authentifizierungsstatus wird überprüft",
     "showPassword": "Passwort anzeigen",
     "hidePassword": "Passwort verbergen",
+    "show": "Anzeigen",
+    "hide": "Verbergen",
     "forgotPassword": "Passwort vergessen?",
     "rememberMe": "Angemeldet bleiben"
   },
@@ -193,7 +205,10 @@
     "errorLoadingDispute": "Fehler beim Laden der Streitigkeit",
     "disputeLoadError": "Beim Laden der Streitigkeitsdetails ist ein Fehler aufgetreten.",
     "disputeNotExist": "Die gesuchte Streitigkeit existiert nicht.",
-    "waitBeforeRetry": "Bitte warten Sie, bevor Sie es erneut versuchen."
+    "waitBeforeRetry": "Bitte warten Sie, bevor Sie es erneut versuchen.",
+    "somethingWentWrong": "Etwas ist schiefgelaufen",
+    "unexpectedError": "Wir entschuldigen uns für die Unannehmlichkeiten. Ein unerwarteter Fehler ist aufgetreten.",
+    "copyErrorDetailsSupport": "Fehlerdetails für den Support kopieren"
   },
   "notifications": {
     "title": "Benachrichtigungen",

@@ -36,6 +36,8 @@
     "emailRequired": "E-Mail ist erforderlich",
     "passwordRequired": "Passwort ist erforderlich",
     "invalidCredentials": "Ungultige E-Mail oder Passwort",
+    "invalidEmailFormat": "Ungultiges E-Mail-Format",
+    "passwordMinLength": "Passwort muss mindestens 8 Zeichen haben",
     "propertyManagement": "Hausverwaltung",
     "signInPrompt": "Melden Sie sich bei Ihrem Konto an",
     "emailPlaceholder": "Geben Sie Ihre E-Mail ein",
@@ -46,14 +48,32 @@
     "contactManager": "Kontaktieren Sie Ihren Hausverwalter",
     "biometricFailed": "Biometrische Authentifizierung fehlgeschlagen",
     "loginFailed": "Anmeldung fehlgeschlagen",
-    "checkCredentials": "Bitte uberprufen Sie Ihre Anmeldedaten"
+    "checkCredentials": "Bitte uberprufen Sie Ihre Anmeldedaten",
+    "authenticationFailed": "Authentifizierung fehlgeschlagen",
+    "biometricNotSuccessful": "Biometrische Authentifizierung war nicht erfolgreich",
+    "signInWith": "Anmelden mit {{provider}}",
+    "faceIdTouchId": "Face ID / Touch ID",
+    "biometrics": "Biometrie"
   },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Willkommen",
+    "welcomeBack": "Willkommen zuruck,",
     "recentActivity": "Letzte Aktivitat",
     "quickActions": "Schnellaktionen",
-    "notifications": "Benachrichtigungen"
+    "notifications": "Benachrichtigungen",
+    "openFaults": "Offene Storungen",
+    "newAnnouncements": "Neue Ankundigungen",
+    "activeVotes": "Aktive Abstimmungen",
+    "unreadMessages": "Ungelesene Nachrichten",
+    "pendingActions": "Ausstehende Aktionen",
+    "due": "Fallig: {{date}}",
+    "recentAnnouncements": "Neueste Ankundigungen",
+    "seeAll": "Alle anzeigen",
+    "reportFault": "Storung melden",
+    "documents": "Dokumente",
+    "meterReading": "Zahlerstand",
+    "payments": "Zahlungen"
   },
   "faults": {
     "title": "Storungsmeldungen",
@@ -98,7 +118,11 @@
     "successSubmit": "Storungsmeldung erfolgreich gesendet",
     "failedSubmit": "Storungsmeldung konnte nicht gesendet werden",
     "cameraPermissionDenied": "Kameraberechtigung ist erforderlich",
-    "photoLibraryPermissionDenied": "Fotobibliotheksberechtigung ist erforderlich"
+    "photoLibraryPermissionDenied": "Fotobibliotheksberechtigung ist erforderlich",
+    "selectCategory": "Bitte wahlen Sie eine Kategorie",
+    "locationDetected": "Standort erkannt",
+    "failedToPickImage": "Bild konnte nicht ausgewahlt werden",
+    "failedToDetectLocation": "Standort konnte nicht erkannt werden"
   },
   "news": {
     "title": "Nachrichten",
@@ -137,7 +161,11 @@
     "network": "Netzwerkfehler. Bitte uberprufen Sie Ihre Verbindung.",
     "server": "Serverfehler. Bitte versuchen Sie es spater erneut.",
     "notFound": "Nicht gefunden",
-    "unauthorized": "Sie sind nicht berechtigt, diese Aktion durchzufuhren."
+    "unauthorized": "Sie sind nicht berechtigt, diese Aktion durchzufuhren.",
+    "pleaseEnterTitle": "Bitte geben Sie einen Titel ein",
+    "pleaseEnterDescription": "Bitte geben Sie eine Beschreibung ein",
+    "invalidEmailFormat": "Bitte geben Sie eine gultige E-Mail-Adresse ein",
+    "nothingToSave": "Nichts zu speichern"
   },
   "offline": {
     "title": "Sie sind offline",
@@ -178,7 +206,9 @@
     "footerText": "Ihr Feedback hilft uns, die App zu verbessern.",
     "successTitle": "Vielen Dank!",
     "successMessage": "Ihr Feedback wurde erfolgreich gesendet.",
-    "draftSaved": "Ihr Feedback-Entwurf wurde gespeichert."
+    "draftSaved": "Ihr Feedback-Entwurf wurde gespeichert.",
+    "savedForLater": "Fur spater gespeichert",
+    "savedForLaterMessage": "Ihr Feedback wurde gespeichert und wird gesendet, sobald Sie eine Internetverbindung haben."
   },
   "announcements": {
     "title": "Ankundigungen",

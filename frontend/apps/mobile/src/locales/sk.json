@@ -36,6 +36,8 @@
     "emailRequired": "E-mail je povinny",
     "passwordRequired": "Heslo je povinne",
     "invalidCredentials": "Neplatny e-mail alebo heslo",
+    "invalidEmailFormat": "Neplatny format e-mailu",
+    "passwordMinLength": "Heslo musi mat aspon 8 znakov",
     "propertyManagement": "Sprava nehnutelnosti",
     "signInPrompt": "Prihlaste sa do svojho uctu",
     "emailPlaceholder": "Zadajte svoj e-mail",
@@ -46,14 +48,32 @@
     "contactManager": "Kontaktujte spravcu budovy",
     "biometricFailed": "Biometricke overenie zlyhalo",
     "loginFailed": "Prihlasenie zlyhalo",
-    "checkCredentials": "Skontrolujte svoje prihlasovacie udaje"
+    "checkCredentials": "Skontrolujte svoje prihlasovacie udaje",
+    "authenticationFailed": "Overenie zlyhalo",
+    "biometricNotSuccessful": "Biometricke overenie nebolo uspesne",
+    "signInWith": "Prihlasit sa pomocou {{provider}}",
+    "faceIdTouchId": "Face ID / Touch ID",
+    "biometrics": "Biometria"
   },
   "dashboard": {
     "title": "Prehlad",
     "welcome": "Vitajte",
+    "welcomeBack": "Vitajte spat,",
     "recentActivity": "Posledna aktivita",
     "quickActions": "Rychle akcie",
-    "notifications": "Oznamenia"
+    "notifications": "Oznamenia",
+    "openFaults": "Otvorene poruchy",
+    "newAnnouncements": "Nove oznamenia",
+    "activeVotes": "Aktivne hlasovania",
+    "unreadMessages": "Neprecitane spravy",
+    "pendingActions": "Cakajuce akcie",
+    "due": "Termin: {{date}}",
+    "recentAnnouncements": "Posledne oznamenia",
+    "seeAll": "Zobrazit vsetko",
+    "reportFault": "Nahlasit poruchu",
+    "documents": "Dokumenty",
+    "meterReading": "Odpocet meraca",
+    "payments": "Platby"
   },
   "faults": {
     "title": "Hlasenia poruch",
@@ -98,7 +118,11 @@
     "successSubmit": "Hlasenie poruchy bolo uspesne odoslane",
     "failedSubmit": "Nepodarilo sa odoslat hlasenie poruchy",
     "cameraPermissionDenied": "Na fotografovanie je potrebne povolenie fotoaparatu",
-    "photoLibraryPermissionDenied": "Je potrebne povolenie pre kniznicu fotografii"
+    "photoLibraryPermissionDenied": "Je potrebne povolenie pre kniznicu fotografii",
+    "selectCategory": "Prosim vyberte kategoriu",
+    "locationDetected": "Poloha zistena",
+    "failedToPickImage": "Nepodarilo sa vybrat obrazok",
+    "failedToDetectLocation": "Nepodarilo sa zistit polohu"
   },
   "news": {
     "title": "Spravy",
@@ -137,7 +161,11 @@
     "network": "Chyba siete. Skontrolujte pripojenie.",
     "server": "Chyba servera. Skuste to neskor.",
     "notFound": "Nenajdene",
-    "unauthorized": "Nemate opravnenie na tuto akciu."
+    "unauthorized": "Nemate opravnenie na tuto akciu.",
+    "pleaseEnterTitle": "Prosim zadajte nazov",
+    "pleaseEnterDescription": "Prosim zadajte popis",
+    "invalidEmailFormat": "Prosim zadajte platnu e-mailovu adresu",
+    "nothingToSave": "Nie je co ulozit"
   },
   "offline": {
     "title": "Ste offline",
@@ -178,7 +206,9 @@
     "footerText": "Vasa spatna vazba nam pomaha zlepsovat aplikaciu.",
     "successTitle": "Dakujeme!",
     "successMessage": "Vasa spatna vazba bola uspesne odoslana.",
-    "draftSaved": "Vas koncept spatnej vazby bol ulozeny."
+    "draftSaved": "Vas koncept spatnej vazby bol ulozeny.",
+    "savedForLater": "Ulozene na neskor",
+    "savedForLaterMessage": "Vasa spatna vazba bola ulozena a bude odoslana ked budete mat pripojenie na internet."
   },
   "announcements": {
     "title": "Oznamenia",

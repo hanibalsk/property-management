@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +14,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 
 export function LoginScreen() {
+  const { t } = useTranslation();
   const { login, authenticateWithBiometric, biometricAvailable, biometricEnabled, isLoading } =
     useAuth();
   const [email, setEmail] = useState('');
@@ -24,15 +26,15 @@ export function LoginScreen() {
     const newErrors: { email?: string; password?: string } = {};
 
     if (!email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('auth.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Invalid email format';
+      newErrors.email = t('auth.invalidEmailFormat');
     }
 
     if (!password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = t('auth.passwordRequired');
     } else if (password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors.password = t('auth.passwordMinLength');
     }
 
     setErrors(newErrors);
@@ -48,8 +50,8 @@ export function LoginScreen() {
       await login(email, password);
     } catch (error) {
       Alert.alert(
-        'Login Failed',
-        error instanceof Error ? error.message : 'Please check your credentials'
+        t('auth.loginFailed'),
+        error instanceof Error ? error.message : t('auth.checkCredentials')
       );
     }
   };
@@ -58,10 +60,10 @@ export function LoginScreen() {
     try {
       const success = await authenticateWithBiometric();
       if (!success) {
-        Alert.alert('Authentication Failed', 'Biometric authentication was not successful');
+        Alert.alert(t('auth.authenticationFailed'), t('auth.biometricNotSuccessful'));
       }
     } catch (_error) {
-      Alert.alert('Error', 'Biometric authentication failed');
+      Alert.alert(t('common.error'), t('auth.biometricFailed'));
     }
   };
 
@@ -73,16 +75,16 @@ export function LoginScreen() {
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.logo}>PPT</Text>
-          <Text style={styles.title}>Property Management</Text>
-          <Text style={styles.subtitle}>Sign in to your account</Text>
+          <Text style={styles.title}>{t('auth.propertyManagement')}</Text>
+          <Text style={styles.subtitle}>{t('auth.signInPrompt')}</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('auth.email')}</Text>
             <TextInput
               style={[styles.input, errors.email ? styles.inputError : undefined]}
-              placeholder="Enter your email"
+              placeholder={t('auth.emailPlaceholder')}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -94,7 +96,7 @@ export function LoginScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>{t('auth.password')}</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 style={[
@@ -102,7 +104,7 @@ export function LoginScreen() {
                   styles.passwordInput,
                   errors.password ? styles.inputError : undefined,
                 ]}
-                placeholder="Enter your password"
+                placeholder={t('auth.passwordPlaceholder')}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -113,14 +115,16 @@ export function LoginScreen() {
                 style={styles.showPasswordButton}
                 onPress={() => setShowPassword(!showPassword)}
               >
-                <Text style={styles.showPasswordText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                <Text style={styles.showPasswordText}>
+                  {showPassword ? t('auth.hide') : t('auth.show')}
+                </Text>
               </Pressable>
             </View>
             {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
           <Pressable style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+            <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
           </Pressable>
 
           <Pressable
@@ -131,7 +135,7 @@ export function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
+              <Text style={styles.loginButtonText}>{t('auth.signIn')}</Text>
             )}
           </Pressable>
 
@@ -143,16 +147,18 @@ export function LoginScreen() {
             >
               <Text style={styles.biometricIcon}>{Platform.OS === 'ios' ? '👤' : '🔒'}</Text>
               <Text style={styles.biometricText}>
-                Sign in with {Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'Biometrics'}
+                {t('auth.signInWith', {
+                  provider: Platform.OS === 'ios' ? t('auth.faceIdTouchId') : t('auth.biometrics'),
+                })}
               </Text>
             </Pressable>
           )}
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account?</Text>
+          <Text style={styles.footerText}>{t('auth.dontHaveAccount')}</Text>
           <Pressable>
-            <Text style={styles.registerLink}>Contact your building manager</Text>
+            <Text style={styles.registerLink}>{t('auth.contactManager')}</Text>
           </Pressable>
         </View>
       </View>

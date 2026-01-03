@@ -197,3 +197,31 @@
 "label_email_required" = "E-mail *";
 "label_phone_optional" = "Telefon (volitelné)";
 "label_message" = "Zpráva";
+
+/* Home Screen (additional) */
+"recently_added" = "Nedávno přidané";
+"loading_listings" = "Načítání nabídek...";
+"no_listings_available" = "Žádné dostupné nabídky";
+
+/* Search Screen (additional) */
+"filter_type" = "Typ";
+"filter_category" = "Kategorie";
+"filter_all" = "Všechny";
+"filter_any" = "Jakékoliv";
+"filter_rooms" = "Pokoje";
+"filter_price_range_eur" = "Cenové rozpětí (EUR)";
+"filter_min" = "Min";
+"filter_max" = "Max";
+"filter_apply" = "Použít";
+"sort_by" = "Seřadit podle";
+"sort_newest" = "Nejnovější";
+"sort_oldest" = "Nejstarší";
+"sort_price_asc" = "Cena (od nejnižší)";
+"sort_price_desc" = "Cena (od nejvyšší)";
+"sort_area_asc" = "Plocha (od nejmenší)";
+"sort_area_desc" = "Plocha (od největší)";
+"sort_relevance" = "Relevance";
+"properties_found" = "%d nalezených nemovitostí";
+"rooms_count" = "%d pokojů";
+"bed_count" = "%d ložnice";
+"bath_count" = "%d koupelna";

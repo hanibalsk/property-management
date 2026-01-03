@@ -4,6 +4,7 @@
  * Epic 50 - Story 50.2-50.3: Contextual Help, FAQ & Tutorials
  */
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { helpCenter } from '../../onboarding';
@@ -14,6 +15,7 @@ interface HelpCenterScreenProps {
 }
 
 export function HelpCenterScreen({ onNavigate }: HelpCenterScreenProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<FAQCategory | null>(null);
   const [activeTab, setActiveTab] = useState<'faq' | 'tutorials'>('faq');
@@ -67,7 +69,7 @@ export function HelpCenterScreen({ onNavigate }: HelpCenterScreenProps) {
               <Text style={styles.faqAnswerText}>{faq.answer}</Text>
 
               <View style={styles.faqFeedback}>
-                <Text style={styles.feedbackLabel}>Was this helpful?</Text>
+                <Text style={styles.feedbackLabel}>{t('help.wasHelpful')}</Text>
                 <View style={styles.feedbackButtons}>
                   <Pressable
                     style={[styles.feedbackButton, userVote === 'helpful' && styles.feedbackActive]}
@@ -105,7 +107,7 @@ export function HelpCenterScreen({ onNavigate }: HelpCenterScreenProps) {
         </View>
       );
     },
-    [expandedFAQ, handleFAQPress, handleVote]
+    [expandedFAQ, handleFAQPress, handleVote, t]
   );
 
   const renderTutorialItem = useCallback(
@@ -138,15 +140,15 @@ export function HelpCenterScreen({ onNavigate }: HelpCenterScreenProps) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => onNavigate('Dashboard')} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>← {t('common.back')}</Text>
         </Pressable>
-        <Text style={styles.title}>Help Center</Text>
+        <Text style={styles.title}>{t('help.title')}</Text>
       </View>
 
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search help topics..."
+          placeholder={t('help.searchPlaceholder')}
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#9ca3af"
@@ -158,14 +160,16 @@ export function HelpCenterScreen({ onNavigate }: HelpCenterScreenProps) {
           style={[styles.tab, activeTab === 'faq' && styles.tabActive]}
           onPress={() => setActiveTab('faq')}
         >
-          <Text style={[styles.tabText, activeTab === 'faq' && styles.tabTextActive]}>FAQs</Text>
+          <Text style={[styles.tabText, activeTab === 'faq' && styles.tabTextActive]}>
+            {t('help.faqTab')}
+          </Text>
         </Pressable>
         <Pressable
           style={[styles.tab, activeTab === 'tutorials' && styles.tabActive]}
           onPress={() => setActiveTab('tutorials')}
         >
           <Text style={[styles.tabText, activeTab === 'tutorials' && styles.tabTextActive]}>
-            Tutorials
+            {t('help.tutorialsTab')}
           </Text>
         </Pressable>
       </View>
@@ -216,8 +220,8 @@ export function HelpCenterScreen({ onNavigate }: HelpCenterScreenProps) {
             {filteredFAQs.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyIcon}>🔍</Text>
-                <Text style={styles.emptyTitle}>No FAQs found</Text>
-                <Text style={styles.emptyText}>Try different search terms or categories</Text>
+                <Text style={styles.emptyTitle}>{t('help.noFAQs')}</Text>
+                <Text style={styles.emptyText}>{t('help.noFAQsMessage')}</Text>
               </View>
             ) : (
               filteredFAQs.map(renderFAQItem)
@@ -228,8 +232,8 @@ export function HelpCenterScreen({ onNavigate }: HelpCenterScreenProps) {
             {filteredTutorials.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyIcon}>🎬</Text>
-                <Text style={styles.emptyTitle}>No tutorials found</Text>
-                <Text style={styles.emptyText}>Try different search terms</Text>
+                <Text style={styles.emptyTitle}>{t('help.noTutorials')}</Text>
+                <Text style={styles.emptyText}>{t('help.noTutorialsMessage')}</Text>
               </View>
             ) : (
               filteredTutorials.map(renderTutorialItem)
@@ -239,7 +243,7 @@ export function HelpCenterScreen({ onNavigate }: HelpCenterScreenProps) {
       </ScrollView>
 
       <Pressable style={styles.feedbackFab} onPress={() => onNavigate('Feedback')}>
-        <Text style={styles.feedbackFabText}>💬 Send Feedback</Text>
+        <Text style={styles.feedbackFabText}>💬 {t('help.sendFeedbackButton')}</Text>
       </Pressable>
     </View>
   );

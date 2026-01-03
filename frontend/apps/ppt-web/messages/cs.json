@@ -35,7 +35,11 @@
     "pleaseWait": "Počkejte, než načteme údaje.",
     "reloadPage": "Obnovit stránku",
     "copyErrorDetails": "Kopírovat podrobnosti chyby",
-    "add": "Přidat"
+    "add": "Přidat",
+    "copied": "Zkopírováno",
+    "copyErrorMessage": "Kopírovat chybovou zprávu",
+    "dismissNotification": "Zavřít oznámení",
+    "notifications": "Oznámení"
   },
   "nav": {
     "home": "Domů",
@@ -60,15 +64,23 @@
     "signOut": "Odhlásit se",
     "email": "E-mail",
     "password": "Heslo",
+    "emailAddress": "E-mailová adresa",
     "emailRequired": "E-mail je povinný",
     "passwordRequired": "Heslo je povinné",
     "invalidEmail": "Zadejte platnou e-mailovou adresu",
     "invalidCredentials": "Neplatný e-mail nebo heslo. Zkuste to znovu.",
-    "accountLocked": "Váš účet byl zablokován kvůli příliš mnoha neúspěšným pokusům.",
+    "accountLocked": "Váš účet byl zablokován kvůli příliš mnoha neúspěšným pokusům. Kontaktujte podporu.",
+    "accountDisabled": "Váš účet byl deaktivován. Kontaktujte podporu.",
+    "sessionExpired": "Vaše relace vypršela. Přihlaste se znovu.",
+    "networkError": "Nepodařilo se připojit k serveru. Zkontrolujte internetové připojení.",
+    "unexpectedError": "Došlo k neočekávané chybě. Zkuste to znovu.",
     "welcomeBack": "Vítejte zpět! Zadejte své přihlašovací údaje.",
     "signingIn": "Přihlašování...",
+    "checkingAuth": "Kontrola stavu přihlášení",
     "showPassword": "Zobrazit heslo",
     "hidePassword": "Skrýt heslo",
+    "show": "Zobrazit",
+    "hide": "Skrýt",
     "forgotPassword": "Zapomenuté heslo?",
     "rememberMe": "Zapamatovat si mě"
   },
@@ -193,7 +205,10 @@
     "errorLoadingDispute": "Chyba při načítání sporu",
     "disputeLoadError": "Při načítání podrobností sporu došlo k chybě.",
     "disputeNotExist": "Spor, který hledáte, neexistuje.",
-    "waitBeforeRetry": "Před opakováním počkejte."
+    "waitBeforeRetry": "Před opakováním počkejte.",
+    "somethingWentWrong": "Něco se pokazilo",
+    "unexpectedError": "Omlouváme se za nepříjemnosti. Došlo k neočekávané chybě.",
+    "copyErrorDetailsSupport": "Kopírovat podrobnosti chyby pro podporu"
   },
   "notifications": {
     "title": "Oznámení",

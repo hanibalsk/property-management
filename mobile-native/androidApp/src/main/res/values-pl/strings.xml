@@ -199,4 +199,41 @@
     <string name="label_email_required">E-mail *</string>
     <string name="label_phone_optional">Telefon (opcjonalnie)</string>
     <string name="label_message">Wiadomość</string>
+
+    <!-- Home Screen (additional) -->
+    <string name="recently_added">Ostatnio dodane</string>
+    <string name="loading_listings">Ładowanie ofert...</string>
+    <string name="no_listings_available">Brak dostępnych ofert</string>
+
+    <!-- Search Screen (additional) -->
+    <string name="filter_type">Typ</string>
+    <string name="filter_category">Kategoria</string>
+    <string name="filter_all">Wszystkie</string>
+    <string name="filter_any">Dowolna</string>
+    <string name="filter_rooms">Pokoje</string>
+    <string name="filter_price_range_eur">Zakres cenowy (EUR)</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_apply">Zastosuj</string>
+    <string name="sort_by">Sortuj według</string>
+    <string name="sort_newest">Najnowsze</string>
+    <string name="sort_oldest">Najstarsze</string>
+    <string name="sort_price_asc">Cena (rosnąco)</string>
+    <string name="sort_price_desc">Cena (malejąco)</string>
+    <string name="sort_area_asc">Powierzchnia (rosnąco)</string>
+    <string name="sort_area_desc">Powierzchnia (malejąco)</string>
+    <string name="sort_relevance">Trafność</string>
+    <string name="properties_found">%1$d nieruchomości znalezionych</string>
+    <string name="rooms_count">%1$d pokoi</string>
+    <string name="bed_count">%1$d sypialnia</string>
+    <string name="bath_count">%1$d łazienka</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_inquiries">Zapytania</string>
+    <string name="cd_favorites">Ulubione</string>
+    <string name="cd_account">Konto</string>
+    <string name="cd_search">Szukaj</string>
+    <string name="cd_clear">Wyczyść</string>
+    <string name="cd_back">Wstecz</string>
+    <string name="cd_filters">Filtry</string>
 </resources>

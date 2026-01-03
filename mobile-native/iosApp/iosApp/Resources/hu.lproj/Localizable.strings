@@ -191,9 +191,37 @@
 
 /* Labels */
 "label_featured" = "Kiemelt";
-"label_new" = "Új";
-"label_reduced" = "Csökkentett ár";
-"label_name_required" = "Név *";
+"label_new" = "Uj";
+"label_reduced" = "Csokkentett ar";
+"label_name_required" = "Nev *";
 "label_email_required" = "E-mail *";
-"label_phone_optional" = "Telefon (opcionális)";
-"label_message" = "Üzenet";
+"label_phone_optional" = "Telefon (opcionalis)";
+"label_message" = "Uzenet";
+
+/* Home Screen (additional) */
+"recently_added" = "Nemreg hozzaadva";
+"loading_listings" = "Ajanlatok betoltese...";
+"no_listings_available" = "Nincs elerheto ajanlat";
+
+/* Search Screen (additional) */
+"filter_type" = "Tipus";
+"filter_category" = "Kategoria";
+"filter_all" = "Osszes";
+"filter_any" = "Barmely";
+"filter_rooms" = "Szobak";
+"filter_price_range_eur" = "Artartomany (EUR)";
+"filter_min" = "Min";
+"filter_max" = "Max";
+"filter_apply" = "Alkalmaz";
+"sort_by" = "Rendezes";
+"sort_newest" = "Legujabb";
+"sort_oldest" = "Legregebbi";
+"sort_price_asc" = "Ar (novekvo)";
+"sort_price_desc" = "Ar (csokkeno)";
+"sort_area_asc" = "Terulet (novekvo)";
+"sort_area_desc" = "Terulet (csokkeno)";
+"sort_relevance" = "Relevancia";
+"properties_found" = "%d ingatlan talalva";
+"rooms_count" = "%d szoba";
+"bed_count" = "%d haloszoba";
+"bath_count" = "%d furdoszoba";

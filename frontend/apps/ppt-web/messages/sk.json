@@ -35,7 +35,11 @@
     "pleaseWait": "Počkajte, kým načítame údaje.",
     "reloadPage": "Obnoviť stránku",
     "copyErrorDetails": "Kopírovať podrobnosti chyby",
-    "add": "Pridať"
+    "add": "Pridať",
+    "copied": "Skopírované",
+    "copyErrorMessage": "Kopírovať chybovú správu",
+    "dismissNotification": "Zavrieť oznámenie",
+    "notifications": "Oznámenia"
   },
   "nav": {
     "home": "Domov",
@@ -60,15 +64,23 @@
     "signOut": "Odhlásiť sa",
     "email": "E-mail",
     "password": "Heslo",
+    "emailAddress": "E-mailová adresa",
     "emailRequired": "E-mail je povinný",
     "passwordRequired": "Heslo je povinné",
     "invalidEmail": "Zadajte platnú e-mailovú adresu",
     "invalidCredentials": "Neplatný e-mail alebo heslo. Skúste to znova.",
-    "accountLocked": "Váš účet bol zablokovaný kvôli príliš veľa neúspešným pokusom.",
+    "accountLocked": "Váš účet bol zablokovaný kvôli príliš veľa neúspešným pokusom. Kontaktujte podporu.",
+    "accountDisabled": "Váš účet bol deaktivovaný. Kontaktujte podporu.",
+    "sessionExpired": "Vaša relácia vypršala. Prihláste sa znova.",
+    "networkError": "Nepodarilo sa pripojiť k serveru. Skontrolujte internetové pripojenie.",
+    "unexpectedError": "Vyskytla sa neočakávaná chyba. Skúste to znova.",
     "welcomeBack": "Vitajte späť! Zadajte svoje prihlasovacie údaje.",
     "signingIn": "Prihlasovanie...",
+    "checkingAuth": "Kontroluje sa stav prihlásenia",
     "showPassword": "Zobraziť heslo",
     "hidePassword": "Skryť heslo",
+    "show": "Zobraziť",
+    "hide": "Skryť",
     "forgotPassword": "Zabudnuté heslo?",
     "rememberMe": "Zapamätať si ma"
   },
@@ -193,7 +205,10 @@
     "errorLoadingDispute": "Chyba pri načítaní sporu",
     "disputeLoadError": "Pri načítaní podrobností sporu sa vyskytla chyba.",
     "disputeNotExist": "Spor, ktorý hľadáte, neexistuje.",
-    "waitBeforeRetry": "Pred opakovaním počkajte."
+    "waitBeforeRetry": "Pred opakovaním počkajte.",
+    "somethingWentWrong": "Niečo sa pokazilo",
+    "unexpectedError": "Ospravedlňujeme sa za nepríjemnosti. Vyskytla sa neočakávaná chyba.",
+    "copyErrorDetailsSupport": "Kopírovať podrobnosti chyby pre podporu"
   },
   "notifications": {
     "title": "Oznámenia",

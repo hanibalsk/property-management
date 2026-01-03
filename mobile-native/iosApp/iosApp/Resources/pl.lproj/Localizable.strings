@@ -197,3 +197,31 @@
 "label_email_required" = "E-mail *";
 "label_phone_optional" = "Telefon (opcjonalnie)";
 "label_message" = "Wiadomość";
+
+/* Home Screen (additional) */
+"recently_added" = "Ostatnio dodane";
+"loading_listings" = "Ładowanie ofert...";
+"no_listings_available" = "Brak dostępnych ofert";
+
+/* Search Screen (additional) */
+"filter_type" = "Typ";
+"filter_category" = "Kategoria";
+"filter_all" = "Wszystkie";
+"filter_any" = "Dowolna";
+"filter_rooms" = "Pokoje";
+"filter_price_range_eur" = "Zakres cenowy (EUR)";
+"filter_min" = "Min";
+"filter_max" = "Max";
+"filter_apply" = "Zastosuj";
+"sort_by" = "Sortuj według";
+"sort_newest" = "Najnowsze";
+"sort_oldest" = "Najstarsze";
+"sort_price_asc" = "Cena (rosnąco)";
+"sort_price_desc" = "Cena (malejąco)";
+"sort_area_asc" = "Powierzchnia (rosnąco)";
+"sort_area_desc" = "Powierzchnia (malejąco)";
+"sort_relevance" = "Trafność";
+"properties_found" = "%d nieruchomości znalezionych";
+"rooms_count" = "%d pokoi";
+"bed_count" = "%d sypialnia";
+"bath_count" = "%d łazienka";

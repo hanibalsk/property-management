@@ -47,7 +47,7 @@ struct HomeView: View {
             }
             .padding(.vertical)
         }
-        .navigationTitle("Reality Portal")
+        .navigationTitle(String(localized: "app_name"))
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 toolbarContent
@@ -70,7 +70,7 @@ struct HomeView: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                Text("Search for properties...")
+                Text(String(localized: "search_properties"))
                     .foregroundStyle(.secondary)
                 Spacer()
             }
@@ -85,19 +85,19 @@ struct HomeView: View {
     private var categoryFilters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                CategoryChip(title: "For Sale", icon: "tag.fill") {
+                CategoryChip(title: String(localized: "filter_for_sale"), icon: "tag.fill") {
                     // Navigate to search with sale filter
                 }
-                CategoryChip(title: "For Rent", icon: "house.fill") {
+                CategoryChip(title: String(localized: "filter_for_rent"), icon: "house.fill") {
                     // Navigate to search with rent filter
                 }
-                CategoryChip(title: "Apartments", icon: "building.2.fill") {
+                CategoryChip(title: String(localized: "filter_apartments"), icon: "building.2.fill") {
                     // Navigate to search with apartment filter
                 }
-                CategoryChip(title: "Houses", icon: "house.fill") {
+                CategoryChip(title: String(localized: "filter_houses"), icon: "house.fill") {
                     // Navigate to search with house filter
                 }
-                CategoryChip(title: "Land", icon: "leaf.fill") {
+                CategoryChip(title: String(localized: "filter_land"), icon: "leaf.fill") {
                     // Navigate to search with land filter
                 }
             }
@@ -107,7 +107,7 @@ struct HomeView: View {
 
     private var featuredSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Featured Properties") {
+            SectionHeader(title: String(localized: "featured_properties")) {
                 coordinator.selectedTab = .search
             }
 
@@ -126,7 +126,7 @@ struct HomeView: View {
 
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Recently Added") {
+            SectionHeader(title: String(localized: "recently_added")) {
                 coordinator.selectedTab = .search
             }
 
@@ -147,7 +147,7 @@ struct HomeView: View {
         } label: {
             HStack {
                 Image(systemName: "magnifyingglass")
-                Text("View All Properties")
+                Text(String(localized: "view_all_properties"))
             }
             .frame(maxWidth: .infinity)
             .padding()
@@ -161,7 +161,7 @@ struct HomeView: View {
     private var loadingView: some View {
         VStack(spacing: 16) {
             ProgressView()
-            Text("Loading listings...")
+            Text(String(localized: "loading_listings"))
                 .foregroundStyle(.secondary)
         }
         .frame(height: 200)
@@ -174,7 +174,7 @@ struct HomeView: View {
                 .foregroundStyle(.orange)
             Text(message)
                 .foregroundStyle(.secondary)
-            Button("Retry") {
+            Button(String(localized: "retry")) {
                 Task { await loadData() }
             }
         }
@@ -205,7 +205,7 @@ struct HomeView: View {
                 }
             }
         } else {
-            Button("Sign In") {
+            Button(String(localized: "sign_in")) {
                 coordinator.selectedTab = .account
             }
         }
@@ -228,7 +228,7 @@ struct HomeView: View {
 
         if featuredListings.isEmpty && recentListings.isEmpty && errorMessage == nil {
             // If both are empty and no error, show a message
-            errorMessage = "No listings available"
+            errorMessage = String(localized: "no_listings_available")
         }
 
         isLoading = false
@@ -304,7 +304,7 @@ private struct SectionHeader: View {
 
             Button(action: action) {
                 HStack(spacing: 4) {
-                    Text("See All")
+                    Text(String(localized: "see_all"))
                     Image(systemName: "chevron.right")
                 }
                 .font(.subheadline)
@@ -356,7 +356,7 @@ private struct FeaturedListingCard: View {
                     }
                 }
                 .overlay(alignment: .topLeading) {
-                    Text("Featured")
+                    Text(String(localized: "label_featured"))
                         .font(.caption)
                         .fontWeight(.semibold)
                         .padding(.horizontal, 8)
@@ -388,11 +388,11 @@ private struct FeaturedListingCard: View {
 
                     HStack(spacing: 12) {
                         if let area = listing.areaSqm {
-                            Text("\(area) m2")
+                            Text("\(area) \(String(localized: "sqm"))")
                                 .font(.caption)
                         }
                         if let rooms = listing.rooms {
-                            Text("\(rooms) rooms")
+                            Text(String(localized: "rooms_count", defaultValue: "\(rooms) rooms").replacingOccurrences(of: "%d", with: "\(rooms)"))
                                 .font(.caption)
                         }
                     }

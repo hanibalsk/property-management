@@ -199,4 +199,41 @@
     <string name="label_email_required">E-mail *</string>
     <string name="label_phone_optional">Telefon (opcionális)</string>
     <string name="label_message">Üzenet</string>
+
+    <!-- Home Screen (additional) -->
+    <string name="recently_added">Nemrég hozzáadva</string>
+    <string name="loading_listings">Ajánlatok betöltése...</string>
+    <string name="no_listings_available">Nincs elérhető ajánlat</string>
+
+    <!-- Search Screen (additional) -->
+    <string name="filter_type">Típus</string>
+    <string name="filter_category">Kategória</string>
+    <string name="filter_all">Összes</string>
+    <string name="filter_any">Bármely</string>
+    <string name="filter_rooms">Szobák</string>
+    <string name="filter_price_range_eur">Ártartomány (EUR)</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_apply">Alkalmaz</string>
+    <string name="sort_by">Rendezés</string>
+    <string name="sort_newest">Legújabb</string>
+    <string name="sort_oldest">Legrégebbi</string>
+    <string name="sort_price_asc">Ár (növekvő)</string>
+    <string name="sort_price_desc">Ár (csökkenő)</string>
+    <string name="sort_area_asc">Terület (növekvő)</string>
+    <string name="sort_area_desc">Terület (csökkenő)</string>
+    <string name="sort_relevance">Relevancia</string>
+    <string name="properties_found">%1$d ingatlan találva</string>
+    <string name="rooms_count">%1$d szoba</string>
+    <string name="bed_count">%1$d hálószoba</string>
+    <string name="bath_count">%1$d fürdőszoba</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_inquiries">Érdeklődések</string>
+    <string name="cd_favorites">Kedvencek</string>
+    <string name="cd_account">Fiók</string>
+    <string name="cd_search">Keresés</string>
+    <string name="cd_clear">Törlés</string>
+    <string name="cd_back">Vissza</string>
+    <string name="cd_filters">Szűrők</string>
 </resources>

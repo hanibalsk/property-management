@@ -36,6 +36,8 @@
     "emailRequired": "Email is required",
     "passwordRequired": "Password is required",
     "invalidCredentials": "Invalid email or password",
+    "invalidEmailFormat": "Invalid email format",
+    "passwordMinLength": "Password must be at least 8 characters",
     "propertyManagement": "Property Management",
     "signInPrompt": "Sign in to your account",
     "emailPlaceholder": "Enter your email",
@@ -46,14 +48,32 @@
     "contactManager": "Contact your building manager",
     "biometricFailed": "Biometric authentication failed",
     "loginFailed": "Login Failed",
-    "checkCredentials": "Please check your credentials"
+    "checkCredentials": "Please check your credentials",
+    "authenticationFailed": "Authentication Failed",
+    "biometricNotSuccessful": "Biometric authentication was not successful",
+    "signInWith": "Sign in with {{provider}}",
+    "faceIdTouchId": "Face ID / Touch ID",
+    "biometrics": "Biometrics"
   },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Welcome",
+    "welcomeBack": "Welcome back,",
     "recentActivity": "Recent Activity",
     "quickActions": "Quick Actions",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "openFaults": "Open Faults",
+    "newAnnouncements": "New Announcements",
+    "activeVotes": "Active Votes",
+    "unreadMessages": "Unread Messages",
+    "pendingActions": "Pending Actions",
+    "due": "Due: {{date}}",
+    "recentAnnouncements": "Recent Announcements",
+    "seeAll": "See All",
+    "reportFault": "Report Fault",
+    "documents": "Documents",
+    "meterReading": "Meter Reading",
+    "payments": "Payments"
   },
   "faults": {
     "title": "Fault Reports",
@@ -98,7 +118,11 @@
     "successSubmit": "Fault report submitted successfully",
     "failedSubmit": "Failed to submit fault report",
     "cameraPermissionDenied": "Camera permission is required to take photos",
-    "photoLibraryPermissionDenied": "Photo library permission is required"
+    "photoLibraryPermissionDenied": "Photo library permission is required",
+    "selectCategory": "Please select a category",
+    "locationDetected": "Location detected",
+    "failedToPickImage": "Failed to pick image",
+    "failedToDetectLocation": "Failed to detect location"
   },
   "news": {
     "title": "News",
@@ -137,7 +161,11 @@
     "network": "Network error. Please check your connection.",
     "server": "Server error. Please try again later.",
     "notFound": "Not found",
-    "unauthorized": "You are not authorized to perform this action."
+    "unauthorized": "You are not authorized to perform this action.",
+    "pleaseEnterTitle": "Please enter a title",
+    "pleaseEnterDescription": "Please enter a description",
+    "invalidEmailFormat": "Please enter a valid email address",
+    "nothingToSave": "Nothing to save"
   },
   "offline": {
     "title": "You are offline",
@@ -178,7 +206,9 @@
     "footerText": "Your feedback helps us improve the app.",
     "successTitle": "Thank You!",
     "successMessage": "Your feedback has been submitted successfully.",
-    "draftSaved": "Your feedback draft has been saved."
+    "draftSaved": "Your feedback draft has been saved.",
+    "savedForLater": "Saved for Later",
+    "savedForLaterMessage": "Your feedback has been saved and will be submitted when you have an internet connection."
   },
   "announcements": {
     "title": "Announcements",

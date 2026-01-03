@@ -8,6 +8,7 @@
 
 import type { CreateInquiryRequest, InquiryType, ListingAgent } from '@ppt/reality-api-client';
 import { useCreateInquiry } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 interface ContactFormProps {
@@ -16,6 +17,7 @@ interface ContactFormProps {
 }
 
 export function ContactForm({ listingId, agent }: ContactFormProps) {
+  const t = useTranslations('contact');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -71,12 +73,10 @@ export function ContactForm({ listingId, agent }: ContactFormProps) {
             <path d="M9 12l2 2 4-4" />
           </svg>
         </div>
-        <h3 className="success-title">Message Sent!</h3>
-        <p className="success-text">
-          Your inquiry has been sent to {agent.name}. They will get back to you soon.
-        </p>
+        <h3 className="success-title">{t('messageSent')}</h3>
+        <p className="success-text">{t('inquirySent')}</p>
         <button type="button" className="new-message-button" onClick={() => setShowSuccess(false)}>
-          Send another message
+          {t('sendAnother')}
         </button>
         <style jsx>{`
           .contact-form.success {
@@ -137,7 +137,7 @@ export function ContactForm({ listingId, agent }: ContactFormProps) {
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="inquiryType" className="form-label">
-            I want to
+            {t('iWantTo')}
           </label>
           <select
             id="inquiryType"
@@ -147,16 +147,16 @@ export function ContactForm({ listingId, agent }: ContactFormProps) {
               setFormData({ ...formData, inquiryType: e.target.value as InquiryType })
             }
           >
-            <option value="general">Ask a question</option>
-            <option value="viewing_request">Schedule a viewing</option>
-            <option value="price_negotiation">Discuss price</option>
-            <option value="availability">Check availability</option>
+            <option value="general">{t('askQuestion')}</option>
+            <option value="viewing_request">{t('scheduleViewing')}</option>
+            <option value="price_negotiation">{t('discussPrice')}</option>
+            <option value="availability">{t('checkAvailability')}</option>
           </select>
         </div>
 
         <div className="form-group">
           <label htmlFor="name" className="form-label">
-            Name
+            {t('name')}
           </label>
           <input
             id="name"
@@ -170,7 +170,7 @@ export function ContactForm({ listingId, agent }: ContactFormProps) {
 
         <div className="form-group">
           <label htmlFor="email" className="form-label">
-            Email
+            {t('email')}
           </label>
           <input
             id="email"
@@ -184,7 +184,7 @@ export function ContactForm({ listingId, agent }: ContactFormProps) {
 
         <div className="form-group">
           <label htmlFor="phone" className="form-label">
-            Phone <span className="optional">(optional)</span>
+            {t('phone')} <span className="optional">{t('optional')}</span>
           </label>
           <input
             id="phone"
@@ -197,7 +197,7 @@ export function ContactForm({ listingId, agent }: ContactFormProps) {
 
         <div className="form-group">
           <label htmlFor="message" className="form-label">
-            Message
+            {t('message')}
           </label>
           <textarea
             id="message"
@@ -205,20 +205,18 @@ export function ContactForm({ listingId, agent }: ContactFormProps) {
             rows={4}
             value={formData.message}
             onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-            placeholder="Hi, I'm interested in this property..."
+            placeholder={t('placeholder')}
             required
           />
         </div>
 
-        {createInquiry.error && (
-          <div className="error-message">Failed to send message. Please try again.</div>
-        )}
+        {createInquiry.error && <div className="error-message">{t('failedToSend')}</div>}
 
         <button type="submit" className="submit-button" disabled={createInquiry.isPending}>
-          {createInquiry.isPending ? 'Sending...' : 'Send Message'}
+          {createInquiry.isPending ? t('sending') : t('sendMessage')}
         </button>
 
-        <p className="privacy-notice">By submitting, you agree to our privacy policy.</p>
+        <p className="privacy-notice">{t('privacyNotice')}</p>
       </form>
 
       <style jsx>{`
