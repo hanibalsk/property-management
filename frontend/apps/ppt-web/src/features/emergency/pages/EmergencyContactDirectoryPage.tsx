@@ -14,12 +14,14 @@ import {
 import type { CreateEmergencyContact, EmergencyContact } from '@ppt/api-client';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ConfirmationDialog } from '../../../components';
 import { useOrganization } from '../../../hooks';
 import { EmergencyContactForm, EmergencyContactsList } from '../components';
 import '../styles/emergency-contacts.css';
 
 export const EmergencyContactDirectoryPage: React.FC = () => {
+  const { t } = useTranslation();
   const { organizationId } = useOrganization();
 
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
@@ -54,7 +56,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
 
         setContacts(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load emergency contacts');
+        setError(err instanceof Error ? err.message : t('emergency.errors.failedToLoad'));
         console.error('Failed to load emergency contacts:', err);
       } finally {
         setIsLoading(false);
@@ -62,7 +64,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
     };
 
     loadContacts();
-  }, [organizationId, filterType, showInactive]);
+  }, [organizationId, filterType, showInactive, t]);
 
   // Filter contacts by search query
   const filteredContacts = contacts.filter((contact) => {
@@ -87,10 +89,10 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
       });
       setContacts(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reload emergency contacts');
+      setError(err instanceof Error ? err.message : t('emergency.errors.failedToReload'));
       console.error('Failed to reload emergency contacts:', err);
     }
-  }, [organizationId, filterType, showInactive]);
+  }, [organizationId, filterType, showInactive, t]);
 
   const handleCreate = async (data: CreateEmergencyContact) => {
     try {
@@ -102,7 +104,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
       setShowForm(false);
       await reloadContacts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create emergency contact');
+      setError(err instanceof Error ? err.message : t('emergency.errors.failedToCreate'));
       console.error('Failed to create emergency contact:', err);
     } finally {
       setIsSubmitting(false);
@@ -122,7 +124,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
       setShowForm(false);
       await reloadContacts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update emergency contact');
+      setError(err instanceof Error ? err.message : t('emergency.errors.failedToUpdate'));
       console.error('Failed to update emergency contact:', err);
     } finally {
       setIsSubmitting(false);
@@ -153,12 +155,12 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
       setContactToDelete(null);
       await reloadContacts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete emergency contact');
+      setError(err instanceof Error ? err.message : t('emergency.errors.failedToDelete'));
       console.error('Failed to delete emergency contact:', err);
     } finally {
       setIsDeleting(false);
     }
-  }, [contactToDelete, organizationId, reloadContacts]);
+  }, [contactToDelete, organizationId, reloadContacts, t]);
 
   const handleEdit = (contact: EmergencyContact) => {
     setEditingContact(contact);
@@ -178,8 +180,8 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
   return (
     <div className="emergency-contact-directory-page">
       <div className="emergency-contact-directory-header">
-        <h1>Emergency Contact Directory</h1>
-        <p>Manage important emergency contacts for your building or organization.</p>
+        <h1>{t('emergency.title')}</h1>
+        <p>{t('emergency.description')}</p>
       </div>
 
       {error && (
@@ -192,26 +194,26 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
         <div className="emergency-contact-directory-controls">
           <div className="emergency-contact-directory-filters">
             <div className="emergency-contact-directory-filter">
-              <label htmlFor="search">Search</label>
+              <label htmlFor="search">{t('common.search')}</label>
               <input
                 type="search"
                 id="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search contacts..."
+                placeholder={t('emergency.searchPlaceholder')}
                 className="emergency-contact-directory-search"
               />
             </div>
 
             <div className="emergency-contact-directory-filter">
-              <label htmlFor="filterType">Type</label>
+              <label htmlFor="filterType">{t('emergency.type')}</label>
               <select
                 id="filterType"
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
                 className="emergency-contact-directory-select"
               >
-                <option value="">All Types</option>
+                <option value="">{t('emergency.allTypes')}</option>
                 {Object.entries(CONTACT_TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -228,7 +230,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
                   checked={showInactive}
                   onChange={(e) => setShowInactive(e.target.checked)}
                 />
-                Show inactive
+                {t('emergency.showInactive')}
               </label>
             </div>
           </div>
@@ -238,7 +240,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
             onClick={handleAddNew}
             className="emergency-contact-directory-add-button"
           >
-            Add Emergency Contact
+            {t('emergency.addContact')}
           </button>
         </div>
       )}
@@ -253,7 +255,7 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
           />
         </div>
       ) : isLoading ? (
-        <div className="emergency-contact-directory-loading">Loading emergency contacts...</div>
+        <div className="emergency-contact-directory-loading">{t('emergency.loading')}</div>
       ) : (
         <EmergencyContactsList
           contacts={filteredContacts}
@@ -267,14 +269,12 @@ export const EmergencyContactDirectoryPage: React.FC = () => {
       {/* Accessible delete confirmation dialog */}
       <ConfirmationDialog
         isOpen={deleteDialogOpen}
-        title="Delete Emergency Contact"
+        title={t('emergency.deleteTitle')}
         message={
-          contactToDelete
-            ? `Are you sure you want to delete "${contactToDelete.name}"? This action cannot be undone.`
-            : ''
+          contactToDelete ? t('emergency.deleteConfirmation', { name: contactToDelete.name }) : ''
         }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}

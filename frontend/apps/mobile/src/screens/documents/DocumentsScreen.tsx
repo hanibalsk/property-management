@@ -1,5 +1,6 @@
 import * as Sharing from 'expo-sharing';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Pressable,
@@ -154,6 +155,7 @@ interface DocumentsScreenProps {
 }
 
 export function DocumentsScreen({ onNavigate: _onNavigate }: DocumentsScreenProps) {
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [documents] = useState<Document[]>(mockDocuments);
   const [currentPath, setCurrentPath] = useState<Document[]>([]);
@@ -224,20 +226,20 @@ export function DocumentsScreen({ onNavigate: _onNavigate }: DocumentsScreenProp
 
         // In a real app, this would download from the actual URL
         // and open with the appropriate viewer
-        Alert.alert('Document Ready', `${doc.name} is ready to view.`, [
-          { text: 'Close', style: 'cancel' },
+        Alert.alert(t('documents.readyTitle'), t('documents.readyMessage', { name: doc.name }), [
+          { text: t('common.close'), style: 'cancel' },
           {
-            text: 'Share',
+            text: t('documents.share'),
             onPress: async () => {
               if (await Sharing.isAvailableAsync()) {
                 // Would share the actual downloaded file
-                Alert.alert('Sharing', 'Document sharing would open here.');
+                Alert.alert(t('documents.sharing'), t('documents.sharingMessage'));
               }
             },
           },
         ]);
       } catch (_error) {
-        Alert.alert('Error', 'Failed to download document');
+        Alert.alert(t('common.error'), t('documents.downloadFailed'));
       } finally {
         setDownloading(null);
       }
@@ -263,7 +265,7 @@ export function DocumentsScreen({ onNavigate: _onNavigate }: DocumentsScreenProp
               </Text>
             </>
           ) : (
-            <Text style={styles.headerTitle}>Documents</Text>
+            <Text style={styles.headerTitle}>{t('documents.title')}</Text>
           )}
         </View>
       </View>
@@ -272,7 +274,7 @@ export function DocumentsScreen({ onNavigate: _onNavigate }: DocumentsScreenProp
       {currentPath.length > 0 && (
         <View style={styles.breadcrumb}>
           <Pressable onPress={navigateToRoot}>
-            <Text style={styles.breadcrumbLink}>Documents</Text>
+            <Text style={styles.breadcrumbLink}>{t('documents.title')}</Text>
           </Pressable>
           {currentPath.map((folder, index) => (
             <View key={folder.id} style={styles.breadcrumbItem}>
@@ -293,7 +295,7 @@ export function DocumentsScreen({ onNavigate: _onNavigate }: DocumentsScreenProp
       <View style={styles.searchContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="Search documents..."
+          placeholder={t('documents.searchPlaceholder')}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -309,9 +311,9 @@ export function DocumentsScreen({ onNavigate: _onNavigate }: DocumentsScreenProp
         {filteredDocuments.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📂</Text>
-            <Text style={styles.emptyTitle}>No documents</Text>
+            <Text style={styles.emptyTitle}>{t('documents.emptyTitle')}</Text>
             <Text style={styles.emptyText}>
-              {searchQuery ? 'No matches found' : 'This folder is empty'}
+              {searchQuery ? t('documents.noMatches') : t('documents.folderEmpty')}
             </Text>
           </View>
         ) : (

@@ -225,3 +225,56 @@
 "rooms_count" = "%d rooms";
 "bed_count" = "%d bed";
 "bath_count" = "%d bath";
+
+/* Search Screen - Additional */
+"searching" = "Searching...";
+"no_results_found" = "No results found";
+"search_adjust_hint" = "Try adjusting your search or filters";
+"search_prompt_title" = "Search for properties";
+"search_prompt_description" = "Enter a location, keyword, or use filters";
+"recent_searches" = "Recent Searches";
+"filter_price_range" = "Price Range";
+"filter_property_type" = "Property Type";
+"filter_bedrooms" = "Bedrooms";
+"reset_filters" = "Reset Filters";
+"apply" = "Apply";
+
+/* Account Screen - Additional */
+"quick_actions" = "Quick Actions";
+"saved_searches" = "Saved Searches";
+"notification_marketing" = "Marketing";
+"language_english" = "English";
+"terms" = "Terms";
+"version_format %@" = "Version %@";
+"help_support" = "Help & Support";
+"send_feedback" = "Send Feedback";
+
+/* Listing Detail Screen - Additional */
+"loading_listing" = "Loading listing...";
+"failed_to_load_listing" = "Failed to load listing";
+"view_on_map" = "View on Map";
+"contact_via_inquiry" = "Contact via inquiry";
+"send_inquiry" = "Send Inquiry";
+"property" = "Property";
+"inquiry_your_message" = "Your Message";
+"inquiry_contact_preference" = "Contact Preference";
+"inquiry_prefer_contact" = "Prefer to be contacted by";
+"phone" = "Phone";
+"either" = "Either";
+"send" = "Send";
+
+/* Login Screen - Additional */
+"welcome_to_reality_portal" = "Welcome to Reality Portal";
+"sign_in_description" = "Sign in to save favorites, track inquiries, and get personalized recommendations.";
+"sign_in_with_pm" = "Sign in with Property Management";
+"sso_description" = "Securely sign in using your Property Management account";
+"or" = "or";
+"enter_email" = "Enter your email";
+"enter_password" = "Enter your password";
+"no_account_prompt" = "Don't have an account?";
+
+/* Localization additions for Swift views */
+"quick_actions" = "Quick Actions";
+"my_favorites" = "My Favorites";
+"my_inquiries" = "My Inquiries";
+"saved_searches" = "Saved Searches";

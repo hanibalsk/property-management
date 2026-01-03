@@ -5,6 +5,7 @@ import type {
   UpdateAnnouncementRequest,
 } from '@ppt/api-client';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SchedulePicker } from './SchedulePicker';
 import { TargetSelector } from './TargetSelector';
 
@@ -27,6 +28,7 @@ export function AnnouncementForm({
   onCancel,
   isLoading,
 }: AnnouncementFormProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState(announcement?.title ?? '');
   const [content, setContent] = useState(announcement?.content ?? '');
   const [targetType, setTargetType] = useState<AnnouncementTargetType>(
@@ -58,17 +60,17 @@ export function AnnouncementForm({
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('announcements.errors.titleRequired');
     } else if (title.length > 255) {
-      newErrors.title = 'Title must be 255 characters or less';
+      newErrors.title = t('announcements.errors.titleTooLong');
     }
 
     if (!content.trim()) {
-      newErrors.content = 'Content is required';
+      newErrors.content = t('announcements.errors.contentRequired');
     }
 
     if (targetType !== 'all' && targetIds.length === 0) {
-      newErrors.targetIds = 'Please select at least one target';
+      newErrors.targetIds = t('announcements.errors.selectTarget');
     }
 
     setErrors(newErrors);
@@ -99,33 +101,35 @@ export function AnnouncementForm({
       {/* Title */}
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-          Title *
+          {t('announcements.form.title')} *
         </label>
         <input
           id="title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter announcement title"
+          placeholder={t('announcements.form.titlePlaceholder')}
           className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
             errors.title ? 'border-red-500' : 'border-gray-300'
           }`}
           maxLength={255}
         />
         {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
-        <p className="mt-1 text-xs text-gray-500">{title.length}/255 characters</p>
+        <p className="mt-1 text-xs text-gray-500">
+          {title.length}/255 {t('announcements.form.characters')}
+        </p>
       </div>
 
       {/* Content */}
       <div>
         <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-          Content * (Markdown supported)
+          {t('announcements.form.content')} * ({t('announcements.form.markdownSupported')})
         </label>
         <textarea
           id="content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Write your announcement content here. Markdown formatting is supported."
+          placeholder={t('announcements.form.contentPlaceholder')}
           rows={8}
           className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm ${
             errors.content ? 'border-red-500' : 'border-gray-300'
@@ -160,7 +164,7 @@ export function AnnouncementForm({
             onChange={(e) => setCommentsEnabled(e.target.checked)}
             className="mr-2"
           />
-          <span className="text-sm text-gray-700">Enable comments</span>
+          <span className="text-sm text-gray-700">{t('announcements.form.enableComments')}</span>
         </label>
         <label className="flex items-center">
           <input
@@ -169,7 +173,9 @@ export function AnnouncementForm({
             onChange={(e) => setAcknowledgmentRequired(e.target.checked)}
             className="mr-2"
           />
-          <span className="text-sm text-gray-700">Require acknowledgment</span>
+          <span className="text-sm text-gray-700">
+            {t('announcements.form.requireAcknowledgment')}
+          </span>
         </label>
       </div>
 
@@ -181,14 +187,18 @@ export function AnnouncementForm({
           disabled={isLoading}
           className="px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50"
         >
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
           disabled={isLoading}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
-          {isLoading ? 'Saving...' : isEditing ? 'Update Announcement' : 'Create Announcement'}
+          {isLoading
+            ? t('common.loading')
+            : isEditing
+              ? t('announcements.form.update')
+              : t('announcements.form.create')}
         </button>
       </div>
     </form>

@@ -236,4 +236,74 @@
     <string name="cd_clear">Törlés</string>
     <string name="cd_back">Vissza</string>
     <string name="cd_filters">Szűrők</string>
+
+    <!-- Favorites Screen -->
+    <string name="favorites_tab_properties">Ingatlanok</string>
+    <string name="favorites_tab_searches">Keresések</string>
+    <string name="favorites_sign_in_title">Jelentkezzen be a kedvencek mentéséhez</string>
+    <string name="favorites_sign_in_description">Kövesse nyomon az Önt érdeklő ingatlanokat</string>
+    <string name="favorites_empty_description">Mentsen ingatlanokat későbbi összehasonlításhoz</string>
+    <string name="saved_search_new_count">%1$d új</string>
+    <string name="saved_search_disable_alerts">Értesítések kikapcsolása</string>
+    <string name="saved_search_enable_alerts">Értesítések bekapcsolása</string>
+    <string name="saved_search_delete_title">Mentett keresés törlése</string>
+    <string name="saved_search_delete_message">Biztosan törölni szeretné a(z) \"%1$s\" keresést?</string>
+    <string name="saved_searches_empty_title">Nincsenek mentett keresések</string>
+    <string name="saved_searches_empty_description">Mentse el keresését, hogy értesítést kapjon az új ajánlatokról</string>
+
+    <!-- Account Screen -->
+    <string name="edit_profile">Profil szerkesztése</string>
+    <string name="notification_listing_updates">Ajánlat frissítések</string>
+    <string name="notification_listing_updates_desc">Kapjon értesítéseket, amikor egy kedvenc ajánlat frissül</string>
+    <string name="notification_marketing">Marketing</string>
+    <string name="notification_marketing_desc">Kapjon tippeket, piaci elemzéseket és promóciós tartalmakat</string>
+    <string name="language_english">Angol</string>
+    <string name="help_support">Súgó és támogatás</string>
+    <string name="send_feedback">Visszajelzés küldése</string>
+
+    <!-- Listing Detail Screen -->
+    <string name="detail_rooms">Szobák</string>
+    <string name="detail_beds">Hálószobák</string>
+    <string name="detail_baths">Fürdőszobák</string>
+    <string name="additional_details">További részletek</string>
+    <string name="detail_year_built">Építés éve</string>
+    <string name="detail_year_renovated">Felújítás éve</string>
+    <string name="detail_floor">Emelet</string>
+    <string name="detail_usable_area">Hasznos terület</string>
+    <string name="detail_land_area">Telekterület</string>
+    <string name="detail_energy_rating">Energetikai besorolás</string>
+    <string name="detail_heating">Fűtés</string>
+    <string name="detail_parking">Parkolás</string>
+    <string name="inquiry_sent_success">Érdeklődés sikeresen elküldve!</string>
+    <string name="inquiry_dialog_title">Érdeklődés küldése</string>
+    <string name="inquiry_sign_in_hint">Jelentkezzen be az érdeklődések követéséhez</string>
+    <string name="inquiry_sending">Küldés…</string>
+    <string name="inquiry_send">Küldés</string>
+    <string name="share_property">Ingatlan megosztása</string>
+    <string name="share_via">Megosztás…</string>
+
+    <!-- Inquiries Screen -->
+    <string name="inquiries">Érdeklődések</string>
+    <string name="inquiries_tab_messages">Üzenetek</string>
+    <string name="inquiries_tab_viewings">Megtekintések</string>
+    <string name="inquiries_sign_in_title">Jelentkezzen be az érdeklődések megtekintéséhez</string>
+    <string name="inquiries_sign_in_description">Kövesse nyomon érdeklődéseit és megtekintési kérelmeit</string>
+    <string name="property">Ingatlan</string>
+    <string name="inquiry_responses_count">%1$d válasz</string>
+    <string name="status_pending">Függőben</string>
+    <string name="status_responded">Válaszolva</string>
+    <string name="status_closed">Lezárva</string>
+    <string name="status_confirmed">Megerősítve</string>
+    <string name="status_completed">Befejezve</string>
+    <string name="status_cancelled">Lemondva</string>
+    <string name="inquiries_empty_title">Még nincsenek érdeklődések</string>
+    <string name="inquiries_empty_description">Lépjen kapcsolatba a tulajdonosokkal a beszélgetés megkezdéséhez</string>
+    <string name="property_viewing">Ingatlan megtekintés</string>
+    <string name="viewing_confirmed_label">(Megerősítve)</string>
+    <string name="viewing_cancel_title">Megtekintés lemondása</string>
+    <string name="viewing_cancel_message">Biztosan le szeretné mondani ezt a megtekintési kérelmet?</string>
+    <string name="viewing_cancel_confirm">Megtekintés lemondása</string>
+    <string name="viewing_cancel_keep">Megtartás</string>
+    <string name="viewings_empty_title">Nincsenek ütemezett megtekintések</string>
+    <string name="viewings_empty_description">Ütemezzen megtekintéseket az ingatlanok személyes megtekintéséhez</string>
 </resources>

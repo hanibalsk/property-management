@@ -236,4 +236,74 @@
     <string name="cd_clear">Clear</string>
     <string name="cd_back">Back</string>
     <string name="cd_filters">Filters</string>
+
+    <!-- Favorites Screen -->
+    <string name="favorites_tab_properties">Properties</string>
+    <string name="favorites_tab_searches">Searches</string>
+    <string name="favorites_sign_in_title">Sign in to save favorites</string>
+    <string name="favorites_sign_in_description">Keep track of properties you\'re interested in</string>
+    <string name="favorites_empty_description">Save properties to compare later</string>
+    <string name="saved_search_new_count">%1$d new</string>
+    <string name="saved_search_disable_alerts">Disable alerts</string>
+    <string name="saved_search_enable_alerts">Enable alerts</string>
+    <string name="saved_search_delete_title">Delete Saved Search</string>
+    <string name="saved_search_delete_message">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="saved_searches_empty_title">No saved searches</string>
+    <string name="saved_searches_empty_description">Save your search to get notified about new listings</string>
+
+    <!-- Account Screen -->
+    <string name="edit_profile">Edit Profile</string>
+    <string name="notification_listing_updates">Listing Updates</string>
+    <string name="notification_listing_updates_desc">Get notified when a favorite listing is updated</string>
+    <string name="notification_marketing">Marketing</string>
+    <string name="notification_marketing_desc">Receive tips, market insights, and promotional content</string>
+    <string name="language_english">English</string>
+    <string name="help_support">Help &amp; Support</string>
+    <string name="send_feedback">Send Feedback</string>
+
+    <!-- Listing Detail Screen -->
+    <string name="detail_rooms">Rooms</string>
+    <string name="detail_beds">Beds</string>
+    <string name="detail_baths">Baths</string>
+    <string name="additional_details">Additional Details</string>
+    <string name="detail_year_built">Year Built</string>
+    <string name="detail_year_renovated">Year Renovated</string>
+    <string name="detail_floor">Floor</string>
+    <string name="detail_usable_area">Usable Area</string>
+    <string name="detail_land_area">Land Area</string>
+    <string name="detail_energy_rating">Energy Rating</string>
+    <string name="detail_heating">Heating</string>
+    <string name="detail_parking">Parking</string>
+    <string name="inquiry_sent_success">Inquiry sent successfully!</string>
+    <string name="inquiry_dialog_title">Send Inquiry</string>
+    <string name="inquiry_sign_in_hint">Sign in to track your inquiries</string>
+    <string name="inquiry_sending">Sending…</string>
+    <string name="inquiry_send">Send</string>
+    <string name="share_property">Share Property</string>
+    <string name="share_via">Share via…</string>
+
+    <!-- Inquiries Screen -->
+    <string name="inquiries">Inquiries</string>
+    <string name="inquiries_tab_messages">Messages</string>
+    <string name="inquiries_tab_viewings">Viewings</string>
+    <string name="inquiries_sign_in_title">Sign in to view inquiries</string>
+    <string name="inquiries_sign_in_description">Track your property inquiries and viewing requests</string>
+    <string name="property">Property</string>
+    <string name="inquiry_responses_count">%1$d responses</string>
+    <string name="status_pending">Pending</string>
+    <string name="status_responded">Responded</string>
+    <string name="status_closed">Closed</string>
+    <string name="status_confirmed">Confirmed</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_cancelled">Cancelled</string>
+    <string name="inquiries_empty_title">No inquiries yet</string>
+    <string name="inquiries_empty_description">Contact property owners to start a conversation</string>
+    <string name="property_viewing">Property Viewing</string>
+    <string name="viewing_confirmed_label">(Confirmed)</string>
+    <string name="viewing_cancel_title">Cancel Viewing</string>
+    <string name="viewing_cancel_message">Are you sure you want to cancel this viewing request?</string>
+    <string name="viewing_cancel_confirm">Cancel Viewing</string>
+    <string name="viewing_cancel_keep">Keep</string>
+    <string name="viewings_empty_title">No viewings scheduled</string>
+    <string name="viewings_empty_description">Schedule viewings to see properties in person</string>
 </resources>

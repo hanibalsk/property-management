@@ -1,5 +1,6 @@
 import type { AnnouncementTargetType } from '@ppt/api-client';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface TargetSelectorProps {
   targetType: AnnouncementTargetType;
@@ -20,6 +21,7 @@ export function TargetSelector({
   units = [],
   roles = [],
 }: TargetSelectorProps) {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -46,7 +48,9 @@ export function TargetSelector({
         return (
           <div className="mt-2 max-h-48 overflow-y-auto border rounded-md">
             {filtered.length === 0 ? (
-              <p className="p-3 text-gray-500 text-sm">No buildings found</p>
+              <p className="p-3 text-gray-500 text-sm">
+                {t('announcements.target.noBuildingsFound')}
+              </p>
             ) : (
               filtered.map((building) => (
                 <label
@@ -76,7 +80,7 @@ export function TargetSelector({
         return (
           <div className="mt-2 max-h-48 overflow-y-auto border rounded-md">
             {filtered.length === 0 ? (
-              <p className="p-3 text-gray-500 text-sm">No units found</p>
+              <p className="p-3 text-gray-500 text-sm">{t('announcements.target.noUnitsFound')}</p>
             ) : (
               filtered.map((unit) => (
                 <label
@@ -106,7 +110,7 @@ export function TargetSelector({
         return (
           <div className="mt-2 max-h-48 overflow-y-auto border rounded-md">
             {filtered.length === 0 ? (
-              <p className="p-3 text-gray-500 text-sm">No roles found</p>
+              <p className="p-3 text-gray-500 text-sm">{t('announcements.target.noRolesFound')}</p>
             ) : (
               filtered.map((role) => (
                 <label
@@ -132,9 +136,37 @@ export function TargetSelector({
     }
   };
 
+  const getSearchPlaceholder = () => {
+    switch (targetType) {
+      case 'building':
+        return t('announcements.target.searchBuildings');
+      case 'units':
+        return t('announcements.target.searchUnits');
+      case 'roles':
+        return t('announcements.target.searchRoles');
+      default:
+        return t('common.search');
+    }
+  };
+
+  const getSelectedLabel = () => {
+    if (targetType === 'building') {
+      return t('announcements.target.buildingsSelected', { count: targetIds.length });
+    }
+    if (targetType === 'units') {
+      return t('announcements.target.unitsSelected', { count: targetIds.length });
+    }
+    if (targetType === 'roles') {
+      return t('announcements.target.rolesSelected', { count: targetIds.length });
+    }
+    return '';
+  };
+
   return (
     <div>
-      <span className="block text-sm font-medium text-gray-700 mb-2">Target Audience</span>
+      <span className="block text-sm font-medium text-gray-700 mb-2">
+        {t('announcements.target.label')}
+      </span>
 
       <div className="flex flex-wrap gap-2 mb-3">
         {(['all', 'building', 'units', 'roles'] as const).map((type) => (
@@ -148,10 +180,10 @@ export function TargetSelector({
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {type === 'all' && 'All Users'}
-            {type === 'building' && 'Building'}
-            {type === 'units' && 'Specific Units'}
-            {type === 'roles' && 'By Role'}
+            {type === 'all' && t('announcements.target.allUsers')}
+            {type === 'building' && t('announcements.target.building')}
+            {type === 'units' && t('announcements.target.specificUnits')}
+            {type === 'roles' && t('announcements.target.byRole')}
           </button>
         ))}
       </div>
@@ -160,16 +192,14 @@ export function TargetSelector({
         <>
           <input
             type="text"
-            placeholder={`Search ${targetType}...`}
+            placeholder={getSearchPlaceholder()}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {renderTargetList()}
           {targetIds.length > 0 && (
-            <p className="mt-2 text-sm text-gray-500">
-              {targetIds.length} {targetType === 'building' ? 'building(s)' : targetType} selected
-            </p>
+            <p className="mt-2 text-sm text-gray-500">{getSelectedLabel()}</p>
           )}
         </>
       )}

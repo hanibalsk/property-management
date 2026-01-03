@@ -225,3 +225,50 @@
 "rooms_count" = "%d szoba";
 "bed_count" = "%d haloszoba";
 "bath_count" = "%d furdoszoba";
+
+/* Search Screen - Additional */
+"searching" = "Kereses...";
+"no_results_found" = "Nincs talalat";
+"search_adjust_hint" = "Probalja modositani a keresest vagy a szuroket";
+"search_prompt_title" = "Ingatlan keresese";
+"search_prompt_description" = "Adjon meg helyszint, kulcsszot vagy hasznalja a szuroket";
+"recent_searches" = "Legutobbi keresések";
+"filter_price_range" = "Artartomany";
+"filter_property_type" = "Ingatlan tipusa";
+"filter_bedrooms" = "Haloszobak";
+"reset_filters" = "Szurok visszaallitasa";
+"apply" = "Alkalmaz";
+
+/* Account Screen - Additional */
+"quick_actions" = "Gyors muveletek";
+"saved_searches" = "Mentett keresések";
+"notification_marketing" = "Marketing";
+"language_english" = "Angol";
+"terms" = "Feltetelek";
+"version_format %@" = "Verzio %@";
+"help_support" = "Sugo es tamogatas";
+"send_feedback" = "Visszajelzes kuldese";
+
+/* Listing Detail Screen - Additional */
+"loading_listing" = "Ajanlat betoltese...";
+"failed_to_load_listing" = "Nem sikerult betolteni az ajanlatot";
+"view_on_map" = "Megtekintes terkepen";
+"contact_via_inquiry" = "Kapcsolatfelvetel erdeklodessen keresztul";
+"send_inquiry" = "Erdeklodes kuldese";
+"property" = "Ingatlan";
+"inquiry_your_message" = "Uzenete";
+"inquiry_contact_preference" = "Kapcsolatfelvételi preferencia";
+"inquiry_prefer_contact" = "Elonyben reszesitett kapcsolatfelvetel";
+"phone" = "Telefon";
+"either" = "Barmely";
+"send" = "Kuldes";
+
+/* Login Screen - Additional */
+"welcome_to_reality_portal" = "Udvozoljuk a Reality Portal-ban";
+"sign_in_description" = "Jelentkezzen be a kedvencek mentéséhez, érdeklődesek kovetesehez es szemelyre szabott ajanlatokhoz.";
+"sign_in_with_pm" = "Bejelentkezes Property Management-tel";
+"sso_description" = "Biztonsagosan jelentkezzen be Property Management fiokjaval";
+"or" = "vagy";
+"enter_email" = "Adja meg e-mail cimet";
+"enter_password" = "Adja meg jelszavat";
+"no_account_prompt" = "Nincs fiokja?";

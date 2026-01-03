@@ -236,4 +236,74 @@
     <string name="cd_clear">Vymazať</string>
     <string name="cd_back">Späť</string>
     <string name="cd_filters">Filtre</string>
+
+    <!-- Favorites Screen -->
+    <string name="favorites_tab_properties">Nehnuteľnosti</string>
+    <string name="favorites_tab_searches">Vyhľadávania</string>
+    <string name="favorites_sign_in_title">Prihláste sa pre uloženie obľúbených</string>
+    <string name="favorites_sign_in_description">Sledujte nehnuteľnosti, ktoré vás zaujímajú</string>
+    <string name="favorites_empty_description">Uložte nehnuteľnosti na neskoršie porovnanie</string>
+    <string name="saved_search_new_count">%1$d nových</string>
+    <string name="saved_search_disable_alerts">Vypnúť upozornenia</string>
+    <string name="saved_search_enable_alerts">Zapnúť upozornenia</string>
+    <string name="saved_search_delete_title">Vymazať uložené vyhľadávanie</string>
+    <string name="saved_search_delete_message">Naozaj chcete vymazať \"%1$s\"?</string>
+    <string name="saved_searches_empty_title">Žiadne uložené vyhľadávania</string>
+    <string name="saved_searches_empty_description">Uložte vyhľadávanie pre upozornenia na nové ponuky</string>
+
+    <!-- Account Screen -->
+    <string name="edit_profile">Upraviť profil</string>
+    <string name="notification_listing_updates">Aktualizácie ponúk</string>
+    <string name="notification_listing_updates_desc">Dostávajte upozornenia, keď sa aktualizuje obľúbená ponuka</string>
+    <string name="notification_marketing">Marketing</string>
+    <string name="notification_marketing_desc">Dostávajte tipy, trhové prehľady a propagačný obsah</string>
+    <string name="language_english">Angličtina</string>
+    <string name="help_support">Pomoc a podpora</string>
+    <string name="send_feedback">Poslať spätnú väzbu</string>
+
+    <!-- Listing Detail Screen -->
+    <string name="detail_rooms">Izby</string>
+    <string name="detail_beds">Spálne</string>
+    <string name="detail_baths">Kúpeľne</string>
+    <string name="additional_details">Ďalšie detaily</string>
+    <string name="detail_year_built">Rok výstavby</string>
+    <string name="detail_year_renovated">Rok rekonštrukcie</string>
+    <string name="detail_floor">Poschodie</string>
+    <string name="detail_usable_area">Úžitková plocha</string>
+    <string name="detail_land_area">Plocha pozemku</string>
+    <string name="detail_energy_rating">Energetická trieda</string>
+    <string name="detail_heating">Vykurovanie</string>
+    <string name="detail_parking">Parkovanie</string>
+    <string name="inquiry_sent_success">Dopyt bol úspešne odoslaný!</string>
+    <string name="inquiry_dialog_title">Odoslať dopyt</string>
+    <string name="inquiry_sign_in_hint">Prihláste sa pre sledovanie dopytov</string>
+    <string name="inquiry_sending">Odosiela sa…</string>
+    <string name="inquiry_send">Odoslať</string>
+    <string name="share_property">Zdieľať nehnuteľnosť</string>
+    <string name="share_via">Zdieľať cez…</string>
+
+    <!-- Inquiries Screen -->
+    <string name="inquiries">Dopyty</string>
+    <string name="inquiries_tab_messages">Správy</string>
+    <string name="inquiries_tab_viewings">Obhliadky</string>
+    <string name="inquiries_sign_in_title">Prihláste sa pre zobrazenie dopytov</string>
+    <string name="inquiries_sign_in_description">Sledujte svoje dopyty a žiadosti o obhliadky</string>
+    <string name="property">Nehnuteľnosť</string>
+    <string name="inquiry_responses_count">%1$d odpovedí</string>
+    <string name="status_pending">Čaká sa</string>
+    <string name="status_responded">Odpoveď</string>
+    <string name="status_closed">Uzavreté</string>
+    <string name="status_confirmed">Potvrdené</string>
+    <string name="status_completed">Dokončené</string>
+    <string name="status_cancelled">Zrušené</string>
+    <string name="inquiries_empty_title">Zatiaľ žiadne dopyty</string>
+    <string name="inquiries_empty_description">Kontaktujte majiteľov pre začatie konverzácie</string>
+    <string name="property_viewing">Obhliadka nehnuteľnosti</string>
+    <string name="viewing_confirmed_label">(Potvrdené)</string>
+    <string name="viewing_cancel_title">Zrušiť obhliadku</string>
+    <string name="viewing_cancel_message">Naozaj chcete zrušiť túto žiadosť o obhliadku?</string>
+    <string name="viewing_cancel_confirm">Zrušiť obhliadku</string>
+    <string name="viewing_cancel_keep">Ponechať</string>
+    <string name="viewings_empty_title">Žiadne naplánované obhliadky</string>
+    <string name="viewings_empty_description">Naplánujte obhliadky pre osobné prehliadnutie</string>
 </resources>

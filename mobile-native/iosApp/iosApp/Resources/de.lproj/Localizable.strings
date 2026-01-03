@@ -225,3 +225,50 @@
 "rooms_count" = "%d Zimmer";
 "bed_count" = "%d Schlafzimmer";
 "bath_count" = "%d Bad";
+
+/* Search Screen - Additional */
+"searching" = "Suche laeuft...";
+"no_results_found" = "Keine Ergebnisse gefunden";
+"search_adjust_hint" = "Versuchen Sie, Ihre Suche oder Filter anzupassen";
+"search_prompt_title" = "Immobilien suchen";
+"search_prompt_description" = "Geben Sie einen Ort, ein Stichwort ein oder verwenden Sie Filter";
+"recent_searches" = "Letzte Suchen";
+"filter_price_range" = "Preisspanne";
+"filter_property_type" = "Immobilientyp";
+"filter_bedrooms" = "Schlafzimmer";
+"reset_filters" = "Filter zuruecksetzen";
+"apply" = "Anwenden";
+
+/* Account Screen - Additional */
+"quick_actions" = "Schnellaktionen";
+"saved_searches" = "Gespeicherte Suchen";
+"notification_marketing" = "Marketing";
+"language_english" = "Englisch";
+"terms" = "Bedingungen";
+"version_format %@" = "Version %@";
+"help_support" = "Hilfe und Support";
+"send_feedback" = "Feedback senden";
+
+/* Listing Detail Screen - Additional */
+"loading_listing" = "Angebot wird geladen...";
+"failed_to_load_listing" = "Angebot konnte nicht geladen werden";
+"view_on_map" = "Auf Karte anzeigen";
+"contact_via_inquiry" = "Ueber Anfrage kontaktieren";
+"send_inquiry" = "Anfrage senden";
+"property" = "Immobilie";
+"inquiry_your_message" = "Ihre Nachricht";
+"inquiry_contact_preference" = "Kontaktpraeferenz";
+"inquiry_prefer_contact" = "Bevorzugt kontaktiert werden ueber";
+"phone" = "Telefon";
+"either" = "Beides";
+"send" = "Senden";
+
+/* Login Screen - Additional */
+"welcome_to_reality_portal" = "Willkommen bei Reality Portal";
+"sign_in_description" = "Melden Sie sich an, um Favoriten zu speichern, Anfragen zu verfolgen und personalisierte Empfehlungen zu erhalten.";
+"sign_in_with_pm" = "Mit Property Management anmelden";
+"sso_description" = "Melden Sie sich sicher mit Ihrem Property Management-Konto an";
+"or" = "oder";
+"enter_email" = "Geben Sie Ihre E-Mail ein";
+"enter_password" = "Geben Sie Ihr Passwort ein";
+"no_account_prompt" = "Haben Sie kein Konto?";

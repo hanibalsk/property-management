@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -30,17 +31,17 @@ interface CreateFaultScreenProps {
   onCancel: () => void;
 }
 
-const categories: { value: FaultCategory; label: string }[] = [
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'heating', label: 'Heating' },
-  { value: 'structural', label: 'Structural' },
-  { value: 'exterior', label: 'Exterior' },
-  { value: 'elevator', label: 'Elevator' },
-  { value: 'common_area', label: 'Common Area' },
-  { value: 'security', label: 'Security' },
-  { value: 'cleaning', label: 'Cleaning' },
-  { value: 'other', label: 'Other' },
+const categoryKeys: FaultCategory[] = [
+  'plumbing',
+  'electrical',
+  'heating',
+  'structural',
+  'exterior',
+  'elevator',
+  'common_area',
+  'security',
+  'cleaning',
+  'other',
 ];
 
 export function CreateFaultScreen({
@@ -49,6 +50,7 @@ export function CreateFaultScreen({
   onSubmit,
   onCancel,
 }: CreateFaultScreenProps) {
+  const { t } = useTranslation();
   const [buildingId, setBuildingId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -58,9 +60,9 @@ export function CreateFaultScreen({
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!buildingId) newErrors.buildingId = 'Please select a building';
-    if (!title.trim()) newErrors.title = 'Title is required';
-    if (!description.trim()) newErrors.description = 'Description is required';
+    if (!buildingId) newErrors.buildingId = t('faults.selectBuilding');
+    if (!title.trim()) newErrors.title = t('faults.titleRequired');
+    if (!description.trim()) newErrors.description = t('faults.descriptionRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -83,7 +85,7 @@ export function CreateFaultScreen({
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Building *</Text>
+        <Text style={styles.label}>{t('faults.buildingLabel')} *</Text>
         <View style={styles.pickerContainer}>
           {buildings.map((b) => (
             <TouchableOpacity
@@ -104,51 +106,51 @@ export function CreateFaultScreen({
         </View>
         {errors.buildingId && <Text style={styles.error}>{errors.buildingId}</Text>}
 
-        <Text style={styles.label}>Title *</Text>
+        <Text style={styles.label}>{t('faults.titleLabel')} *</Text>
         <TextInput
           style={[styles.input, errors.title ? styles.inputError : undefined]}
           value={title}
           onChangeText={setTitle}
-          placeholder="Brief description of the issue"
+          placeholder={t('faults.titlePlaceholder')}
           maxLength={255}
         />
         {errors.title && <Text style={styles.error}>{errors.title}</Text>}
 
-        <Text style={styles.label}>Description *</Text>
+        <Text style={styles.label}>{t('faults.descriptionLabel')} *</Text>
         <TextInput
           style={[styles.textArea, errors.description ? styles.inputError : undefined]}
           value={description}
           onChangeText={setDescription}
-          placeholder="Provide detailed information..."
+          placeholder={t('faults.descriptionPlaceholder')}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
         />
         {errors.description && <Text style={styles.error}>{errors.description}</Text>}
 
-        <Text style={styles.label}>Location (optional)</Text>
+        <Text style={styles.label}>{t('faults.locationOptional')}</Text>
         <TextInput
           style={styles.input}
           value={locationDescription}
           onChangeText={setLocationDescription}
-          placeholder="e.g., Kitchen sink, Hallway 3rd floor"
+          placeholder={t('faults.locationPlaceholder')}
         />
 
-        <Text style={styles.label}>Category</Text>
+        <Text style={styles.label}>{t('faults.categoryLabel')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-          {categories.map((cat) => (
+          {categoryKeys.map((cat) => (
             <TouchableOpacity
-              key={cat.value}
-              style={[styles.categoryChip, category === cat.value && styles.categoryChipSelected]}
-              onPress={() => setCategory(cat.value)}
+              key={cat}
+              style={[styles.categoryChip, category === cat && styles.categoryChipSelected]}
+              onPress={() => setCategory(cat)}
             >
               <Text
                 style={[
                   styles.categoryChipText,
-                  category === cat.value && styles.categoryChipTextSelected,
+                  category === cat && styles.categoryChipTextSelected,
                 ]}
               >
-                {cat.label}
+                {t(`faults.category.${cat}`)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -157,7 +159,7 @@ export function CreateFaultScreen({
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.cancelButton} onPress={onCancel} disabled={isSubmitting}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
+          <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
@@ -167,7 +169,7 @@ export function CreateFaultScreen({
           {isSubmitting ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.submitButtonText}>Submit</Text>
+            <Text style={styles.submitButtonText}>{t('common.submit')}</Text>
           )}
         </TouchableOpacity>
       </View>

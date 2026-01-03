@@ -22,11 +22,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.R
 import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
@@ -110,12 +112,18 @@ fun ListingDetailScreen(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = { showShareSheet = true }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share")
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = stringResource(R.string.share)
+                        )
                     }
                     IconButton(
                         onClick = {
@@ -145,7 +153,8 @@ fun ListingDetailScreen(
                             if (isFavorite) Icons.Default.Favorite
                             else Icons.Default.FavoriteBorder,
                             contentDescription =
-                                if (isFavorite) "Remove from favorites" else "Add to favorites",
+                                if (isFavorite) stringResource(R.string.remove_from_favorites)
+                                else stringResource(R.string.add_to_favorites),
                             tint =
                                 if (isFavorite) MaterialTheme.colorScheme.error
                                 else MaterialTheme.colorScheme.onSurface
@@ -405,8 +414,8 @@ private fun PriceSection(listing: ListingDetail) {
             Text(
                 text =
                     when (listing.type) {
-                        ListingType.SALE -> "For Sale"
-                        ListingType.RENT -> "For Rent"
+                        ListingType.SALE -> stringResource(R.string.for_sale)
+                        ListingType.RENT -> stringResource(R.string.for_rent)
                     },
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 style = MaterialTheme.typography.labelLarge,
@@ -462,13 +471,17 @@ private fun PropertyDetailsGrid(listing: ListingDetail) {
                 PropertyDetailItem(
                     icon = Icons.Default.MeetingRoom,
                     value = "$rooms",
-                    label = "Rooms"
+                    label = stringResource(R.string.detail_rooms)
                 )
             }
 
             listing.bedrooms?.let { bedrooms ->
                 VerticalDivider(modifier = Modifier.height(48.dp))
-                PropertyDetailItem(icon = Icons.Default.Bed, value = "$bedrooms", label = "Beds")
+                PropertyDetailItem(
+                    icon = Icons.Default.Bed,
+                    value = "$bedrooms",
+                    label = stringResource(R.string.detail_beds)
+                )
             }
 
             listing.bathrooms?.let { bathrooms ->
@@ -476,7 +489,7 @@ private fun PropertyDetailsGrid(listing: ListingDetail) {
                 PropertyDetailItem(
                     icon = Icons.Default.Bathtub,
                     value = "$bathrooms",
-                    label = "Baths"
+                    label = stringResource(R.string.detail_baths)
                 )
             }
         }
@@ -514,7 +527,7 @@ private fun PropertyDetailItem(
 private fun DescriptionSection(description: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Text(
-            text = "Description",
+            text = stringResource(R.string.description),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
@@ -533,7 +546,7 @@ private fun DescriptionSection(description: String) {
 private fun FeaturesSection(features: List<String>) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Text(
-            text = "Features",
+            text = stringResource(R.string.features),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
@@ -563,27 +576,45 @@ private fun AdditionalDetailsSection(listing: ListingDetail) {
     Card(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Additional Details",
+                text = stringResource(R.string.additional_details),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            listing.yearBuilt?.let { DetailRow(label = "Year Built", value = "$it") }
-            listing.yearRenovated?.let { DetailRow(label = "Year Renovated", value = "$it") }
+            listing.yearBuilt?.let {
+                DetailRow(label = stringResource(R.string.detail_year_built), value = "$it")
+            }
+            listing.yearRenovated?.let {
+                DetailRow(label = stringResource(R.string.detail_year_renovated), value = "$it")
+            }
             listing.floor?.let {
                 val floorText =
                     if (listing.totalFloors != null) "$it/${listing.totalFloors}" else "$it"
-                DetailRow(label = "Floor", value = floorText)
+                DetailRow(label = stringResource(R.string.detail_floor), value = floorText)
             }
             listing.usableAreaSqm?.let {
-                DetailRow(label = "Usable Area", value = "${it.toInt()} m²")
+                DetailRow(
+                    label = stringResource(R.string.detail_usable_area),
+                    value = "${it.toInt()} m²"
+                )
             }
-            listing.landAreaSqm?.let { DetailRow(label = "Land Area", value = "${it.toInt()} m²") }
-            listing.energyRating?.let { DetailRow(label = "Energy Rating", value = it) }
-            listing.heatingType?.let { DetailRow(label = "Heating", value = it) }
-            listing.parking?.let { DetailRow(label = "Parking", value = it) }
+            listing.landAreaSqm?.let {
+                DetailRow(
+                    label = stringResource(R.string.detail_land_area),
+                    value = "${it.toInt()} m²"
+                )
+            }
+            listing.energyRating?.let {
+                DetailRow(label = stringResource(R.string.detail_energy_rating), value = it)
+            }
+            listing.heatingType?.let {
+                DetailRow(label = stringResource(R.string.detail_heating), value = it)
+            }
+            listing.parking?.let {
+                DetailRow(label = stringResource(R.string.detail_parking), value = it)
+            }
         }
     }
 }
@@ -664,7 +695,7 @@ private fun BottomContactBar(
                 OutlinedButton(onClick = onCallClick, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Phone, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Call")
+                    Text(stringResource(R.string.action_call))
                 }
             }
 
@@ -672,14 +703,14 @@ private fun BottomContactBar(
                 OutlinedButton(onClick = onEmailClick, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Email, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Email")
+                    Text(stringResource(R.string.action_email))
                 }
             }
 
             Button(onClick = onInquiryClick, modifier = Modifier.weight(1f)) {
                 Icon(Icons.Default.Message, contentDescription = null)
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Inquire")
+                Text(stringResource(R.string.action_inquire))
             }
         }
     }
@@ -705,7 +736,7 @@ private fun ErrorContent(message: String, onRetry: () -> Unit, modifier: Modifie
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) { Text("Retry") }
+        Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }
 
@@ -734,7 +765,7 @@ private fun InquiryDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isSubmitting) onDismiss() },
-        title = { Text("Send Inquiry") },
+        title = { Text(stringResource(R.string.inquiry_dialog_title)) },
         text = {
             Column {
                 if (!isAuthenticated) {
@@ -755,7 +786,7 @@ private fun InquiryDialog(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Sign in to track your inquiries",
+                                text = stringResource(R.string.inquiry_sign_in_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
@@ -767,7 +798,7 @@ private fun InquiryDialog(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Name *") },
+                        label = { Text(stringResource(R.string.label_name_required)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = !isSubmitting
@@ -777,7 +808,7 @@ private fun InquiryDialog(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Email *") },
+                        label = { Text(stringResource(R.string.label_email_required)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = !isSubmitting
@@ -787,7 +818,7 @@ private fun InquiryDialog(
                     OutlinedTextField(
                         value = phone,
                         onValueChange = { phone = it },
-                        label = { Text("Phone (optional)") },
+                        label = { Text(stringResource(R.string.label_phone_optional)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         enabled = !isSubmitting
@@ -798,7 +829,7 @@ private fun InquiryDialog(
                 OutlinedTextField(
                     value = message,
                     onValueChange = { message = it },
-                    label = { Text("Message") },
+                    label = { Text(stringResource(R.string.label_message)) },
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 4,
                     maxLines = 6,
@@ -836,11 +867,16 @@ private fun InquiryDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(if (isSubmitting) "Sending..." else "Send")
+                Text(
+                    if (isSubmitting) stringResource(R.string.inquiry_sending)
+                    else stringResource(R.string.inquiry_send)
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSubmitting) { Text("Cancel") }
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(R.string.cancel))
+            }
         }
     )
 }
@@ -853,7 +889,7 @@ private fun ShareListingSheet(listing: ListingDetail, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
-                text = "Share Property",
+                text = stringResource(R.string.share_property),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -861,13 +897,13 @@ private fun ShareListingSheet(listing: ListingDetail, onDismiss: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
 
             ListItem(
-                headlineContent = { Text("Share Link") },
+                headlineContent = { Text(stringResource(R.string.action_share_link)) },
                 leadingContent = { Icon(Icons.Default.Link, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth()
             )
 
             ListItem(
-                headlineContent = { Text("Share via...") },
+                headlineContent = { Text(stringResource(R.string.share_via)) },
                 leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth()
             )

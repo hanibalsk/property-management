@@ -236,4 +236,74 @@
     <string name="cd_clear">Löschen</string>
     <string name="cd_back">Zurück</string>
     <string name="cd_filters">Filter</string>
+
+    <!-- Favorites Screen -->
+    <string name="favorites_tab_properties">Immobilien</string>
+    <string name="favorites_tab_searches">Suchen</string>
+    <string name="favorites_sign_in_title">Melden Sie sich an, um Favoriten zu speichern</string>
+    <string name="favorites_sign_in_description">Behalten Sie Immobilien im Auge, die Sie interessieren</string>
+    <string name="favorites_empty_description">Speichern Sie Immobilien zum späteren Vergleichen</string>
+    <string name="saved_search_new_count">%1$d neu</string>
+    <string name="saved_search_disable_alerts">Benachrichtigungen deaktivieren</string>
+    <string name="saved_search_enable_alerts">Benachrichtigungen aktivieren</string>
+    <string name="saved_search_delete_title">Gespeicherte Suche löschen</string>
+    <string name="saved_search_delete_message">Möchten Sie \"%1$s\" wirklich löschen?</string>
+    <string name="saved_searches_empty_title">Keine gespeicherten Suchen</string>
+    <string name="saved_searches_empty_description">Speichern Sie Ihre Suche, um über neue Angebote benachrichtigt zu werden</string>
+
+    <!-- Account Screen -->
+    <string name="edit_profile">Profil bearbeiten</string>
+    <string name="notification_listing_updates">Angebots-Updates</string>
+    <string name="notification_listing_updates_desc">Erhalten Sie Benachrichtigungen, wenn ein Lieblingsangebot aktualisiert wird</string>
+    <string name="notification_marketing">Marketing</string>
+    <string name="notification_marketing_desc">Erhalten Sie Tipps, Markteinblicke und Werbeinhalte</string>
+    <string name="language_english">Englisch</string>
+    <string name="help_support">Hilfe und Support</string>
+    <string name="send_feedback">Feedback senden</string>
+
+    <!-- Listing Detail Screen -->
+    <string name="detail_rooms">Zimmer</string>
+    <string name="detail_beds">Schlafzimmer</string>
+    <string name="detail_baths">Bäder</string>
+    <string name="additional_details">Zusätzliche Details</string>
+    <string name="detail_year_built">Baujahr</string>
+    <string name="detail_year_renovated">Renovierungsjahr</string>
+    <string name="detail_floor">Etage</string>
+    <string name="detail_usable_area">Nutzfläche</string>
+    <string name="detail_land_area">Grundstücksfläche</string>
+    <string name="detail_energy_rating">Energieklasse</string>
+    <string name="detail_heating">Heizung</string>
+    <string name="detail_parking">Parken</string>
+    <string name="inquiry_sent_success">Anfrage erfolgreich gesendet!</string>
+    <string name="inquiry_dialog_title">Anfrage senden</string>
+    <string name="inquiry_sign_in_hint">Melden Sie sich an, um Ihre Anfragen zu verfolgen</string>
+    <string name="inquiry_sending">Wird gesendet…</string>
+    <string name="inquiry_send">Senden</string>
+    <string name="share_property">Immobilie teilen</string>
+    <string name="share_via">Teilen über…</string>
+
+    <!-- Inquiries Screen -->
+    <string name="inquiries">Anfragen</string>
+    <string name="inquiries_tab_messages">Nachrichten</string>
+    <string name="inquiries_tab_viewings">Besichtigungen</string>
+    <string name="inquiries_sign_in_title">Melden Sie sich an, um Anfragen zu sehen</string>
+    <string name="inquiries_sign_in_description">Verfolgen Sie Ihre Anfragen und Besichtigungsanfragen</string>
+    <string name="property">Immobilie</string>
+    <string name="inquiry_responses_count">%1$d Antworten</string>
+    <string name="status_pending">Ausstehend</string>
+    <string name="status_responded">Beantwortet</string>
+    <string name="status_closed">Geschlossen</string>
+    <string name="status_confirmed">Bestätigt</string>
+    <string name="status_completed">Abgeschlossen</string>
+    <string name="status_cancelled">Storniert</string>
+    <string name="inquiries_empty_title">Noch keine Anfragen</string>
+    <string name="inquiries_empty_description">Kontaktieren Sie Eigentümer, um eine Konversation zu starten</string>
+    <string name="property_viewing">Immobilienbesichtigung</string>
+    <string name="viewing_confirmed_label">(Bestätigt)</string>
+    <string name="viewing_cancel_title">Besichtigung stornieren</string>
+    <string name="viewing_cancel_message">Möchten Sie diese Besichtigungsanfrage wirklich stornieren?</string>
+    <string name="viewing_cancel_confirm">Besichtigung stornieren</string>
+    <string name="viewing_cancel_keep">Behalten</string>
+    <string name="viewings_empty_title">Keine geplanten Besichtigungen</string>
+    <string name="viewings_empty_description">Planen Sie Besichtigungen, um Immobilien persönlich zu sehen</string>
 </resources>

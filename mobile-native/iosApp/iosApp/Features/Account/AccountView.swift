@@ -19,14 +19,14 @@ struct AccountView: View {
                 notAuthenticatedView
             }
         }
-        .navigationTitle("Account")
-        .alert("Sign Out", isPresented: $showLogoutConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Sign Out", role: .destructive) {
+        .navigationTitle(String(localized: "tab_account"))
+        .alert(String(localized: "sign_out"), isPresented: $showLogoutConfirmation) {
+            Button(String(localized: "cancel"), role: .cancel) {}
+            Button(String(localized: "sign_out"), role: .destructive) {
                 authManager.logout()
             }
         } message: {
-            Text("Are you sure you want to sign out?")
+            Text(String(localized: "confirm_sign_out_message"))
         }
     }
 
@@ -72,123 +72,123 @@ struct AccountView: View {
             }
 
             // Quick actions section
-            Section("Quick Actions") {
+            Section(String(localized: "quick_actions")) {
                 NavigationLink {
-                    Text("My Favorites")
+                    Text(String(localized: "my_favorites"))
                 } label: {
-                    Label("My Favorites", systemImage: "heart.fill")
+                    Label(String(localized: "my_favorites"), systemImage: "heart.fill")
                 }
 
                 NavigationLink {
-                    Text("My Inquiries")
+                    Text(String(localized: "my_inquiries"))
                 } label: {
-                    Label("My Inquiries", systemImage: "envelope.fill")
+                    Label(String(localized: "my_inquiries"), systemImage: "envelope.fill")
                 }
 
                 NavigationLink {
-                    Text("Saved Searches")
+                    Text(String(localized: "saved_searches"))
                 } label: {
-                    Label("Saved Searches", systemImage: "bookmark.fill")
+                    Label(String(localized: "saved_searches"), systemImage: "bookmark.fill")
                 }
             }
 
             // Notifications section
-            Section("Notifications") {
+            Section(String(localized: "notifications")) {
                 Toggle(isOn: .constant(true)) {
-                    Label("New Listings", systemImage: "bell.badge.fill")
+                    Label(String(localized: "notification_new_listings"), systemImage: "bell.badge.fill")
                 }
 
                 Toggle(isOn: .constant(true)) {
-                    Label("Price Drops", systemImage: "tag.fill")
+                    Label(String(localized: "notification_price_drops"), systemImage: "tag.fill")
                 }
 
                 Toggle(isOn: .constant(true)) {
-                    Label("Inquiry Responses", systemImage: "message.fill")
+                    Label(String(localized: "notification_inquiry_responses"), systemImage: "message.fill")
                 }
 
                 Toggle(isOn: .constant(false)) {
-                    Label("Marketing", systemImage: "megaphone.fill")
+                    Label(String(localized: "notification_marketing"), systemImage: "megaphone.fill")
                 }
             }
 
             // App settings section
-            Section("App Settings") {
+            Section(String(localized: "section_app_settings")) {
                 NavigationLink {
-                    Text("Language Settings")
+                    Text(String(localized: "setting_language"))
                 } label: {
                     HStack {
-                        Label("Language", systemImage: "globe")
+                        Label(String(localized: "setting_language"), systemImage: "globe")
                         Spacer()
-                        Text("English")
+                        Text(String(localized: "language_english"))
                             .foregroundStyle(.secondary)
                     }
                 }
 
                 NavigationLink {
-                    Text("Currency Settings")
+                    Text(String(localized: "setting_currency"))
                 } label: {
                     HStack {
-                        Label("Currency", systemImage: "eurosign.circle.fill")
+                        Label(String(localized: "setting_currency"), systemImage: "eurosign.circle.fill")
                         Spacer()
-                        Text("EUR")
+                        Text(String(localized: "currency_eur"))
                             .foregroundStyle(.secondary)
                     }
                 }
 
                 NavigationLink {
-                    Text("Units Settings")
+                    Text(String(localized: "setting_units"))
                 } label: {
                     HStack {
-                        Label("Units", systemImage: "ruler.fill")
+                        Label(String(localized: "setting_units"), systemImage: "ruler.fill")
                         Spacer()
-                        Text("Metric (m2)")
+                        Text(String(localized: "units_metric"))
                             .foregroundStyle(.secondary)
                     }
                 }
 
                 NavigationLink {
-                    Text("Theme Settings")
+                    Text(String(localized: "setting_theme"))
                 } label: {
                     HStack {
-                        Label("Theme", systemImage: "moon.fill")
+                        Label(String(localized: "setting_theme"), systemImage: "moon.fill")
                         Spacer()
-                        Text("System")
+                        Text(String(localized: "theme_system"))
                             .foregroundStyle(.secondary)
                     }
                 }
             }
 
             // About section
-            Section("About") {
+            Section(String(localized: "about")) {
                 HStack {
-                    Label("Version", systemImage: "info.circle.fill")
+                    Label(String(localized: "version"), systemImage: "info.circle.fill")
                     Spacer()
                     Text(Configuration.shared.version)
                         .foregroundStyle(.secondary)
                 }
 
                 NavigationLink {
-                    Text("Terms of Service")
+                    Text(String(localized: "terms_of_service"))
                 } label: {
-                    Label("Terms of Service", systemImage: "doc.text.fill")
+                    Label(String(localized: "terms_of_service"), systemImage: "doc.text.fill")
                 }
 
                 NavigationLink {
-                    Text("Privacy Policy")
+                    Text(String(localized: "privacy_policy"))
                 } label: {
-                    Label("Privacy Policy", systemImage: "lock.fill")
+                    Label(String(localized: "privacy_policy"), systemImage: "lock.fill")
                 }
 
                 NavigationLink {
-                    Text("Help & Support")
+                    Text(String(localized: "help_support"))
                 } label: {
-                    Label("Help & Support", systemImage: "questionmark.circle.fill")
+                    Label(String(localized: "help_support"), systemImage: "questionmark.circle.fill")
                 }
 
                 NavigationLink {
-                    Text("Send Feedback")
+                    Text(String(localized: "send_feedback"))
                 } label: {
-                    Label("Send Feedback", systemImage: "envelope.fill")
+                    Label(String(localized: "send_feedback"), systemImage: "envelope.fill")
                 }
             }
 
@@ -199,7 +199,7 @@ struct AccountView: View {
                 } label: {
                     HStack {
                         Spacer()
-                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        Label(String(localized: "sign_out"), systemImage: "rectangle.portrait.and.arrow.right")
                         Spacer()
                     }
                 }
@@ -220,11 +220,11 @@ struct AccountView: View {
 
             // Title and description
             VStack(spacing: 8) {
-                Text("Sign in to Reality Portal")
+                Text(String(localized: "sign_in_title"))
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Text("Save favorites, track inquiries, and get notified about new listings")
+                Text(String(localized: "sign_in_benefits"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -238,7 +238,7 @@ struct AccountView: View {
                 } label: {
                     HStack {
                         Image(systemName: "person.fill")
-                        Text("Sign In via PM App")
+                        Text(String(localized: "sign_in_pm_app"))
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
@@ -247,7 +247,7 @@ struct AccountView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
 
-                Text("You'll be redirected to the Property Management app to sign in securely.")
+                Text(String(localized: "sign_in_redirect_notice"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -261,24 +261,24 @@ struct AccountView: View {
                 Divider()
 
                 HStack(spacing: 24) {
-                    Button("Terms") {
+                    Button(String(localized: "terms")) {
                         // Open terms
                     }
                     .font(.subheadline)
 
-                    Button("Privacy") {
+                    Button(String(localized: "privacy")) {
                         // Open privacy
                     }
                     .font(.subheadline)
 
-                    Button("Help") {
+                    Button(String(localized: "help")) {
                         // Open help
                     }
                     .font(.subheadline)
                 }
                 .foregroundStyle(.secondary)
 
-                Text("Version \(Configuration.shared.version)")
+                Text(String(localized: "version_format \(Configuration.shared.version)"))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }

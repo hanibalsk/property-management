@@ -225,3 +225,50 @@
 "rooms_count" = "%d pokoi";
 "bed_count" = "%d sypialnia";
 "bath_count" = "%d łazienka";
+
+/* Search Screen - Additional */
+"searching" = "Wyszukiwanie...";
+"no_results_found" = "Brak wyników";
+"search_adjust_hint" = "Spróbuj dostosować wyszukiwanie lub filtry";
+"search_prompt_title" = "Szukaj nieruchomości";
+"search_prompt_description" = "Wprowadź lokalizację, słowo kluczowe lub użyj filtrów";
+"recent_searches" = "Ostatnie wyszukiwania";
+"filter_price_range" = "Zakres cenowy";
+"filter_property_type" = "Typ nieruchomości";
+"filter_bedrooms" = "Sypialnie";
+"reset_filters" = "Zresetuj filtry";
+"apply" = "Zastosuj";
+
+/* Account Screen - Additional */
+"quick_actions" = "Szybkie akcje";
+"saved_searches" = "Zapisane wyszukiwania";
+"notification_marketing" = "Marketing";
+"language_english" = "Angielski";
+"terms" = "Regulamin";
+"version_format %@" = "Wersja %@";
+"help_support" = "Pomoc i wsparcie";
+"send_feedback" = "Wyślij opinię";
+
+/* Listing Detail Screen - Additional */
+"loading_listing" = "Ładowanie oferty...";
+"failed_to_load_listing" = "Nie udało się załadować oferty";
+"view_on_map" = "Zobacz na mapie";
+"contact_via_inquiry" = "Skontaktuj się przez zapytanie";
+"send_inquiry" = "Wyślij zapytanie";
+"property" = "Nieruchomość";
+"inquiry_your_message" = "Twoja wiadomość";
+"inquiry_contact_preference" = "Preferencja kontaktu";
+"inquiry_prefer_contact" = "Preferowany kontakt przez";
+"phone" = "Telefon";
+"either" = "Dowolny";
+"send" = "Wyślij";
+
+/* Login Screen - Additional */
+"welcome_to_reality_portal" = "Witaj w Reality Portal";
+"sign_in_description" = "Zaloguj się, aby zapisywać ulubione, śledzić zapytania i otrzymywać spersonalizowane rekomendacje.";
+"sign_in_with_pm" = "Zaloguj przez Property Management";
+"sso_description" = "Bezpiecznie zaloguj się za pomocą konta Property Management";
+"or" = "lub";
+"enter_email" = "Wprowadź swój e-mail";
+"enter_password" = "Wprowadź swoje hasło";
+"no_account_prompt" = "Nie masz konta?";
