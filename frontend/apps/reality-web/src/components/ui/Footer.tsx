@@ -6,9 +6,11 @@
 
 'use client';
 
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 export function Footer() {
+  const t = useTranslations('footer');
   const currentYear = new Date().getFullYear();
 
   return (
@@ -18,49 +20,47 @@ export function Footer() {
           {/* Brand */}
           <div className="footer-section">
             <Link href="/" className="footer-logo">
-              Reality Portal
+              {t('brandName')}
             </Link>
-            <p className="footer-description">
-              Find your perfect property across Slovakia, Czech Republic, and beyond.
-            </p>
+            <p className="footer-description">{t('description')}</p>
           </div>
 
           {/* Quick Links */}
           <div className="footer-section">
-            <h3 className="footer-title">Quick Links</h3>
+            <h3 className="footer-title">{t('quickLinks')}</h3>
             <nav className="footer-nav">
-              <Link href="/listings?transactionType=sale">Properties for Sale</Link>
-              <Link href="/listings?transactionType=rent">Properties for Rent</Link>
-              <Link href="/listings">All Listings</Link>
+              <Link href="/listings?transactionType=sale">{t('propertiesForSale')}</Link>
+              <Link href="/listings?transactionType=rent">{t('propertiesForRent')}</Link>
+              <Link href="/listings">{t('allListings')}</Link>
             </nav>
           </div>
 
           {/* Property Types */}
           <div className="footer-section">
-            <h3 className="footer-title">Property Types</h3>
+            <h3 className="footer-title">{t('propertyTypes')}</h3>
             <nav className="footer-nav">
-              <Link href="/listings?propertyType=apartment">Apartments</Link>
-              <Link href="/listings?propertyType=house">Houses</Link>
-              <Link href="/listings?propertyType=land">Land</Link>
-              <Link href="/listings?propertyType=commercial">Commercial</Link>
+              <Link href="/listings?propertyType=apartment">{t('apartments')}</Link>
+              <Link href="/listings?propertyType=house">{t('houses')}</Link>
+              <Link href="/listings?propertyType=land">{t('land')}</Link>
+              <Link href="/listings?propertyType=commercial">{t('commercial')}</Link>
             </nav>
           </div>
 
           {/* Company */}
           <div className="footer-section">
-            <h3 className="footer-title">Company</h3>
+            <h3 className="footer-title">{t('company')}</h3>
             <nav className="footer-nav">
-              <Link href="/about">About Us</Link>
-              <Link href="/contact">Contact</Link>
-              <Link href="/privacy">Privacy Policy</Link>
-              <Link href="/terms">Terms of Service</Link>
+              <Link href="/about">{t('aboutUs')}</Link>
+              <Link href="/contact">{t('contact')}</Link>
+              <Link href="/privacy">{t('privacy')}</Link>
+              <Link href="/terms">{t('terms')}</Link>
             </nav>
           </div>
         </div>
 
         {/* Bottom */}
         <div className="footer-bottom">
-          <p>&copy; {currentYear} Reality Portal. All rights reserved.</p>
+          <p>{t('copyright', { year: currentYear })}</p>
         </div>
       </div>
 

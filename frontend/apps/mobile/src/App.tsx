@@ -2,9 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AuthProvider, useAuth } from './contexts';
 import { useOfflineSupport } from './hooks';
+import './i18n'; // Initialize i18n
 import {
   AnnouncementsScreen,
   DashboardScreen,
@@ -38,6 +40,7 @@ type Screen =
   | 'Settings';
 
 function MainApp() {
+  const { t } = useTranslation();
   const { isAuthenticated, isLoading } = useAuth();
   const { isConnected, queuedActionsCount } = useOfflineSupport();
   const [currentScreen, setCurrentScreen] = useState<Screen>('Dashboard');
@@ -49,7 +52,7 @@ function MainApp() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -88,7 +91,7 @@ function MainApp() {
       {!isConnected && (
         <View style={styles.offlineBar}>
           <Text style={styles.offlineText}>
-            Offline {queuedActionsCount > 0 && `(${queuedActionsCount} pending)`}
+            {t('offline.title')} {queuedActionsCount > 0 && `(${queuedActionsCount} pending)`}
           </Text>
         </View>
       )}
@@ -100,31 +103,31 @@ function MainApp() {
       <View style={styles.bottomNav}>
         <NavButton
           icon="🏠"
-          label="Home"
+          label={t('tabs.home')}
           isActive={currentScreen === 'Dashboard'}
           onPress={() => handleNavigate('Dashboard')}
         />
         <NavButton
           icon="🔧"
-          label="Faults"
+          label={t('tabs.faults')}
           isActive={currentScreen === 'Faults' || currentScreen === 'ReportFault'}
           onPress={() => handleNavigate('Faults')}
         />
         <NavButton
           icon="📢"
-          label="News"
+          label={t('tabs.news')}
           isActive={currentScreen === 'Announcements'}
           onPress={() => handleNavigate('Announcements')}
         />
         <NavButton
           icon="🗳️"
-          label="Vote"
+          label={t('tabs.vote')}
           isActive={currentScreen === 'Voting'}
           onPress={() => handleNavigate('Voting')}
         />
         <NavButton
           icon="📄"
-          label="Docs"
+          label={t('tabs.docs')}
           isActive={currentScreen === 'Documents'}
           onPress={() => handleNavigate('Documents')}
         />

@@ -1,4 +1,309 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App -->
     <string name="app_name">Reality Portal</string>
+
+    <!-- Common -->
+    <string name="loading">Loading…</string>
+    <string name="error">Error</string>
+    <string name="retry">Retry</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="confirm">Confirm</string>
+    <string name="back">Back</string>
+    <string name="next">Next</string>
+    <string name="done">Done</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="ok">OK</string>
+    <string name="search">Search</string>
+    <string name="share">Share</string>
+    <string name="see_all">See All</string>
+
+    <!-- Tabs/Navigation -->
+    <string name="tab_home">Home</string>
+    <string name="tab_search">Search</string>
+    <string name="tab_favorites">Favorites</string>
+    <string name="tab_inquiries">Inquiries</string>
+    <string name="tab_account">Account</string>
+
+    <!-- Auth -->
+    <string name="login">Login</string>
+    <string name="logout">Logout</string>
+    <string name="sign_in">Sign In</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="remember_me">Remember me</string>
+    <string name="create_account">Create Account</string>
+    <string name="or_continue_with">Or continue with</string>
+
+    <!-- Home -->
+    <string name="featured_properties">Featured Properties</string>
+    <string name="recent_properties">Recent Properties</string>
+    <string name="view_all_properties">View All Properties</string>
+    <string name="welcome_back">Welcome back</string>
+
+    <!-- Search -->
+    <string name="search_properties">Search for properties…</string>
+    <string name="filters">Filters</string>
+    <string name="price_range">Price Range</string>
+    <string name="property_type">Property Type</string>
+    <string name="bedrooms">Bedrooms</string>
+    <string name="bathrooms">Bathrooms</string>
+    <string name="area">Area</string>
+    <string name="location">Location</string>
+    <string name="apply_filters">Apply Filters</string>
+    <string name="clear_filters">Clear Filters</string>
+    <string name="no_results">No properties found</string>
+    <string name="results_count">%1$d results</string>
+
+    <!-- Property Types -->
+    <string name="apartment">Apartment</string>
+    <string name="house">House</string>
+    <string name="studio">Studio</string>
+    <string name="penthouse">Penthouse</string>
+    <string name="villa">Villa</string>
+    <string name="land">Land</string>
+    <string name="commercial">Commercial</string>
+
+    <!-- Listing -->
+    <string name="property_details">Property Details</string>
+    <string name="description">Description</string>
+    <string name="features">Features</string>
+    <string name="amenities">Amenities</string>
+    <string name="floor_plan">Floor Plan</string>
+    <string name="contact_agent">Contact Agent</string>
+    <string name="schedule_viewing">Schedule Viewing</string>
+    <string name="add_to_favorites">Add to Favorites</string>
+    <string name="remove_from_favorites">Remove from Favorites</string>
+    <string name="price">Price</string>
+    <string name="per_month">/month</string>
+    <string name="for_sale">For Sale</string>
+    <string name="for_rent">For Rent</string>
+    <string name="sqm">m²</string>
+
+    <!-- Favorites -->
+    <string name="my_favorites">My Favorites</string>
+    <string name="no_favorites">No favorites yet</string>
+    <string name="no_favorites_description">Properties you like will appear here</string>
+
+    <!-- Inquiries -->
+    <string name="my_inquiries">My Inquiries</string>
+    <string name="no_inquiries">No inquiries yet</string>
+    <string name="no_inquiries_description">Your property inquiries will appear here</string>
+    <string name="inquiry_sent">Inquiry sent</string>
+    <string name="inquiry_pending">Pending</string>
+    <string name="inquiry_responded">Responded</string>
+
+    <!-- Account -->
+    <string name="my_account">My Account</string>
+    <string name="profile">Profile</string>
+    <string name="settings">Settings</string>
+    <string name="language">Language</string>
+    <string name="notifications">Notifications</string>
+    <string name="privacy">Privacy</string>
+    <string name="help">Help</string>
+    <string name="about">About</string>
+    <string name="version">Version</string>
+    <string name="terms_of_service">Terms of Service</string>
+    <string name="privacy_policy">Privacy Policy</string>
+
+    <!-- Errors -->
+    <string name="error_generic">An error occurred. Please try again.</string>
+    <string name="error_network">Network error. Please check your connection.</string>
+    <string name="error_server">Server error. Please try again later.</string>
+    <string name="error_not_found">Not found</string>
+    <string name="error_unauthorized">You are not authorized to perform this action.</string>
+
+    <!-- Section Headers -->
+    <string name="section_quick_actions">Quick Actions</string>
+    <string name="section_notifications">Notifications</string>
+    <string name="section_app_settings">App Settings</string>
+    <string name="section_about">About</string>
+    <string name="section_price_range">Price Range</string>
+    <string name="section_property_type">Property Type</string>
+    <string name="section_your_message">Your Message</string>
+
+    <!-- Sign-in prompts -->
+    <string name="sign_in_title">Sign in to Reality Portal</string>
+    <string name="sign_in_benefits">Save favorites, track inquiries, and get notified about new listings</string>
+    <string name="sign_in_pm_app">Sign In via PM App</string>
+    <string name="sign_in_redirect_notice">You\'ll be redirected to the Property Management app to sign in securely.</string>
+    <string name="confirm_sign_out_message">Are you sure you want to sign out?</string>
+
+    <!-- Notification preferences -->
+    <string name="notification_new_listings">New Listings</string>
+    <string name="notification_new_listings_desc">Get notified when new properties match your saved searches</string>
+    <string name="notification_price_drops">Price Drops</string>
+    <string name="notification_price_drops_desc">Get notified when a favorite property\'s price is reduced</string>
+    <string name="notification_inquiry_responses">Inquiry Responses</string>
+    <string name="notification_inquiry_responses_desc">Get notified when an agent responds to your inquiry</string>
+
+    <!-- Settings -->
+    <string name="setting_language">Language</string>
+    <string name="setting_currency">Currency</string>
+    <string name="setting_units">Units</string>
+    <string name="setting_theme">Theme</string>
+    <string name="theme_system">System Default</string>
+    <string name="units_metric">Metric (m²)</string>
+    <string name="currency_eur">EUR (€)</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Search properties…</string>
+    <string name="status_searching">Searching…</string>
+    <string name="empty_search_results">No results found</string>
+    <string name="empty_search_tip">Try adjusting your search or filters</string>
+    <string name="section_recent_searches">Recent Searches</string>
+    <string name="action_load_more">Load More</string>
+
+    <!-- Filters -->
+    <string name="action_filters">Filters</string>
+    <string name="filter_for_sale">For Sale</string>
+    <string name="filter_for_rent">For Rent</string>
+    <string name="filter_apartments">Apartments</string>
+    <string name="filter_houses">Houses</string>
+    <string name="filter_land">Land</string>
+
+    <!-- Actions -->
+    <string name="action_call">Call</string>
+    <string name="action_email">Email</string>
+    <string name="action_inquire">Inquire</string>
+    <string name="action_share_link">Share Link</string>
+    <string name="action_view_all_properties">View All Properties</string>
+    <string name="action_browse_listings">Browse Listings</string>
+    <string name="action_view_map">View on Map</string>
+    <string name="action_contact_agent">Contact Agent</string>
+
+    <!-- Empty states -->
+    <string name="empty_favorites">No favorites yet</string>
+    <string name="empty_favorites_description">Tap the heart icon on any listing to save it to your favorites.</string>
+    <string name="empty_inquiries">No inquiries yet</string>
+    <string name="empty_inquiries_description">When you send an inquiry about a property, it will appear here.</string>
+    <string name="prompt_sign_in_favorites">Sign in to see your favorites</string>
+    <string name="prompt_sign_in_inquiries">Sign in to see your inquiries</string>
+
+    <!-- Loading states -->
+    <string name="status_loading_favorites">Loading favorites…</string>
+    <string name="status_loading_inquiries">Loading inquiries…</string>
+
+    <!-- Labels -->
+    <string name="label_featured">Featured</string>
+    <string name="label_new">New</string>
+    <string name="label_reduced">Reduced</string>
+    <string name="label_name_required">Name *</string>
+    <string name="label_email_required">Email *</string>
+    <string name="label_phone_optional">Phone (optional)</string>
+    <string name="label_message">Message</string>
+
+    <!-- Home Screen (additional) -->
+    <string name="recently_added">Recently Added</string>
+    <string name="loading_listings">Loading listings...</string>
+    <string name="no_listings_available">No listings available</string>
+
+    <!-- Search Screen (additional) -->
+    <string name="filter_type">Type</string>
+    <string name="filter_category">Category</string>
+    <string name="filter_all">All</string>
+    <string name="filter_any">Any</string>
+    <string name="filter_rooms">Rooms</string>
+    <string name="filter_price_range_eur">Price Range (EUR)</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_apply">Apply</string>
+    <string name="sort_by">Sort By</string>
+    <string name="sort_newest">Newest</string>
+    <string name="sort_oldest">Oldest</string>
+    <string name="sort_price_asc">Price (Low to High)</string>
+    <string name="sort_price_desc">Price (High to Low)</string>
+    <string name="sort_area_asc">Area (Small to Large)</string>
+    <string name="sort_area_desc">Area (Large to Small)</string>
+    <string name="sort_relevance">Relevance</string>
+    <string name="properties_found">%1$d properties found</string>
+    <string name="rooms_count">%1$d rooms</string>
+    <string name="bed_count">%1$d bed</string>
+    <string name="bath_count">%1$d bath</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_inquiries">Inquiries</string>
+    <string name="cd_favorites">Favorites</string>
+    <string name="cd_account">Account</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_clear">Clear</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_filters">Filters</string>
+
+    <!-- Favorites Screen -->
+    <string name="favorites_tab_properties">Properties</string>
+    <string name="favorites_tab_searches">Searches</string>
+    <string name="favorites_sign_in_title">Sign in to save favorites</string>
+    <string name="favorites_sign_in_description">Keep track of properties you\'re interested in</string>
+    <string name="favorites_empty_description">Save properties to compare later</string>
+    <string name="saved_search_new_count">%1$d new</string>
+    <string name="saved_search_disable_alerts">Disable alerts</string>
+    <string name="saved_search_enable_alerts">Enable alerts</string>
+    <string name="saved_search_delete_title">Delete Saved Search</string>
+    <string name="saved_search_delete_message">Are you sure you want to delete \"%1$s\"?</string>
+    <string name="saved_searches_empty_title">No saved searches</string>
+    <string name="saved_searches_empty_description">Save your search to get notified about new listings</string>
+
+    <!-- Account Screen -->
+    <string name="edit_profile">Edit Profile</string>
+    <string name="notification_listing_updates">Listing Updates</string>
+    <string name="notification_listing_updates_desc">Get notified when a favorite listing is updated</string>
+    <string name="notification_marketing">Marketing</string>
+    <string name="notification_marketing_desc">Receive tips, market insights, and promotional content</string>
+    <string name="language_english">English</string>
+    <string name="help_support">Help &amp; Support</string>
+    <string name="send_feedback">Send Feedback</string>
+
+    <!-- Listing Detail Screen -->
+    <string name="detail_rooms">Rooms</string>
+    <string name="detail_beds">Beds</string>
+    <string name="detail_baths">Baths</string>
+    <string name="additional_details">Additional Details</string>
+    <string name="detail_year_built">Year Built</string>
+    <string name="detail_year_renovated">Year Renovated</string>
+    <string name="detail_floor">Floor</string>
+    <string name="detail_usable_area">Usable Area</string>
+    <string name="detail_land_area">Land Area</string>
+    <string name="detail_energy_rating">Energy Rating</string>
+    <string name="detail_heating">Heating</string>
+    <string name="detail_parking">Parking</string>
+    <string name="inquiry_sent_success">Inquiry sent successfully!</string>
+    <string name="inquiry_dialog_title">Send Inquiry</string>
+    <string name="inquiry_sign_in_hint">Sign in to track your inquiries</string>
+    <string name="inquiry_sending">Sending…</string>
+    <string name="inquiry_send">Send</string>
+    <string name="share_property">Share Property</string>
+    <string name="share_via">Share via…</string>
+
+    <!-- Inquiries Screen -->
+    <string name="inquiries">Inquiries</string>
+    <string name="inquiries_tab_messages">Messages</string>
+    <string name="inquiries_tab_viewings">Viewings</string>
+    <string name="inquiries_sign_in_title">Sign in to view inquiries</string>
+    <string name="inquiries_sign_in_description">Track your property inquiries and viewing requests</string>
+    <string name="property">Property</string>
+    <string name="inquiry_responses_count">%1$d responses</string>
+    <string name="status_pending">Pending</string>
+    <string name="status_responded">Responded</string>
+    <string name="status_closed">Closed</string>
+    <string name="status_confirmed">Confirmed</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_cancelled">Cancelled</string>
+    <string name="inquiries_empty_title">No inquiries yet</string>
+    <string name="inquiries_empty_description">Contact property owners to start a conversation</string>
+    <string name="property_viewing">Property Viewing</string>
+    <string name="viewing_confirmed_label">(Confirmed)</string>
+    <string name="viewing_cancel_title">Cancel Viewing</string>
+    <string name="viewing_cancel_message">Are you sure you want to cancel this viewing request?</string>
+    <string name="viewing_cancel_confirm">Cancel Viewing</string>
+    <string name="viewing_cancel_keep">Keep</string>
+    <string name="viewings_empty_title">No viewings scheduled</string>
+    <string name="viewings_empty_description">Schedule viewings to see properties in person</string>
 </resources>

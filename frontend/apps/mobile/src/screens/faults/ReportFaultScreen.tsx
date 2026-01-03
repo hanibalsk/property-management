@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -21,24 +22,25 @@ interface ReportFaultScreenProps {
   onCancel?: () => void;
 }
 
-const categories: Array<{ value: FaultCategory; label: string; icon: string }> = [
-  { value: 'plumbing', label: 'Plumbing', icon: '🚿' },
-  { value: 'electrical', label: 'Electrical', icon: '⚡' },
-  { value: 'structural', label: 'Structural', icon: '🏗️' },
-  { value: 'hvac', label: 'HVAC', icon: '❄️' },
-  { value: 'elevator', label: 'Elevator', icon: '🛗' },
-  { value: 'security', label: 'Security', icon: '🔒' },
-  { value: 'other', label: 'Other', icon: '🔧' },
+const categories: Array<{ value: FaultCategory; labelKey: string; icon: string }> = [
+  { value: 'plumbing', labelKey: 'plumbing', icon: '🚿' },
+  { value: 'electrical', labelKey: 'electrical', icon: '⚡' },
+  { value: 'structural', labelKey: 'structural', icon: '🏗️' },
+  { value: 'hvac', labelKey: 'hvac', icon: '❄️' },
+  { value: 'elevator', labelKey: 'elevator', icon: '🛗' },
+  { value: 'security', labelKey: 'security', icon: '🔒' },
+  { value: 'other', labelKey: 'other', icon: '🔧' },
 ];
 
-const priorities: Array<{ value: FaultPriority; label: string; color: string }> = [
-  { value: 'low', label: 'Low', color: '#65a30d' },
-  { value: 'medium', label: 'Medium', color: '#ca8a04' },
-  { value: 'high', label: 'High', color: '#ea580c' },
-  { value: 'urgent', label: 'Urgent', color: '#dc2626' },
+const priorities: Array<{ value: FaultPriority; labelKey: string; color: string }> = [
+  { value: 'low', labelKey: 'priorityLow', color: '#65a30d' },
+  { value: 'medium', labelKey: 'priorityMedium', color: '#ca8a04' },
+  { value: 'high', labelKey: 'priorityHigh', color: '#ea580c' },
+  { value: 'urgent', labelKey: 'priorityUrgent', color: '#dc2626' },
 ];
 
 export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<FaultCategory | null>(null);
@@ -53,23 +55,23 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('faults.titleRequired');
     } else if (title.length < 5) {
-      newErrors.title = 'Title must be at least 5 characters';
+      newErrors.title = t('faults.titleMinLength');
     }
 
     if (!description.trim()) {
-      newErrors.description = 'Description is required';
+      newErrors.description = t('faults.descriptionRequired');
     } else if (description.length < 20) {
-      newErrors.description = 'Description must be at least 20 characters';
+      newErrors.description = t('faults.descriptionMinLength');
     }
 
     if (!category) {
-      newErrors.category = 'Please select a category';
+      newErrors.category = t('faults.selectCategory');
     }
 
     if (!location.trim()) {
-      newErrors.location = 'Location is required';
+      newErrors.location = t('faults.locationRequired');
     }
 
     setErrors(newErrors);
@@ -81,13 +83,13 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
       if (useCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Camera permission is required to take photos');
+          Alert.alert(t('permissions.denied'), t('faults.cameraPermissionDenied'));
           return;
         }
       } else {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Photo library permission is required');
+          Alert.alert(t('permissions.denied'), t('faults.photoLibraryPermissionDenied'));
           return;
         }
       }
@@ -110,7 +112,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
         setPhotos((prev) => [...prev, ...newPhotos].slice(0, 5));
       }
     } catch (_error) {
-      Alert.alert('Error', 'Failed to pick image');
+      Alert.alert(t('common.error'), t('faults.failedToPickImage'));
     }
   };
 
@@ -123,7 +125,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required');
+        Alert.alert(t('permissions.denied'), t('permissions.locationRequired'));
         return;
       }
 
@@ -135,14 +137,14 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
 
       if (address) {
         const locationText = [address.street, address.city].filter(Boolean).join(', ');
-        setLocation(locationText || 'Location detected');
+        setLocation(locationText || t('faults.locationDetected'));
       }
     } catch (_error) {
-      Alert.alert('Error', 'Failed to detect location');
+      Alert.alert(t('common.error'), t('faults.failedToDetectLocation'));
     } finally {
       setIsDetectingLocation(false);
     }
-  }, []);
+  }, [t]);
 
   const handleSubmit = async () => {
     if (!validateForm()) {
@@ -155,14 +157,28 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      Alert.alert('Success', 'Fault report submitted successfully', [
-        { text: 'OK', onPress: onSuccess },
+      Alert.alert(t('common.done'), t('faults.successSubmit'), [
+        { text: t('common.ok'), onPress: onSuccess },
       ]);
     } catch (_error) {
-      Alert.alert('Error', 'Failed to submit fault report');
+      Alert.alert(t('common.error'), t('faults.failedSubmit'));
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Category label mapping (these would ideally come from translations)
+  const getCategoryLabel = (labelKey: string): string => {
+    const labels: Record<string, string> = {
+      plumbing: 'Plumbing',
+      electrical: 'Electrical',
+      structural: 'Structural',
+      hvac: 'HVAC',
+      elevator: 'Elevator',
+      security: 'Security',
+      other: 'Other',
+    };
+    return labels[labelKey] || labelKey;
   };
 
   return (
@@ -173,19 +189,19 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
       {/* Header */}
       <View style={styles.header}>
         <Pressable style={styles.cancelButton} onPress={onCancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{t('common.cancel')}</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Report Fault</Text>
+        <Text style={styles.headerTitle}>{t('faults.reportFault')}</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
         {/* Title */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Title *</Text>
+          <Text style={styles.label}>{t('faults.titleLabel')} *</Text>
           <TextInput
             style={[styles.input, errors.title ? styles.inputError : undefined]}
-            placeholder="Brief description of the issue"
+            placeholder={t('faults.titlePlaceholder')}
             value={title}
             onChangeText={setTitle}
             maxLength={100}
@@ -195,7 +211,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
 
         {/* Category */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Category *</Text>
+          <Text style={styles.label}>{t('faults.categoryLabel')} *</Text>
           <View style={styles.categoryGrid}>
             {categories.map((cat) => (
               <Pressable
@@ -213,7 +229,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
                     category === cat.value && styles.categoryLabelSelected,
                   ]}
                 >
-                  {cat.label}
+                  {getCategoryLabel(cat.labelKey)}
                 </Text>
               </Pressable>
             ))}
@@ -223,7 +239,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
 
         {/* Priority */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Priority</Text>
+          <Text style={styles.label}>{t('faults.priorityLabel')}</Text>
           <View style={styles.priorityRow}>
             {priorities.map((p) => (
               <Pressable
@@ -240,7 +256,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
                     priority === p.value && styles.priorityLabelSelected,
                   ]}
                 >
-                  {p.label}
+                  {t(`faults.${p.labelKey}`)}
                 </Text>
               </Pressable>
             ))}
@@ -249,7 +265,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
 
         {/* Location */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Location *</Text>
+          <Text style={styles.label}>{t('faults.locationLabel')} *</Text>
           <View style={styles.locationRow}>
             <TextInput
               style={[
@@ -257,7 +273,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
                 styles.locationInput,
                 errors.location ? styles.inputError : undefined,
               ]}
-              placeholder="e.g., 3rd floor, Unit 301"
+              placeholder={t('faults.locationPlaceholder')}
               value={location}
               onChangeText={setLocation}
             />
@@ -278,14 +294,14 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
 
         {/* Description */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Description *</Text>
+          <Text style={styles.label}>{t('faults.descriptionLabel')} *</Text>
           <TextInput
             style={[
               styles.input,
               styles.textArea,
               errors.description ? styles.inputError : undefined,
             ]}
-            placeholder="Provide detailed information about the issue..."
+            placeholder={t('faults.descriptionPlaceholder')}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -297,7 +313,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
 
         {/* Photos */}
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Photos (optional)</Text>
+          <Text style={styles.label}>{t('faults.photosLabel')}</Text>
           <View style={styles.photosContainer}>
             {photos.map((photo, index) => (
               <View key={photo} style={styles.photoWrapper}>
@@ -311,16 +327,16 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
               <View style={styles.photoActions}>
                 <Pressable style={styles.photoButton} onPress={() => pickImage(true)}>
                   <Text style={styles.photoButtonIcon}>📷</Text>
-                  <Text style={styles.photoButtonText}>Camera</Text>
+                  <Text style={styles.photoButtonText}>{t('faults.cameraButton')}</Text>
                 </Pressable>
                 <Pressable style={styles.photoButton} onPress={() => pickImage(false)}>
                   <Text style={styles.photoButtonIcon}>🖼️</Text>
-                  <Text style={styles.photoButtonText}>Gallery</Text>
+                  <Text style={styles.photoButtonText}>{t('faults.galleryButton')}</Text>
                 </Pressable>
               </View>
             )}
           </View>
-          <Text style={styles.photoHint}>{photos.length}/5 photos</Text>
+          <Text style={styles.photoHint}>{t('faults.photosHint', { current: photos.length })}</Text>
         </View>
 
         {/* Submit Button */}
@@ -332,7 +348,7 @@ export function ReportFaultScreen({ onSuccess, onCancel }: ReportFaultScreenProp
           {isSubmitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitButtonText}>Submit Report</Text>
+            <Text style={styles.submitButtonText}>{t('faults.submitButton')}</Text>
           )}
         </Pressable>
 

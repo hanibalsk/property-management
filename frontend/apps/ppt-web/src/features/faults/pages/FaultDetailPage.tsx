@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FaultCategory, FaultPriority, FaultStatus } from '../components/FaultCard';
 import { FaultTimeline, type TimelineEntry } from '../components/FaultTimeline';
 import { type TriageData, TriageFaultDialog } from '../components/TriageFaultDialog';
@@ -98,37 +99,6 @@ const priorityColors: Record<FaultPriority, string> = {
   urgent: 'text-red-600 font-bold',
 };
 
-const statusLabels: Record<FaultStatus, string> = {
-  new: 'New',
-  triaged: 'Triaged',
-  in_progress: 'In Progress',
-  waiting_parts: 'Waiting for Parts',
-  scheduled: 'Scheduled',
-  resolved: 'Resolved',
-  closed: 'Closed',
-  reopened: 'Reopened',
-};
-
-const priorityLabels: Record<FaultPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
-
-const categoryLabels: Record<FaultCategory, string> = {
-  plumbing: 'Plumbing',
-  electrical: 'Electrical',
-  heating: 'Heating',
-  structural: 'Structural',
-  exterior: 'Exterior',
-  elevator: 'Elevator',
-  common_area: 'Common Area',
-  security: 'Security',
-  cleaning: 'Cleaning',
-  other: 'Other',
-};
-
 export function FaultDetailPage({
   fault,
   timeline,
@@ -146,6 +116,7 @@ export function FaultDetailPage({
   onAddAttachment,
   onDeleteAttachment,
 }: FaultDetailPageProps) {
+  const { t } = useTranslation();
   const [showTriageDialog, setShowTriageDialog] = useState(false);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -156,6 +127,37 @@ export function FaultDetailPage({
   const [confirmRating, setConfirmRating] = useState<number | undefined>();
   const [confirmFeedback, setConfirmFeedback] = useState('');
   const [reopenReason, setReopenReason] = useState('');
+
+  const statusLabels: Record<FaultStatus, string> = {
+    new: t('faults.statusNew'),
+    triaged: t('faults.statusTriaged'),
+    in_progress: t('faults.statusInProgress'),
+    waiting_parts: t('faults.statusWaitingParts'),
+    scheduled: t('faults.statusScheduled'),
+    resolved: t('faults.statusResolved'),
+    closed: t('faults.statusClosed'),
+    reopened: t('faults.statusReopened'),
+  };
+
+  const priorityLabels: Record<FaultPriority, string> = {
+    low: t('faults.priorityLow'),
+    medium: t('faults.priorityMedium'),
+    high: t('faults.priorityHigh'),
+    urgent: t('faults.priorityUrgent'),
+  };
+
+  const categoryLabels: Record<FaultCategory, string> = {
+    plumbing: t('faults.categoryPlumbing'),
+    electrical: t('faults.categoryElectrical'),
+    heating: t('faults.categoryHeating'),
+    structural: t('faults.categoryStructural'),
+    exterior: t('faults.categoryExterior'),
+    elevator: t('faults.categoryElevator'),
+    common_area: t('faults.categoryCommonArea'),
+    security: t('faults.categorySecurity'),
+    cleaning: t('faults.categoryCleaning'),
+    other: t('faults.categoryOther'),
+  };
 
   const canEdit = fault.status === 'new';
   const canTriage = fault.status === 'new' && isManager;
@@ -217,7 +219,7 @@ export function FaultDetailPage({
           onClick={onBack}
           className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-4"
         >
-          ← Back to Faults
+          {t('common.backToFaults')}
         </button>
         <div className="flex items-start justify-between">
           <div>
@@ -229,7 +231,7 @@ export function FaultDetailPage({
                 {statusLabels[fault.status]}
               </span>
               <span className={`text-sm font-medium ${priorityColors[fault.priority]}`}>
-                {priorityLabels[fault.priority]} Priority
+                {priorityLabels[fault.priority]} {t('faults.priority')}
               </span>
               <span className="text-sm text-gray-500">{categoryLabels[fault.category]}</span>
             </div>
@@ -241,7 +243,7 @@ export function FaultDetailPage({
                 onClick={onEdit}
                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
               >
-                Edit
+                {t('common.edit')}
               </button>
             )}
             {canTriage && (
@@ -250,7 +252,7 @@ export function FaultDetailPage({
                 onClick={() => setShowTriageDialog(true)}
                 className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
-                Triage
+                {t('faults.triage')}
               </button>
             )}
             {canResolve && (
@@ -259,7 +261,7 @@ export function FaultDetailPage({
                 onClick={() => setShowResolveDialog(true)}
                 className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
-                Resolve
+                {t('faults.resolve')}
               </button>
             )}
             {canConfirm && (
@@ -268,7 +270,7 @@ export function FaultDetailPage({
                 onClick={() => setShowConfirmDialog(true)}
                 className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
-                Confirm
+                {t('common.confirm')}
               </button>
             )}
             {canReopen && (
@@ -277,7 +279,7 @@ export function FaultDetailPage({
                 onClick={() => setShowReopenDialog(true)}
                 className="px-3 py-1.5 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700"
               >
-                Reopen
+                {t('faults.reopen')}
               </button>
             )}
           </div>
@@ -289,11 +291,11 @@ export function FaultDetailPage({
         <div className="lg:col-span-2 space-y-6">
           {/* Description */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Description</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">{t('faults.description')}</h2>
             <p className="text-gray-700 whitespace-pre-wrap">{fault.description}</p>
             {fault.locationDescription && (
               <p className="mt-3 text-sm text-gray-500">
-                <strong>Location:</strong> {fault.locationDescription}
+                <strong>{t('faults.location')}:</strong> {fault.locationDescription}
               </p>
             )}
           </div>
@@ -302,10 +304,10 @@ export function FaultDetailPage({
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">
-                Attachments ({attachments.length})
+                {t('faults.attachments')} ({attachments.length})
               </h2>
               <label className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
-                Add Photo
+                {t('faults.addPhoto')}
                 <input
                   type="file"
                   accept="image/*"
@@ -315,7 +317,7 @@ export function FaultDetailPage({
               </label>
             </div>
             {attachments.length === 0 ? (
-              <p className="text-gray-500">No attachments.</p>
+              <p className="text-gray-500">{t('faults.noAttachments')}</p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {attachments.map((att) => (
@@ -328,16 +330,16 @@ export function FaultDetailPage({
                       />
                     ) : (
                       <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                        📎 {att.originalFilename}
+                        {att.originalFilename}
                       </div>
                     )}
                     <button
                       type="button"
                       onClick={() => onDeleteAttachment(att.id)}
                       className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete"
+                      title={t('common.delete')}
                     >
-                      ✕
+                      X
                     </button>
                   </div>
                 ))}
@@ -352,13 +354,13 @@ export function FaultDetailPage({
 
           {/* Add Comment */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Comment</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('faults.addComment')}</h3>
             <form onSubmit={handleAddComment}>
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={3}
-                placeholder="Write a comment..."
+                placeholder={t('faults.commentPlaceholder')}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {isManager && (
@@ -368,9 +370,7 @@ export function FaultDetailPage({
                     checked={isInternalComment}
                     onChange={(e) => setIsInternalComment(e.target.checked)}
                   />
-                  <span className="text-sm text-gray-600">
-                    Internal note (not visible to reporter)
-                  </span>
+                  <span className="text-sm text-gray-600">{t('faults.internalNote')}</span>
                 </label>
               )}
               <button
@@ -378,7 +378,7 @@ export function FaultDetailPage({
                 disabled={!comment.trim()}
                 className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                Add Comment
+                {t('faults.addComment')}
               </button>
             </form>
           </div>
@@ -388,37 +388,37 @@ export function FaultDetailPage({
         <div className="space-y-6">
           {/* Details */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Details</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('faults.details')}</h3>
             <dl className="space-y-3 text-sm">
               <div>
-                <dt className="text-gray-500">Building</dt>
+                <dt className="text-gray-500">{t('buildings.title')}</dt>
                 <dd className="font-medium">{fault.buildingName}</dd>
                 <dd className="text-gray-500">{fault.buildingAddress}</dd>
               </div>
               {fault.unitDesignation && (
                 <div>
-                  <dt className="text-gray-500">Unit</dt>
+                  <dt className="text-gray-500">{t('faults.unit')}</dt>
                   <dd className="font-medium">{fault.unitDesignation}</dd>
                 </div>
               )}
               <div>
-                <dt className="text-gray-500">Reported by</dt>
+                <dt className="text-gray-500">{t('faults.reportedBy')}</dt>
                 <dd className="font-medium">{fault.reporterName}</dd>
                 <dd className="text-gray-500">{fault.reporterEmail}</dd>
               </div>
               <div>
-                <dt className="text-gray-500">Reported on</dt>
+                <dt className="text-gray-500">{t('faults.reportedOn')}</dt>
                 <dd className="font-medium">{new Date(fault.createdAt).toLocaleString()}</dd>
               </div>
               {fault.assignedToName && (
                 <div>
-                  <dt className="text-gray-500">Assigned to</dt>
+                  <dt className="text-gray-500">{t('faults.assignedTo')}</dt>
                   <dd className="font-medium">{fault.assignedToName}</dd>
                 </div>
               )}
               {fault.scheduledDate && (
                 <div>
-                  <dt className="text-gray-500">Scheduled</dt>
+                  <dt className="text-gray-500">{t('faults.scheduled')}</dt>
                   <dd className="font-medium">
                     {new Date(fault.scheduledDate).toLocaleDateString()}
                   </dd>
@@ -426,14 +426,14 @@ export function FaultDetailPage({
               )}
               {fault.resolvedAt && (
                 <div>
-                  <dt className="text-gray-500">Resolved on</dt>
+                  <dt className="text-gray-500">{t('faults.resolvedOn')}</dt>
                   <dd className="font-medium">{new Date(fault.resolvedAt).toLocaleString()}</dd>
                 </div>
               )}
               {fault.rating && (
                 <div>
-                  <dt className="text-gray-500">Rating</dt>
-                  <dd className="font-medium">{'⭐'.repeat(fault.rating)}</dd>
+                  <dt className="text-gray-500">{t('faults.rating')}</dt>
+                  <dd className="font-medium">{'*'.repeat(fault.rating)}</dd>
                 </div>
               )}
             </dl>
@@ -442,17 +442,17 @@ export function FaultDetailPage({
           {/* AI Suggestion (if available) */}
           {fault.aiCategory && fault.aiConfidence && (
             <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">🤖 AI Analysis</h3>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">{t('faults.aiAnalysis')}</h3>
               <p className="text-sm text-blue-800">
-                Suggested category: <strong>{fault.aiCategory}</strong>
+                {t('faults.suggestedCategory')}: <strong>{fault.aiCategory}</strong>
               </p>
               {fault.aiPriority && (
                 <p className="text-sm text-blue-800">
-                  Suggested priority: <strong>{fault.aiPriority}</strong>
+                  {t('faults.suggestedPriority')}: <strong>{fault.aiPriority}</strong>
                 </p>
               )}
               <p className="text-sm text-blue-600 mt-1">
-                {Math.round(fault.aiConfidence * 100)}% confidence
+                {Math.round(fault.aiConfidence * 100)}% {t('faults.confidence')}
               </p>
             </div>
           )}
@@ -489,16 +489,16 @@ export function FaultDetailPage({
             className="fixed inset-0 bg-black bg-opacity-50 cursor-default"
             onClick={() => setShowResolveDialog(false)}
             onKeyDown={(e) => e.key === 'Escape' && setShowResolveDialog(false)}
-            aria-label="Close dialog"
+            aria-label={t('common.close')}
           />
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl p-6">
-              <h2 className="text-lg font-semibold mb-4">Resolve Fault</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('faults.resolveFault')}</h2>
               <textarea
                 value={resolutionNotes}
                 onChange={(e) => setResolutionNotes(e.target.value)}
                 rows={4}
-                placeholder="Describe how the issue was resolved..."
+                placeholder={t('faults.resolutionPlaceholder')}
                 className="w-full rounded-md border border-gray-300 px-3 py-2"
               />
               <div className="flex justify-end gap-3 mt-4">
@@ -507,14 +507,14 @@ export function FaultDetailPage({
                   onClick={() => setShowResolveDialog(false)}
                   className="px-4 py-2 border rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleResolve}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg"
                 >
-                  Resolve
+                  {t('faults.resolve')}
                 </button>
               </div>
             </div>
@@ -530,14 +530,14 @@ export function FaultDetailPage({
             className="fixed inset-0 bg-black bg-opacity-50 cursor-default"
             onClick={() => setShowConfirmDialog(false)}
             onKeyDown={(e) => e.key === 'Escape' && setShowConfirmDialog(false)}
-            aria-label="Close dialog"
+            aria-label={t('common.close')}
           />
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl p-6">
-              <h2 className="text-lg font-semibold mb-4">Confirm Resolution</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('faults.confirmResolution')}</h2>
               <fieldset className="mb-4">
                 <legend className="block text-sm font-medium text-gray-700 mb-2">
-                  Rate the resolution (optional)
+                  {t('faults.rateResolution')}
                 </legend>
                 <div className="flex gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -547,7 +547,7 @@ export function FaultDetailPage({
                       onClick={() => setConfirmRating(star)}
                       className={`text-2xl ${confirmRating && confirmRating >= star ? 'text-yellow-400' : 'text-gray-300'}`}
                     >
-                      ⭐
+                      *
                     </button>
                   ))}
                 </div>
@@ -556,7 +556,7 @@ export function FaultDetailPage({
                 value={confirmFeedback}
                 onChange={(e) => setConfirmFeedback(e.target.value)}
                 rows={3}
-                placeholder="Optional feedback..."
+                placeholder={t('faults.feedbackPlaceholder')}
                 className="w-full rounded-md border border-gray-300 px-3 py-2"
               />
               <div className="flex justify-end gap-3 mt-4">
@@ -565,14 +565,14 @@ export function FaultDetailPage({
                   onClick={() => setShowConfirmDialog(false)}
                   className="px-4 py-2 border rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirm}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg"
                 >
-                  Confirm
+                  {t('common.confirm')}
                 </button>
               </div>
             </div>
@@ -588,16 +588,16 @@ export function FaultDetailPage({
             className="fixed inset-0 bg-black bg-opacity-50 cursor-default"
             onClick={() => setShowReopenDialog(false)}
             onKeyDown={(e) => e.key === 'Escape' && setShowReopenDialog(false)}
-            aria-label="Close dialog"
+            aria-label={t('common.close')}
           />
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="relative w-full max-w-md bg-white rounded-lg shadow-xl p-6">
-              <h2 className="text-lg font-semibold mb-4">Reopen Fault</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('faults.reopenFault')}</h2>
               <textarea
                 value={reopenReason}
                 onChange={(e) => setReopenReason(e.target.value)}
                 rows={3}
-                placeholder="Why does this need to be reopened?"
+                placeholder={t('faults.reopenPlaceholder')}
                 className="w-full rounded-md border border-gray-300 px-3 py-2"
               />
               <div className="flex justify-end gap-3 mt-4">
@@ -606,7 +606,7 @@ export function FaultDetailPage({
                   onClick={() => setShowReopenDialog(false)}
                   className="px-4 py-2 border rounded-lg"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
@@ -614,7 +614,7 @@ export function FaultDetailPage({
                   disabled={!reopenReason.trim()}
                   className="px-4 py-2 bg-orange-600 text-white rounded-lg disabled:opacity-50"
                 >
-                  Reopen
+                  {t('faults.reopen')}
                 </button>
               </div>
             </div>

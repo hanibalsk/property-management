@@ -3,6 +3,7 @@
  * Epic 4: Fault Reporting & Resolution (UC-03)
  */
 
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export type FaultStatus =
@@ -63,38 +64,8 @@ const priorityColors: Record<FaultPriority, string> = {
   urgent: '#DC2626',
 };
 
-const categoryLabels: Record<FaultCategory, string> = {
-  plumbing: 'Plumbing',
-  electrical: 'Electrical',
-  heating: 'Heating',
-  structural: 'Structural',
-  exterior: 'Exterior',
-  elevator: 'Elevator',
-  common_area: 'Common Area',
-  security: 'Security',
-  cleaning: 'Cleaning',
-  other: 'Other',
-};
-
-const statusLabels: Record<FaultStatus, string> = {
-  new: 'New',
-  triaged: 'Triaged',
-  in_progress: 'In Progress',
-  waiting_parts: 'Waiting',
-  scheduled: 'Scheduled',
-  resolved: 'Resolved',
-  closed: 'Closed',
-  reopened: 'Reopened',
-};
-
-const priorityLabels: Record<FaultPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
-
 export function FaultCard({ fault, onPress }: FaultCardProps) {
+  const { t } = useTranslation();
   const statusColor = statusColors[fault.status];
 
   return (
@@ -109,16 +80,18 @@ export function FaultCard({ fault, onPress }: FaultCardProps) {
       <View style={styles.badges}>
         <View style={[styles.badge, { backgroundColor: statusColor.bg }]}>
           <Text style={[styles.badgeText, { color: statusColor.text }]}>
-            {statusLabels[fault.status]}
+            {t(`faults.status.${fault.status}`)}
           </Text>
         </View>
         <Text style={[styles.priority, { color: priorityColors[fault.priority] }]}>
-          {priorityLabels[fault.priority]}
+          {t(`faults.priority.${fault.priority}`)}
         </Text>
-        <Text style={styles.category}>{categoryLabels[fault.category]}</Text>
+        <Text style={styles.category}>{t(`faults.category.${fault.category}`)}</Text>
       </View>
 
-      <Text style={styles.date}>Reported: {new Date(fault.createdAt).toLocaleDateString()}</Text>
+      <Text style={styles.date}>
+        {t('faults.reported')}: {new Date(fault.createdAt).toLocaleDateString()}
+      </Text>
     </TouchableOpacity>
   );
 }

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -66,6 +67,7 @@ interface DashboardScreenProps {
 }
 
 export function DashboardScreen({ onNavigate }: DashboardScreenProps) {
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [stats] = useState<DashboardStats>(mockStats);
@@ -117,13 +119,13 @@ export function DashboardScreen({ onNavigate }: DashboardScreenProps) {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Welcome back,</Text>
+          <Text style={styles.greeting}>{t('dashboard.welcomeBack')}</Text>
           <Text style={styles.userName}>
             {user?.firstName} {user?.lastName}
           </Text>
         </View>
         <Pressable style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('auth.logout')}</Text>
         </Pressable>
       </View>
 
@@ -137,26 +139,26 @@ export function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         <View style={styles.statsGrid}>
           <Pressable style={styles.statCard} onPress={() => onNavigate?.('Faults')}>
             <Text style={styles.statNumber}>{stats.pendingFaults}</Text>
-            <Text style={styles.statLabel}>Open Faults</Text>
+            <Text style={styles.statLabel}>{t('dashboard.openFaults')}</Text>
           </Pressable>
           <Pressable style={styles.statCard} onPress={() => onNavigate?.('Announcements')}>
             <Text style={styles.statNumber}>{stats.unreadAnnouncements}</Text>
-            <Text style={styles.statLabel}>New Announcements</Text>
+            <Text style={styles.statLabel}>{t('dashboard.newAnnouncements')}</Text>
           </Pressable>
           <Pressable style={styles.statCard} onPress={() => onNavigate?.('Voting')}>
             <Text style={styles.statNumber}>{stats.activeVotes}</Text>
-            <Text style={styles.statLabel}>Active Votes</Text>
+            <Text style={styles.statLabel}>{t('dashboard.activeVotes')}</Text>
           </Pressable>
           <Pressable style={styles.statCard} onPress={() => onNavigate?.('Messages')}>
             <Text style={styles.statNumber}>{stats.unreadMessages}</Text>
-            <Text style={styles.statLabel}>Unread Messages</Text>
+            <Text style={styles.statLabel}>{t('dashboard.unreadMessages')}</Text>
           </Pressable>
         </View>
 
         {/* Pending Actions */}
         {pendingActions.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Pending Actions</Text>
+            <Text style={styles.sectionTitle}>{t('dashboard.pendingActions')}</Text>
             <View style={styles.actionsList}>
               {pendingActions.map((action) => (
                 <Pressable key={action.id} style={styles.actionCard}>
@@ -164,7 +166,9 @@ export function DashboardScreen({ onNavigate }: DashboardScreenProps) {
                   <View style={styles.actionContent}>
                     <Text style={styles.actionTitle}>{action.title}</Text>
                     {action.dueDate && (
-                      <Text style={styles.actionDue}>Due: {formatDate(action.dueDate)}</Text>
+                      <Text style={styles.actionDue}>
+                        {t('dashboard.due', { date: formatDate(action.dueDate) })}
+                      </Text>
                     )}
                   </View>
                   <Text style={styles.actionArrow}>›</Text>
@@ -177,9 +181,9 @@ export function DashboardScreen({ onNavigate }: DashboardScreenProps) {
         {/* Recent Announcements */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Announcements</Text>
+            <Text style={styles.sectionTitle}>{t('dashboard.recentAnnouncements')}</Text>
             <Pressable onPress={() => onNavigate?.('Announcements')}>
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={styles.seeAllText}>{t('dashboard.seeAll')}</Text>
             </Pressable>
           </View>
           <View style={styles.announcementsList}>
@@ -204,23 +208,23 @@ export function DashboardScreen({ onNavigate }: DashboardScreenProps) {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t('dashboard.quickActions')}</Text>
           <View style={styles.quickActionsGrid}>
             <Pressable style={styles.quickAction} onPress={() => onNavigate?.('ReportFault')}>
               <Text style={styles.quickActionIcon}>🔧</Text>
-              <Text style={styles.quickActionLabel}>Report Fault</Text>
+              <Text style={styles.quickActionLabel}>{t('dashboard.reportFault')}</Text>
             </Pressable>
             <Pressable style={styles.quickAction} onPress={() => onNavigate?.('Documents')}>
               <Text style={styles.quickActionIcon}>📄</Text>
-              <Text style={styles.quickActionLabel}>Documents</Text>
+              <Text style={styles.quickActionLabel}>{t('dashboard.documents')}</Text>
             </Pressable>
             <Pressable style={styles.quickAction} onPress={() => onNavigate?.('MeterReading')}>
               <Text style={styles.quickActionIcon}>📊</Text>
-              <Text style={styles.quickActionLabel}>Meter Reading</Text>
+              <Text style={styles.quickActionLabel}>{t('dashboard.meterReading')}</Text>
             </Pressable>
             <Pressable style={styles.quickAction} onPress={() => onNavigate?.('Payments')}>
               <Text style={styles.quickActionIcon}>💳</Text>
-              <Text style={styles.quickActionLabel}>Payments</Text>
+              <Text style={styles.quickActionLabel}>{t('dashboard.payments')}</Text>
             </Pressable>
           </View>
         </View>

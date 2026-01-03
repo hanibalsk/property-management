@@ -8,6 +8,7 @@
 
 import { Footer, Header } from '@/components/ui';
 import type { ListingDetail, ListingFeatures } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import { ContactForm } from './ContactForm';
 import { PhotoGallery } from './PhotoGallery';
 
@@ -24,33 +25,17 @@ function formatPrice(price: number, currency: string) {
   }).format(price);
 }
 
-function getFeatureLabel(key: keyof ListingFeatures): string {
-  const labels: Record<keyof ListingFeatures, string> = {
-    balcony: 'Balcony',
-    terrace: 'Terrace',
-    garden: 'Garden',
-    parking: 'Parking',
-    garage: 'Garage',
-    elevator: 'Elevator',
-    cellar: 'Cellar',
-    airConditioning: 'Air Conditioning',
-    furnished: 'Furnished',
-    petFriendly: 'Pet Friendly',
-    disabledAccess: 'Disabled Access',
-  };
-  return labels[key] || key;
-}
-
 export function ListingNotFound() {
+  const t = useTranslations('listing');
   return (
     <div className="page-container">
       <Header />
       <main className="main">
         <div className="not-found">
-          <h1>Listing Not Found</h1>
-          <p>The listing you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+          <h1>{t('notFound')}</h1>
+          <p>{t('notFoundDesc')}</p>
           <a href="/listings" className="back-link">
-            Browse all listings
+            {t('browseAll')}
           </a>
         </div>
       </main>
@@ -93,9 +78,17 @@ export function ListingNotFound() {
 }
 
 export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentProps) {
+  const t = useTranslations('listing');
+  const tFeatures = useTranslations('features');
+  const tNav = useTranslations('nav');
+
   if (!listing) {
     return <ListingNotFound />;
   }
+
+  const getFeatureLabel = (key: keyof ListingFeatures): string => {
+    return tFeatures(key);
+  };
 
   const activeFeatures = Object.entries(listing.features)
     .filter(([, value]) => value === true)
@@ -116,9 +109,9 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
         <div className="container">
           {/* Breadcrumb */}
           <nav className="breadcrumb" aria-label="Breadcrumb">
-            <a href="/">Home</a>
+            <a href="/">{tNav('home')}</a>
             <span className="separator">/</span>
-            <a href="/listings">Listings</a>
+            <a href="/listings">{tNav('allListings')}</a>
             <span className="separator">/</span>
             <span className="current">{listing.address.city}</span>
           </nav>
@@ -133,7 +126,7 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
               <div className="listing-header">
                 <div className="badges">
                   <span className={`badge ${listing.transactionType}`}>
-                    {listing.transactionType === 'sale' ? 'For Sale' : 'For Rent'}
+                    {listing.transactionType === 'sale' ? t('forSale') : t('forRent')}
                   </span>
                   <span className="badge type">{listing.propertyType}</span>
                 </div>
@@ -158,7 +151,7 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
                 <div className="price-row">
                   <span className="price">{formatPrice(listing.price, listing.currency)}</span>
                   {listing.transactionType === 'rent' && (
-                    <span className="price-suffix">/month</span>
+                    <span className="price-suffix">{t('perMonth')}</span>
                   )}
                   {listing.pricePerSqm && (
                     <span className="price-per-sqm">
@@ -173,24 +166,24 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
                 {listing.rooms !== undefined && (
                   <div className="detail-item">
                     <span className="detail-value">{listing.rooms}</span>
-                    <span className="detail-label">Rooms</span>
+                    <span className="detail-label">{t('rooms')}</span>
                   </div>
                 )}
                 {listing.bedrooms !== undefined && (
                   <div className="detail-item">
                     <span className="detail-value">{listing.bedrooms}</span>
-                    <span className="detail-label">Bedrooms</span>
+                    <span className="detail-label">{t('bedrooms')}</span>
                   </div>
                 )}
                 {listing.bathrooms !== undefined && (
                   <div className="detail-item">
                     <span className="detail-value">{listing.bathrooms}</span>
-                    <span className="detail-label">Bathrooms</span>
+                    <span className="detail-label">{t('bathrooms')}</span>
                   </div>
                 )}
                 <div className="detail-item">
                   <span className="detail-value">{listing.area}</span>
-                  <span className="detail-label">m²</span>
+                  <span className="detail-label">{t('sqm')}</span>
                 </div>
                 {listing.floor !== undefined && (
                   <div className="detail-item">
@@ -198,27 +191,27 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
                       {listing.floor}
                       {listing.totalFloors && `/${listing.totalFloors}`}
                     </span>
-                    <span className="detail-label">Floor</span>
+                    <span className="detail-label">{t('floor')}</span>
                   </div>
                 )}
                 {listing.yearBuilt !== undefined && (
                   <div className="detail-item">
                     <span className="detail-value">{listing.yearBuilt}</span>
-                    <span className="detail-label">Built</span>
+                    <span className="detail-label">{t('built')}</span>
                   </div>
                 )}
               </div>
 
               {/* Description */}
               <section className="section">
-                <h2 className="section-title">Description</h2>
+                <h2 className="section-title">{t('description')}</h2>
                 <p className="description">{listing.description}</p>
               </section>
 
               {/* Features */}
               {activeFeatures.length > 0 && (
                 <section className="section">
-                  <h2 className="section-title">Features</h2>
+                  <h2 className="section-title">{t('features')}</h2>
                   <div className="features-grid">
                     {activeFeatures.map((feature) => (
                       <div key={feature} className="feature-item">
@@ -242,17 +235,17 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
 
               {/* Additional Info */}
               <section className="section">
-                <h2 className="section-title">Additional Information</h2>
+                <h2 className="section-title">{t('additionalInfo')}</h2>
                 <div className="info-grid">
                   {listing.energyRating && (
                     <div className="info-item">
-                      <span className="info-label">Energy Rating</span>
+                      <span className="info-label">{t('energyRating')}</span>
                       <span className="info-value">{listing.energyRating}</span>
                     </div>
                   )}
                   {listing.monthlyCharges !== undefined && (
                     <div className="info-item">
-                      <span className="info-label">Monthly Charges</span>
+                      <span className="info-label">{t('monthlyCharges')}</span>
                       <span className="info-value">
                         {formatPrice(listing.monthlyCharges, listing.currency)}
                       </span>
@@ -260,14 +253,14 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
                   )}
                   {listing.availableFrom && (
                     <div className="info-item">
-                      <span className="info-label">Available From</span>
+                      <span className="info-label">{t('availableFrom')}</span>
                       <span className="info-value">
                         {new Date(listing.availableFrom).toLocaleDateString()}
                       </span>
                     </div>
                   )}
                   <div className="info-item">
-                    <span className="info-label">Listed</span>
+                    <span className="info-label">{t('listed')}</span>
                     <span className="info-value">
                       {new Date(listing.createdAt).toLocaleDateString()}
                     </span>
@@ -278,7 +271,7 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
               {/* Virtual Tour / Floor Plan */}
               {(listing.virtualTourUrl || listing.floorPlanUrl) && (
                 <section className="section">
-                  <h2 className="section-title">Additional Resources</h2>
+                  <h2 className="section-title">{t('additionalResources')}</h2>
                   <div className="resources">
                     {listing.virtualTourUrl && (
                       <a
@@ -299,7 +292,7 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
                           <circle cx="12" cy="12" r="10" />
                           <polygon points="10 8 16 12 10 16 10 8" />
                         </svg>
-                        Virtual Tour
+                        {t('virtualTour')}
                       </a>
                     )}
                     {listing.floorPlanUrl && (
@@ -322,7 +315,7 @@ export function ListingDetailContent({ listing, jsonLd }: ListingDetailContentPr
                           <line x1="3" y1="9" x2="21" y2="9" />
                           <line x1="9" y1="21" x2="9" y2="9" />
                         </svg>
-                        Floor Plan
+                        {t('floorPlan')}
                       </a>
                     )}
                   </div>

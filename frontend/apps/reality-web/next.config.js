@@ -1,10 +1,11 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable React strict mode
   reactStrictMode: true,
-
-  // i18n configuration for multi-region deployment
-  // Handled by next-intl middleware
 
   // Image optimization
   images: {
@@ -17,4 +18,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

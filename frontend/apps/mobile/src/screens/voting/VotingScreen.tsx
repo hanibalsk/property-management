@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export type VoteStatus = 'active' | 'closed' | 'pending';
@@ -95,6 +96,7 @@ interface VotingScreenProps {
 }
 
 export function VotingScreen({ onNavigate: _onNavigate }: VotingScreenProps) {
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [votes, setVotes] = useState<Vote[]>(mockVotes);
   const [filter, setFilter] = useState<'all' | 'active' | 'closed'>('all');
@@ -128,51 +130,47 @@ export function VotingScreen({ onNavigate: _onNavigate }: VotingScreenProps) {
     const now = new Date();
     const diff = end.getTime() - now.getTime();
 
-    if (diff <= 0) return 'Ended';
+    if (diff <= 0) return t('voting.ended');
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-    if (days > 0) return `${days}d ${hours}h left`;
-    if (hours > 0) return `${hours}h left`;
+    if (days > 0) return t('voting.timeLeftDaysHours', { days, hours });
+    if (hours > 0) return t('voting.timeLeftHours', { hours });
 
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${minutes}m left`;
+    return t('voting.timeLeftMinutes', { minutes });
   };
 
   const handleVote = (voteId: string, optionId: string) => {
-    Alert.alert(
-      'Confirm Vote',
-      'Are you sure you want to cast your vote? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Vote',
-          onPress: () => {
-            setVotes((prev) =>
-              prev.map((v) => {
-                if (v.id !== voteId) return v;
-                return {
-                  ...v,
-                  hasVoted: true,
-                  userVote: optionId,
-                  options: v.options.map((o) => ({
-                    ...o,
-                    votes: o.id === optionId ? o.votes + 1 : o.votes,
-                    percentage: Math.round(
-                      ((o.id === optionId ? o.votes + 1 : o.votes) / (v.totalVotes + 1)) * 100
-                    ),
-                  })),
-                  totalVotes: v.totalVotes + 1,
-                  currentQuorum: v.currentQuorum + 1,
-                };
-              })
-            );
-            Alert.alert('Success', 'Your vote has been recorded.');
-          },
+    Alert.alert(t('voting.confirmVoteTitle'), t('voting.confirmVoteMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('voting.vote'),
+        onPress: () => {
+          setVotes((prev) =>
+            prev.map((v) => {
+              if (v.id !== voteId) return v;
+              return {
+                ...v,
+                hasVoted: true,
+                userVote: optionId,
+                options: v.options.map((o) => ({
+                  ...o,
+                  votes: o.id === optionId ? o.votes + 1 : o.votes,
+                  percentage: Math.round(
+                    ((o.id === optionId ? o.votes + 1 : o.votes) / (v.totalVotes + 1)) * 100
+                  ),
+                })),
+                totalVotes: v.totalVotes + 1,
+                currentQuorum: v.currentQuorum + 1,
+              };
+            })
+          );
+          Alert.alert(t('voting.successTitle'), t('voting.successMessage'));
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const filteredVotes = votes.filter((v) => {
@@ -186,10 +184,12 @@ export function VotingScreen({ onNavigate: _onNavigate }: VotingScreenProps) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Voting</Text>
+        <Text style={styles.headerTitle}>{t('voting.title')}</Text>
         {activeCount > 0 && (
           <View style={styles.activeCountBadge}>
-            <Text style={styles.activeCountText}>{activeCount} active</Text>
+            <Text style={styles.activeCountText}>
+              {t('voting.activeCount', { count: activeCount })}
+            </Text>
           </View>
         )}
       </View>
@@ -203,7 +203,7 @@ export function VotingScreen({ onNavigate: _onNavigate }: VotingScreenProps) {
             onPress={() => setFilter(option)}
           >
             <Text style={[styles.filterText, filter === option && styles.filterTextActive]}>
-              {option.charAt(0).toUpperCase() + option.slice(1)}
+              {t(`voting.filter.${option}`)}
             </Text>
           </Pressable>
         ))}
@@ -219,8 +219,8 @@ export function VotingScreen({ onNavigate: _onNavigate }: VotingScreenProps) {
         {filteredVotes.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🗳️</Text>
-            <Text style={styles.emptyTitle}>No votes found</Text>
-            <Text style={styles.emptyText}>Check back for future voting</Text>
+            <Text style={styles.emptyTitle}>{t('voting.emptyTitle')}</Text>
+            <Text style={styles.emptyText}>{t('voting.emptyText')}</Text>
           </View>
         ) : (
           filteredVotes.map((vote) => (
@@ -244,9 +244,12 @@ export function VotingScreen({ onNavigate: _onNavigate }: VotingScreenProps) {
               {/* Quorum Progress */}
               <View style={styles.quorumSection}>
                 <View style={styles.quorumHeader}>
-                  <Text style={styles.quorumLabel}>Quorum</Text>
+                  <Text style={styles.quorumLabel}>{t('voting.quorum')}</Text>
                   <Text style={styles.quorumValue}>
-                    {vote.currentQuorum}/{vote.requiredQuorum} votes
+                    {t('voting.quorumVotes', {
+                      current: vote.currentQuorum,
+                      required: vote.requiredQuorum,
+                    })}
                   </Text>
                 </View>
                 <View style={styles.quorumBar}>
@@ -319,13 +322,15 @@ export function VotingScreen({ onNavigate: _onNavigate }: VotingScreenProps) {
               {vote.hasVoted && (
                 <View style={styles.votedMessage}>
                   <Text style={styles.votedIcon}>✓</Text>
-                  <Text style={styles.votedText}>You have voted</Text>
+                  <Text style={styles.votedText}>{t('voting.youHaveVoted')}</Text>
                 </View>
               )}
 
               {/* Footer */}
               <View style={styles.voteFooter}>
-                <Text style={styles.createdBy}>Created by {vote.createdBy}</Text>
+                <Text style={styles.createdBy}>
+                  {t('voting.createdBy', { name: vote.createdBy })}
+                </Text>
                 <Text style={styles.dateRange}>
                   {formatDate(vote.startsAt)} - {formatDate(vote.endsAt)}
                 </Text>

@@ -10,9 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.R
 import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
@@ -85,10 +87,13 @@ fun FavoritesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Favorites") },
+                title = { Text(stringResource(R.string.tab_favorites)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
                     }
                 }
             )
@@ -116,7 +121,7 @@ fun FavoritesScreen(
                             onClick = { selectedTab = 0 },
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Properties")
+                                    Text(stringResource(R.string.favorites_tab_properties))
                                     if (favorites.isNotEmpty()) {
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Badge { Text("${favorites.size}") }
@@ -130,7 +135,7 @@ fun FavoritesScreen(
                             onClick = { selectedTab = 1 },
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Searches")
+                                    Text(stringResource(R.string.favorites_tab_searches))
                                     if (savedSearches.isNotEmpty()) {
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Badge { Text("${savedSearches.size}") }
@@ -263,13 +268,13 @@ private fun NotSignedInContent(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Sign in to save favorites",
+            text = stringResource(R.string.favorites_sign_in_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Keep track of properties you're interested in",
+            text = stringResource(R.string.favorites_sign_in_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -319,13 +324,13 @@ private fun EmptyFavorites() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No favorites yet",
+            text = stringResource(R.string.empty_favorites),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Save properties to compare later",
+            text = stringResource(R.string.favorites_empty_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -382,7 +387,7 @@ private fun SavedSearchCard(
                     if (search.newCount > 0) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Badge(containerColor = MaterialTheme.colorScheme.primary) {
-                            Text("${search.newCount} new")
+                            Text(stringResource(R.string.saved_search_new_count, search.newCount))
                         }
                     }
                 }
@@ -421,7 +426,9 @@ private fun SavedSearchCard(
                     if (search.alertEnabled) Icons.Default.Notifications
                     else Icons.Default.NotificationsOff,
                     contentDescription =
-                        if (search.alertEnabled) "Disable alerts" else "Enable alerts",
+                        if (search.alertEnabled)
+                            stringResource(R.string.saved_search_disable_alerts)
+                        else stringResource(R.string.saved_search_enable_alerts),
                     tint =
                         if (search.alertEnabled) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -432,7 +439,7 @@ private fun SavedSearchCard(
             IconButton(onClick = { showDeleteDialog = true }) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Delete",
+                    contentDescription = stringResource(R.string.delete),
                     tint = MaterialTheme.colorScheme.error
                 )
             }
@@ -442,8 +449,8 @@ private fun SavedSearchCard(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Saved Search") },
-            text = { Text("Are you sure you want to delete \"${search.name}\"?") },
+            title = { Text(stringResource(R.string.saved_search_delete_title)) },
+            text = { Text(stringResource(R.string.saved_search_delete_message, search.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -455,11 +462,13 @@ private fun SavedSearchCard(
                             contentColor = MaterialTheme.colorScheme.error
                         )
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
             }
         )
     }
@@ -480,13 +489,13 @@ private fun EmptySavedSearches() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No saved searches",
+            text = stringResource(R.string.saved_searches_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Save your search to get notified about new listings",
+            text = stringResource(R.string.saved_searches_empty_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -513,6 +522,6 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) { Text("Retry") }
+        Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }

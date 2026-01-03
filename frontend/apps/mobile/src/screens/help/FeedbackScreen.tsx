@@ -4,6 +4,7 @@
  * Epic 50 - Story 50.4: Feedback & Bug Reports
  */
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -33,6 +34,7 @@ interface FeedbackScreenProps {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
+  const { t } = useTranslation();
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('bug');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -58,18 +60,18 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
 
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a title');
+      Alert.alert(t('common.error'), t('errors.pleaseEnterTitle'));
       return;
     }
 
     if (!description.trim()) {
-      Alert.alert('Error', 'Please enter a description');
+      Alert.alert(t('common.error'), t('errors.pleaseEnterDescription'));
       return;
     }
 
     // Validate email format if provided
     if (email.trim() && !EMAIL_REGEX.test(email.trim())) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      Alert.alert(t('common.error'), t('errors.invalidEmailFormat'));
       return;
     }
 
@@ -89,21 +91,19 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
     setIsSubmitting(false);
 
     if (result.success) {
-      Alert.alert('Thank You!', 'Your feedback has been submitted successfully.', [
-        { text: 'OK', onPress: () => onNavigate('HelpCenter') },
+      Alert.alert(t('feedback.successTitle'), t('feedback.successMessage'), [
+        { text: t('common.ok'), onPress: () => onNavigate('HelpCenter') },
       ]);
     } else {
-      Alert.alert(
-        'Saved for Later',
-        'Your feedback has been saved and will be submitted when you have an internet connection.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert(t('feedback.savedForLater'), t('feedback.savedForLaterMessage'), [
+        { text: t('common.ok') },
+      ]);
     }
-  }, [feedbackManager, feedbackType, title, description, email, includeDeviceInfo, onNavigate]);
+  }, [feedbackManager, feedbackType, title, description, email, includeDeviceInfo, onNavigate, t]);
 
   const handleSaveDraft = useCallback(async () => {
     if (!title.trim() && !description.trim()) {
-      Alert.alert('Error', 'Nothing to save');
+      Alert.alert(t('common.error'), t('errors.nothingToSave'));
       return;
     }
 
@@ -114,8 +114,8 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
       email: email.trim() || undefined,
     });
 
-    Alert.alert('Draft Saved', 'Your feedback draft has been saved.');
-  }, [feedbackManager, feedbackType, title, description, email]);
+    Alert.alert(t('common.done'), t('feedback.draftSaved'));
+  }, [feedbackManager, feedbackType, title, description, email, t]);
 
   return (
     <KeyboardAvoidingView
@@ -124,14 +124,14 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
     >
       <View style={styles.header}>
         <Pressable onPress={() => onNavigate('HelpCenter')} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>← {t('common.back')}</Text>
         </Pressable>
-        <Text style={styles.title}>Send Feedback</Text>
+        <Text style={styles.title}>{t('feedback.title')}</Text>
       </View>
 
       <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Feedback Type</Text>
+          <Text style={styles.sectionTitle}>{t('feedback.typeLabel')}</Text>
           <View style={styles.typeGrid}>
             {feedbackTypes.map((type: FeedbackTypeOption) => (
               <Pressable
@@ -151,10 +151,10 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Title *</Text>
+          <Text style={styles.sectionTitle}>{t('feedback.titleLabel')} *</Text>
           <TextInput
             style={styles.input}
-            placeholder="Brief summary of your feedback"
+            placeholder={t('feedback.titlePlaceholder')}
             value={title}
             onChangeText={setTitle}
             placeholderTextColor="#9ca3af"
@@ -162,10 +162,10 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Description *</Text>
+          <Text style={styles.sectionTitle}>{t('feedback.descriptionLabel')} *</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Please describe in detail..."
+            placeholder={t('feedback.descriptionPlaceholder')}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -176,10 +176,10 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Email (optional)</Text>
+          <Text style={styles.sectionTitle}>{t('feedback.emailLabel')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="your@email.com"
+            placeholder={t('feedback.emailPlaceholder')}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -187,7 +187,7 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
             autoCorrect={false}
             placeholderTextColor="#9ca3af"
           />
-          <Text style={styles.helperText}>We may contact you for follow-up questions</Text>
+          <Text style={styles.helperText}>{t('feedback.emailHelper')}</Text>
         </View>
 
         <View style={styles.section}>
@@ -198,12 +198,12 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
             <View style={[styles.checkbox, includeDeviceInfo && styles.checkboxChecked]}>
               {includeDeviceInfo && <Text style={styles.checkmark}>✓</Text>}
             </View>
-            <Text style={styles.checkboxLabel}>Include device information</Text>
+            <Text style={styles.checkboxLabel}>{t('feedback.includeDeviceInfo')}</Text>
           </Pressable>
 
           {includeDeviceInfo && (
             <View style={styles.deviceInfoPreview}>
-              <Text style={styles.deviceInfoTitle}>Device Information</Text>
+              <Text style={styles.deviceInfoTitle}>{t('feedback.deviceInformation')}</Text>
               <Text style={styles.deviceInfoText}>
                 Platform: {deviceInfo.platform} {deviceInfo.osVersion}
               </Text>
@@ -214,7 +214,7 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
                 style={styles.viewDiagnostics}
                 onPress={() => Alert.alert('Diagnostic Report', diagnosticReport)}
               >
-                <Text style={styles.viewDiagnosticsText}>View full diagnostics</Text>
+                <Text style={styles.viewDiagnosticsText}>{t('feedback.viewDiagnostics')}</Text>
               </Pressable>
             </View>
           )}
@@ -227,20 +227,17 @@ export function FeedbackScreen({ onNavigate }: FeedbackScreenProps) {
             disabled={isSubmitting}
           >
             <Text style={styles.submitButtonText}>
-              {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+              {isSubmitting ? t('feedback.submitting') : t('feedback.submitButton')}
             </Text>
           </Pressable>
 
           <Pressable style={styles.draftButton} onPress={handleSaveDraft}>
-            <Text style={styles.draftButtonText}>Save Draft</Text>
+            <Text style={styles.draftButtonText}>{t('feedback.saveDraft')}</Text>
           </Pressable>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Your feedback helps us improve the app. Thank you for taking the time to share your
-            thoughts with us.
-          </Text>
+          <Text style={styles.footerText}>{t('feedback.footerText')}</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

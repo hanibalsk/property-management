@@ -42,11 +42,11 @@ struct LoginView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Sign In")
+            .navigationTitle(String(localized: "sign_in"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(String(localized: "cancel")) {
                         dismiss()
                     }
                 }
@@ -62,11 +62,11 @@ struct LoginView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(Color.accentColor)
 
-            Text("Welcome to Reality Portal")
+            Text(String(localized: "welcome_to_reality_portal"))
                 .font(.title2)
                 .fontWeight(.bold)
 
-            Text("Sign in to save favorites, track inquiries, and get personalized recommendations.")
+            Text(String(localized: "sign_in_description"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -81,7 +81,7 @@ struct LoginView: View {
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "building.2.fill")
-                    Text("Sign in with Property Management")
+                    Text(String(localized: "sign_in_with_pm"))
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -91,7 +91,7 @@ struct LoginView: View {
             }
             .disabled(isLoading)
 
-            Text("Securely sign in using your Property Management account")
+            Text(String(localized: "sso_description"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -103,7 +103,7 @@ struct LoginView: View {
                 .fill(Color(.separator))
                 .frame(height: 1)
 
-            Text("or")
+            Text(String(localized: "or"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 16)
@@ -118,11 +118,11 @@ struct LoginView: View {
         VStack(spacing: 16) {
             // Email field
             VStack(alignment: .leading, spacing: 8) {
-                Text("Email")
+                Text(String(localized: "email"))
                     .font(.subheadline)
                     .fontWeight(.medium)
 
-                TextField("Enter your email", text: $email)
+                TextField(String(localized: "enter_email"), text: $email)
                     .textFieldStyle(.plain)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
@@ -135,16 +135,16 @@ struct LoginView: View {
 
             // Password field
             VStack(alignment: .leading, spacing: 8) {
-                Text("Password")
+                Text(String(localized: "password"))
                     .font(.subheadline)
                     .fontWeight(.medium)
 
                 HStack {
                     Group {
                         if showPassword {
-                            TextField("Enter your password", text: $password)
+                            TextField(String(localized: "enter_password"), text: $password)
                         } else {
-                            SecureField("Enter your password", text: $password)
+                            SecureField(String(localized: "enter_password"), text: $password)
                         }
                     }
                     .textFieldStyle(.plain)
@@ -167,7 +167,7 @@ struct LoginView: View {
             // Forgot password
             HStack {
                 Spacer()
-                Button("Forgot Password?") {
+                Button(String(localized: "forgot_password")) {
                     // Open forgot password flow
                 }
                 .font(.subheadline)
@@ -184,7 +184,7 @@ struct LoginView: View {
                         ProgressView()
                             .tint(.white)
                     }
-                    Text("Sign In")
+                    Text(String(localized: "sign_in"))
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
@@ -211,9 +211,9 @@ struct LoginView: View {
 
     private var registerSection: some View {
         HStack(spacing: 4) {
-            Text("Don't have an account?")
+            Text(String(localized: "no_account_prompt"))
                 .foregroundStyle(.secondary)
-            Button("Create Account") {
+            Button(String(localized: "create_account")) {
                 coordinator.navigate(to: .register)
             }
         }

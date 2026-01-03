@@ -7,6 +7,7 @@
 'use client';
 
 import { useCategoryCounts } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
 const categoryIcons: Record<string, JSX.Element> = {
@@ -115,6 +116,7 @@ const defaultIcon = (
 );
 
 export function CategoryCards() {
+  const t = useTranslations('home');
   const { data: categories, isLoading, error } = useCategoryCounts();
 
   if (isLoading) {
@@ -166,7 +168,7 @@ export function CategoryCards() {
   return (
     <section className="categories-section">
       <div className="container">
-        <h2 className="section-title">Browse by Property Type</h2>
+        <h2 className="section-title">{t('browseByType')}</h2>
         <div className="grid">
           {categories.map((category) => (
             <Link
@@ -176,7 +178,9 @@ export function CategoryCards() {
             >
               <div className="icon">{categoryIcons[category.type] || defaultIcon}</div>
               <h3 className="label">{category.label}</h3>
-              <p className="count">{category.count.toLocaleString()} listings</p>
+              <p className="count">
+                {t('listingsCount', { count: category.count.toLocaleString() })}
+              </p>
             </Link>
           ))}
         </div>

@@ -8,6 +8,7 @@ import { CONTACT_TYPES, CONTACT_TYPE_LABELS } from '@ppt/api-client';
 import type { CreateEmergencyContact, EmergencyContact } from '@ppt/api-client';
 import type React from 'react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface EmergencyContactFormProps {
   contact?: EmergencyContact;
@@ -22,6 +23,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
   onCancel,
   isSubmitting = false,
 }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<CreateEmergencyContact>({
     name: contact?.name || '',
     role: contact?.role || '',
@@ -57,21 +59,21 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = t('emergency.form.errors.nameRequired');
     }
 
     if (!formData.role.trim()) {
-      newErrors.role = 'Role is required';
+      newErrors.role = t('emergency.form.errors.roleRequired');
     }
 
     if (!formData.contact_type) {
-      newErrors.contact_type = 'Contact type is required';
+      newErrors.contact_type = t('emergency.form.errors.contactTypeRequired');
     }
 
     // Validate at least one contact method - only set error on the first empty field
     // to avoid confusing UX with duplicate error messages
     if (!formData.phone && !formData.email) {
-      newErrors.contactMethod = 'At least one contact method (phone or email) is required';
+      newErrors.contactMethod = t('emergency.form.errors.contactMethodRequired');
     }
 
     setErrors(newErrors);
@@ -107,11 +109,11 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
 
   return (
     <form className="emergency-contact-form" onSubmit={handleSubmit}>
-      <h2>{contact ? 'Edit Emergency Contact' : 'Add Emergency Contact'}</h2>
+      <h2>{contact ? t('emergency.form.editTitle') : t('emergency.form.addTitle')}</h2>
 
       <div className="emergency-contact-form-field">
         <label htmlFor="name" className="emergency-contact-form-label required">
-          Name
+          {t('emergency.form.name')}
         </label>
         <input
           type="text"
@@ -133,7 +135,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
 
       <div className="emergency-contact-form-field">
         <label htmlFor="role" className="emergency-contact-form-label required">
-          Role
+          {t('emergency.form.role')}
         </label>
         <input
           type="text"
@@ -142,7 +144,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           value={formData.role}
           onChange={handleChange}
           className={`emergency-contact-form-input ${errors.role ? 'error' : ''}`}
-          placeholder="e.g., Fire Chief, Police Officer"
+          placeholder={t('emergency.form.rolePlaceholder')}
           aria-invalid={!!errors.role}
           aria-describedby={errors.role ? 'role-error' : undefined}
           disabled={isSubmitting}
@@ -156,7 +158,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
 
       <div className="emergency-contact-form-field">
         <label htmlFor="contact_type" className="emergency-contact-form-label required">
-          Contact Type
+          {t('emergency.form.contactType')}
         </label>
         <select
           id="contact_type"
@@ -189,7 +191,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
 
       <div className="emergency-contact-form-field">
         <label htmlFor="phone" className="emergency-contact-form-label">
-          Phone
+          {t('emergency.form.phone')}
         </label>
         <input
           type="tel"
@@ -198,7 +200,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           value={formData.phone}
           onChange={handleChange}
           className={`emergency-contact-form-input ${errors.contactMethod ? 'error' : ''}`}
-          placeholder="+1 (555) 123-4567"
+          placeholder={t('emergency.form.phonePlaceholder')}
           aria-invalid={!!errors.contactMethod}
           aria-describedby={errors.contactMethod ? 'contact-method-error' : undefined}
           disabled={isSubmitting}
@@ -207,7 +209,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
 
       <div className="emergency-contact-form-field">
         <label htmlFor="phone_secondary" className="emergency-contact-form-label">
-          Secondary Phone
+          {t('emergency.form.phoneSecondary')}
         </label>
         <input
           type="tel"
@@ -216,14 +218,14 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           value={formData.phone_secondary}
           onChange={handleChange}
           className="emergency-contact-form-input"
-          placeholder="+1 (555) 987-6543"
+          placeholder={t('emergency.form.phoneSecondaryPlaceholder')}
           disabled={isSubmitting}
         />
       </div>
 
       <div className="emergency-contact-form-field">
         <label htmlFor="email" className="emergency-contact-form-label">
-          Email
+          {t('emergency.form.email')}
         </label>
         <input
           type="email"
@@ -232,7 +234,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           value={formData.email}
           onChange={handleChange}
           className={`emergency-contact-form-input ${errors.contactMethod ? 'error' : ''}`}
-          placeholder="contact@example.com"
+          placeholder={t('emergency.form.emailPlaceholder')}
           aria-invalid={!!errors.contactMethod}
           aria-describedby={errors.contactMethod ? 'contact-method-error' : undefined}
           disabled={isSubmitting}
@@ -241,7 +243,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
 
       <div className="emergency-contact-form-field">
         <label htmlFor="address" className="emergency-contact-form-label">
-          Address
+          {t('emergency.form.address')}
         </label>
         <input
           type="text"
@@ -250,14 +252,14 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           value={formData.address}
           onChange={handleChange}
           className="emergency-contact-form-input"
-          placeholder="123 Main Street, City, State"
+          placeholder={t('emergency.form.addressPlaceholder')}
           disabled={isSubmitting}
         />
       </div>
 
       <div className="emergency-contact-form-field">
         <label htmlFor="available_hours" className="emergency-contact-form-label">
-          Available Hours
+          {t('emergency.form.availableHours')}
         </label>
         <input
           type="text"
@@ -266,14 +268,14 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           value={formData.available_hours}
           onChange={handleChange}
           className="emergency-contact-form-input"
-          placeholder="24/7, Mon-Fri 9am-5pm"
+          placeholder={t('emergency.form.availableHoursPlaceholder')}
           disabled={isSubmitting}
         />
       </div>
 
       <div className="emergency-contact-form-field">
         <label htmlFor="priority_order" className="emergency-contact-form-label">
-          Priority Order
+          {t('emergency.form.priorityOrder')}
         </label>
         <input
           type="number"
@@ -285,12 +287,12 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           min="0"
           disabled={isSubmitting}
         />
-        <span className="emergency-contact-form-help">Lower numbers = higher priority</span>
+        <span className="emergency-contact-form-help">{t('emergency.form.priorityOrderHelp')}</span>
       </div>
 
       <div className="emergency-contact-form-field">
         <label htmlFor="notes" className="emergency-contact-form-label">
-          Notes
+          {t('emergency.form.notes')}
         </label>
         <textarea
           id="notes"
@@ -299,7 +301,7 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           onChange={handleChange}
           className="emergency-contact-form-textarea"
           rows={4}
-          placeholder="Additional information..."
+          placeholder={t('emergency.form.notesPlaceholder')}
           disabled={isSubmitting}
         />
       </div>
@@ -311,14 +313,18 @@ export const EmergencyContactForm: React.FC<EmergencyContactFormProps> = ({
           className="emergency-contact-form-button cancel"
           disabled={isSubmitting}
         >
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
           className="emergency-contact-form-button submit"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Saving...' : contact ? 'Update Contact' : 'Add Contact'}
+          {isSubmitting
+            ? t('common.loading')
+            : contact
+              ? t('emergency.form.updateButton')
+              : t('emergency.form.addButton')}
         </button>
       </div>
     </form>

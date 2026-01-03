@@ -12,3 +12,6 @@ chrono = { workspace = true }
 thiserror = { workspace = true }
 utoipa = { workspace = true }
 validator = { workspace = true }
+fluent-bundle = { workspace = true }
+unic-langid = { workspace = true }
+intl-memoizer = { workspace = true }

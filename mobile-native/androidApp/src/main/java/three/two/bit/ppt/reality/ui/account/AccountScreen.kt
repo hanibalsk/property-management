@@ -16,12 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 import three.two.bit.ppt.reality.BuildConfig
+import three.two.bit.ppt.reality.R
 import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
@@ -69,10 +71,13 @@ fun AccountScreen(ssoService: SsoService, onBackClick: () -> Unit, onLogout: () 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Account") },
+                title = { Text(stringResource(R.string.tab_account)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
                     }
                 }
             )
@@ -151,7 +156,7 @@ fun AccountScreen(ssoService: SsoService, onBackClick: () -> Unit, onLogout: () 
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Sign Out")
+                            Text(stringResource(R.string.sign_out))
                         }
                     }
                 }
@@ -163,8 +168,8 @@ fun AccountScreen(ssoService: SsoService, onBackClick: () -> Unit, onLogout: () 
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Sign Out") },
-            text = { Text("Are you sure you want to sign out?") },
+            title = { Text(stringResource(R.string.sign_out)) },
+            text = { Text(stringResource(R.string.confirm_sign_out_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -176,11 +181,13 @@ fun AccountScreen(ssoService: SsoService, onBackClick: () -> Unit, onLogout: () 
                             contentColor = MaterialTheme.colorScheme.error
                         )
                 ) {
-                    Text("Sign Out")
+                    Text(stringResource(R.string.sign_out))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
             }
         )
     }
@@ -203,7 +210,7 @@ private fun NotSignedInContent(onSignInClick: () -> Unit, modifier: Modifier = M
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Sign in to Reality Portal",
+            text = stringResource(R.string.sign_in_title),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -211,7 +218,7 @@ private fun NotSignedInContent(onSignInClick: () -> Unit, modifier: Modifier = M
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Save favorites, track inquiries, and get notified about new listings",
+            text = stringResource(R.string.sign_in_benefits),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -221,13 +228,13 @@ private fun NotSignedInContent(onSignInClick: () -> Unit, modifier: Modifier = M
         Button(onClick = onSignInClick, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Sign In via PM App")
+            Text(stringResource(R.string.sign_in_pm_app))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "You'll be redirected to the Property Management app to sign in securely.",
+            text = stringResource(R.string.sign_in_redirect_notice),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -271,7 +278,7 @@ private fun ProfileSection(user: three.two.bit.ppt.reality.auth.SsoUserInfo) {
             }
 
             IconButton(onClick = { /* Edit profile */}) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit Profile")
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_profile))
             }
         }
     }
@@ -285,7 +292,7 @@ private fun NotificationPreferencesSection(
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Notifications",
+                text = stringResource(R.string.notifications),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -293,8 +300,8 @@ private fun NotificationPreferencesSection(
             Spacer(modifier = Modifier.height(16.dp))
 
             NotificationPreferenceItem(
-                title = "New Listings",
-                description = "Get notified when new properties match your saved searches",
+                title = stringResource(R.string.notification_new_listings),
+                description = stringResource(R.string.notification_new_listings_desc),
                 checked = preferences.newListings,
                 onCheckedChange = { onPreferenceChange(preferences.copy(newListings = it)) }
             )
@@ -302,8 +309,8 @@ private fun NotificationPreferencesSection(
             HorizontalDivider()
 
             NotificationPreferenceItem(
-                title = "Price Drops",
-                description = "Get notified when a favorite property's price is reduced",
+                title = stringResource(R.string.notification_price_drops),
+                description = stringResource(R.string.notification_price_drops_desc),
                 checked = preferences.priceDrops,
                 onCheckedChange = { onPreferenceChange(preferences.copy(priceDrops = it)) }
             )
@@ -311,8 +318,8 @@ private fun NotificationPreferencesSection(
             HorizontalDivider()
 
             NotificationPreferenceItem(
-                title = "Inquiry Responses",
-                description = "Get notified when an agent responds to your inquiry",
+                title = stringResource(R.string.notification_inquiry_responses),
+                description = stringResource(R.string.notification_inquiry_responses_desc),
                 checked = preferences.inquiryResponses,
                 onCheckedChange = { onPreferenceChange(preferences.copy(inquiryResponses = it)) }
             )
@@ -320,8 +327,8 @@ private fun NotificationPreferencesSection(
             HorizontalDivider()
 
             NotificationPreferenceItem(
-                title = "Listing Updates",
-                description = "Get notified when a favorite listing is updated",
+                title = stringResource(R.string.notification_listing_updates),
+                description = stringResource(R.string.notification_listing_updates_desc),
                 checked = preferences.listingUpdates,
                 onCheckedChange = { onPreferenceChange(preferences.copy(listingUpdates = it)) }
             )
@@ -329,8 +336,8 @@ private fun NotificationPreferencesSection(
             HorizontalDivider()
 
             NotificationPreferenceItem(
-                title = "Marketing",
-                description = "Receive tips, market insights, and promotional content",
+                title = stringResource(R.string.notification_marketing),
+                description = stringResource(R.string.notification_marketing_desc),
                 checked = preferences.marketing,
                 onCheckedChange = { onPreferenceChange(preferences.copy(marketing = it)) }
             )
@@ -368,7 +375,7 @@ private fun AppSettingsSection() {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "App Settings",
+                text = stringResource(R.string.section_app_settings),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -377,8 +384,8 @@ private fun AppSettingsSection() {
 
             SettingsItem(
                 icon = Icons.Default.Language,
-                title = "Language",
-                value = "English",
+                title = stringResource(R.string.setting_language),
+                value = stringResource(R.string.language_english),
                 onClick = { /* Open language picker */}
             )
 
@@ -386,8 +393,8 @@ private fun AppSettingsSection() {
 
             SettingsItem(
                 icon = Icons.Default.Euro,
-                title = "Currency",
-                value = "EUR (€)",
+                title = stringResource(R.string.setting_currency),
+                value = stringResource(R.string.currency_eur),
                 onClick = { /* Open currency picker */}
             )
 
@@ -395,8 +402,8 @@ private fun AppSettingsSection() {
 
             SettingsItem(
                 icon = Icons.Default.Straighten,
-                title = "Units",
-                value = "Metric (m²)",
+                title = stringResource(R.string.setting_units),
+                value = stringResource(R.string.units_metric),
                 onClick = { /* Open units picker */}
             )
 
@@ -404,8 +411,8 @@ private fun AppSettingsSection() {
 
             SettingsItem(
                 icon = Icons.Default.DarkMode,
-                title = "Theme",
-                value = "System Default",
+                title = stringResource(R.string.setting_theme),
+                value = stringResource(R.string.theme_system),
                 onClick = { /* Open theme picker */}
             )
         }
@@ -455,7 +462,7 @@ private fun AboutSection() {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "About",
+                text = stringResource(R.string.about),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -464,7 +471,7 @@ private fun AboutSection() {
 
             AboutItem(
                 icon = Icons.Default.Info,
-                title = "Version",
+                title = stringResource(R.string.version),
                 value = BuildConfig.VERSION_NAME
             )
 
@@ -472,7 +479,7 @@ private fun AboutSection() {
 
             AboutItem(
                 icon = Icons.Default.Description,
-                title = "Terms of Service",
+                title = stringResource(R.string.terms_of_service),
                 onClick = { /* Open terms */}
             )
 
@@ -480,7 +487,7 @@ private fun AboutSection() {
 
             AboutItem(
                 icon = Icons.Default.PrivacyTip,
-                title = "Privacy Policy",
+                title = stringResource(R.string.privacy_policy),
                 onClick = { /* Open privacy policy */}
             )
 
@@ -488,7 +495,7 @@ private fun AboutSection() {
 
             AboutItem(
                 icon = Icons.Default.Help,
-                title = "Help & Support",
+                title = stringResource(R.string.help_support),
                 onClick = { /* Open support */}
             )
 
@@ -496,7 +503,7 @@ private fun AboutSection() {
 
             AboutItem(
                 icon = Icons.Default.Feedback,
-                title = "Send Feedback",
+                title = stringResource(R.string.send_feedback),
                 onClick = { /* Open feedback */}
             )
         }

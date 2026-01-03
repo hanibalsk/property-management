@@ -7,6 +7,7 @@
 'use client';
 
 import { useSearchSuggestions } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -17,6 +18,7 @@ interface SearchBarProps {
 
 export function SearchBar({ initialQuery = '', onSearch }: SearchBarProps) {
   const router = useRouter();
+  const t = useTranslations('search');
   const [query, setQuery] = useState(initialQuery);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -136,7 +138,7 @@ export function SearchBar({ initialQuery = '', onSearch }: SearchBarProps) {
           ref={inputRef}
           type="text"
           className="search-input"
-          placeholder="Search by city, address, or keyword..."
+          placeholder={t('placeholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setShowSuggestions(true)}
@@ -166,7 +168,7 @@ export function SearchBar({ initialQuery = '', onSearch }: SearchBarProps) {
           </button>
         )}
         <button type="submit" className="search-button">
-          Search
+          {t('button')}
         </button>
       </form>
 
@@ -184,7 +186,9 @@ export function SearchBar({ initialQuery = '', onSearch }: SearchBarProps) {
               <span className="suggestion-text">
                 <span className="suggestion-label">{suggestion.label}</span>
                 {suggestion.count !== undefined && (
-                  <span className="suggestion-count">{suggestion.count} listings</span>
+                  <span className="suggestion-count">
+                    {t('listingsCount', { count: suggestion.count })}
+                  </span>
                 )}
               </span>
             </button>

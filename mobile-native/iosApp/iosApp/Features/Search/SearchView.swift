@@ -39,7 +39,7 @@ struct SearchView: View {
                 resultsGrid
             }
         }
-        .navigationTitle("Search")
+        .navigationTitle(String(localized: "tab_search"))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showFilters) {
             FilterSheet(filters: $filters) {
@@ -65,7 +65,7 @@ struct SearchView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
 
-                TextField("Search properties...", text: $searchText)
+                TextField(String(localized: "search_placeholder"), text: $searchText)
                     .textFieldStyle(.plain)
 
                 if !searchText.isEmpty {
@@ -93,7 +93,7 @@ struct SearchView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "slider.horizontal.3")
-                        Text("Filters")
+                        Text(String(localized: "filters"))
                         if filters.hasActiveFilters {
                             Circle()
                                 .fill(Color.accentColor)
@@ -131,7 +131,7 @@ struct SearchView: View {
         VStack {
             Spacer()
             ProgressView()
-            Text("Searching...")
+            Text(String(localized: "searching"))
                 .foregroundStyle(.secondary)
                 .padding(.top, 8)
             Spacer()
@@ -144,9 +144,9 @@ struct SearchView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
-            Text("No results found")
+            Text(String(localized: "no_results_found"))
                 .font(.headline)
-            Text("Try adjusting your search or filters")
+            Text(String(localized: "search_adjust_hint"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -159,15 +159,15 @@ struct SearchView: View {
             Image(systemName: "house.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
-            Text("Search for properties")
+            Text(String(localized: "search_prompt_title"))
                 .font(.headline)
-            Text("Enter a location, keyword, or use filters")
+            Text(String(localized: "search_prompt_description"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
             // Recent searches placeholder
             VStack(alignment: .leading, spacing: 8) {
-                Text("Recent Searches")
+                Text(String(localized: "recent_searches"))
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
@@ -467,7 +467,7 @@ private struct FilterSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Price Range") {
+                Section(String(localized: "filter_price_range")) {
                     HStack {
                         TextField("Min", value: $filters.priceMin, format: .number)
                             .textFieldStyle(.roundedBorder)
@@ -481,7 +481,7 @@ private struct FilterSheet: View {
                     }
                 }
 
-                Section("Property Type") {
+                Section(String(localized: "filter_property_type")) {
                     ForEach(PropertyType.allCases, id: \.self) { type in
                         Toggle(type.displayName, isOn: Binding(
                             get: { filters.propertyTypes.contains(type) },
@@ -496,7 +496,7 @@ private struct FilterSheet: View {
                     }
                 }
 
-                Section("Bedrooms") {
+                Section(String(localized: "filter_bedrooms")) {
                     Stepper("Min: \(filters.bedroomsMin ?? 0)", value: Binding(
                         get: { filters.bedroomsMin ?? 0 },
                         set: { filters.bedroomsMin = $0 > 0 ? $0 : nil }
@@ -504,22 +504,22 @@ private struct FilterSheet: View {
                 }
 
                 Section {
-                    Button("Reset Filters") {
+                    Button(String(localized: "reset_filters")) {
                         filters.reset()
                     }
                     .foregroundStyle(.red)
                 }
             }
-            .navigationTitle("Filters")
+            .navigationTitle(String(localized: "filters"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(String(localized: "cancel")) {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Apply") {
+                    Button(String(localized: "apply")) {
                         onApply()
                         dismiss()
                     }

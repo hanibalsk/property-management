@@ -14,12 +14,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
+import three.two.bit.ppt.reality.R
 import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.AuthState
 import three.two.bit.ppt.reality.auth.SsoService
@@ -91,10 +93,13 @@ fun InquiriesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Inquiries") },
+                title = { Text(stringResource(R.string.inquiries)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
                     }
                 }
             )
@@ -122,7 +127,7 @@ fun InquiriesScreen(
                             onClick = { selectedTab = 0 },
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Messages")
+                                    Text(stringResource(R.string.inquiries_tab_messages))
                                     val pendingCount =
                                         inquiries.count { it.status == InquiryStatus.RESPONDED }
                                     if (pendingCount > 0) {
@@ -138,7 +143,7 @@ fun InquiriesScreen(
                             onClick = { selectedTab = 1 },
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Viewings")
+                                    Text(stringResource(R.string.inquiries_tab_viewings))
                                     val upcomingCount =
                                         viewings.count { it.status == ViewingStatus.CONFIRMED }
                                     if (upcomingCount > 0) {
@@ -233,13 +238,13 @@ private fun NotSignedInContent(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Sign in to view inquiries",
+            text = stringResource(R.string.inquiries_sign_in_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Track your property inquiries and viewing requests",
+            text = stringResource(R.string.inquiries_sign_in_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -296,7 +301,7 @@ private fun InquiryCard(inquiry: Inquiry, onClick: () -> Unit) {
 
                 // Property title
                 Text(
-                    text = inquiry.listing?.title ?: "Property",
+                    text = inquiry.listing?.title ?: stringResource(R.string.property),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -319,7 +324,11 @@ private fun InquiryCard(inquiry: Inquiry, onClick: () -> Unit) {
                 if (inquiry.responses.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${inquiry.responses.size} responses",
+                        text =
+                            stringResource(
+                                R.string.inquiry_responses_count,
+                                inquiry.responses.size
+                            ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -331,16 +340,18 @@ private fun InquiryCard(inquiry: Inquiry, onClick: () -> Unit) {
 
 @Composable
 private fun StatusBadge(status: InquiryStatus) {
-    val (color, text) =
+    val (color, textRes) =
         when (status) {
-            InquiryStatus.PENDING -> Pair(MaterialTheme.colorScheme.tertiary, "Pending")
-            InquiryStatus.RESPONDED -> Pair(MaterialTheme.colorScheme.primary, "Responded")
-            InquiryStatus.CLOSED -> Pair(MaterialTheme.colorScheme.outline, "Closed")
+            InquiryStatus.PENDING ->
+                Pair(MaterialTheme.colorScheme.tertiary, R.string.status_pending)
+            InquiryStatus.RESPONDED ->
+                Pair(MaterialTheme.colorScheme.primary, R.string.status_responded)
+            InquiryStatus.CLOSED -> Pair(MaterialTheme.colorScheme.outline, R.string.status_closed)
         }
 
     Surface(shape = RoundedCornerShape(4.dp), color = color.copy(alpha = 0.12f)) {
         Text(
-            text = text,
+            text = stringResource(textRes),
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
             style = MaterialTheme.typography.labelSmall,
             color = color
@@ -363,13 +374,13 @@ private fun EmptyInquiries() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No inquiries yet",
+            text = stringResource(R.string.inquiries_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Contact property owners to start a conversation",
+            text = stringResource(R.string.inquiries_empty_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -417,7 +428,7 @@ private fun ViewingCard(viewing: ViewingRequest, onClick: () -> Unit, onCancel: 
                     IconButton(onClick = { showCancelDialog = true }) {
                         Icon(
                             Icons.Default.Cancel,
-                            contentDescription = "Cancel",
+                            contentDescription = stringResource(R.string.cancel),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -428,7 +439,7 @@ private fun ViewingCard(viewing: ViewingRequest, onClick: () -> Unit, onCancel: 
 
             // Property
             Text(
-                text = viewing.listing?.title ?: "Property Viewing",
+                text = viewing.listing?.title ?: stringResource(R.string.property_viewing),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -456,7 +467,7 @@ private fun ViewingCard(viewing: ViewingRequest, onClick: () -> Unit, onCancel: 
                 if (viewing.confirmedDate != null) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "(Confirmed)",
+                        text = stringResource(R.string.viewing_confirmed_label),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -480,8 +491,8 @@ private fun ViewingCard(viewing: ViewingRequest, onClick: () -> Unit, onCancel: 
     if (showCancelDialog) {
         AlertDialog(
             onDismissRequest = { showCancelDialog = false },
-            title = { Text("Cancel Viewing") },
-            text = { Text("Are you sure you want to cancel this viewing request?") },
+            title = { Text(stringResource(R.string.viewing_cancel_title)) },
+            text = { Text(stringResource(R.string.viewing_cancel_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -493,26 +504,46 @@ private fun ViewingCard(viewing: ViewingRequest, onClick: () -> Unit, onCancel: 
                             contentColor = MaterialTheme.colorScheme.error
                         )
                 ) {
-                    Text("Cancel Viewing")
+                    Text(stringResource(R.string.viewing_cancel_confirm))
                 }
             },
-            dismissButton = { TextButton(onClick = { showCancelDialog = false }) { Text("Keep") } }
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) {
+                    Text(stringResource(R.string.viewing_cancel_keep))
+                }
+            }
         )
     }
 }
 
 @Composable
 private fun ViewingStatusBadge(status: ViewingStatus) {
-    val (color, text, icon) =
+    val (color, textRes, icon) =
         when (status) {
             ViewingStatus.PENDING ->
-                Triple(MaterialTheme.colorScheme.tertiary, "Pending", Icons.Default.Schedule)
+                Triple(
+                    MaterialTheme.colorScheme.tertiary,
+                    R.string.status_pending,
+                    Icons.Default.Schedule
+                )
             ViewingStatus.CONFIRMED ->
-                Triple(MaterialTheme.colorScheme.primary, "Confirmed", Icons.Default.CheckCircle)
+                Triple(
+                    MaterialTheme.colorScheme.primary,
+                    R.string.status_confirmed,
+                    Icons.Default.CheckCircle
+                )
             ViewingStatus.COMPLETED ->
-                Triple(MaterialTheme.colorScheme.outline, "Completed", Icons.Default.Done)
+                Triple(
+                    MaterialTheme.colorScheme.outline,
+                    R.string.status_completed,
+                    Icons.Default.Done
+                )
             ViewingStatus.CANCELLED ->
-                Triple(MaterialTheme.colorScheme.error, "Cancelled", Icons.Default.Cancel)
+                Triple(
+                    MaterialTheme.colorScheme.error,
+                    R.string.status_cancelled,
+                    Icons.Default.Cancel
+                )
         }
 
     Surface(shape = RoundedCornerShape(4.dp), color = color.copy(alpha = 0.12f)) {
@@ -522,7 +553,11 @@ private fun ViewingStatusBadge(status: ViewingStatus) {
         ) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = color)
             Spacer(modifier = Modifier.width(4.dp))
-            Text(text = text, style = MaterialTheme.typography.labelSmall, color = color)
+            Text(
+                text = stringResource(textRes),
+                style = MaterialTheme.typography.labelSmall,
+                color = color
+            )
         }
     }
 }
@@ -542,13 +577,13 @@ private fun EmptyViewings() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No viewings scheduled",
+            text = stringResource(R.string.viewings_empty_title),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Schedule viewings to see properties in person",
+            text = stringResource(R.string.viewings_empty_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -575,7 +610,7 @@ private fun ErrorContent(message: String, onRetry: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) { Text("Retry") }
+        Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }
 

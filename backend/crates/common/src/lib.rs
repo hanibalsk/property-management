@@ -1,12 +1,14 @@
 //! Common types and utilities shared across all services.
 
 pub mod errors;
+pub mod i18n;
 pub mod notifications;
 pub mod sitemap;
 pub mod tenant;
 pub mod types;
 
 pub use errors::*;
+pub use i18n::{I18nResolver, Locale, MessageKey};
 pub use notifications::*;
 pub use sitemap::Sitemap;
 pub use tenant::*;

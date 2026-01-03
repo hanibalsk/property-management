@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { FaultCategory, FaultPriority } from './FaultCard';
 
 export interface FaultFormData {
@@ -25,26 +26,6 @@ interface FaultFormProps {
   onCancel: () => void;
 }
 
-const categoryOptions: { value: FaultCategory; label: string }[] = [
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'heating', label: 'Heating' },
-  { value: 'structural', label: 'Structural' },
-  { value: 'exterior', label: 'Exterior' },
-  { value: 'elevator', label: 'Elevator' },
-  { value: 'common_area', label: 'Common Area' },
-  { value: 'security', label: 'Security' },
-  { value: 'cleaning', label: 'Cleaning' },
-  { value: 'other', label: 'Other' },
-];
-
-const priorityOptions: { value: FaultPriority; label: string }[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'urgent', label: 'Urgent' },
-];
-
 export function FaultForm({
   initialData,
   buildings = [],
@@ -53,6 +34,28 @@ export function FaultForm({
   onSubmit,
   onCancel,
 }: FaultFormProps) {
+  const { t } = useTranslation();
+
+  const categoryOptions: { value: FaultCategory; label: string }[] = [
+    { value: 'plumbing', label: t('faults.categoryPlumbing') },
+    { value: 'electrical', label: t('faults.categoryElectrical') },
+    { value: 'heating', label: t('faults.categoryHeating') },
+    { value: 'structural', label: t('faults.categoryStructural') },
+    { value: 'exterior', label: t('faults.categoryExterior') },
+    { value: 'elevator', label: t('faults.categoryElevator') },
+    { value: 'common_area', label: t('faults.categoryCommonArea') },
+    { value: 'security', label: t('faults.categorySecurity') },
+    { value: 'cleaning', label: t('faults.categoryCleaning') },
+    { value: 'other', label: t('faults.categoryOther') },
+  ];
+
+  const priorityOptions: { value: FaultPriority; label: string }[] = [
+    { value: 'low', label: t('faults.priorityLow') },
+    { value: 'medium', label: t('faults.priorityMedium') },
+    { value: 'high', label: t('faults.priorityHigh') },
+    { value: 'urgent', label: t('faults.priorityUrgent') },
+  ];
+
   const [formData, setFormData] = useState<FaultFormData>({
     buildingId: initialData?.buildingId || '',
     unitId: initialData?.unitId || undefined,
@@ -68,15 +71,15 @@ export function FaultForm({
     const newErrors: Partial<Record<keyof FaultFormData, string>> = {};
 
     if (!formData.buildingId) {
-      newErrors.buildingId = 'Building is required';
+      newErrors.buildingId = t('faults.form.errors.buildingRequired');
     }
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('faults.form.errors.titleRequired');
     } else if (formData.title.length > 255) {
-      newErrors.title = 'Title must be 255 characters or less';
+      newErrors.title = t('faults.form.errors.titleTooLong');
     }
     if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
+      newErrors.description = t('faults.form.errors.descriptionRequired');
     }
 
     setErrors(newErrors);
@@ -109,7 +112,7 @@ export function FaultForm({
       {/* Building */}
       <div>
         <label htmlFor="buildingId" className="block text-sm font-medium text-gray-700">
-          Building *
+          {t('faults.form.building')} *
         </label>
         <select
           id="buildingId"
@@ -120,7 +123,7 @@ export function FaultForm({
             errors.buildingId ? 'border-red-500' : 'border-gray-300'
           } px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
         >
-          <option value="">Select a building</option>
+          <option value="">{t('faults.form.selectBuilding')}</option>
           {buildings.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
@@ -133,7 +136,7 @@ export function FaultForm({
       {/* Unit (optional) */}
       <div>
         <label htmlFor="unitId" className="block text-sm font-medium text-gray-700">
-          Unit (optional)
+          {t('faults.form.unit')} ({t('common.optional')})
         </label>
         <select
           id="unitId"
@@ -142,7 +145,7 @@ export function FaultForm({
           onChange={handleChange}
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Common area / Not applicable</option>
+          <option value="">{t('faults.form.commonAreaNotApplicable')}</option>
           {units.map((u) => (
             <option key={u.id} value={u.id}>
               {u.designation}
@@ -154,7 +157,7 @@ export function FaultForm({
       {/* Title */}
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Title *
+          {t('faults.form.title')} *
         </label>
         <input
           type="text"
@@ -162,7 +165,7 @@ export function FaultForm({
           name="title"
           value={formData.title}
           onChange={handleChange}
-          placeholder="Brief description of the issue"
+          placeholder={t('faults.form.titlePlaceholder')}
           className={`mt-1 block w-full rounded-md border ${
             errors.title ? 'border-red-500' : 'border-gray-300'
           } px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
@@ -173,7 +176,7 @@ export function FaultForm({
       {/* Description */}
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-          Description *
+          {t('faults.description')} *
         </label>
         <textarea
           id="description"
@@ -181,7 +184,7 @@ export function FaultForm({
           value={formData.description}
           onChange={handleChange}
           rows={4}
-          placeholder="Provide detailed information about the issue..."
+          placeholder={t('faults.form.descriptionPlaceholder')}
           className={`mt-1 block w-full rounded-md border ${
             errors.description ? 'border-red-500' : 'border-gray-300'
           } px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
@@ -192,7 +195,7 @@ export function FaultForm({
       {/* Location Description */}
       <div>
         <label htmlFor="locationDescription" className="block text-sm font-medium text-gray-700">
-          Location (optional)
+          {t('faults.location')} ({t('common.optional')})
         </label>
         <input
           type="text"
@@ -200,7 +203,7 @@ export function FaultForm({
           name="locationDescription"
           value={formData.locationDescription || ''}
           onChange={handleChange}
-          placeholder="e.g., Kitchen sink, Hallway 3rd floor"
+          placeholder={t('faults.form.locationPlaceholder')}
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -208,7 +211,7 @@ export function FaultForm({
       {/* Category */}
       <div>
         <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-          Category *
+          {t('faults.form.category')} *
         </label>
         <select
           id="category"
@@ -228,7 +231,7 @@ export function FaultForm({
       {/* Priority (optional, shown for managers) */}
       <div>
         <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
-          Priority (optional)
+          {t('faults.priority')} ({t('common.optional')})
         </label>
         <select
           id="priority"
@@ -237,7 +240,7 @@ export function FaultForm({
           onChange={handleChange}
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="">Not specified</option>
+          <option value="">{t('faults.form.notSpecified')}</option>
           {priorityOptions.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -254,7 +257,7 @@ export function FaultForm({
           disabled={isSubmitting}
           className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
         >
-          Cancel
+          {t('common.cancel')}
         </button>
         <button
           type="submit"
@@ -264,7 +267,7 @@ export function FaultForm({
           {isSubmitting && (
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
           )}
-          {isSubmitting ? 'Submitting...' : 'Submit Fault'}
+          {isSubmitting ? t('faults.form.submitting') : t('faults.form.submitFault')}
         </button>
       </div>
     </form>

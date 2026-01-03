@@ -13,12 +13,14 @@ import {
   useMyAgency,
   useRealtors,
 } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useState } from 'react';
 
 type PeriodType = '7d' | '30d' | '90d' | '12m';
 
 export function AgencyDashboard() {
+  const t = useTranslations('agency');
   const [period, setPeriod] = useState<PeriodType>('30d');
   const { data: agency, isLoading: agencyLoading } = useMyAgency();
   const { data: stats, isLoading: statsLoading } = useAgencyStats(agency?.id || '', period);
@@ -44,7 +46,7 @@ export function AgencyDashboard() {
       <div className="header">
         <div className="header-content">
           <h1 className="title">{agency.name}</h1>
-          <p className="subtitle">Agency Dashboard</p>
+          <p className="subtitle">{t('dashboard')}</p>
         </div>
         <div className="period-selector">
           {(['7d', '30d', '90d', '12m'] as PeriodType[]).map((p) => (
@@ -54,7 +56,13 @@ export function AgencyDashboard() {
               className={`period-button ${period === p ? 'active' : ''}`}
               onClick={() => setPeriod(p)}
             >
-              {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : p === '90d' ? '90 Days' : '1 Year'}
+              {p === '7d'
+                ? t('period7d')
+                : p === '30d'
+                  ? t('period30d')
+                  : p === '90d'
+                    ? t('period90d')
+                    : t('period1y')}
             </button>
           ))}
         </div>
@@ -67,16 +75,16 @@ export function AgencyDashboard() {
       <div className="content-grid">
         {/* Performance Chart */}
         <div className="section chart-section">
-          <h2 className="section-title">Performance Overview</h2>
+          <h2 className="section-title">{t('performanceOverview')}</h2>
           {performance && <PerformanceChart data={performance} />}
         </div>
 
         {/* Realtor Leaderboard */}
         <div className="section leaderboard-section">
           <div className="section-header">
-            <h2 className="section-title">Top Realtors</h2>
+            <h2 className="section-title">{t('topRealtors')}</h2>
             <Link href="/agency/realtors" className="view-all">
-              View All
+              {t('viewAll')}
             </Link>
           </div>
           <RealtorLeaderboard
@@ -92,7 +100,7 @@ export function AgencyDashboard() {
 
       {/* Quick Actions */}
       <div className="quick-actions">
-        <h2 className="section-title">Quick Actions</h2>
+        <h2 className="section-title">{t('quickActions')}</h2>
         <div className="actions-grid">
           <Link href="/agency/realtors" className="action-card">
             <svg
@@ -109,7 +117,7 @@ export function AgencyDashboard() {
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-            <span>Manage Realtors</span>
+            <span>{t('manageRealtors')}</span>
           </Link>
           <Link href="/agency/listings" className="action-card">
             <svg
@@ -124,7 +132,7 @@ export function AgencyDashboard() {
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
-            <span>All Listings</span>
+            <span>{t('allListings')}</span>
           </Link>
           <Link href="/agency/branding" className="action-card">
             <svg
@@ -142,7 +150,7 @@ export function AgencyDashboard() {
               <circle cx="6.5" cy="12.5" r="0.5" />
               <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.555C21.965 6.012 17.461 2 12 2z" />
             </svg>
-            <span>Branding</span>
+            <span>{t('branding')}</span>
           </Link>
           <Link href="/agency/realtors?action=invite" className="action-card primary">
             <svg
@@ -159,7 +167,7 @@ export function AgencyDashboard() {
               <line x1="20" y1="8" x2="20" y2="14" />
               <line x1="23" y1="11" x2="17" y2="11" />
             </svg>
-            <span>Invite Realtor</span>
+            <span>{t('inviteRealtor')}</span>
           </Link>
         </div>
       </div>

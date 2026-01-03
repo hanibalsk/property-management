@@ -9,6 +9,7 @@
 
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AuthError, useAuth } from '../contexts/AuthContext';
 import './LoginPage.css';
@@ -44,17 +45,17 @@ function isValidEmail(email: string): boolean {
 /**
  * Validates the login form and returns any errors.
  */
-function validateForm(email: string, password: string): FormErrors {
+function validateForm(email: string, password: string, t: (key: string) => string): FormErrors {
   const errors: FormErrors = {};
 
   if (!email.trim()) {
-    errors.email = 'Email is required';
+    errors.email = t('auth.emailRequired');
   } else if (!isValidEmail(email.trim())) {
-    errors.email = 'Please enter a valid email address';
+    errors.email = t('auth.invalidEmail');
   }
 
   if (!password) {
-    errors.password = 'Password is required';
+    errors.password = t('auth.passwordRequired');
   }
 
   return errors;
@@ -63,33 +64,33 @@ function validateForm(email: string, password: string): FormErrors {
 /**
  * Maps authentication error codes to user-friendly messages.
  */
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(error: unknown, t: (key: string) => string): string {
   if (error instanceof AuthError) {
     switch (error.code) {
       case 'INVALID_CREDENTIALS':
-        return 'Invalid email or password. Please try again.';
+        return t('auth.invalidCredentials');
       case 'ACCOUNT_LOCKED':
-        return 'Your account has been locked due to too many failed attempts. Please contact support.';
+        return t('auth.accountLocked');
       case 'ACCOUNT_DISABLED':
-        return 'Your account has been disabled. Please contact support.';
+        return t('auth.accountDisabled');
       case 'SESSION_EXPIRED':
-        return 'Your session has expired. Please log in again.';
+        return t('auth.sessionExpired');
       case 'NETWORK_ERROR':
-        return 'Unable to connect to the server. Please check your internet connection.';
+        return t('auth.networkError');
       default:
-        return 'An unexpected error occurred. Please try again.';
+        return t('auth.unexpectedError');
     }
   }
 
   if (error instanceof Error) {
     // Check for network errors
     if (error.message.includes('fetch') || error.message.includes('network')) {
-      return 'Unable to connect to the server. Please check your internet connection.';
+      return t('auth.networkError');
     }
     return error.message;
   }
 
-  return 'An unexpected error occurred. Please try again.';
+  return t('auth.unexpectedError');
 }
 
 // ============================================================================
@@ -103,6 +104,7 @@ function getErrorMessage(error: unknown): string {
  * After successful login, redirects to the dashboard or stored return URL.
  */
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading: authLoading } = useAuth();
 
@@ -186,7 +188,7 @@ export function LoginPage() {
       setErrors({});
 
       // Validate form
-      const validationErrors = validateForm(email, password);
+      const validationErrors = validateForm(email, password, t);
       if (Object.keys(validationErrors).length > 0) {
         setErrors(validationErrors);
         return;
@@ -201,12 +203,12 @@ export function LoginPage() {
         const returnUrl = getAndClearReturnUrl();
         navigate(returnUrl || '/', { replace: true });
       } catch (error) {
-        setErrors({ general: getErrorMessage(error) });
+        setErrors({ general: getErrorMessage(error, t) });
       } finally {
         setIsSubmitting(false);
       }
     },
-    [email, password, login, navigate, getAndClearReturnUrl]
+    [email, password, login, navigate, getAndClearReturnUrl, t]
   );
 
   // Show loading state while checking auth
@@ -214,7 +216,7 @@ export function LoginPage() {
     return (
       <div className="login-page">
         <div className="login-loading">
-          <div className="login-spinner" aria-label="Checking authentication status" />
+          <div className="login-spinner" aria-label={t('auth.checkingAuth')} />
         </div>
       </div>
     );
@@ -231,8 +233,8 @@ export function LoginPage() {
     <div className="login-page">
       <div className="login-container">
         <div className="login-header">
-          <h1 className="login-title">Sign in</h1>
-          <p className="login-subtitle">Welcome back! Please enter your credentials to continue.</p>
+          <h1 className="login-title">{t('auth.signIn')}</h1>
+          <p className="login-subtitle">{t('auth.welcomeBack')}</p>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit} noValidate>
@@ -249,7 +251,7 @@ export function LoginPage() {
           {/* Email field */}
           <div className="login-field">
             <label htmlFor="email" className="login-label">
-              Email address
+              {t('auth.emailAddress')}
             </label>
             <input
               id="email"
@@ -273,7 +275,7 @@ export function LoginPage() {
           {/* Password field */}
           <div className="login-field">
             <label htmlFor="password" className="login-label">
-              Password
+              {t('auth.password')}
             </label>
             <div className="login-password-wrapper">
               <input
@@ -293,9 +295,9 @@ export function LoginPage() {
                 className="login-password-toggle"
                 onClick={handleTogglePassword}
                 disabled={isFormDisabled}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? t('auth.hide') : t('auth.show')}
               </button>
             </div>
             {errors.password && (
@@ -310,10 +312,10 @@ export function LoginPage() {
             {isSubmitting ? (
               <>
                 <span className="login-spinner login-spinner--small" aria-hidden="true" />
-                <span>Signing in...</span>
+                <span>{t('auth.signingIn')}</span>
               </>
             ) : (
-              'Sign in'
+              t('auth.signIn')
             )}
           </button>
         </form>

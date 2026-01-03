@@ -7,8 +7,8 @@
 
 import type { Metadata } from 'next';
 
-import { ComparisonUrlHandler, ComparisonView } from '../../components/comparison';
-import { Header } from '../../components/ui';
+import { ComparisonUrlHandler, ComparisonView } from '../../../components/comparison';
+import { Header } from '../../../components/ui';
 
 export const metadata: Metadata = {
   title: 'Compare Properties | Reality Portal',

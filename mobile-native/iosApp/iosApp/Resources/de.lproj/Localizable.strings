@@ -1,0 +1,274 @@
+/* App */
+"app_name" = "Reality Portal";
+
+/* Common */
+"loading" = "Lädt…";
+"error" = "Fehler";
+"retry" = "Erneut versuchen";
+"save" = "Speichern";
+"cancel" = "Abbrechen";
+"close" = "Schließen";
+"delete" = "Löschen";
+"edit" = "Bearbeiten";
+"confirm" = "Bestätigen";
+"back" = "Zurück";
+"next" = "Weiter";
+"done" = "Fertig";
+"yes" = "Ja";
+"no" = "Nein";
+"ok" = "OK";
+"search" = "Suchen";
+"share" = "Teilen";
+"see_all" = "Alle anzeigen";
+
+/* Tabs/Navigation */
+"tab_home" = "Startseite";
+"tab_search" = "Suchen";
+"tab_favorites" = "Favoriten";
+"tab_inquiries" = "Anfragen";
+"tab_account" = "Konto";
+
+/* Auth */
+"login" = "Anmelden";
+"logout" = "Abmelden";
+"sign_in" = "Anmelden";
+"sign_out" = "Abmelden";
+"email" = "E-Mail";
+"password" = "Passwort";
+"forgot_password" = "Passwort vergessen?";
+"remember_me" = "Angemeldet bleiben";
+"create_account" = "Konto erstellen";
+"or_continue_with" = "Oder fortfahren mit";
+
+/* Home */
+"featured_properties" = "Empfohlene Immobilien";
+"recent_properties" = "Neueste Immobilien";
+"view_all_properties" = "Alle Immobilien anzeigen";
+"welcome_back" = "Willkommen zurück";
+
+/* Search */
+"search_properties" = "Immobilien suchen…";
+"filters" = "Filter";
+"price_range" = "Preisspanne";
+"property_type" = "Immobilientyp";
+"bedrooms" = "Schlafzimmer";
+"bathrooms" = "Badezimmer";
+"area" = "Fläche";
+"location" = "Lage";
+"apply_filters" = "Filter anwenden";
+"clear_filters" = "Filter löschen";
+"no_results" = "Keine Immobilien gefunden";
+"results_count" = "%d Ergebnisse";
+
+/* Property Types */
+"apartment" = "Wohnung";
+"house" = "Haus";
+"studio" = "Studio";
+"penthouse" = "Penthouse";
+"villa" = "Villa";
+"land" = "Grundstück";
+"commercial" = "Gewerbe";
+
+/* Listing */
+"property_details" = "Immobiliendetails";
+"description" = "Beschreibung";
+"features" = "Eigenschaften";
+"amenities" = "Ausstattung";
+"floor_plan" = "Grundriss";
+"contact_agent" = "Agent kontaktieren";
+"schedule_viewing" = "Besichtigung vereinbaren";
+"add_to_favorites" = "Zu Favoriten hinzufügen";
+"remove_from_favorites" = "Aus Favoriten entfernen";
+"price" = "Preis";
+"per_month" = "/Monat";
+"for_sale" = "Zum Verkauf";
+"for_rent" = "Zur Miete";
+"sqm" = "m²";
+
+/* Favorites */
+"my_favorites" = "Meine Favoriten";
+"no_favorites" = "Noch keine Favoriten";
+"no_favorites_description" = "Immobilien, die Ihnen gefallen, werden hier angezeigt";
+
+/* Inquiries */
+"my_inquiries" = "Meine Anfragen";
+"no_inquiries" = "Noch keine Anfragen";
+"no_inquiries_description" = "Ihre Immobilienanfragen werden hier angezeigt";
+"inquiry_sent" = "Anfrage gesendet";
+"inquiry_pending" = "Ausstehend";
+"inquiry_responded" = "Beantwortet";
+
+/* Account */
+"my_account" = "Mein Konto";
+"profile" = "Profil";
+"settings" = "Einstellungen";
+"language" = "Sprache";
+"notifications" = "Benachrichtigungen";
+"privacy" = "Datenschutz";
+"help" = "Hilfe";
+"about" = "Über";
+"version" = "Version";
+"terms_of_service" = "Nutzungsbedingungen";
+"privacy_policy" = "Datenschutzrichtlinie";
+
+/* Errors */
+"error_generic" = "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.";
+"error_network" = "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.";
+"error_server" = "Serverfehler. Bitte versuchen Sie es später erneut.";
+"error_not_found" = "Nicht gefunden";
+"error_unauthorized" = "Sie sind nicht berechtigt, diese Aktion durchzuführen.";
+
+/* Section Headers */
+"section_quick_actions" = "Schnellaktionen";
+"section_notifications" = "Benachrichtigungen";
+"section_app_settings" = "App-Einstellungen";
+"section_about" = "Über";
+"section_price_range" = "Preisspanne";
+"section_property_type" = "Immobilientyp";
+"section_your_message" = "Ihre Nachricht";
+
+/* Sign-in prompts */
+"sign_in_title" = "Bei Reality Portal anmelden";
+"sign_in_benefits" = "Speichern Sie Favoriten, verfolgen Sie Anfragen und erhalten Sie Benachrichtigungen über neue Angebote";
+"sign_in_pm_app" = "Über PM-App anmelden";
+"sign_in_redirect_notice" = "Sie werden zur Property Management App weitergeleitet, um sich sicher anzumelden.";
+"confirm_sign_out_message" = "Möchten Sie sich wirklich abmelden?";
+
+/* Notification preferences */
+"notification_new_listings" = "Neue Angebote";
+"notification_new_listings_desc" = "Erhalten Sie Benachrichtigungen, wenn neue Immobilien Ihren gespeicherten Suchen entsprechen";
+"notification_price_drops" = "Preissenkungen";
+"notification_price_drops_desc" = "Erhalten Sie Benachrichtigungen, wenn der Preis einer Lieblingsimmobilie gesenkt wird";
+"notification_inquiry_responses" = "Antworten auf Anfragen";
+"notification_inquiry_responses_desc" = "Erhalten Sie Benachrichtigungen, wenn ein Agent auf Ihre Anfrage antwortet";
+
+/* Settings */
+"setting_language" = "Sprache";
+"setting_currency" = "Währung";
+"setting_units" = "Einheiten";
+"setting_theme" = "Design";
+"theme_system" = "Systemstandard";
+"units_metric" = "Metrisch (m²)";
+"currency_eur" = "EUR (€)";
+
+/* Search */
+"search_placeholder" = "Immobilien suchen…";
+"status_searching" = "Suche läuft…";
+"empty_search_results" = "Keine Ergebnisse gefunden";
+"empty_search_tip" = "Versuchen Sie, Ihre Suche oder Filter anzupassen";
+"section_recent_searches" = "Letzte Suchen";
+"action_load_more" = "Mehr laden";
+
+/* Filters */
+"action_filters" = "Filter";
+"filter_for_sale" = "Zum Verkauf";
+"filter_for_rent" = "Zur Miete";
+"filter_apartments" = "Wohnungen";
+"filter_houses" = "Häuser";
+"filter_land" = "Grundstücke";
+
+/* Actions */
+"action_call" = "Anrufen";
+"action_email" = "E-Mail";
+"action_inquire" = "Anfragen";
+"action_share_link" = "Link teilen";
+"action_view_all_properties" = "Alle Immobilien anzeigen";
+"action_browse_listings" = "Angebote durchsuchen";
+"action_view_map" = "Auf Karte anzeigen";
+"action_contact_agent" = "Agent kontaktieren";
+
+/* Empty states */
+"empty_favorites" = "Noch keine Favoriten";
+"empty_favorites_description" = "Tippen Sie auf das Herzsymbol bei einem Angebot, um es zu Ihren Favoriten hinzuzufügen.";
+"empty_inquiries" = "Noch keine Anfragen";
+"empty_inquiries_description" = "Wenn Sie eine Anfrage zu einer Immobilie senden, wird sie hier angezeigt.";
+"prompt_sign_in_favorites" = "Melden Sie sich an, um Ihre Favoriten zu sehen";
+"prompt_sign_in_inquiries" = "Melden Sie sich an, um Ihre Anfragen zu sehen";
+
+/* Loading states */
+"status_loading_favorites" = "Favoriten werden geladen…";
+"status_loading_inquiries" = "Anfragen werden geladen…";
+
+/* Labels */
+"label_featured" = "Empfohlen";
+"label_new" = "Neu";
+"label_reduced" = "Reduziert";
+"label_name_required" = "Name *";
+"label_email_required" = "E-Mail *";
+"label_phone_optional" = "Telefon (optional)";
+"label_message" = "Nachricht";
+
+/* Home Screen (additional) */
+"recently_added" = "Kürzlich hinzugefügt";
+"loading_listings" = "Angebote werden geladen...";
+"no_listings_available" = "Keine Angebote verfügbar";
+
+/* Search Screen (additional) */
+"filter_type" = "Typ";
+"filter_category" = "Kategorie";
+"filter_all" = "Alle";
+"filter_any" = "Beliebig";
+"filter_rooms" = "Zimmer";
+"filter_price_range_eur" = "Preisspanne (EUR)";
+"filter_min" = "Min";
+"filter_max" = "Max";
+"filter_apply" = "Anwenden";
+"sort_by" = "Sortieren nach";
+"sort_newest" = "Neueste";
+"sort_oldest" = "Älteste";
+"sort_price_asc" = "Preis (aufsteigend)";
+"sort_price_desc" = "Preis (absteigend)";
+"sort_area_asc" = "Fläche (aufsteigend)";
+"sort_area_desc" = "Fläche (absteigend)";
+"sort_relevance" = "Relevanz";
+"properties_found" = "%d Immobilien gefunden";
+"rooms_count" = "%d Zimmer";
+"bed_count" = "%d Schlafzimmer";
+"bath_count" = "%d Bad";
+
+/* Search Screen - Additional */
+"searching" = "Suche läuft...";
+"no_results_found" = "Keine Ergebnisse gefunden";
+"search_adjust_hint" = "Versuchen Sie, Ihre Suche oder Filter anzupassen";
+"search_prompt_title" = "Immobilien suchen";
+"search_prompt_description" = "Geben Sie einen Ort, ein Stichwort ein oder verwenden Sie Filter";
+"recent_searches" = "Letzte Suchen";
+"filter_price_range" = "Preisspanne";
+"filter_property_type" = "Immobilientyp";
+"filter_bedrooms" = "Schlafzimmer";
+"reset_filters" = "Filter zurücksetzen";
+"apply" = "Anwenden";
+
+/* Account Screen - Additional */
+"quick_actions" = "Schnellaktionen";
+"saved_searches" = "Gespeicherte Suchen";
+"notification_marketing" = "Marketing";
+"language_english" = "Englisch";
+"terms" = "Bedingungen";
+"version_format" = "Version %@";
+"help_support" = "Hilfe und Support";
+"send_feedback" = "Feedback senden";
+
+/* Listing Detail Screen - Additional */
+"loading_listing" = "Angebot wird geladen...";
+"failed_to_load_listing" = "Angebot konnte nicht geladen werden";
+"view_on_map" = "Auf Karte anzeigen";
+"contact_via_inquiry" = "Über Anfrage kontaktieren";
+"send_inquiry" = "Anfrage senden";
+"property" = "Immobilie";
+"inquiry_your_message" = "Ihre Nachricht";
+"inquiry_contact_preference" = "Kontaktpräferenz";
+"inquiry_prefer_contact" = "Bevorzugt kontaktiert werden über";
+"phone" = "Telefon";
+"either" = "Beides";
+"send" = "Senden";
+
+/* Login Screen - Additional */
+"welcome_to_reality_portal" = "Willkommen bei Reality Portal";
+"sign_in_description" = "Melden Sie sich an, um Favoriten zu speichern, Anfragen zu verfolgen und personalisierte Empfehlungen zu erhalten.";
+"sign_in_with_pm" = "Mit Property Management anmelden";
+"sso_description" = "Melden Sie sich sicher mit Ihrem Property Management-Konto an";
+"or" = "oder";
+"enter_email" = "Geben Sie Ihre E-Mail ein";
+"enter_password" = "Geben Sie Ihr Passwort ein";
+"no_account_prompt" = "Haben Sie kein Konto?";

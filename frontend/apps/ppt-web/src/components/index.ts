@@ -15,3 +15,5 @@ export type { ProtectedRouteProps } from './ProtectedRoute';
 
 export { ConnectionStatus } from './ConnectionStatus';
 export type { ConnectionStatusProps } from './ConnectionStatus';
+
+export { LanguageSwitcher } from './LanguageSwitcher';

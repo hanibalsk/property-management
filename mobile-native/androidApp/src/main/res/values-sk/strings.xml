@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">Reality Portál</string>
+
+    <!-- Common -->
+    <string name="loading">Načítava sa…</string>
+    <string name="error">Chyba</string>
+    <string name="retry">Skúsiť znova</string>
+    <string name="save">Uložiť</string>
+    <string name="cancel">Zrušiť</string>
+    <string name="close">Zavrieť</string>
+    <string name="delete">Vymazať</string>
+    <string name="edit">Upraviť</string>
+    <string name="confirm">Potvrdiť</string>
+    <string name="back">Späť</string>
+    <string name="next">Ďalej</string>
+    <string name="done">Hotovo</string>
+    <string name="yes">Áno</string>
+    <string name="no">Nie</string>
+    <string name="ok">OK</string>
+    <string name="search">Hľadať</string>
+    <string name="share">Zdieľať</string>
+    <string name="see_all">Zobraziť všetko</string>
+
+    <!-- Tabs/Navigation -->
+    <string name="tab_home">Domov</string>
+    <string name="tab_search">Hľadať</string>
+    <string name="tab_favorites">Obľúbené</string>
+    <string name="tab_inquiries">Dopyty</string>
+    <string name="tab_account">Účet</string>
+
+    <!-- Auth -->
+    <string name="login">Prihlásiť sa</string>
+    <string name="logout">Odhlásiť sa</string>
+    <string name="sign_in">Prihlásiť sa</string>
+    <string name="sign_out">Odhlásiť sa</string>
+    <string name="email">E-mail</string>
+    <string name="password">Heslo</string>
+    <string name="forgot_password">Zabudnuté heslo?</string>
+    <string name="remember_me">Zapamätať si ma</string>
+    <string name="create_account">Vytvoriť účet</string>
+    <string name="or_continue_with">Alebo pokračovať cez</string>
+
+    <!-- Home -->
+    <string name="featured_properties">Odporúčané nehnuteľnosti</string>
+    <string name="recent_properties">Najnovšie nehnuteľnosti</string>
+    <string name="view_all_properties">Zobraziť všetky nehnuteľnosti</string>
+    <string name="welcome_back">Vitajte späť</string>
+
+    <!-- Search -->
+    <string name="search_properties">Hľadať nehnuteľnosti…</string>
+    <string name="filters">Filtre</string>
+    <string name="price_range">Cenové rozpätie</string>
+    <string name="property_type">Typ nehnuteľnosti</string>
+    <string name="bedrooms">Spálne</string>
+    <string name="bathrooms">Kúpeľne</string>
+    <string name="area">Plocha</string>
+    <string name="location">Lokalita</string>
+    <string name="apply_filters">Použiť filtre</string>
+    <string name="clear_filters">Vymazať filtre</string>
+    <string name="no_results">Žiadne nehnuteľnosti</string>
+    <string name="results_count">%1$d výsledkov</string>
+
+    <!-- Property Types -->
+    <string name="apartment">Byt</string>
+    <string name="house">Dom</string>
+    <string name="studio">Garsónka</string>
+    <string name="penthouse">Penthouse</string>
+    <string name="villa">Vila</string>
+    <string name="land">Pozemok</string>
+    <string name="commercial">Komerčné</string>
+
+    <!-- Listing -->
+    <string name="property_details">Detaily nehnuteľnosti</string>
+    <string name="description">Popis</string>
+    <string name="features">Vlastnosti</string>
+    <string name="amenities">Vybavenie</string>
+    <string name="floor_plan">Pôdorys</string>
+    <string name="contact_agent">Kontaktovať agenta</string>
+    <string name="schedule_viewing">Naplánovať obhliadku</string>
+    <string name="add_to_favorites">Pridať do obľúbených</string>
+    <string name="remove_from_favorites">Odstrániť z obľúbených</string>
+    <string name="price">Cena</string>
+    <string name="per_month">/mesiac</string>
+    <string name="for_sale">Na predaj</string>
+    <string name="for_rent">Na prenájom</string>
+    <string name="sqm">m²</string>
+
+    <!-- Favorites -->
+    <string name="my_favorites">Moje obľúbené</string>
+    <string name="no_favorites">Zatiaľ žiadne obľúbené</string>
+    <string name="no_favorites_description">Nehnuteľnosti, ktoré sa vám páčia, sa zobrazia tu</string>
+
+    <!-- Inquiries -->
+    <string name="my_inquiries">Moje dopyty</string>
+    <string name="no_inquiries">Zatiaľ žiadne dopyty</string>
+    <string name="no_inquiries_description">Vaše dopyty na nehnuteľnosti sa zobrazia tu</string>
+    <string name="inquiry_sent">Dopyt odoslaný</string>
+    <string name="inquiry_pending">Čaká sa</string>
+    <string name="inquiry_responded">Odpoveď</string>
+
+    <!-- Account -->
+    <string name="my_account">Môj účet</string>
+    <string name="profile">Profil</string>
+    <string name="settings">Nastavenia</string>
+    <string name="language">Jazyk</string>
+    <string name="notifications">Oznámenia</string>
+    <string name="privacy">Súkromie</string>
+    <string name="help">Pomoc</string>
+    <string name="about">O aplikácii</string>
+    <string name="version">Verzia</string>
+    <string name="terms_of_service">Podmienky používania</string>
+    <string name="privacy_policy">Zásady ochrany súkromia</string>
+
+    <!-- Errors -->
+    <string name="error_generic">Vyskytla sa chyba. Skúste to znova.</string>
+    <string name="error_network">Chyba siete. Skontrolujte pripojenie.</string>
+    <string name="error_server">Chyba servera. Skúste to neskôr.</string>
+    <string name="error_not_found">Nenájdené</string>
+    <string name="error_unauthorized">Nemáte oprávnenie na túto akciu.</string>
+
+    <!-- Section Headers -->
+    <string name="section_quick_actions">Rýchle akcie</string>
+    <string name="section_notifications">Oznámenia</string>
+    <string name="section_app_settings">Nastavenia aplikácie</string>
+    <string name="section_about">O aplikácii</string>
+    <string name="section_price_range">Cenové rozpätie</string>
+    <string name="section_property_type">Typ nehnuteľnosti</string>
+    <string name="section_your_message">Vaša správa</string>
+
+    <!-- Sign-in prompts -->
+    <string name="sign_in_title">Prihláste sa do Reality Portál</string>
+    <string name="sign_in_benefits">Uložte si obľúbené, sledujte dopyty a dostávajte upozornenia na nové ponuky</string>
+    <string name="sign_in_pm_app">Prihlásiť sa cez PM aplikáciu</string>
+    <string name="sign_in_redirect_notice">Budete presmerovaný do aplikácie Property Management pre bezpečné prihlásenie.</string>
+    <string name="confirm_sign_out_message">Naozaj sa chcete odhlásiť?</string>
+
+    <!-- Notification preferences -->
+    <string name="notification_new_listings">Nové ponuky</string>
+    <string name="notification_new_listings_desc">Dostávajte upozornenia, keď nové nehnuteľnosti zodpovedajú vašim uloženým vyhľadávaniam</string>
+    <string name="notification_price_drops">Zníženie ceny</string>
+    <string name="notification_price_drops_desc">Dostávajte upozornenia, keď sa zníži cena obľúbenej nehnuteľnosti</string>
+    <string name="notification_inquiry_responses">Odpovede na dopyty</string>
+    <string name="notification_inquiry_responses_desc">Dostávajte upozornenia, keď agent odpovie na váš dopyt</string>
+
+    <!-- Settings -->
+    <string name="setting_language">Jazyk</string>
+    <string name="setting_currency">Mena</string>
+    <string name="setting_units">Jednotky</string>
+    <string name="setting_theme">Téma</string>
+    <string name="theme_system">Podľa systému</string>
+    <string name="units_metric">Metrické (m²)</string>
+    <string name="currency_eur">EUR (€)</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Hľadať nehnuteľnosti…</string>
+    <string name="status_searching">Vyhľadáva sa…</string>
+    <string name="empty_search_results">Žiadne výsledky</string>
+    <string name="empty_search_tip">Skúste upraviť vyhľadávanie alebo filtre</string>
+    <string name="section_recent_searches">Nedávne vyhľadávania</string>
+    <string name="action_load_more">Načítať viac</string>
+
+    <!-- Filters -->
+    <string name="action_filters">Filtre</string>
+    <string name="filter_for_sale">Na predaj</string>
+    <string name="filter_for_rent">Na prenájom</string>
+    <string name="filter_apartments">Byty</string>
+    <string name="filter_houses">Domy</string>
+    <string name="filter_land">Pozemky</string>
+
+    <!-- Actions -->
+    <string name="action_call">Zavolať</string>
+    <string name="action_email">E-mail</string>
+    <string name="action_inquire">Dopytovať</string>
+    <string name="action_share_link">Zdieľať odkaz</string>
+    <string name="action_view_all_properties">Zobraziť všetky nehnuteľnosti</string>
+    <string name="action_browse_listings">Prehľadávať ponuky</string>
+    <string name="action_view_map">Zobraziť na mape</string>
+    <string name="action_contact_agent">Kontaktovať agenta</string>
+
+    <!-- Empty states -->
+    <string name="empty_favorites">Zatiaľ žiadne obľúbené</string>
+    <string name="empty_favorites_description">Klepnutím na ikonu srdca pri ponuke ju uložíte do obľúbených.</string>
+    <string name="empty_inquiries">Zatiaľ žiadne dopyty</string>
+    <string name="empty_inquiries_description">Keď odošlete dopyt na nehnuteľnosť, zobrazí sa tu.</string>
+    <string name="prompt_sign_in_favorites">Prihláste sa pre zobrazenie obľúbených</string>
+    <string name="prompt_sign_in_inquiries">Prihláste sa pre zobrazenie dopytov</string>
+
+    <!-- Loading states -->
+    <string name="status_loading_favorites">Načítavajú sa obľúbené…</string>
+    <string name="status_loading_inquiries">Načítavajú sa dopyty…</string>
+
+    <!-- Labels -->
+    <string name="label_featured">Odporúčané</string>
+    <string name="label_new">Nové</string>
+    <string name="label_reduced">Znížená cena</string>
+    <string name="label_name_required">Meno *</string>
+    <string name="label_email_required">E-mail *</string>
+    <string name="label_phone_optional">Telefón (voliteľné)</string>
+    <string name="label_message">Správa</string>
+
+    <!-- Home Screen (additional) -->
+    <string name="recently_added">Nedávno pridané</string>
+    <string name="loading_listings">Načítavajú sa ponuky...</string>
+    <string name="no_listings_available">Žiadne dostupné ponuky</string>
+
+    <!-- Search Screen (additional) -->
+    <string name="filter_type">Typ</string>
+    <string name="filter_category">Kategória</string>
+    <string name="filter_all">Všetky</string>
+    <string name="filter_any">Akékoľvek</string>
+    <string name="filter_rooms">Izby</string>
+    <string name="filter_price_range_eur">Cenové rozpätie (EUR)</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_apply">Použiť</string>
+    <string name="sort_by">Zoradiť podľa</string>
+    <string name="sort_newest">Najnovšie</string>
+    <string name="sort_oldest">Najstaršie</string>
+    <string name="sort_price_asc">Cena (od najnižšej)</string>
+    <string name="sort_price_desc">Cena (od najvyššej)</string>
+    <string name="sort_area_asc">Plocha (od najmenšej)</string>
+    <string name="sort_area_desc">Plocha (od najväčšej)</string>
+    <string name="sort_relevance">Relevancia</string>
+    <string name="properties_found">%1$d nájdených nehnuteľností</string>
+    <string name="rooms_count">%1$d izieb</string>
+    <string name="bed_count">%1$d spálňa</string>
+    <string name="bath_count">%1$d kúpeľňa</string>
+
+    <!-- Content Descriptions -->
+    <string name="cd_inquiries">Dopyty</string>
+    <string name="cd_favorites">Obľúbené</string>
+    <string name="cd_account">Účet</string>
+    <string name="cd_search">Hľadať</string>
+    <string name="cd_clear">Vymazať</string>
+    <string name="cd_back">Späť</string>
+    <string name="cd_filters">Filtre</string>
+
+    <!-- Favorites Screen -->
+    <string name="favorites_tab_properties">Nehnuteľnosti</string>
+    <string name="favorites_tab_searches">Vyhľadávania</string>
+    <string name="favorites_sign_in_title">Prihláste sa pre uloženie obľúbených</string>
+    <string name="favorites_sign_in_description">Sledujte nehnuteľnosti, ktoré vás zaujímajú</string>
+    <string name="favorites_empty_description">Uložte nehnuteľnosti na neskoršie porovnanie</string>
+    <string name="saved_search_new_count">%1$d nových</string>
+    <string name="saved_search_disable_alerts">Vypnúť upozornenia</string>
+    <string name="saved_search_enable_alerts">Zapnúť upozornenia</string>
+    <string name="saved_search_delete_title">Vymazať uložené vyhľadávanie</string>
+    <string name="saved_search_delete_message">Naozaj chcete vymazať \"%1$s\"?</string>
+    <string name="saved_searches_empty_title">Žiadne uložené vyhľadávania</string>
+    <string name="saved_searches_empty_description">Uložte vyhľadávanie pre upozornenia na nové ponuky</string>
+
+    <!-- Account Screen -->
+    <string name="edit_profile">Upraviť profil</string>
+    <string name="notification_listing_updates">Aktualizácie ponúk</string>
+    <string name="notification_listing_updates_desc">Dostávajte upozornenia, keď sa aktualizuje obľúbená ponuka</string>
+    <string name="notification_marketing">Marketing</string>
+    <string name="notification_marketing_desc">Dostávajte tipy, trhové prehľady a propagačný obsah</string>
+    <string name="language_english">Angličtina</string>
+    <string name="help_support">Pomoc a podpora</string>
+    <string name="send_feedback">Poslať spätnú väzbu</string>
+
+    <!-- Listing Detail Screen -->
+    <string name="detail_rooms">Izby</string>
+    <string name="detail_beds">Spálne</string>
+    <string name="detail_baths">Kúpeľne</string>
+    <string name="additional_details">Ďalšie detaily</string>
+    <string name="detail_year_built">Rok výstavby</string>
+    <string name="detail_year_renovated">Rok rekonštrukcie</string>
+    <string name="detail_floor">Poschodie</string>
+    <string name="detail_usable_area">Úžitková plocha</string>
+    <string name="detail_land_area">Plocha pozemku</string>
+    <string name="detail_energy_rating">Energetická trieda</string>
+    <string name="detail_heating">Vykurovanie</string>
+    <string name="detail_parking">Parkovanie</string>
+    <string name="inquiry_sent_success">Dopyt bol úspešne odoslaný!</string>
+    <string name="inquiry_dialog_title">Odoslať dopyt</string>
+    <string name="inquiry_sign_in_hint">Prihláste sa pre sledovanie dopytov</string>
+    <string name="inquiry_sending">Odosiela sa…</string>
+    <string name="inquiry_send">Odoslať</string>
+    <string name="share_property">Zdieľať nehnuteľnosť</string>
+    <string name="share_via">Zdieľať cez…</string>
+
+    <!-- Inquiries Screen -->
+    <string name="inquiries">Dopyty</string>
+    <string name="inquiries_tab_messages">Správy</string>
+    <string name="inquiries_tab_viewings">Obhliadky</string>
+    <string name="inquiries_sign_in_title">Prihláste sa pre zobrazenie dopytov</string>
+    <string name="inquiries_sign_in_description">Sledujte svoje dopyty a žiadosti o obhliadky</string>
+    <string name="property">Nehnuteľnosť</string>
+    <string name="inquiry_responses_count">%1$d odpovedí</string>
+    <string name="status_pending">Čaká sa</string>
+    <string name="status_responded">Odpoveď</string>
+    <string name="status_closed">Uzavreté</string>
+    <string name="status_confirmed">Potvrdené</string>
+    <string name="status_completed">Dokončené</string>
+    <string name="status_cancelled">Zrušené</string>
+    <string name="inquiries_empty_title">Zatiaľ žiadne dopyty</string>
+    <string name="inquiries_empty_description">Kontaktujte majiteľov pre začatie konverzácie</string>
+    <string name="property_viewing">Obhliadka nehnuteľnosti</string>
+    <string name="viewing_confirmed_label">(Potvrdené)</string>
+    <string name="viewing_cancel_title">Zrušiť obhliadku</string>
+    <string name="viewing_cancel_message">Naozaj chcete zrušiť túto žiadosť o obhliadku?</string>
+    <string name="viewing_cancel_confirm">Zrušiť obhliadku</string>
+    <string name="viewing_cancel_keep">Ponechať</string>
+    <string name="viewings_empty_title">Žiadne naplánované obhliadky</string>
+    <string name="viewings_empty_description">Naplánujte obhliadky pre osobné prehliadnutie</string>
+</resources>

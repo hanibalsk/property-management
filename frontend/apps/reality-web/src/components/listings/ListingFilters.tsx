@@ -7,6 +7,7 @@
 'use client';
 
 import type { ListingFilters as FilterType, PropertyType } from '@ppt/reality-api-client';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 interface ListingFiltersProps {
@@ -16,29 +17,40 @@ interface ListingFiltersProps {
   isMobile?: boolean;
 }
 
-const propertyTypes: { value: PropertyType; label: string }[] = [
-  { value: 'apartment', label: 'Apartment' },
-  { value: 'house', label: 'House' },
-  { value: 'land', label: 'Land' },
-  { value: 'commercial', label: 'Commercial' },
-  { value: 'office', label: 'Office' },
-  { value: 'garage', label: 'Garage' },
+type PropertyTypeKey = 'apartment' | 'house' | 'land' | 'commercial' | 'office' | 'garage';
+
+const propertyTypes: { value: PropertyType; labelKey: PropertyTypeKey }[] = [
+  { value: 'apartment', labelKey: 'apartment' },
+  { value: 'house', labelKey: 'house' },
+  { value: 'land', labelKey: 'land' },
+  { value: 'commercial', labelKey: 'commercial' },
+  { value: 'office', labelKey: 'office' },
+  { value: 'garage', labelKey: 'garage' },
 ];
 
-const priceRanges = [
-  { min: undefined, max: 50000, label: 'Under €50,000' },
-  { min: 50000, max: 100000, label: '€50,000 - €100,000' },
-  { min: 100000, max: 200000, label: '€100,000 - €200,000' },
-  { min: 200000, max: 500000, label: '€200,000 - €500,000' },
-  { min: 500000, max: undefined, label: '€500,000+' },
+type PriceRangeKey =
+  | 'priceUnder50k'
+  | 'price50kTo100k'
+  | 'price100kTo200k'
+  | 'price200kTo500k'
+  | 'price500kPlus';
+
+const priceRanges: { min?: number; max?: number; labelKey: PriceRangeKey }[] = [
+  { min: undefined, max: 50000, labelKey: 'priceUnder50k' },
+  { min: 50000, max: 100000, labelKey: 'price50kTo100k' },
+  { min: 100000, max: 200000, labelKey: 'price100kTo200k' },
+  { min: 200000, max: 500000, labelKey: 'price200kTo500k' },
+  { min: 500000, max: undefined, labelKey: 'price500kPlus' },
 ];
 
-const areaRanges = [
-  { min: undefined, max: 50, label: 'Under 50 m²' },
-  { min: 50, max: 100, label: '50 - 100 m²' },
-  { min: 100, max: 150, label: '100 - 150 m²' },
-  { min: 150, max: 200, label: '150 - 200 m²' },
-  { min: 200, max: undefined, label: '200+ m²' },
+type AreaRangeKey = 'areaUnder50' | 'area50To100' | 'area100To150' | 'area150To200' | 'area200Plus';
+
+const areaRanges: { min?: number; max?: number; labelKey: AreaRangeKey }[] = [
+  { min: undefined, max: 50, labelKey: 'areaUnder50' },
+  { min: 50, max: 100, labelKey: 'area50To100' },
+  { min: 100, max: 150, labelKey: 'area100To150' },
+  { min: 150, max: 200, labelKey: 'area150To200' },
+  { min: 200, max: undefined, labelKey: 'area200Plus' },
 ];
 
 export function ListingFilters({
@@ -47,6 +59,7 @@ export function ListingFilters({
   onClose,
   isMobile = false,
 }: ListingFiltersProps) {
+  const t = useTranslations('filters');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     propertyType: true,
     price: true,
@@ -100,11 +113,11 @@ export function ListingFilters({
     <aside className={`filters ${isMobile ? 'mobile' : ''}`}>
       {/* Header */}
       <div className="filters-header">
-        <h2 className="filters-title">Filters</h2>
+        <h2 className="filters-title">{t('title')}</h2>
         <div className="filters-actions">
           {hasActiveFilters && (
             <button type="button" className="clear-button" onClick={clearAllFilters}>
-              Clear all
+              {t('clearAll')}
             </button>
           )}
           {isMobile && onClose && (
@@ -137,7 +150,7 @@ export function ListingFilters({
           className="section-header"
           onClick={() => toggleSection('propertyType')}
         >
-          <span>Property Type</span>
+          <span>{t('propertyType')}</span>
           <svg
             width="16"
             height="16"
@@ -161,7 +174,7 @@ export function ListingFilters({
                   onChange={() => handlePropertyTypeChange(type.value)}
                   className="checkbox"
                 />
-                <span>{type.label}</span>
+                <span>{t(type.labelKey)}</span>
               </label>
             ))}
           </div>
@@ -171,7 +184,7 @@ export function ListingFilters({
       {/* Price Range */}
       <div className="filter-section">
         <button type="button" className="section-header" onClick={() => toggleSection('price')}>
-          <span>Price Range</span>
+          <span>{t('priceRange')}</span>
           <svg
             width="16"
             height="16"
@@ -195,7 +208,7 @@ export function ListingFilters({
                 onChange={() => handlePriceRangeChange(undefined, undefined)}
                 className="radio"
               />
-              <span>Any price</span>
+              <span>{t('anyPrice')}</span>
             </label>
             {priceRanges.map((range) => (
               <label key={`price-${range.min ?? 0}-${range.max ?? 'max'}`} className="radio-label">
@@ -206,7 +219,7 @@ export function ListingFilters({
                   onChange={() => handlePriceRangeChange(range.min, range.max)}
                   className="radio"
                 />
-                <span>{range.label}</span>
+                <span>{t(range.labelKey, { currency: '\u20AC' })}</span>
               </label>
             ))}
           </div>
@@ -216,7 +229,7 @@ export function ListingFilters({
       {/* Area Range */}
       <div className="filter-section">
         <button type="button" className="section-header" onClick={() => toggleSection('area')}>
-          <span>Area (m²)</span>
+          <span>{t('area')}</span>
           <svg
             width="16"
             height="16"
@@ -240,7 +253,7 @@ export function ListingFilters({
                 onChange={() => handleAreaRangeChange(undefined, undefined)}
                 className="radio"
               />
-              <span>Any size</span>
+              <span>{t('anySize')}</span>
             </label>
             {areaRanges.map((range) => (
               <label key={`area-${range.min ?? 0}-${range.max ?? 'max'}`} className="radio-label">
@@ -251,7 +264,7 @@ export function ListingFilters({
                   onChange={() => handleAreaRangeChange(range.min, range.max)}
                   className="radio"
                 />
-                <span>{range.label}</span>
+                <span>{t(range.labelKey)}</span>
               </label>
             ))}
           </div>
@@ -261,7 +274,7 @@ export function ListingFilters({
       {/* Rooms */}
       <div className="filter-section">
         <button type="button" className="section-header" onClick={() => toggleSection('rooms')}>
-          <span>Minimum Rooms</span>
+          <span>{t('minimumRooms')}</span>
           <svg
             width="16"
             height="16"
@@ -284,7 +297,7 @@ export function ListingFilters({
                 className={`room-button ${filters.roomsMin === rooms ? 'active' : ''}`}
                 onClick={() => handleRoomsChange(rooms)}
               >
-                {rooms === undefined ? 'Any' : `${rooms}+`}
+                {rooms === undefined ? t('anyRooms') : t('roomsPlus', { count: rooms })}
               </button>
             ))}
           </div>
@@ -295,7 +308,7 @@ export function ListingFilters({
       {isMobile && (
         <div className="mobile-footer">
           <button type="button" className="apply-button" onClick={onClose}>
-            Show Results
+            {t('showResults')}
           </button>
         </div>
       )}

@@ -62,7 +62,7 @@ struct ListingDetailView: View {
     private var loadingView: some View {
         VStack(spacing: 16) {
             ProgressView()
-            Text("Loading listing...")
+            Text(String(localized: "loading_listing"))
                 .foregroundStyle(.secondary)
         }
     }
@@ -72,9 +72,9 @@ struct ListingDetailView: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.largeTitle)
                 .foregroundStyle(.orange)
-            Text(errorMessage ?? "Failed to load listing")
+            Text(errorMessage ?? String(localized: "failed_to_load_listing"))
                 .foregroundStyle(.secondary)
-            Button("Retry") {
+            Button(String(localized: "retry")) {
                 Task { await loadListing() }
             }
         }
@@ -216,7 +216,7 @@ struct ListingDetailView: View {
 
     private func descriptionSection(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Description")
+            Text(String(localized: "description"))
                 .font(.headline)
 
             Text(listing.description)
@@ -227,7 +227,7 @@ struct ListingDetailView: View {
 
     private func amenitiesGrid(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Amenities")
+            Text(String(localized: "amenities"))
                 .font(.headline)
 
             LazyVGrid(columns: [
@@ -249,7 +249,7 @@ struct ListingDetailView: View {
 
     private func locationSection(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Location")
+            Text(String(localized: "location"))
                 .font(.headline)
 
             // Map placeholder
@@ -272,7 +272,7 @@ struct ListingDetailView: View {
             } label: {
                 HStack {
                     Image(systemName: "map.fill")
-                    Text("View on Map")
+                    Text(String(localized: "view_on_map"))
                 }
                 .font(.subheadline)
             }
@@ -281,7 +281,7 @@ struct ListingDetailView: View {
 
     private func agentCard(_ listing: ListingDetailModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Contact Agent")
+            Text(String(localized: "contact_agent"))
                 .font(.headline)
 
             HStack(spacing: 12) {
@@ -301,7 +301,7 @@ struct ListingDetailView: View {
                         .font(.subheadline)
                         .fontWeight(.semibold)
 
-                    Text(listing.agentPhone ?? "Contact via inquiry")
+                    Text(listing.agentPhone ?? String(localized: "contact_via_inquiry"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -335,7 +335,7 @@ struct ListingDetailView: View {
         } label: {
             HStack {
                 Image(systemName: "envelope.fill")
-                Text("Send Inquiry")
+                Text(String(localized: "send_inquiry"))
             }
             .frame(maxWidth: .infinity)
             .padding()
@@ -360,7 +360,7 @@ struct ListingDetailView: View {
     private var shareButton: some View {
         ShareLink(
             item: URL(string: "\(Configuration.shared.webBaseUrl)/listing/\(listingId)")!,
-            subject: Text(listing?.title ?? "Property"),
+            subject: Text(listing?.title ?? String(localized: "property")),
             message: Text(listing?.formattedPrice ?? "")
         ) {
             Image(systemName: "square.and.arrow.up")
@@ -471,16 +471,16 @@ private struct NewInquirySheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Your Message") {
+                Section(String(localized: "inquiry_your_message")) {
                     TextEditor(text: $message)
                         .frame(minHeight: 150)
                 }
 
-                Section("Contact Preference") {
-                    Picker("Prefer to be contacted by", selection: $contactPreference) {
-                        Text("Email").tag(ContactPreference.email)
-                        Text("Phone").tag(ContactPreference.phone)
-                        Text("Either").tag(ContactPreference.either)
+                Section(String(localized: "inquiry_contact_preference")) {
+                    Picker(String(localized: "inquiry_prefer_contact"), selection: $contactPreference) {
+                        Text(String(localized: "email")).tag(ContactPreference.email)
+                        Text(String(localized: "phone")).tag(ContactPreference.phone)
+                        Text(String(localized: "either")).tag(ContactPreference.either)
                     }
                 }
 
@@ -491,16 +491,16 @@ private struct NewInquirySheet: View {
                     }
                 }
             }
-            .navigationTitle("Send Inquiry")
+            .navigationTitle(String(localized: "send_inquiry"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(String(localized: "cancel")) {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") {
+                    Button(String(localized: "send")) {
                         Task {
                             await sendInquiry()
                         }
