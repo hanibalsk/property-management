@@ -199,9 +199,9 @@
 "label_message" = "Nachricht";
 
 /* Home Screen (additional) */
-"recently_added" = "Kuerzlich hinzugefuegt";
+"recently_added" = "Kürzlich hinzugefügt";
 "loading_listings" = "Angebote werden geladen...";
-"no_listings_available" = "Keine Angebote verfuegbar";
+"no_listings_available" = "Keine Angebote verfügbar";
 
 /* Search Screen (additional) */
 "filter_type" = "Typ";
@@ -215,11 +215,11 @@
 "filter_apply" = "Anwenden";
 "sort_by" = "Sortieren nach";
 "sort_newest" = "Neueste";
-"sort_oldest" = "Aelteste";
+"sort_oldest" = "Älteste";
 "sort_price_asc" = "Preis (aufsteigend)";
 "sort_price_desc" = "Preis (absteigend)";
-"sort_area_asc" = "Flaeche (aufsteigend)";
-"sort_area_desc" = "Flaeche (absteigend)";
+"sort_area_asc" = "Fläche (aufsteigend)";
+"sort_area_desc" = "Fläche (absteigend)";
 "sort_relevance" = "Relevanz";
 "properties_found" = "%d Immobilien gefunden";
 "rooms_count" = "%d Zimmer";
@@ -227,7 +227,7 @@
 "bath_count" = "%d Bad";
 
 /* Search Screen - Additional */
-"searching" = "Suche laeuft...";
+"searching" = "Suche läuft...";
 "no_results_found" = "Keine Ergebnisse gefunden";
 "search_adjust_hint" = "Versuchen Sie, Ihre Suche oder Filter anzupassen";
 "search_prompt_title" = "Immobilien suchen";
@@ -236,7 +236,7 @@
 "filter_price_range" = "Preisspanne";
 "filter_property_type" = "Immobilientyp";
 "filter_bedrooms" = "Schlafzimmer";
-"reset_filters" = "Filter zuruecksetzen";
+"reset_filters" = "Filter zurücksetzen";
 "apply" = "Anwenden";
 
 /* Account Screen - Additional */
@@ -253,12 +253,12 @@
 "loading_listing" = "Angebot wird geladen...";
 "failed_to_load_listing" = "Angebot konnte nicht geladen werden";
 "view_on_map" = "Auf Karte anzeigen";
-"contact_via_inquiry" = "Ueber Anfrage kontaktieren";
+"contact_via_inquiry" = "Über Anfrage kontaktieren";
 "send_inquiry" = "Anfrage senden";
 "property" = "Immobilie";
 "inquiry_your_message" = "Ihre Nachricht";
-"inquiry_contact_preference" = "Kontaktpraeferenz";
-"inquiry_prefer_contact" = "Bevorzugt kontaktiert werden ueber";
+"inquiry_contact_preference" = "Kontaktpräferenz";
+"inquiry_prefer_contact" = "Bevorzugt kontaktiert werden über";
 "phone" = "Telefon";
 "either" = "Beides";
 "send" = "Senden";

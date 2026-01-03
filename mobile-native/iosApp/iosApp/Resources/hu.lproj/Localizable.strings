@@ -191,84 +191,84 @@
 
 /* Labels */
 "label_featured" = "Kiemelt";
-"label_new" = "Uj";
-"label_reduced" = "Csokkentett ar";
-"label_name_required" = "Nev *";
+"label_new" = "Új";
+"label_reduced" = "Csökkentett ár";
+"label_name_required" = "Név *";
 "label_email_required" = "E-mail *";
-"label_phone_optional" = "Telefon (opcionalis)";
-"label_message" = "Uzenet";
+"label_phone_optional" = "Telefon (opcionális)";
+"label_message" = "Üzenet";
 
 /* Home Screen (additional) */
-"recently_added" = "Nemreg hozzaadva";
-"loading_listings" = "Ajanlatok betoltese...";
-"no_listings_available" = "Nincs elerheto ajanlat";
+"recently_added" = "Nemrég hozzáadva";
+"loading_listings" = "Ajánlatok betöltése...";
+"no_listings_available" = "Nincs elérhető ajánlat";
 
 /* Search Screen (additional) */
-"filter_type" = "Tipus";
-"filter_category" = "Kategoria";
-"filter_all" = "Osszes";
-"filter_any" = "Barmely";
-"filter_rooms" = "Szobak";
-"filter_price_range_eur" = "Artartomany (EUR)";
+"filter_type" = "Típus";
+"filter_category" = "Kategória";
+"filter_all" = "Összes";
+"filter_any" = "Bármely";
+"filter_rooms" = "Szobák";
+"filter_price_range_eur" = "Ártartomány (EUR)";
 "filter_min" = "Min";
 "filter_max" = "Max";
 "filter_apply" = "Alkalmaz";
-"sort_by" = "Rendezes";
-"sort_newest" = "Legujabb";
-"sort_oldest" = "Legregebbi";
-"sort_price_asc" = "Ar (novekvo)";
-"sort_price_desc" = "Ar (csokkeno)";
-"sort_area_asc" = "Terulet (novekvo)";
-"sort_area_desc" = "Terulet (csokkeno)";
+"sort_by" = "Rendezés";
+"sort_newest" = "Legújabb";
+"sort_oldest" = "Legrégebbi";
+"sort_price_asc" = "Ár (növekvő)";
+"sort_price_desc" = "Ár (csökkenő)";
+"sort_area_asc" = "Terület (növekvő)";
+"sort_area_desc" = "Terület (csökkenő)";
 "sort_relevance" = "Relevancia";
-"properties_found" = "%d ingatlan talalva";
+"properties_found" = "%d ingatlan találva";
 "rooms_count" = "%d szoba";
-"bed_count" = "%d haloszoba";
-"bath_count" = "%d furdoszoba";
+"bed_count" = "%d hálószoba";
+"bath_count" = "%d fürdőszoba";
 
 /* Search Screen - Additional */
-"searching" = "Kereses...";
-"no_results_found" = "Nincs talalat";
-"search_adjust_hint" = "Probalja modositani a keresest vagy a szuroket";
-"search_prompt_title" = "Ingatlan keresese";
-"search_prompt_description" = "Adjon meg helyszint, kulcsszot vagy hasznalja a szuroket";
-"recent_searches" = "Legutobbi keresések";
-"filter_price_range" = "Artartomany";
-"filter_property_type" = "Ingatlan tipusa";
-"filter_bedrooms" = "Haloszobak";
-"reset_filters" = "Szurok visszaallitasa";
+"searching" = "Keresés...";
+"no_results_found" = "Nincs találat";
+"search_adjust_hint" = "Próbálja módosítani a keresést vagy a szűrőket";
+"search_prompt_title" = "Ingatlan keresése";
+"search_prompt_description" = "Adjon meg helyszínt, kulcsszót vagy használja a szűrőket";
+"recent_searches" = "Legutóbbi keresések";
+"filter_price_range" = "Ártartomány";
+"filter_property_type" = "Ingatlan típusa";
+"filter_bedrooms" = "Hálószobák";
+"reset_filters" = "Szűrők visszaállítása";
 "apply" = "Alkalmaz";
 
 /* Account Screen - Additional */
-"quick_actions" = "Gyors muveletek";
+"quick_actions" = "Gyors műveletek";
 "saved_searches" = "Mentett keresések";
 "notification_marketing" = "Marketing";
 "language_english" = "Angol";
-"terms" = "Feltetelek";
-"version_format %@" = "Verzio %@";
-"help_support" = "Sugo es tamogatas";
-"send_feedback" = "Visszajelzes kuldese";
+"terms" = "Feltételek";
+"version_format %@" = "Verzió %@";
+"help_support" = "Súgó és támogatás";
+"send_feedback" = "Visszajelzés küldése";
 
 /* Listing Detail Screen - Additional */
-"loading_listing" = "Ajanlat betoltese...";
-"failed_to_load_listing" = "Nem sikerult betolteni az ajanlatot";
-"view_on_map" = "Megtekintes terkepen";
-"contact_via_inquiry" = "Kapcsolatfelvetel erdeklodessen keresztul";
-"send_inquiry" = "Erdeklodes kuldese";
+"loading_listing" = "Ajánlat betöltése...";
+"failed_to_load_listing" = "Nem sikerült betölteni az ajánlatot";
+"view_on_map" = "Megtekintés térképen";
+"contact_via_inquiry" = "Kapcsolatfelvétel érdeklődésen keresztül";
+"send_inquiry" = "Érdeklődés küldése";
 "property" = "Ingatlan";
-"inquiry_your_message" = "Uzenete";
+"inquiry_your_message" = "Üzenete";
 "inquiry_contact_preference" = "Kapcsolatfelvételi preferencia";
-"inquiry_prefer_contact" = "Elonyben reszesitett kapcsolatfelvetel";
+"inquiry_prefer_contact" = "Előnyben részesített kapcsolatfelvétel";
 "phone" = "Telefon";
-"either" = "Barmely";
-"send" = "Kuldes";
+"either" = "Bármely";
+"send" = "Küldés";
 
 /* Login Screen - Additional */
-"welcome_to_reality_portal" = "Udvozoljuk a Reality Portal-ban";
-"sign_in_description" = "Jelentkezzen be a kedvencek mentéséhez, érdeklődesek kovetesehez es szemelyre szabott ajanlatokhoz.";
-"sign_in_with_pm" = "Bejelentkezes Property Management-tel";
-"sso_description" = "Biztonsagosan jelentkezzen be Property Management fiokjaval";
+"welcome_to_reality_portal" = "Üdvözöljük a Reality Portal-ban";
+"sign_in_description" = "Jelentkezzen be a kedvencek mentéséhez, érdeklődések követéséhez és személyre szabott ajánlatokhoz.";
+"sign_in_with_pm" = "Bejelentkezés Property Management-tel";
+"sso_description" = "Biztonságosan jelentkezzen be Property Management fiókjával";
 "or" = "vagy";
-"enter_email" = "Adja meg e-mail cimet";
-"enter_password" = "Adja meg jelszavat";
-"no_account_prompt" = "Nincs fiokja?";
+"enter_email" = "Adja meg e-mail címét";
+"enter_password" = "Adja meg jelszavát";
+"no_account_prompt" = "Nincs fiókja?";
