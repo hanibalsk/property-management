@@ -119,4 +119,84 @@
     <string name="error_server">Błąd serwera. Spróbuj później.</string>
     <string name="error_not_found">Nie znaleziono</string>
     <string name="error_unauthorized">Nie masz uprawnień do wykonania tej czynności.</string>
+
+    <!-- Section Headers -->
+    <string name="section_quick_actions">Szybkie akcje</string>
+    <string name="section_notifications">Powiadomienia</string>
+    <string name="section_app_settings">Ustawienia aplikacji</string>
+    <string name="section_about">O aplikacji</string>
+    <string name="section_price_range">Zakres cenowy</string>
+    <string name="section_property_type">Typ nieruchomości</string>
+    <string name="section_your_message">Twoja wiadomość</string>
+
+    <!-- Sign-in prompts -->
+    <string name="sign_in_title">Zaloguj się do Reality Portal</string>
+    <string name="sign_in_benefits">Zapisuj ulubione, śledź zapytania i otrzymuj powiadomienia o nowych ofertach</string>
+    <string name="sign_in_pm_app">Zaloguj przez aplikację PM</string>
+    <string name="sign_in_redirect_notice">Zostaniesz przekierowany do aplikacji Property Management, aby bezpiecznie się zalogować.</string>
+    <string name="confirm_sign_out_message">Czy na pewno chcesz się wylogować?</string>
+
+    <!-- Notification preferences -->
+    <string name="notification_new_listings">Nowe oferty</string>
+    <string name="notification_new_listings_desc">Otrzymuj powiadomienia, gdy nowe nieruchomości pasują do zapisanych wyszukiwań</string>
+    <string name="notification_price_drops">Obniżki cen</string>
+    <string name="notification_price_drops_desc">Otrzymuj powiadomienia, gdy cena ulubionej nieruchomości zostanie obniżona</string>
+    <string name="notification_inquiry_responses">Odpowiedzi na zapytania</string>
+    <string name="notification_inquiry_responses_desc">Otrzymuj powiadomienia, gdy agent odpowie na Twoje zapytanie</string>
+
+    <!-- Settings -->
+    <string name="setting_language">Język</string>
+    <string name="setting_currency">Waluta</string>
+    <string name="setting_units">Jednostki</string>
+    <string name="setting_theme">Motyw</string>
+    <string name="theme_system">Domyślny systemowy</string>
+    <string name="units_metric">Metryczne (m²)</string>
+    <string name="currency_eur">EUR (€)</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Szukaj nieruchomości…</string>
+    <string name="status_searching">Wyszukiwanie…</string>
+    <string name="empty_search_results">Brak wyników</string>
+    <string name="empty_search_tip">Spróbuj dostosować wyszukiwanie lub filtry</string>
+    <string name="section_recent_searches">Ostatnie wyszukiwania</string>
+    <string name="action_load_more">Załaduj więcej</string>
+
+    <!-- Filters -->
+    <string name="action_filters">Filtry</string>
+    <string name="filter_for_sale">Na sprzedaż</string>
+    <string name="filter_for_rent">Do wynajęcia</string>
+    <string name="filter_apartments">Mieszkania</string>
+    <string name="filter_houses">Domy</string>
+    <string name="filter_land">Działki</string>
+
+    <!-- Actions -->
+    <string name="action_call">Zadzwoń</string>
+    <string name="action_email">E-mail</string>
+    <string name="action_inquire">Zapytaj</string>
+    <string name="action_share_link">Udostępnij link</string>
+    <string name="action_view_all_properties">Zobacz wszystkie nieruchomości</string>
+    <string name="action_browse_listings">Przeglądaj oferty</string>
+    <string name="action_view_map">Zobacz na mapie</string>
+    <string name="action_contact_agent">Skontaktuj się z agentem</string>
+
+    <!-- Empty states -->
+    <string name="empty_favorites">Brak ulubionych</string>
+    <string name="empty_favorites_description">Dotknij ikony serca przy ofercie, aby zapisać ją w ulubionych.</string>
+    <string name="empty_inquiries">Brak zapytań</string>
+    <string name="empty_inquiries_description">Gdy wyślesz zapytanie o nieruchomość, pojawi się tutaj.</string>
+    <string name="prompt_sign_in_favorites">Zaloguj się, aby zobaczyć ulubione</string>
+    <string name="prompt_sign_in_inquiries">Zaloguj się, aby zobaczyć zapytania</string>
+
+    <!-- Loading states -->
+    <string name="status_loading_favorites">Ładowanie ulubionych…</string>
+    <string name="status_loading_inquiries">Ładowanie zapytań…</string>
+
+    <!-- Labels -->
+    <string name="label_featured">Wyróżnione</string>
+    <string name="label_new">Nowe</string>
+    <string name="label_reduced">Obniżona cena</string>
+    <string name="label_name_required">Imię *</string>
+    <string name="label_email_required">E-mail *</string>
+    <string name="label_phone_optional">Telefon (opcjonalnie)</string>
+    <string name="label_message">Wiadomość</string>
 </resources>

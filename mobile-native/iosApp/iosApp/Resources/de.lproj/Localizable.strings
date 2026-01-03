@@ -117,3 +117,83 @@
 "error_server" = "Serverfehler. Bitte versuchen Sie es später erneut.";
 "error_not_found" = "Nicht gefunden";
 "error_unauthorized" = "Sie sind nicht berechtigt, diese Aktion durchzuführen.";
+
+/* Section Headers */
+"section_quick_actions" = "Schnellaktionen";
+"section_notifications" = "Benachrichtigungen";
+"section_app_settings" = "App-Einstellungen";
+"section_about" = "Über";
+"section_price_range" = "Preisspanne";
+"section_property_type" = "Immobilientyp";
+"section_your_message" = "Ihre Nachricht";
+
+/* Sign-in prompts */
+"sign_in_title" = "Bei Reality Portal anmelden";
+"sign_in_benefits" = "Speichern Sie Favoriten, verfolgen Sie Anfragen und erhalten Sie Benachrichtigungen über neue Angebote";
+"sign_in_pm_app" = "Über PM-App anmelden";
+"sign_in_redirect_notice" = "Sie werden zur Property Management App weitergeleitet, um sich sicher anzumelden.";
+"confirm_sign_out_message" = "Möchten Sie sich wirklich abmelden?";
+
+/* Notification preferences */
+"notification_new_listings" = "Neue Angebote";
+"notification_new_listings_desc" = "Erhalten Sie Benachrichtigungen, wenn neue Immobilien Ihren gespeicherten Suchen entsprechen";
+"notification_price_drops" = "Preissenkungen";
+"notification_price_drops_desc" = "Erhalten Sie Benachrichtigungen, wenn der Preis einer Lieblingsimmobilie gesenkt wird";
+"notification_inquiry_responses" = "Antworten auf Anfragen";
+"notification_inquiry_responses_desc" = "Erhalten Sie Benachrichtigungen, wenn ein Agent auf Ihre Anfrage antwortet";
+
+/* Settings */
+"setting_language" = "Sprache";
+"setting_currency" = "Währung";
+"setting_units" = "Einheiten";
+"setting_theme" = "Design";
+"theme_system" = "Systemstandard";
+"units_metric" = "Metrisch (m²)";
+"currency_eur" = "EUR (€)";
+
+/* Search */
+"search_placeholder" = "Immobilien suchen…";
+"status_searching" = "Suche läuft…";
+"empty_search_results" = "Keine Ergebnisse gefunden";
+"empty_search_tip" = "Versuchen Sie, Ihre Suche oder Filter anzupassen";
+"section_recent_searches" = "Letzte Suchen";
+"action_load_more" = "Mehr laden";
+
+/* Filters */
+"action_filters" = "Filter";
+"filter_for_sale" = "Zum Verkauf";
+"filter_for_rent" = "Zur Miete";
+"filter_apartments" = "Wohnungen";
+"filter_houses" = "Häuser";
+"filter_land" = "Grundstücke";
+
+/* Actions */
+"action_call" = "Anrufen";
+"action_email" = "E-Mail";
+"action_inquire" = "Anfragen";
+"action_share_link" = "Link teilen";
+"action_view_all_properties" = "Alle Immobilien anzeigen";
+"action_browse_listings" = "Angebote durchsuchen";
+"action_view_map" = "Auf Karte anzeigen";
+"action_contact_agent" = "Agent kontaktieren";
+
+/* Empty states */
+"empty_favorites" = "Noch keine Favoriten";
+"empty_favorites_description" = "Tippen Sie auf das Herzsymbol bei einem Angebot, um es zu Ihren Favoriten hinzuzufügen.";
+"empty_inquiries" = "Noch keine Anfragen";
+"empty_inquiries_description" = "Wenn Sie eine Anfrage zu einer Immobilie senden, wird sie hier angezeigt.";
+"prompt_sign_in_favorites" = "Melden Sie sich an, um Ihre Favoriten zu sehen";
+"prompt_sign_in_inquiries" = "Melden Sie sich an, um Ihre Anfragen zu sehen";
+
+/* Loading states */
+"status_loading_favorites" = "Favoriten werden geladen…";
+"status_loading_inquiries" = "Anfragen werden geladen…";
+
+/* Labels */
+"label_featured" = "Empfohlen";
+"label_new" = "Neu";
+"label_reduced" = "Reduziert";
+"label_name_required" = "Name *";
+"label_email_required" = "E-Mail *";
+"label_phone_optional" = "Telefon (optional)";
+"label_message" = "Nachricht";

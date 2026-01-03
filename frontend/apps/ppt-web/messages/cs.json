@@ -23,7 +23,19 @@
     "none": "Žádné",
     "select": "Vybrat",
     "required": "Povinné",
-    "optional": "Volitelné"
+    "optional": "Volitelné",
+    "backToDocuments": "Zpět na dokumenty",
+    "backToDisputes": "Zpět na spory",
+    "backToDispute": "Zpět na spor",
+    "backToBuildings": "Zpět na budovy",
+    "backToFaults": "Zpět na závady",
+    "tryAgain": "Zkusit znovu",
+    "retry": "Opakovat",
+    "loadingDispute": "Načítá se spor...",
+    "pleaseWait": "Počkejte, než načteme údaje.",
+    "reloadPage": "Obnovit stránku",
+    "copyErrorDetails": "Kopírovat podrobnosti chyby",
+    "add": "Přidat"
   },
   "nav": {
     "home": "Domů",
@@ -59,6 +71,10 @@
     "hidePassword": "Skrýt heslo",
     "forgotPassword": "Zapomenuté heslo?",
     "rememberMe": "Zapamatovat si mě"
+  },
+  "home": {
+    "title": "Systém správy nemovitostí",
+    "welcome": "Vítejte v systému správy nemovitostí."
   },
   "faults": {
     "title": "Hlášení závad",
@@ -122,7 +138,30 @@
     "daysAgo": "dní",
     "today": "Dnes",
     "view": "Zobrazit",
-    "manage": "Spravovat"
+    "manage": "Spravovat",
+    "failedToLoad": "Nepodařilo se načíst spory",
+    "failedToFile": "Nepodařilo se podat spor",
+    "filedSuccessfully": "Spor byl úspěšně podán",
+    "submittedMsg": "Váš spor byl odeslán a bude přezkoumán.",
+    "failedToLoadDetail": "Nepodařilo se načíst spor",
+    "unitRequired": "Vyžaduje se jednotka",
+    "selectUnit": "Vyberte jednotku pro tento spor.",
+    "multipleRespondents": "Více odpůrců",
+    "multipleRespondentsMsg": "Zaznamenán bude pouze první odpůrce.",
+    "addEvidence": "Přidat důkaz"
+  },
+  "packages": {
+    "title": "Správa zásilek",
+    "subtitle": "Sledování a správa zásilek v budově",
+    "loading": "Načítají se zásilky...",
+    "loadError": "Nepodařilo se načíst zásilky",
+    "registerPackage": "Zaregistrovat zásilku",
+    "filterAll": "Vše",
+    "filterPickedUp": "Vyzvednuté",
+    "noPackages": "Žádné zásilky",
+    "noPackagesFound": "Zásilky nebyly nalezeny",
+    "receiveError": "Nepodařilo se označit zásilku jako přijatou.",
+    "pickupError": "Nepodařilo se označit zásilku jako vyzvednutou."
   },
   "financial": {
     "title": "Finance",
@@ -143,7 +182,18 @@
     "networkError": "Chyba sítě. Zkontrolujte připojení.",
     "serverError": "Chyba serveru. Zkuste to později.",
     "validationError": "Opravte chyby ve formuláři.",
-    "sessionExpired": "Relace vypršela. Přihlaste se znovu."
+    "sessionExpired": "Relace vypršela. Přihlaste se znovu.",
+    "documentNotFound": "Dokument nebyl nalezen",
+    "documentNotFoundDesc": "Dokument, který hledáte, nebyl nalezen. Mohl být přesunut, smazán nebo je odkaz nesprávný.",
+    "articleNotFound": "Článek nebyl nalezen",
+    "authenticationRequired": "Vyžaduje se přihlášení",
+    "missingOrgContext": "Nelze načíst: chybí kontext organizace. Přihlaste se znovu.",
+    "disputeNotFound": "Spor nebyl nalezen",
+    "disputeNotFoundDesc": "Spor, který hledáte, nebyl nalezen.",
+    "errorLoadingDispute": "Chyba při načítání sporu",
+    "disputeLoadError": "Při načítání podrobností sporu došlo k chybě.",
+    "disputeNotExist": "Spor, který hledáte, neexistuje.",
+    "waitBeforeRetry": "Před opakováním počkejte."
   },
   "notifications": {
     "title": "Oznámení",

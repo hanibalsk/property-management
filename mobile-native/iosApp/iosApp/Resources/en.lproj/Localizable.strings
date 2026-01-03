@@ -117,3 +117,83 @@
 "error_server" = "Server error. Please try again later.";
 "error_not_found" = "Not found";
 "error_unauthorized" = "You are not authorized to perform this action.";
+
+/* Section Headers */
+"section_quick_actions" = "Quick Actions";
+"section_notifications" = "Notifications";
+"section_app_settings" = "App Settings";
+"section_about" = "About";
+"section_price_range" = "Price Range";
+"section_property_type" = "Property Type";
+"section_your_message" = "Your Message";
+
+/* Sign-in prompts */
+"sign_in_title" = "Sign in to Reality Portal";
+"sign_in_benefits" = "Save favorites, track inquiries, and get notified about new listings";
+"sign_in_pm_app" = "Sign In via PM App";
+"sign_in_redirect_notice" = "You'll be redirected to the Property Management app to sign in securely.";
+"confirm_sign_out_message" = "Are you sure you want to sign out?";
+
+/* Notification preferences */
+"notification_new_listings" = "New Listings";
+"notification_new_listings_desc" = "Get notified when new properties match your saved searches";
+"notification_price_drops" = "Price Drops";
+"notification_price_drops_desc" = "Get notified when a favorite property's price is reduced";
+"notification_inquiry_responses" = "Inquiry Responses";
+"notification_inquiry_responses_desc" = "Get notified when an agent responds to your inquiry";
+
+/* Settings */
+"setting_language" = "Language";
+"setting_currency" = "Currency";
+"setting_units" = "Units";
+"setting_theme" = "Theme";
+"theme_system" = "System Default";
+"units_metric" = "Metric (m²)";
+"currency_eur" = "EUR (€)";
+
+/* Search */
+"search_placeholder" = "Search properties…";
+"status_searching" = "Searching…";
+"empty_search_results" = "No results found";
+"empty_search_tip" = "Try adjusting your search or filters";
+"section_recent_searches" = "Recent Searches";
+"action_load_more" = "Load More";
+
+/* Filters */
+"action_filters" = "Filters";
+"filter_for_sale" = "For Sale";
+"filter_for_rent" = "For Rent";
+"filter_apartments" = "Apartments";
+"filter_houses" = "Houses";
+"filter_land" = "Land";
+
+/* Actions */
+"action_call" = "Call";
+"action_email" = "Email";
+"action_inquire" = "Inquire";
+"action_share_link" = "Share Link";
+"action_view_all_properties" = "View All Properties";
+"action_browse_listings" = "Browse Listings";
+"action_view_map" = "View on Map";
+"action_contact_agent" = "Contact Agent";
+
+/* Empty states */
+"empty_favorites" = "No favorites yet";
+"empty_favorites_description" = "Tap the heart icon on any listing to save it to your favorites.";
+"empty_inquiries" = "No inquiries yet";
+"empty_inquiries_description" = "When you send an inquiry about a property, it will appear here.";
+"prompt_sign_in_favorites" = "Sign in to see your favorites";
+"prompt_sign_in_inquiries" = "Sign in to see your inquiries";
+
+/* Loading states */
+"status_loading_favorites" = "Loading favorites…";
+"status_loading_inquiries" = "Loading inquiries…";
+
+/* Labels */
+"label_featured" = "Featured";
+"label_new" = "New";
+"label_reduced" = "Reduced";
+"label_name_required" = "Name *";
+"label_email_required" = "Email *";
+"label_phone_optional" = "Phone (optional)";
+"label_message" = "Message";

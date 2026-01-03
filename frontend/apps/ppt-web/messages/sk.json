@@ -1,6 +1,6 @@
 {
   "common": {
-    "search": "Hľadať",
+    "search": "Hladať",
     "login": "Prihlásiť sa",
     "logout": "Odhlásiť sa",
     "save": "Uložiť",
@@ -23,7 +23,19 @@
     "none": "Žiadne",
     "select": "Vybrať",
     "required": "Povinné",
-    "optional": "Voliteľné"
+    "optional": "Voliteľné",
+    "backToDocuments": "Späť na dokumenty",
+    "backToDisputes": "Späť na spory",
+    "backToDispute": "Späť na spor",
+    "backToBuildings": "Späť na budovy",
+    "backToFaults": "Späť na poruchy",
+    "tryAgain": "Skúsiť znova",
+    "retry": "Opakovať",
+    "loadingDispute": "Načítava sa spor...",
+    "pleaseWait": "Počkajte, kým načítame údaje.",
+    "reloadPage": "Obnoviť stránku",
+    "copyErrorDetails": "Kopírovať podrobnosti chyby",
+    "add": "Pridať"
   },
   "nav": {
     "home": "Domov",
@@ -59,6 +71,10 @@
     "hidePassword": "Skryť heslo",
     "forgotPassword": "Zabudnuté heslo?",
     "rememberMe": "Zapamätať si ma"
+  },
+  "home": {
+    "title": "Systém správy nehnuteľností",
+    "welcome": "Vitajte v systéme správy nehnuteľností."
   },
   "faults": {
     "title": "Hlásenia porúch",
@@ -122,7 +138,30 @@
     "daysAgo": "dní",
     "today": "Dnes",
     "view": "Zobraziť",
-    "manage": "Spravovať"
+    "manage": "Spravovať",
+    "failedToLoad": "Nepodarilo sa načítať spory",
+    "failedToFile": "Nepodarilo sa podať spor",
+    "filedSuccessfully": "Spor bol úspešne podaný",
+    "submittedMsg": "Váš spor bol odoslaný a bude preskúmaný.",
+    "failedToLoadDetail": "Nepodarilo sa načítať spor",
+    "unitRequired": "Vyžaduje sa jednotka",
+    "selectUnit": "Vyberte jednotku pre tento spor.",
+    "multipleRespondents": "Viacerí odporcovia",
+    "multipleRespondentsMsg": "Zaznamenaný bude iba prvý odporca.",
+    "addEvidence": "Pridať dôkaz"
+  },
+  "packages": {
+    "title": "Správa zásielok",
+    "subtitle": "Sledovanie a správa zásielok v budove",
+    "loading": "Načítavajú sa zásielky...",
+    "loadError": "Nepodarilo sa načítať zásielky",
+    "registerPackage": "Zaregistrovať zásielku",
+    "filterAll": "Všetky",
+    "filterPickedUp": "Vyzdvihnuté",
+    "noPackages": "Žiadne zásielky",
+    "noPackagesFound": "Zásielky sa nenašli",
+    "receiveError": "Nepodarilo sa označiť zásielku ako prijatú.",
+    "pickupError": "Nepodarilo sa označiť zásielku ako vyzdvihnutú."
   },
   "financial": {
     "title": "Financie",
@@ -143,7 +182,18 @@
     "networkError": "Chyba siete. Skontrolujte pripojenie.",
     "serverError": "Chyba servera. Skúste to neskôr.",
     "validationError": "Opravte chyby vo formulári.",
-    "sessionExpired": "Relácia vypršala. Prihláste sa znova."
+    "sessionExpired": "Relácia vypršala. Prihláste sa znova.",
+    "documentNotFound": "Dokument nebol nájdený",
+    "documentNotFoundDesc": "Dokument, ktorý hľadáte, sa nenašiel. Mohol byť presunutý, vymazaný alebo je odkaz nesprávny.",
+    "articleNotFound": "Článok nebol nájdený",
+    "authenticationRequired": "Vyžaduje sa prihlásenie",
+    "missingOrgContext": "Nedá sa načítať: chýba kontext organizácie. Prihláste sa znova.",
+    "disputeNotFound": "Spor nebol nájdený",
+    "disputeNotFoundDesc": "Spor, ktorý hľadáte, sa nenašiel.",
+    "errorLoadingDispute": "Chyba pri načítaní sporu",
+    "disputeLoadError": "Pri načítaní podrobností sporu sa vyskytla chyba.",
+    "disputeNotExist": "Spor, ktorý hľadáte, neexistuje.",
+    "waitBeforeRetry": "Pred opakovaním počkajte."
   },
   "notifications": {
     "title": "Oznámenia",

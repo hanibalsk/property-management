@@ -117,3 +117,83 @@
 "error_server" = "Szerverhiba. Próbálja később.";
 "error_not_found" = "Nem található";
 "error_unauthorized" = "Nincs jogosultsága a művelet végrehajtásához.";
+
+/* Section Headers */
+"section_quick_actions" = "Gyors műveletek";
+"section_notifications" = "Értesítések";
+"section_app_settings" = "Alkalmazás beállítások";
+"section_about" = "Névjegy";
+"section_price_range" = "Ártartomány";
+"section_property_type" = "Ingatlan típusa";
+"section_your_message" = "Üzenete";
+
+/* Sign-in prompts */
+"sign_in_title" = "Jelentkezzen be a Reality Portal-ba";
+"sign_in_benefits" = "Mentse el kedvenceit, kövesse érdeklődéseit és kapjon értesítéseket új ajánlatokról";
+"sign_in_pm_app" = "Bejelentkezés PM alkalmazással";
+"sign_in_redirect_notice" = "Átirányítjuk a Property Management alkalmazásba a biztonságos bejelentkezéshez.";
+"confirm_sign_out_message" = "Biztosan ki szeretne jelentkezni?";
+
+/* Notification preferences */
+"notification_new_listings" = "Új ajánlatok";
+"notification_new_listings_desc" = "Kapjon értesítéseket, amikor új ingatlanok megfelelnek mentett keresésinek";
+"notification_price_drops" = "Árcsökkentések";
+"notification_price_drops_desc" = "Kapjon értesítéseket, amikor egy kedvenc ingatlan ára csökken";
+"notification_inquiry_responses" = "Érdeklődésekre adott válaszok";
+"notification_inquiry_responses_desc" = "Kapjon értesítéseket, amikor egy ügynök válaszol érdeklődésére";
+
+/* Settings */
+"setting_language" = "Nyelv";
+"setting_currency" = "Pénznem";
+"setting_units" = "Mértékegységek";
+"setting_theme" = "Téma";
+"theme_system" = "Rendszer alapértelmezett";
+"units_metric" = "Metrikus (m²)";
+"currency_eur" = "EUR (€)";
+
+/* Search */
+"search_placeholder" = "Ingatlan keresése…";
+"status_searching" = "Keresés…";
+"empty_search_results" = "Nincs találat";
+"empty_search_tip" = "Próbálja módosítani a keresést vagy a szűrőket";
+"section_recent_searches" = "Legutóbbi keresések";
+"action_load_more" = "Több betöltése";
+
+/* Filters */
+"action_filters" = "Szűrők";
+"filter_for_sale" = "Eladó";
+"filter_for_rent" = "Kiadó";
+"filter_apartments" = "Lakások";
+"filter_houses" = "Házak";
+"filter_land" = "Telkek";
+
+/* Actions */
+"action_call" = "Hívás";
+"action_email" = "E-mail";
+"action_inquire" = "Érdeklődés";
+"action_share_link" = "Link megosztása";
+"action_view_all_properties" = "Összes ingatlan megtekintése";
+"action_browse_listings" = "Ajánlatok böngészése";
+"action_view_map" = "Megtekintés térképen";
+"action_contact_agent" = "Kapcsolatfelvétel";
+
+/* Empty states */
+"empty_favorites" = "Nincsenek kedvencek";
+"empty_favorites_description" = "Koppintson a szív ikonra egy ajánlatnál, hogy elmentse a kedvencekhez.";
+"empty_inquiries" = "Nincsenek érdeklődések";
+"empty_inquiries_description" = "Amikor érdeklődést küld egy ingatlanról, itt jelenik meg.";
+"prompt_sign_in_favorites" = "Jelentkezzen be a kedvencek megtekintéséhez";
+"prompt_sign_in_inquiries" = "Jelentkezzen be az érdeklődések megtekintéséhez";
+
+/* Loading states */
+"status_loading_favorites" = "Kedvencek betöltése…";
+"status_loading_inquiries" = "Érdeklődések betöltése…";
+
+/* Labels */
+"label_featured" = "Kiemelt";
+"label_new" = "Új";
+"label_reduced" = "Csökkentett ár";
+"label_name_required" = "Név *";
+"label_email_required" = "E-mail *";
+"label_phone_optional" = "Telefon (opcionális)";
+"label_message" = "Üzenet";

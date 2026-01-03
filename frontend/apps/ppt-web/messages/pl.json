@@ -23,7 +23,19 @@
     "none": "Żaden",
     "select": "Wybierz",
     "required": "Wymagane",
-    "optional": "Opcjonalne"
+    "optional": "Opcjonalne",
+    "backToDocuments": "Powrót do dokumentów",
+    "backToDisputes": "Powrót do sporów",
+    "backToDispute": "Powrót do sporu",
+    "backToBuildings": "Powrót do budynków",
+    "backToFaults": "Powrót do usterek",
+    "tryAgain": "Spróbuj ponownie",
+    "retry": "Ponów",
+    "loadingDispute": "Ładowanie sporu...",
+    "pleaseWait": "Proszę czekać, pobieramy dane.",
+    "reloadPage": "Odśwież stronę",
+    "copyErrorDetails": "Kopiuj szczegóły błędu",
+    "add": "Dodaj"
   },
   "nav": {
     "home": "Strona główna",
@@ -59,6 +71,10 @@
     "hidePassword": "Ukryj hasło",
     "forgotPassword": "Zapomniałeś hasła?",
     "rememberMe": "Zapamiętaj mnie"
+  },
+  "home": {
+    "title": "System zarządzania nieruchomościami",
+    "welcome": "Witamy w systemie zarządzania nieruchomościami."
   },
   "faults": {
     "title": "Zgłoszenia usterek",
@@ -122,7 +138,30 @@
     "daysAgo": "dni temu",
     "today": "Dzisiaj",
     "view": "Zobacz",
-    "manage": "Zarządzaj"
+    "manage": "Zarządzaj",
+    "failedToLoad": "Nie udało się załadować sporów",
+    "failedToFile": "Nie udało się zgłosić sporu",
+    "filedSuccessfully": "Spór został pomyślnie zgłoszony",
+    "submittedMsg": "Twój spór został przesłany i zostanie rozpatrzony.",
+    "failedToLoadDetail": "Nie udało się załadować sporu",
+    "unitRequired": "Wymagany lokal",
+    "selectUnit": "Wybierz lokal dla tego sporu.",
+    "multipleRespondents": "Wielu pozwanych",
+    "multipleRespondentsMsg": "Tylko pierwszy pozwany zostanie zarejestrowany.",
+    "addEvidence": "Dodaj dowód"
+  },
+  "packages": {
+    "title": "Zarządzanie przesyłkami",
+    "subtitle": "Śledzenie i zarządzanie przesyłkami w budynku",
+    "loading": "Ładowanie przesyłek...",
+    "loadError": "Nie udało się załadować przesyłek",
+    "registerPackage": "Zarejestruj przesyłkę",
+    "filterAll": "Wszystkie",
+    "filterPickedUp": "Odebrane",
+    "noPackages": "Brak przesyłek",
+    "noPackagesFound": "Nie znaleziono przesyłek",
+    "receiveError": "Nie udało się oznaczyć przesyłki jako odebranej.",
+    "pickupError": "Nie udało się oznaczyć przesyłki jako podjętej."
   },
   "financial": {
     "title": "Finanse",
@@ -143,7 +182,18 @@
     "networkError": "Błąd sieci. Sprawdź połączenie.",
     "serverError": "Błąd serwera. Spróbuj później.",
     "validationError": "Popraw błędy w formularzu.",
-    "sessionExpired": "Twoja sesja wygasła. Zaloguj się ponownie."
+    "sessionExpired": "Twoja sesja wygasła. Zaloguj się ponownie.",
+    "documentNotFound": "Dokument nie został znaleziony",
+    "documentNotFoundDesc": "Nie mogliśmy znaleźć szukanego dokumentu. Mógł zostać przeniesiony, usunięty lub link jest nieprawidłowy.",
+    "articleNotFound": "Artykuł nie został znaleziony",
+    "authenticationRequired": "Wymagane uwierzytelnienie",
+    "missingOrgContext": "Nie można załadować: brak kontekstu organizacji. Zaloguj się ponownie.",
+    "disputeNotFound": "Spór nie został znaleziony",
+    "disputeNotFoundDesc": "Nie mogliśmy znaleźć szukanego sporu.",
+    "errorLoadingDispute": "Błąd ładowania sporu",
+    "disputeLoadError": "Wystąpił błąd podczas ładowania szczegółów sporu.",
+    "disputeNotExist": "Szukany spór nie istnieje.",
+    "waitBeforeRetry": "Proszę poczekać przed ponowną próbą."
   },
   "notifications": {
     "title": "Powiadomienia",

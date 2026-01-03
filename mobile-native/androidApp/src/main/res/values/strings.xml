@@ -119,4 +119,84 @@
     <string name="error_server">Server error. Please try again later.</string>
     <string name="error_not_found">Not found</string>
     <string name="error_unauthorized">You are not authorized to perform this action.</string>
+
+    <!-- Section Headers -->
+    <string name="section_quick_actions">Quick Actions</string>
+    <string name="section_notifications">Notifications</string>
+    <string name="section_app_settings">App Settings</string>
+    <string name="section_about">About</string>
+    <string name="section_price_range">Price Range</string>
+    <string name="section_property_type">Property Type</string>
+    <string name="section_your_message">Your Message</string>
+
+    <!-- Sign-in prompts -->
+    <string name="sign_in_title">Sign in to Reality Portal</string>
+    <string name="sign_in_benefits">Save favorites, track inquiries, and get notified about new listings</string>
+    <string name="sign_in_pm_app">Sign In via PM App</string>
+    <string name="sign_in_redirect_notice">You\'ll be redirected to the Property Management app to sign in securely.</string>
+    <string name="confirm_sign_out_message">Are you sure you want to sign out?</string>
+
+    <!-- Notification preferences -->
+    <string name="notification_new_listings">New Listings</string>
+    <string name="notification_new_listings_desc">Get notified when new properties match your saved searches</string>
+    <string name="notification_price_drops">Price Drops</string>
+    <string name="notification_price_drops_desc">Get notified when a favorite property\'s price is reduced</string>
+    <string name="notification_inquiry_responses">Inquiry Responses</string>
+    <string name="notification_inquiry_responses_desc">Get notified when an agent responds to your inquiry</string>
+
+    <!-- Settings -->
+    <string name="setting_language">Language</string>
+    <string name="setting_currency">Currency</string>
+    <string name="setting_units">Units</string>
+    <string name="setting_theme">Theme</string>
+    <string name="theme_system">System Default</string>
+    <string name="units_metric">Metric (m²)</string>
+    <string name="currency_eur">EUR (€)</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Search properties…</string>
+    <string name="status_searching">Searching…</string>
+    <string name="empty_search_results">No results found</string>
+    <string name="empty_search_tip">Try adjusting your search or filters</string>
+    <string name="section_recent_searches">Recent Searches</string>
+    <string name="action_load_more">Load More</string>
+
+    <!-- Filters -->
+    <string name="action_filters">Filters</string>
+    <string name="filter_for_sale">For Sale</string>
+    <string name="filter_for_rent">For Rent</string>
+    <string name="filter_apartments">Apartments</string>
+    <string name="filter_houses">Houses</string>
+    <string name="filter_land">Land</string>
+
+    <!-- Actions -->
+    <string name="action_call">Call</string>
+    <string name="action_email">Email</string>
+    <string name="action_inquire">Inquire</string>
+    <string name="action_share_link">Share Link</string>
+    <string name="action_view_all_properties">View All Properties</string>
+    <string name="action_browse_listings">Browse Listings</string>
+    <string name="action_view_map">View on Map</string>
+    <string name="action_contact_agent">Contact Agent</string>
+
+    <!-- Empty states -->
+    <string name="empty_favorites">No favorites yet</string>
+    <string name="empty_favorites_description">Tap the heart icon on any listing to save it to your favorites.</string>
+    <string name="empty_inquiries">No inquiries yet</string>
+    <string name="empty_inquiries_description">When you send an inquiry about a property, it will appear here.</string>
+    <string name="prompt_sign_in_favorites">Sign in to see your favorites</string>
+    <string name="prompt_sign_in_inquiries">Sign in to see your inquiries</string>
+
+    <!-- Loading states -->
+    <string name="status_loading_favorites">Loading favorites…</string>
+    <string name="status_loading_inquiries">Loading inquiries…</string>
+
+    <!-- Labels -->
+    <string name="label_featured">Featured</string>
+    <string name="label_new">New</string>
+    <string name="label_reduced">Reduced</string>
+    <string name="label_name_required">Name *</string>
+    <string name="label_email_required">Email *</string>
+    <string name="label_phone_optional">Phone (optional)</string>
+    <string name="label_message">Message</string>
 </resources>

@@ -1,6 +1,6 @@
 {
   "common": {
-    "search": "Hľadať",
+    "search": "Hladať",
     "login": "Prihlásiť sa",
     "register": "Registrovať sa",
     "logout": "Odhlásiť sa",
@@ -24,7 +24,14 @@
     "subtitle": "Prehľadajte tisíce ponúk",
     "searchPlaceholder": "Zadajte mesto, adresu alebo kľúčové slovo...",
     "featuredListings": "Odporúčané ponuky",
-    "viewAll": "Zobraziť všetko"
+    "viewAll": "Zobraziť všetko",
+    "heroTitle": "Nájdite svoju dokonalú nehnuteľnosť",
+    "heroSubtitle": "Prehľadajte tisíce ponúk na Slovensku, v Čechách a ďalších krajinách.",
+    "featuredForSale": "Odporúčané nehnuteľnosti na predaj",
+    "featuredForRent": "Odporúčané nehnuteľnosti na prenájom",
+    "newListings": "Nové ponuky",
+    "browseByType": "Prehliadať podľa typu nehnuteľnosti",
+    "viewAllProperties": "Zobraziť všetky nehnuteľnosti"
   },
   "listing": {
     "price": "Cena",
@@ -40,7 +47,20 @@
     "bedroom": "Spálňa",
     "bedrooms": "Spálne",
     "bathroom": "Kúpeľňa",
-    "bathrooms": "Kúpeľne"
+    "bathrooms": "Kúpeľne",
+    "featured": "Odporúčané",
+    "forSale": "Na predaj",
+    "forRent": "Na prenájom",
+    "roomsCount": "{count} izieb",
+    "floorNumber": "{number}. poschodie",
+    "viewAll": "Zobraziť všetko",
+    "notFound": "Ponuka nebola nájdená",
+    "notFoundDesc": "Ponuka, ktorú hľadáte, neexistuje alebo bola odstránená.",
+    "browseAll": "Prehliadať všetky ponuky",
+    "amenities": "Vybavenie",
+    "location": "Poloha",
+    "viewOnMap": "Zobraziť na mape",
+    "contactAgent": "Kontaktovať makléra"
   },
   "search": {
     "filters": "Filtre",
@@ -61,7 +81,27 @@
     "applyFilters": "Použiť filtre",
     "clearFilters": "Vyčistiť filtre",
     "noResults": "Neboli nájdené žiadne ponuky",
-    "resultsCount": "Nájdených {count} ponúk"
+    "resultsCount": "Nájdených {count} ponúk",
+    "buy": "Kúpiť",
+    "placeholder": "Zadajte mesto, adresu alebo kľúčové slovo...",
+    "button": "Hľadať",
+    "popular": "Populárne:",
+    "searching": "Vyhľadávanie...",
+    "noResultsTip": "Skúste upraviť vyhľadávanie alebo filtre",
+    "recentSearches": "Nedávne vyhľadávania"
+  },
+  "filters": {
+    "title": "Filtre",
+    "clearAll": "Vyčistiť všetko",
+    "propertyType": "Typ nehnuteľnosti",
+    "priceRange": "Cenové rozpätie",
+    "anyPrice": "Akákoľvek cena",
+    "area": "Plocha (m²)",
+    "anySize": "Akákoľvek veľkosť",
+    "minimumRooms": "Minimálny počet izieb",
+    "showResults": "Zobraziť výsledky",
+    "office": "Kancelária",
+    "garage": "Garáž"
   },
   "contact": {
     "name": "Vaše meno",
@@ -71,13 +111,38 @@
     "send": "Odoslať správu",
     "scheduleViewing": "Naplánovať obhliadku",
     "preferredDate": "Preferovaný dátum",
-    "preferredTime": "Preferovaný čas"
+    "preferredTime": "Preferovaný čas",
+    "iWantTo": "Chcem",
+    "askQuestion": "Položiť otázku",
+    "discussPrice": "Prediskutovať cenu",
+    "checkAvailability": "Overiť dostupnosť",
+    "optional": "(voliteľné)",
+    "placeholder": "Dobrý deň, mám záujem o túto nehnuteľnosť...",
+    "privacyNotice": "Odoslaním súhlasíte s našimi zásadami ochrany osobných údajov.",
+    "sending": "Odosielanie...",
+    "sendMessage": "Odoslať správu",
+    "messageSent": "Správa odoslaná!",
+    "inquirySent": "Váš dopyt bol odoslaný. Čoskoro vás budú kontaktovať.",
+    "sendAnother": "Odoslať ďalšiu správu",
+    "failedToSend": "Nepodarilo sa odoslať správu. Skúste to prosím znova."
   },
   "footer": {
     "about": "O nás",
     "terms": "Obchodné podmienky",
     "privacy": "Ochrana súkromia",
     "help": "Pomoc",
-    "copyright": "© {year} Reality Portál. Všetky práva vyhradené."
+    "copyright": "© {year} Reality Portál. Všetky práva vyhradené.",
+    "description": "Nájdite svoju dokonalú nehnuteľnosť na Slovensku, v Čechách a ďalších krajinách.",
+    "quickLinks": "Rýchle odkazy",
+    "propertyTypes": "Typy nehnuteľností",
+    "company": "Spoločnosť",
+    "propertiesForSale": "Nehnuteľnosti na predaj",
+    "propertiesForRent": "Nehnuteľnosti na prenájom",
+    "apartments": "Byty",
+    "houses": "Domy",
+    "land": "Pozemky",
+    "commercial": "Komerčné",
+    "aboutUs": "O nás",
+    "contact": "Kontakt"
   }
 }

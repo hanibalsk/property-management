@@ -23,7 +23,19 @@
     "none": "Egyik sem",
     "select": "Kiválasztás",
     "required": "Kötelező",
-    "optional": "Opcionális"
+    "optional": "Opcionális",
+    "backToDocuments": "Vissza a dokumentumokhoz",
+    "backToDisputes": "Vissza a vitákhoz",
+    "backToDispute": "Vissza a vitához",
+    "backToBuildings": "Vissza az épületekhez",
+    "backToFaults": "Vissza a hibákhoz",
+    "tryAgain": "Próbálja újra",
+    "retry": "Újra",
+    "loadingDispute": "Vita betöltése...",
+    "pleaseWait": "Kérem várjon, amíg betöltjük az adatokat.",
+    "reloadPage": "Oldal újratöltése",
+    "copyErrorDetails": "Hibarészletek másolása",
+    "add": "Hozzáadás"
   },
   "nav": {
     "home": "Főoldal",
@@ -59,6 +71,10 @@
     "hidePassword": "Jelszó elrejtése",
     "forgotPassword": "Elfelejtette jelszavát?",
     "rememberMe": "Emlékezzen rám"
+  },
+  "home": {
+    "title": "Ingatlankezelő rendszer",
+    "welcome": "Üdvözöljük az ingatlankezelő rendszerben."
   },
   "faults": {
     "title": "Hibajelentések",
@@ -122,7 +138,30 @@
     "daysAgo": "nappal ezelőtt",
     "today": "Ma",
     "view": "Megtekintés",
-    "manage": "Kezelés"
+    "manage": "Kezelés",
+    "failedToLoad": "Nem sikerült betölteni a vitákat",
+    "failedToFile": "Nem sikerült benyújtani a vitát",
+    "filedSuccessfully": "A vita sikeresen benyújtva",
+    "submittedMsg": "Vitáját benyújtottuk és felülvizsgáljuk.",
+    "failedToLoadDetail": "Nem sikerült betölteni a vitát",
+    "unitRequired": "Egység szükséges",
+    "selectUnit": "Kérjük, válasszon egységet ehhez a vitához.",
+    "multipleRespondents": "Több alperes",
+    "multipleRespondentsMsg": "Csak az első alperes kerül rögzítésre.",
+    "addEvidence": "Bizonyíték hozzáadása"
+  },
+  "packages": {
+    "title": "Csomagkezelés",
+    "subtitle": "Épület csomagjainak nyomon követése és kezelése",
+    "loading": "Csomagok betöltése...",
+    "loadError": "Nem sikerült betölteni a csomagokat",
+    "registerPackage": "Csomag regisztrálása",
+    "filterAll": "Összes",
+    "filterPickedUp": "Átvett",
+    "noPackages": "Nincsenek csomagok",
+    "noPackagesFound": "Nem találhatók csomagok",
+    "receiveError": "Nem sikerült a csomagot átvettként megjelölni.",
+    "pickupError": "Nem sikerült a csomagot felvettként megjelölni."
   },
   "financial": {
     "title": "Pénzügyek",
@@ -143,7 +182,18 @@
     "networkError": "Hálózati hiba. Ellenőrizze a kapcsolatot.",
     "serverError": "Szerverhiba. Próbálja később.",
     "validationError": "Javítsa ki a hibákat az űrlapon.",
-    "sessionExpired": "A munkamenete lejárt. Jelentkezzen be újra."
+    "sessionExpired": "A munkamenete lejárt. Jelentkezzen be újra.",
+    "documentNotFound": "A dokumentum nem található",
+    "documentNotFoundDesc": "A keresett dokumentum nem található. Lehet, hogy áthelyezték, törölték, vagy a link hibás.",
+    "articleNotFound": "A cikk nem található",
+    "authenticationRequired": "Hitelesítés szükséges",
+    "missingOrgContext": "Nem tölthető be: hiányzik a szervezet kontextusa. Jelentkezzen be újra.",
+    "disputeNotFound": "A vita nem található",
+    "disputeNotFoundDesc": "A keresett vita nem található.",
+    "errorLoadingDispute": "Hiba a vita betöltésekor",
+    "disputeLoadError": "Hiba történt a vita részleteinek betöltésekor.",
+    "disputeNotExist": "A keresett vita nem létezik.",
+    "waitBeforeRetry": "Kérem várjon az újrapróbálkozás előtt."
   },
   "notifications": {
     "title": "Értesítések",

@@ -23,7 +23,19 @@
     "none": "Keine",
     "select": "Auswählen",
     "required": "Erforderlich",
-    "optional": "Optional"
+    "optional": "Optional",
+    "backToDocuments": "Zurück zu Dokumenten",
+    "backToDisputes": "Zurück zu Streitigkeiten",
+    "backToDispute": "Zurück zur Streitigkeit",
+    "backToBuildings": "Zurück zu Gebäuden",
+    "backToFaults": "Zurück zu Störungen",
+    "tryAgain": "Erneut versuchen",
+    "retry": "Wiederholen",
+    "loadingDispute": "Streitigkeit wird geladen...",
+    "pleaseWait": "Bitte warten Sie, während wir die Daten laden.",
+    "reloadPage": "Seite neu laden",
+    "copyErrorDetails": "Fehlerdetails kopieren",
+    "add": "Hinzufügen"
   },
   "nav": {
     "home": "Startseite",
@@ -59,6 +71,10 @@
     "hidePassword": "Passwort verbergen",
     "forgotPassword": "Passwort vergessen?",
     "rememberMe": "Angemeldet bleiben"
+  },
+  "home": {
+    "title": "Immobilienverwaltungssystem",
+    "welcome": "Willkommen im Immobilienverwaltungssystem."
   },
   "faults": {
     "title": "Störungsmeldungen",
@@ -122,7 +138,30 @@
     "daysAgo": "Tagen",
     "today": "Heute",
     "view": "Anzeigen",
-    "manage": "Verwalten"
+    "manage": "Verwalten",
+    "failedToLoad": "Streitigkeiten konnten nicht geladen werden",
+    "failedToFile": "Streitigkeit konnte nicht eingereicht werden",
+    "filedSuccessfully": "Streitigkeit erfolgreich eingereicht",
+    "submittedMsg": "Ihre Streitigkeit wurde eingereicht und wird geprüft.",
+    "failedToLoadDetail": "Streitigkeit konnte nicht geladen werden",
+    "unitRequired": "Einheit erforderlich",
+    "selectUnit": "Bitte wählen Sie eine Einheit für diese Streitigkeit.",
+    "multipleRespondents": "Mehrere Beklagte",
+    "multipleRespondentsMsg": "Nur der erste Beklagte wird erfasst.",
+    "addEvidence": "Beweis hinzufügen"
+  },
+  "packages": {
+    "title": "Paketverwaltung",
+    "subtitle": "Pakete im Gebäude verfolgen und verwalten",
+    "loading": "Pakete werden geladen...",
+    "loadError": "Pakete konnten nicht geladen werden",
+    "registerPackage": "Paket registrieren",
+    "filterAll": "Alle",
+    "filterPickedUp": "Abgeholt",
+    "noPackages": "Keine Pakete",
+    "noPackagesFound": "Keine Pakete gefunden",
+    "receiveError": "Paket konnte nicht als empfangen markiert werden.",
+    "pickupError": "Paket konnte nicht als abgeholt markiert werden."
   },
   "financial": {
     "title": "Finanzen",
@@ -143,7 +182,18 @@
     "networkError": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
     "serverError": "Serverfehler. Bitte versuchen Sie es später erneut.",
     "validationError": "Bitte korrigieren Sie die Fehler im Formular.",
-    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+    "documentNotFound": "Dokument nicht gefunden",
+    "documentNotFoundDesc": "Das gesuchte Dokument wurde nicht gefunden. Es wurde möglicherweise verschoben, gelöscht oder der Link ist falsch.",
+    "articleNotFound": "Artikel nicht gefunden",
+    "authenticationRequired": "Anmeldung erforderlich",
+    "missingOrgContext": "Laden nicht möglich: Organisationskontext fehlt. Bitte melden Sie sich erneut an.",
+    "disputeNotFound": "Streitigkeit nicht gefunden",
+    "disputeNotFoundDesc": "Die gesuchte Streitigkeit wurde nicht gefunden.",
+    "errorLoadingDispute": "Fehler beim Laden der Streitigkeit",
+    "disputeLoadError": "Beim Laden der Streitigkeitsdetails ist ein Fehler aufgetreten.",
+    "disputeNotExist": "Die gesuchte Streitigkeit existiert nicht.",
+    "waitBeforeRetry": "Bitte warten Sie, bevor Sie es erneut versuchen."
   },
   "notifications": {
     "title": "Benachrichtigungen",

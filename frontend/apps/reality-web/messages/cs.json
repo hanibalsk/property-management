@@ -24,7 +24,14 @@
     "subtitle": "Prohledejte tisíce nabídek",
     "searchPlaceholder": "Zadejte město, adresu nebo klíčové slovo...",
     "featuredListings": "Doporučené nabídky",
-    "viewAll": "Zobrazit vše"
+    "viewAll": "Zobrazit vše",
+    "heroTitle": "Najděte svou dokonalou nemovitost",
+    "heroSubtitle": "Prohledejte tisíce nabídek v České republice, na Slovensku a dalších zemích.",
+    "featuredForSale": "Doporučené nemovitosti k prodeji",
+    "featuredForRent": "Doporučené nemovitosti k pronájmu",
+    "newListings": "Nové nabídky",
+    "browseByType": "Procházet podle typu nemovitosti",
+    "viewAllProperties": "Zobrazit všechny nemovitosti"
   },
   "listing": {
     "price": "Cena",
@@ -40,7 +47,20 @@
     "bedroom": "Ložnice",
     "bedrooms": "Ložnice",
     "bathroom": "Koupelna",
-    "bathrooms": "Koupelny"
+    "bathrooms": "Koupelny",
+    "featured": "Doporučené",
+    "forSale": "K prodeji",
+    "forRent": "K pronájmu",
+    "roomsCount": "{count} pokojů",
+    "floorNumber": "{number}. patro",
+    "viewAll": "Zobrazit vše",
+    "notFound": "Nabídka nebyla nalezena",
+    "notFoundDesc": "Nabídka, kterou hledáte, neexistuje nebo byla odstraněna.",
+    "browseAll": "Procházet všechny nabídky",
+    "amenities": "Vybavení",
+    "location": "Poloha",
+    "viewOnMap": "Zobrazit na mapě",
+    "contactAgent": "Kontaktovat makléře"
   },
   "search": {
     "filters": "Filtry",
@@ -61,7 +81,27 @@
     "applyFilters": "Použít filtry",
     "clearFilters": "Vyčistit filtry",
     "noResults": "Nebyly nalezeny žádné nabídky",
-    "resultsCount": "Nalezeno {count} nabídek"
+    "resultsCount": "Nalezeno {count} nabídek",
+    "buy": "Koupit",
+    "placeholder": "Zadejte město, adresu nebo klíčové slovo...",
+    "button": "Hledat",
+    "popular": "Populární:",
+    "searching": "Vyhledávání...",
+    "noResultsTip": "Zkuste upravit vyhledávání nebo filtry",
+    "recentSearches": "Nedávná vyhledávání"
+  },
+  "filters": {
+    "title": "Filtry",
+    "clearAll": "Vyčistit vše",
+    "propertyType": "Typ nemovitosti",
+    "priceRange": "Cenové rozmezí",
+    "anyPrice": "Jakákoli cena",
+    "area": "Plocha (m²)",
+    "anySize": "Jakákoli velikost",
+    "minimumRooms": "Minimální počet pokojů",
+    "showResults": "Zobrazit výsledky",
+    "office": "Kancelář",
+    "garage": "Garáž"
   },
   "contact": {
     "name": "Vaše jméno",
@@ -71,13 +111,38 @@
     "send": "Odeslat zprávu",
     "scheduleViewing": "Naplánovat prohlídku",
     "preferredDate": "Preferovaný datum",
-    "preferredTime": "Preferovaný čas"
+    "preferredTime": "Preferovaný čas",
+    "iWantTo": "Chci",
+    "askQuestion": "Položit otázku",
+    "discussPrice": "Projednat cenu",
+    "checkAvailability": "Ověřit dostupnost",
+    "optional": "(volitelné)",
+    "placeholder": "Dobrý den, mám zájem o tuto nemovitost...",
+    "privacyNotice": "Odesláním souhlasíte s našimi zásadami ochrany osobních údajů.",
+    "sending": "Odesílání...",
+    "sendMessage": "Odeslat zprávu",
+    "messageSent": "Zpráva odeslána!",
+    "inquirySent": "Váš dotaz byl odeslán. Brzy vás budou kontaktovat.",
+    "sendAnother": "Odeslat další zprávu",
+    "failedToSend": "Nepodařilo se odeslat zprávu. Zkuste to prosím znovu."
   },
   "footer": {
     "about": "O nás",
     "terms": "Obchodní podmínky",
     "privacy": "Ochrana soukromí",
     "help": "Nápověda",
-    "copyright": "© {year} Reality Portál. Všechna práva vyhrazena."
+    "copyright": "© {year} Reality Portál. Všechna práva vyhrazena.",
+    "description": "Najděte svou dokonalou nemovitost v České republice, na Slovensku a dalších zemích.",
+    "quickLinks": "Rychlé odkazy",
+    "propertyTypes": "Typy nemovitostí",
+    "company": "Společnost",
+    "propertiesForSale": "Nemovitosti k prodeji",
+    "propertiesForRent": "Nemovitosti k pronájmu",
+    "apartments": "Byty",
+    "houses": "Domy",
+    "land": "Pozemky",
+    "commercial": "Komerční",
+    "aboutUs": "O nás",
+    "contact": "Kontakt"
   }
 }

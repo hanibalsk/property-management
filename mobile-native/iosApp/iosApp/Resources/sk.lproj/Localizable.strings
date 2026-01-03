@@ -117,3 +117,83 @@
 "error_server" = "Chyba servera. Skúste to neskôr.";
 "error_not_found" = "Nenájdené";
 "error_unauthorized" = "Nemáte oprávnenie na túto akciu.";
+
+/* Section Headers */
+"section_quick_actions" = "Rýchle akcie";
+"section_notifications" = "Oznámenia";
+"section_app_settings" = "Nastavenia aplikácie";
+"section_about" = "O aplikácii";
+"section_price_range" = "Cenové rozpätie";
+"section_property_type" = "Typ nehnuteľnosti";
+"section_your_message" = "Vaša správa";
+
+/* Sign-in prompts */
+"sign_in_title" = "Prihláste sa do Reality Portál";
+"sign_in_benefits" = "Uložte si obľúbené, sledujte dopyty a dostávajte upozornenia na nové ponuky";
+"sign_in_pm_app" = "Prihlásiť sa cez PM aplikáciu";
+"sign_in_redirect_notice" = "Budete presmerovaný do aplikácie Property Management pre bezpečné prihlásenie.";
+"confirm_sign_out_message" = "Naozaj sa chcete odhlásiť?";
+
+/* Notification preferences */
+"notification_new_listings" = "Nové ponuky";
+"notification_new_listings_desc" = "Dostávajte upozornenia, keď nové nehnuteľnosti zodpovedajú vašim uloženým vyhľadávaniam";
+"notification_price_drops" = "Zníženie ceny";
+"notification_price_drops_desc" = "Dostávajte upozornenia, keď sa zníži cena obľúbenej nehnuteľnosti";
+"notification_inquiry_responses" = "Odpovede na dopyty";
+"notification_inquiry_responses_desc" = "Dostávajte upozornenia, keď agent odpovie na váš dopyt";
+
+/* Settings */
+"setting_language" = "Jazyk";
+"setting_currency" = "Mena";
+"setting_units" = "Jednotky";
+"setting_theme" = "Téma";
+"theme_system" = "Podľa systému";
+"units_metric" = "Metrické (m²)";
+"currency_eur" = "EUR (€)";
+
+/* Search */
+"search_placeholder" = "Hľadať nehnuteľnosti…";
+"status_searching" = "Vyhľadáva sa…";
+"empty_search_results" = "Žiadne výsledky";
+"empty_search_tip" = "Skúste upraviť vyhľadávanie alebo filtre";
+"section_recent_searches" = "Nedávne vyhľadávania";
+"action_load_more" = "Načítať viac";
+
+/* Filters */
+"action_filters" = "Filtre";
+"filter_for_sale" = "Na predaj";
+"filter_for_rent" = "Na prenájom";
+"filter_apartments" = "Byty";
+"filter_houses" = "Domy";
+"filter_land" = "Pozemky";
+
+/* Actions */
+"action_call" = "Zavolať";
+"action_email" = "E-mail";
+"action_inquire" = "Dopytovať";
+"action_share_link" = "Zdieľať odkaz";
+"action_view_all_properties" = "Zobraziť všetky nehnuteľnosti";
+"action_browse_listings" = "Prehľadávať ponuky";
+"action_view_map" = "Zobraziť na mape";
+"action_contact_agent" = "Kontaktovať agenta";
+
+/* Empty states */
+"empty_favorites" = "Zatiaľ žiadne obľúbené";
+"empty_favorites_description" = "Klepnutím na ikonu srdca pri ponuke ju uložíte do obľúbených.";
+"empty_inquiries" = "Zatiaľ žiadne dopyty";
+"empty_inquiries_description" = "Keď odošlete dopyt na nehnuteľnosť, zobrazí sa tu.";
+"prompt_sign_in_favorites" = "Prihláste sa pre zobrazenie obľúbených";
+"prompt_sign_in_inquiries" = "Prihláste sa pre zobrazenie dopytov";
+
+/* Loading states */
+"status_loading_favorites" = "Načítavajú sa obľúbené…";
+"status_loading_inquiries" = "Načítavajú sa dopyty…";
+
+/* Labels */
+"label_featured" = "Odporúčané";
+"label_new" = "Nové";
+"label_reduced" = "Znížená cena";
+"label_name_required" = "Meno *";
+"label_email_required" = "E-mail *";
+"label_phone_optional" = "Telefón (voliteľné)";
+"label_message" = "Správa";

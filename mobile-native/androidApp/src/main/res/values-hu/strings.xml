@@ -119,4 +119,84 @@
     <string name="error_server">Szerverhiba. Próbálja később.</string>
     <string name="error_not_found">Nem található</string>
     <string name="error_unauthorized">Nincs jogosultsága a művelet végrehajtásához.</string>
+
+    <!-- Section Headers -->
+    <string name="section_quick_actions">Gyors műveletek</string>
+    <string name="section_notifications">Értesítések</string>
+    <string name="section_app_settings">Alkalmazás beállítások</string>
+    <string name="section_about">Névjegy</string>
+    <string name="section_price_range">Ártartomány</string>
+    <string name="section_property_type">Ingatlan típusa</string>
+    <string name="section_your_message">Üzenete</string>
+
+    <!-- Sign-in prompts -->
+    <string name="sign_in_title">Jelentkezzen be a Reality Portal-ba</string>
+    <string name="sign_in_benefits">Mentse el kedvenceit, kövesse érdeklődéseit és kapjon értesítéseket új ajánlatokról</string>
+    <string name="sign_in_pm_app">Bejelentkezés PM alkalmazással</string>
+    <string name="sign_in_redirect_notice">Átirányítjuk a Property Management alkalmazásba a biztonságos bejelentkezéshez.</string>
+    <string name="confirm_sign_out_message">Biztosan ki szeretne jelentkezni?</string>
+
+    <!-- Notification preferences -->
+    <string name="notification_new_listings">Új ajánlatok</string>
+    <string name="notification_new_listings_desc">Kapjon értesítéseket, amikor új ingatlanok megfelelnek mentett keresésinek</string>
+    <string name="notification_price_drops">Árcsökkentések</string>
+    <string name="notification_price_drops_desc">Kapjon értesítéseket, amikor egy kedvenc ingatlan ára csökken</string>
+    <string name="notification_inquiry_responses">Érdeklődésekre adott válaszok</string>
+    <string name="notification_inquiry_responses_desc">Kapjon értesítéseket, amikor egy ügynök válaszol érdeklődésére</string>
+
+    <!-- Settings -->
+    <string name="setting_language">Nyelv</string>
+    <string name="setting_currency">Pénznem</string>
+    <string name="setting_units">Mértékegységek</string>
+    <string name="setting_theme">Téma</string>
+    <string name="theme_system">Rendszer alapértelmezett</string>
+    <string name="units_metric">Metrikus (m²)</string>
+    <string name="currency_eur">EUR (€)</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Ingatlan keresése…</string>
+    <string name="status_searching">Keresés…</string>
+    <string name="empty_search_results">Nincs találat</string>
+    <string name="empty_search_tip">Próbálja módosítani a keresést vagy a szűrőket</string>
+    <string name="section_recent_searches">Legutóbbi keresések</string>
+    <string name="action_load_more">Több betöltése</string>
+
+    <!-- Filters -->
+    <string name="action_filters">Szűrők</string>
+    <string name="filter_for_sale">Eladó</string>
+    <string name="filter_for_rent">Kiadó</string>
+    <string name="filter_apartments">Lakások</string>
+    <string name="filter_houses">Házak</string>
+    <string name="filter_land">Telkek</string>
+
+    <!-- Actions -->
+    <string name="action_call">Hívás</string>
+    <string name="action_email">E-mail</string>
+    <string name="action_inquire">Érdeklődés</string>
+    <string name="action_share_link">Link megosztása</string>
+    <string name="action_view_all_properties">Összes ingatlan megtekintése</string>
+    <string name="action_browse_listings">Ajánlatok böngészése</string>
+    <string name="action_view_map">Megtekintés térképen</string>
+    <string name="action_contact_agent">Kapcsolatfelvétel</string>
+
+    <!-- Empty states -->
+    <string name="empty_favorites">Nincsenek kedvencek</string>
+    <string name="empty_favorites_description">Koppintson a szív ikonra egy ajánlatnál, hogy elmentse a kedvencekhez.</string>
+    <string name="empty_inquiries">Nincsenek érdeklődések</string>
+    <string name="empty_inquiries_description">Amikor érdeklődést küld egy ingatlanról, itt jelenik meg.</string>
+    <string name="prompt_sign_in_favorites">Jelentkezzen be a kedvencek megtekintéséhez</string>
+    <string name="prompt_sign_in_inquiries">Jelentkezzen be az érdeklődések megtekintéséhez</string>
+
+    <!-- Loading states -->
+    <string name="status_loading_favorites">Kedvencek betöltése…</string>
+    <string name="status_loading_inquiries">Érdeklődések betöltése…</string>
+
+    <!-- Labels -->
+    <string name="label_featured">Kiemelt</string>
+    <string name="label_new">Új</string>
+    <string name="label_reduced">Csökkentett ár</string>
+    <string name="label_name_required">Név *</string>
+    <string name="label_email_required">E-mail *</string>
+    <string name="label_phone_optional">Telefon (opcionális)</string>
+    <string name="label_message">Üzenet</string>
 </resources>

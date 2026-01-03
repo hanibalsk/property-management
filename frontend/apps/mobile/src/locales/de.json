@@ -1,14 +1,14 @@
 {
   "common": {
-    "loading": "Lädt...",
+    "loading": "Ladt...",
     "error": "Fehler",
     "retry": "Erneut versuchen",
     "save": "Speichern",
     "cancel": "Abbrechen",
-    "delete": "Löschen",
+    "delete": "Loschen",
     "edit": "Bearbeiten",
-    "confirm": "Bestätigen",
-    "back": "Zurück",
+    "confirm": "Bestatigen",
+    "back": "Zuruck",
     "next": "Weiter",
     "done": "Fertig",
     "yes": "Ja",
@@ -20,7 +20,7 @@
   },
   "tabs": {
     "home": "Startseite",
-    "faults": "Störungen",
+    "faults": "Storungen",
     "news": "Nachrichten",
     "vote": "Abstimmung",
     "docs": "Dokumente"
@@ -35,41 +35,76 @@
     "forgotPassword": "Passwort vergessen?",
     "emailRequired": "E-Mail ist erforderlich",
     "passwordRequired": "Passwort ist erforderlich",
-    "invalidCredentials": "Ungültige E-Mail oder Passwort"
+    "invalidCredentials": "Ungultige E-Mail oder Passwort",
+    "propertyManagement": "Hausverwaltung",
+    "signInPrompt": "Melden Sie sich bei Ihrem Konto an",
+    "emailPlaceholder": "Geben Sie Ihre E-Mail ein",
+    "passwordPlaceholder": "Geben Sie Ihr Passwort ein",
+    "show": "Anzeigen",
+    "hide": "Ausblenden",
+    "dontHaveAccount": "Haben Sie kein Konto?",
+    "contactManager": "Kontaktieren Sie Ihren Hausverwalter",
+    "biometricFailed": "Biometrische Authentifizierung fehlgeschlagen",
+    "loginFailed": "Anmeldung fehlgeschlagen",
+    "checkCredentials": "Bitte uberprufen Sie Ihre Anmeldedaten"
   },
   "dashboard": {
     "title": "Dashboard",
     "welcome": "Willkommen",
-    "recentActivity": "Letzte Aktivität",
+    "recentActivity": "Letzte Aktivitat",
     "quickActions": "Schnellaktionen",
     "notifications": "Benachrichtigungen"
   },
   "faults": {
-    "title": "Störungsmeldungen",
-    "newFault": "Störung melden",
-    "myFaults": "Meine Störungen",
-    "allFaults": "Alle Störungen",
+    "title": "Storungsmeldungen",
+    "newFault": "Storung melden",
+    "myFaults": "Meine Storungen",
+    "allFaults": "Alle Storungen",
     "description": "Beschreibung",
     "location": "Ort",
-    "priority": "Priorität",
+    "priority": "Prioritat",
     "status": "Status",
     "photo": "Foto",
-    "addPhoto": "Foto hinzufügen",
-    "submitFault": "Störung absenden",
+    "addPhoto": "Foto hinzufugen",
+    "submitFault": "Storung absenden",
     "priorityLow": "Niedrig",
     "priorityMedium": "Mittel",
     "priorityHigh": "Hoch",
     "priorityUrgent": "Dringend",
     "statusOpen": "Offen",
     "statusInProgress": "In Bearbeitung",
-    "statusResolved": "Gelöst",
-    "statusClosed": "Geschlossen"
+    "statusResolved": "Gelost",
+    "statusClosed": "Geschlossen",
+    "reportFault": "Storung melden",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Kurze Beschreibung des Problems",
+    "titleRequired": "Titel ist erforderlich",
+    "titleMinLength": "Titel muss mindestens 5 Zeichen haben",
+    "categoryLabel": "Kategorie",
+    "categoryPlaceholder": "Bitte wahlen Sie eine Kategorie",
+    "priorityLabel": "Prioritat",
+    "locationLabel": "Ort",
+    "locationPlaceholder": "z.B. 3. Stock, Wohnung 301",
+    "locationRequired": "Ort ist erforderlich",
+    "descriptionLabel": "Beschreibung",
+    "descriptionPlaceholder": "Geben Sie detaillierte Informationen zum Problem an...",
+    "descriptionRequired": "Beschreibung ist erforderlich",
+    "descriptionMinLength": "Beschreibung muss mindestens 20 Zeichen haben",
+    "photosLabel": "Fotos (optional)",
+    "photosHint": "Fotos {current}/5",
+    "cameraButton": "Kamera",
+    "galleryButton": "Galerie",
+    "submitButton": "Meldung absenden",
+    "successSubmit": "Storungsmeldung erfolgreich gesendet",
+    "failedSubmit": "Storungsmeldung konnte nicht gesendet werden",
+    "cameraPermissionDenied": "Kameraberechtigung ist erforderlich",
+    "photoLibraryPermissionDenied": "Fotobibliotheksberechtigung ist erforderlich"
   },
   "news": {
     "title": "Nachrichten",
     "latest": "Neueste Nachrichten",
     "readMore": "Mehr lesen",
-    "noNews": "Keine Nachrichten verfügbar"
+    "noNews": "Keine Nachrichten verfugbar"
   },
   "voting": {
     "title": "Abstimmung",
@@ -87,25 +122,81 @@
     "categories": "Kategorien",
     "download": "Herunterladen",
     "view": "Anzeigen",
-    "noDocuments": "Keine Dokumente verfügbar"
+    "noDocuments": "Keine Dokumente verfugbar"
   },
   "settings": {
     "title": "Einstellungen",
     "language": "Sprache",
     "notifications": "Benachrichtigungen",
     "privacy": "Datenschutz",
-    "about": "Über",
+    "about": "Uber",
     "version": "Version"
   },
   "errors": {
     "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
-    "network": "Netzwerkfehler. Bitte überprüfen Sie Ihre Verbindung.",
-    "server": "Serverfehler. Bitte versuchen Sie es später erneut.",
+    "network": "Netzwerkfehler. Bitte uberprufen Sie Ihre Verbindung.",
+    "server": "Serverfehler. Bitte versuchen Sie es spater erneut.",
     "notFound": "Nicht gefunden",
-    "unauthorized": "Sie sind nicht berechtigt, diese Aktion durchzuführen."
+    "unauthorized": "Sie sind nicht berechtigt, diese Aktion durchzufuhren."
   },
   "offline": {
     "title": "Sie sind offline",
-    "message": "Einige Funktionen sind möglicherweise nicht verfügbar."
+    "message": "Einige Funktionen sind moglicherweise nicht verfugbar."
+  },
+  "help": {
+    "title": "Hilfecenter",
+    "searchPlaceholder": "Hilfethemen suchen...",
+    "faqTab": "Haufige Fragen",
+    "tutorialsTab": "Anleitungen",
+    "noFAQs": "Keine haufigen Fragen gefunden",
+    "noFAQsMessage": "Versuchen Sie andere Suchbegriffe oder Kategorien",
+    "noTutorials": "Keine Anleitungen gefunden",
+    "noTutorialsMessage": "Versuchen Sie andere Suchbegriffe",
+    "wasHelpful": "War das hilfreich?",
+    "showLess": "Weniger anzeigen",
+    "learnMore": "Mehr erfahren",
+    "relatedFAQs": "Verwandte Fragen",
+    "dontShowAgain": "Nicht mehr anzeigen",
+    "sendFeedbackButton": "Feedback senden"
+  },
+  "feedback": {
+    "title": "Feedback senden",
+    "typeLabel": "Feedback-Typ",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Kurze Zusammenfassung Ihres Feedbacks",
+    "descriptionLabel": "Beschreibung",
+    "descriptionPlaceholder": "Bitte beschreiben Sie im Detail...",
+    "emailLabel": "E-Mail (optional)",
+    "emailPlaceholder": "ihre@email.com",
+    "emailHelper": "Wir kontaktieren Sie moglicherweise fur Ruckfragen",
+    "includeDeviceInfo": "Gerateinformationen einschliessen",
+    "deviceInformation": "Gerateinformationen",
+    "viewDiagnostics": "Vollstandige Diagnose anzeigen",
+    "saveDraft": "Entwurf speichern",
+    "submitButton": "Feedback senden",
+    "submitting": "Wird gesendet...",
+    "footerText": "Ihr Feedback hilft uns, die App zu verbessern.",
+    "successTitle": "Vielen Dank!",
+    "successMessage": "Ihr Feedback wurde erfolgreich gesendet.",
+    "draftSaved": "Ihr Feedback-Entwurf wurde gespeichert."
+  },
+  "announcements": {
+    "title": "Ankundigungen",
+    "searchPlaceholder": "Ankundigungen suchen...",
+    "empty": "Keine Ankundigungen",
+    "emptyMessage": "Schauen Sie spater fur Updates vorbei",
+    "pinned": "Angepinnt",
+    "by": "Von {author}"
+  },
+  "widgets": {
+    "addedTitle": "Widget hinzugefugt",
+    "addedMessage": "Widget wurde konfiguriert.",
+    "updatedTitle": "Widgets aktualisiert",
+    "updatedMessage": "Alle Widgets wurden aktualisiert."
+  },
+  "permissions": {
+    "denied": "Berechtigung verweigert",
+    "cameraRequired": "Kameraberechtigung ist erforderlich",
+    "locationRequired": "Standortberechtigung ist erforderlich"
   }
 }

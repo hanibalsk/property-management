@@ -24,7 +24,14 @@
     "subtitle": "Durchsuchen Sie tausende Angebote",
     "searchPlaceholder": "Stadt, Adresse oder Stichwort eingeben...",
     "featuredListings": "Empfohlene Angebote",
-    "viewAll": "Alle anzeigen"
+    "viewAll": "Alle anzeigen",
+    "heroTitle": "Finden Sie Ihre perfekte Immobilie",
+    "heroSubtitle": "Durchsuchen Sie tausende Angebote in der Slowakei, Tschechien und darüber hinaus.",
+    "featuredForSale": "Empfohlene Immobilien zum Verkauf",
+    "featuredForRent": "Empfohlene Immobilien zur Miete",
+    "newListings": "Neue Angebote",
+    "browseByType": "Nach Immobilientyp durchsuchen",
+    "viewAllProperties": "Alle Immobilien anzeigen"
   },
   "listing": {
     "price": "Preis",
@@ -40,7 +47,20 @@
     "bedroom": "Schlafzimmer",
     "bedrooms": "Schlafzimmer",
     "bathroom": "Badezimmer",
-    "bathrooms": "Badezimmer"
+    "bathrooms": "Badezimmer",
+    "featured": "Empfohlen",
+    "forSale": "Zum Verkauf",
+    "forRent": "Zur Miete",
+    "roomsCount": "{count} Zimmer",
+    "floorNumber": "{number}. Etage",
+    "viewAll": "Alle anzeigen",
+    "notFound": "Angebot nicht gefunden",
+    "notFoundDesc": "Das Angebot, das Sie suchen, existiert nicht oder wurde entfernt.",
+    "browseAll": "Alle Angebote durchsuchen",
+    "amenities": "Ausstattung",
+    "location": "Standort",
+    "viewOnMap": "Auf Karte anzeigen",
+    "contactAgent": "Makler kontaktieren"
   },
   "search": {
     "filters": "Filter",
@@ -61,7 +81,27 @@
     "applyFilters": "Filter anwenden",
     "clearFilters": "Filter löschen",
     "noResults": "Keine Angebote gefunden",
-    "resultsCount": "{count} Angebote gefunden"
+    "resultsCount": "{count} Angebote gefunden",
+    "buy": "Kaufen",
+    "placeholder": "Stadt, Adresse oder Stichwort eingeben...",
+    "button": "Suchen",
+    "popular": "Beliebt:",
+    "searching": "Suche läuft...",
+    "noResultsTip": "Versuchen Sie, Ihre Suche oder Filter anzupassen",
+    "recentSearches": "Letzte Suchen"
+  },
+  "filters": {
+    "title": "Filter",
+    "clearAll": "Alle löschen",
+    "propertyType": "Immobilientyp",
+    "priceRange": "Preisspanne",
+    "anyPrice": "Beliebiger Preis",
+    "area": "Fläche (m²)",
+    "anySize": "Beliebige Größe",
+    "minimumRooms": "Mindestanzahl Zimmer",
+    "showResults": "Ergebnisse anzeigen",
+    "office": "Büro",
+    "garage": "Garage"
   },
   "contact": {
     "name": "Ihr Name",
@@ -71,13 +111,38 @@
     "send": "Nachricht senden",
     "scheduleViewing": "Besichtigung planen",
     "preferredDate": "Bevorzugtes Datum",
-    "preferredTime": "Bevorzugte Uhrzeit"
+    "preferredTime": "Bevorzugte Uhrzeit",
+    "iWantTo": "Ich möchte",
+    "askQuestion": "Eine Frage stellen",
+    "discussPrice": "Preis besprechen",
+    "checkAvailability": "Verfügbarkeit prüfen",
+    "optional": "(optional)",
+    "placeholder": "Hallo, ich interessiere mich für diese Immobilie...",
+    "privacyNotice": "Mit dem Absenden stimmen Sie unserer Datenschutzrichtlinie zu.",
+    "sending": "Wird gesendet...",
+    "sendMessage": "Nachricht senden",
+    "messageSent": "Nachricht gesendet!",
+    "inquirySent": "Ihre Anfrage wurde gesendet. Sie werden bald kontaktiert.",
+    "sendAnother": "Weitere Nachricht senden",
+    "failedToSend": "Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut."
   },
   "footer": {
     "about": "Über uns",
     "terms": "Nutzungsbedingungen",
     "privacy": "Datenschutz",
     "help": "Hilfe",
-    "copyright": "© {year} Reality Portal. Alle Rechte vorbehalten."
+    "copyright": "© {year} Reality Portal. Alle Rechte vorbehalten.",
+    "description": "Finden Sie Ihre perfekte Immobilie in der Slowakei, Tschechien und darüber hinaus.",
+    "quickLinks": "Schnelllinks",
+    "propertyTypes": "Immobilientypen",
+    "company": "Unternehmen",
+    "propertiesForSale": "Immobilien zum Verkauf",
+    "propertiesForRent": "Immobilien zur Miete",
+    "apartments": "Wohnungen",
+    "houses": "Häuser",
+    "land": "Grundstücke",
+    "commercial": "Gewerblich",
+    "aboutUs": "Über uns",
+    "contact": "Kontakt"
   }
 }

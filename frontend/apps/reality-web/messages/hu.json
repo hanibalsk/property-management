@@ -24,7 +24,14 @@
     "subtitle": "Keressen több ezer hirdetés között",
     "searchPlaceholder": "Adja meg a várost, címet vagy kulcsszót...",
     "featuredListings": "Kiemelt hirdetések",
-    "viewAll": "Összes megtekintése"
+    "viewAll": "Összes megtekintése",
+    "heroTitle": "Találja meg tökéletes ingatlanát",
+    "heroSubtitle": "Keressen több ezer hirdetés között Szlovákiában, Csehországban és azon túl.",
+    "featuredForSale": "Kiemelt eladó ingatlanok",
+    "featuredForRent": "Kiemelt kiadó ingatlanok",
+    "newListings": "Új hirdetések",
+    "browseByType": "Böngészés ingatlantípus szerint",
+    "viewAllProperties": "Összes ingatlan megtekintése"
   },
   "listing": {
     "price": "Ár",
@@ -40,7 +47,20 @@
     "bedroom": "Hálószoba",
     "bedrooms": "Hálószobák",
     "bathroom": "Fürdőszoba",
-    "bathrooms": "Fürdőszobák"
+    "bathrooms": "Fürdőszobák",
+    "featured": "Kiemelt",
+    "forSale": "Eladó",
+    "forRent": "Kiadó",
+    "roomsCount": "{count} szoba",
+    "floorNumber": "{number}. emelet",
+    "viewAll": "Összes megtekintése",
+    "notFound": "Hirdetés nem található",
+    "notFoundDesc": "A keresett hirdetés nem létezik vagy eltávolították.",
+    "browseAll": "Összes hirdetés böngészése",
+    "amenities": "Felszereltség",
+    "location": "Helyszín",
+    "viewOnMap": "Megtekintés a térképen",
+    "contactAgent": "Kapcsolatfelvétel az ügynökkel"
   },
   "search": {
     "filters": "Szűrők",
@@ -61,7 +81,27 @@
     "applyFilters": "Szűrők alkalmazása",
     "clearFilters": "Szűrők törlése",
     "noResults": "Nem található hirdetés",
-    "resultsCount": "{count} hirdetés található"
+    "resultsCount": "{count} hirdetés található",
+    "buy": "Vásárlás",
+    "placeholder": "Adja meg a várost, címet vagy kulcsszót...",
+    "button": "Keresés",
+    "popular": "Népszerű:",
+    "searching": "Keresés folyamatban...",
+    "noResultsTip": "Próbálja módosítani a keresést vagy a szűrőket",
+    "recentSearches": "Legutóbbi keresések"
+  },
+  "filters": {
+    "title": "Szűrők",
+    "clearAll": "Összes törlése",
+    "propertyType": "Ingatlan típusa",
+    "priceRange": "Ártartomány",
+    "anyPrice": "Bármilyen ár",
+    "area": "Terület (m²)",
+    "anySize": "Bármilyen méret",
+    "minimumRooms": "Minimum szobaszám",
+    "showResults": "Eredmények megjelenítése",
+    "office": "Iroda",
+    "garage": "Garázs"
   },
   "contact": {
     "name": "Az Ön neve",
@@ -71,13 +111,38 @@
     "send": "Üzenet küldése",
     "scheduleViewing": "Megtekintés időpontja",
     "preferredDate": "Preferált dátum",
-    "preferredTime": "Preferált időpont"
+    "preferredTime": "Preferált időpont",
+    "iWantTo": "Szeretnék",
+    "askQuestion": "Kérdést feltenni",
+    "discussPrice": "Árat megbeszélni",
+    "checkAvailability": "Elérhetőséget ellenőrizni",
+    "optional": "(opcionális)",
+    "placeholder": "Szia, érdekel ez az ingatlan...",
+    "privacyNotice": "A küldéssel elfogadja adatvédelmi irányelveinket.",
+    "sending": "Küldés...",
+    "sendMessage": "Üzenet küldése",
+    "messageSent": "Üzenet elküldve!",
+    "inquirySent": "Érdeklődését elküldtük. Hamarosan felveszik Önnel a kapcsolatot.",
+    "sendAnother": "Másik üzenet küldése",
+    "failedToSend": "Nem sikerült elküldeni az üzenetet. Kérjük, próbálja újra."
   },
   "footer": {
     "about": "Rólunk",
     "terms": "Felhasználási feltételek",
     "privacy": "Adatvédelmi irányelvek",
     "help": "Súgó",
-    "copyright": "© {year} Reality Portal. Minden jog fenntartva."
+    "copyright": "© {year} Reality Portal. Minden jog fenntartva.",
+    "description": "Találja meg tökéletes ingatlanát Szlovákiában, Csehországban és azon túl.",
+    "quickLinks": "Gyors linkek",
+    "propertyTypes": "Ingatlantípusok",
+    "company": "Cég",
+    "propertiesForSale": "Eladó ingatlanok",
+    "propertiesForRent": "Kiadó ingatlanok",
+    "apartments": "Lakások",
+    "houses": "Házak",
+    "land": "Telkek",
+    "commercial": "Üzleti",
+    "aboutUs": "Rólunk",
+    "contact": "Kapcsolat"
   }
 }
