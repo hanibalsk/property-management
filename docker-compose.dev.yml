@@ -1,0 +1,224 @@
+# Docker Compose for Local Development
+# Usage: docker compose -f docker-compose.dev.yml up
+#
+# This configuration provides:
+# - PostgreSQL 16 with automatic database initialization
+# - Redis for sessions and caching
+# - MinIO for S3-compatible file storage
+# - Hot-reloading backend development containers
+# - Frontend dev servers with HMR
+
+name: ppt-dev
+
+services:
+  # ==========================================================================
+  # Database Services
+  # ==========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ppt-postgres
+    environment:
+      POSTGRES_USER: ppt
+      POSTGRES_PASSWORD: ppt_dev_password
+      POSTGRES_DB: ppt
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ppt -d ppt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ppt-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ppt-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ppt-network
+
+  # ==========================================================================
+  # Object Storage (S3-compatible)
+  # ==========================================================================
+
+  minio:
+    image: minio/minio:latest
+    container_name: ppt-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ppt-network
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: ppt-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: |
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 minioadmin minioadmin123
+      mc mb myminio/ppt-documents --ignore-existing
+      mc mb myminio/ppt-images --ignore-existing
+      mc anonymous set download myminio/ppt-images
+      echo 'MinIO buckets created successfully'
+      "
+    networks:
+      - ppt-network
+
+  # ==========================================================================
+  # Backend Services (Development with Hot-Reload)
+  # ==========================================================================
+
+  api-server:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    container_name: ppt-api-server
+    command: cargo watch -x "run -p api-server"
+    environment:
+      DATABASE_URL: postgres://ppt:ppt_dev_password@postgres:5432/ppt
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-minimum-32-characters-long
+      RUST_LOG: debug
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin123
+      S3_BUCKET: ppt-documents
+      S3_REGION: us-east-1
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app:cached
+      - cargo_cache:/usr/local/cargo/registry
+      - target_cache:/app/target
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ppt-network
+
+  reality-server:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    container_name: ppt-reality-server
+    command: cargo watch -x "run -p reality-server"
+    environment:
+      DATABASE_URL: postgres://ppt:ppt_dev_password@postgres:5432/ppt
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-minimum-32-characters-long
+      RUST_LOG: debug
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin123
+      S3_BUCKET: ppt-images
+      S3_REGION: us-east-1
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./backend:/app:cached
+      - cargo_cache:/usr/local/cargo/registry
+      - target_cache:/app/target
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ppt-network
+
+  # ==========================================================================
+  # Frontend Services (Development with HMR)
+  # ==========================================================================
+
+  ppt-web:
+    image: node:20-alpine
+    container_name: ppt-web-dev
+    working_dir: /app
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @ppt/web dev"
+    environment:
+      VITE_API_URL: http://localhost:8080
+      VITE_WS_URL: ws://localhost:8080
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app:cached
+      - pnpm_store:/root/.local/share/pnpm/store
+    depends_on:
+      - api-server
+    networks:
+      - ppt-network
+
+  reality-web:
+    image: node:20-alpine
+    container_name: ppt-reality-web-dev
+    working_dir: /app
+    command: sh -c "corepack enable && pnpm install && pnpm --filter @ppt/reality-web dev"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8081
+      NEXT_PUBLIC_SITE_URL: http://localhost:3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./frontend:/app:cached
+      - pnpm_store:/root/.local/share/pnpm/store
+    depends_on:
+      - reality-server
+    networks:
+      - ppt-network
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+
+networks:
+  ppt-network:
+    driver: bridge
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+
+volumes:
+  postgres_data:
+    name: ppt-postgres-data
+  redis_data:
+    name: ppt-redis-data
+  minio_data:
+    name: ppt-minio-data
+  cargo_cache:
+    name: ppt-cargo-cache
+  target_cache:
+    name: ppt-target-cache
+  pnpm_store:
+    name: ppt-pnpm-store
