@@ -1,7 +1,7 @@
 {
   "name": "property-management",
   "private": true,
-  "version": "0.2.283",
+  "version": "0.2.284",
   "description": "Property Management System - Monorepo Root",
   "repository": "https://github.com/hanibalsk/property-management",
   "license": "MIT",
@@ -29,7 +29,7 @@
     "generate:reality-api": "cd frontend && pnpm generate-reality-api",
     "db:migrate": "cd backend/crates/db && sqlx migrate run",
     "db:prepare": "cd backend && cargo sqlx prepare --workspace",
-    "version": "cat VERSION",
+    "show-version": "cat VERSION",
     "bump:patch": "./scripts/bump-version.sh patch",
     "bump:minor": "./scripts/bump-version.sh minor",
     "bump:major": "./scripts/bump-version.sh major",
