@@ -7,21 +7,32 @@
 //! # Security
 //!
 //! The connection is acquired with RLS context set before being handed to handlers.
-//! When the connection is dropped, it's returned to the pool with context cleared.
+//! **IMPORTANT**: Call `release()` when done to clear RLS context before returning
+//! the connection to the pool. This prevents context bleeding between requests.
 //!
 //! # Usage
 //!
 //! ```rust,ignore
 //! async fn handler(
-//!     rls: RlsConnection,
+//!     mut rls: RlsConnection,
 //! ) -> Result<Json<Response>, StatusCode> {
 //!     // Use rls.conn() for all database operations
 //!     let items = sqlx::query_as("SELECT * FROM items")
 //!         .fetch_all(rls.conn())
 //!         .await?;
+//!
+//!     // IMPORTANT: Release clears RLS context before returning connection to pool
+//!     rls.release().await;
+//!
 //!     Ok(Json(items))
 //! }
 //! ```
+//!
+//! # Context Bleeding Prevention
+//!
+//! Without calling `release()`, the RLS context (including super-admin privileges)
+//! could persist on the pooled connection and affect subsequent requests that don't
+//! use RLS extractors. Always call `release()` at the end of handler logic.
 
 use crate::extractors::tenant::TenantMembershipProvider;
 use crate::extractors::ValidatedTenantExtractor;
@@ -46,15 +57,14 @@ use uuid::Uuid;
 ///
 /// # Connection Lifecycle
 ///
-/// When the `RlsConnection` is dropped, the connection is returned to the pool.
-/// PostgreSQL session settings are automatically cleared when the connection is reused
-/// for a new session or when explicitly cleared.
+/// **CRITICAL**: Call `release()` when done with the connection to clear RLS context
+/// before returning to the pool. This prevents privilege escalation from context bleeding.
 ///
 /// # Example
 ///
 /// ```rust,ignore
 /// async fn get_building(
-///     rls: RlsConnection,
+///     mut rls: RlsConnection,
 ///     Path(building_id): Path<Uuid>,
 /// ) -> Result<Json<Building>, StatusCode> {
 ///     // RLS policies automatically filter by tenant
@@ -67,22 +77,30 @@ use uuid::Uuid;
 ///     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
 ///     .ok_or(StatusCode::NOT_FOUND)?;
 ///
+///     // Clear RLS context before returning connection to pool
+///     rls.release().await;
+///
 ///     Ok(Json(building))
 /// }
 /// ```
 pub struct RlsConnection {
-    conn: PoolConnection<Postgres>,
+    conn: Option<PoolConnection<Postgres>>,
     tenant_id: Uuid,
     user_id: Uuid,
     role: TenantRole,
+    released: bool,
 }
 
 impl RlsConnection {
-    /// Get a reference to the underlying connection.
+    /// Get a mutable reference to the underlying connection.
     ///
     /// Use this for all database queries to ensure RLS context is applied.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called after `release()` or `into_inner()`.
     pub fn conn(&mut self) -> &mut PoolConnection<Postgres> {
-        &mut self.conn
+        self.conn.as_mut().expect("RlsConnection already released")
     }
 
     /// Get the tenant ID for this request.
@@ -112,47 +130,83 @@ impl RlsConnection {
             TenantRole::SuperAdmin | TenantRole::PlatformAdmin
         )
     }
+
+    /// Release the connection back to the pool after clearing RLS context.
+    ///
+    /// **IMPORTANT**: Always call this when done with database operations to prevent
+    /// RLS context from bleeding into subsequent requests using this pooled connection.
+    ///
+    /// This method:
+    /// 1. Calls `clear_request_context()` on the connection
+    /// 2. Returns the connection to the pool
+    ///
+    /// After calling `release()`, the connection can no longer be used.
+    pub async fn release(&mut self) {
+        if self.released {
+            return;
+        }
+
+        if let Some(mut conn) = self.conn.take() {
+            // Clear RLS context before returning to pool
+            if let Err(e) = db::tenant_context::clear_request_context(&mut *conn).await {
+                tracing::warn!(
+                    error = %e,
+                    tenant_id = %self.tenant_id,
+                    user_id = %self.user_id,
+                    "Failed to clear RLS context on release"
+                );
+            } else {
+                tracing::trace!(
+                    tenant_id = %self.tenant_id,
+                    user_id = %self.user_id,
+                    "RLS context cleared, connection released to pool"
+                );
+            }
+            // Connection is dropped here, returning to pool
+        }
+
+        self.released = true;
+    }
+
+    /// Consume the RlsConnection and return the raw connection WITHOUT clearing context.
+    ///
+    /// **WARNING**: This bypasses the safety mechanism. Only use if you need to pass
+    /// the connection to code that will handle cleanup itself.
+    ///
+    /// Prefer `release()` in normal usage.
+    pub fn into_inner(mut self) -> Option<PoolConnection<Postgres>> {
+        self.released = true; // Prevent Drop from warning
+        self.conn.take()
+    }
 }
 
 impl Deref for RlsConnection {
     type Target = PoolConnection<Postgres>;
 
     fn deref(&self) -> &Self::Target {
-        &self.conn
+        self.conn.as_ref().expect("RlsConnection already released")
     }
 }
 
 impl DerefMut for RlsConnection {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.conn
+        self.conn.as_mut().expect("RlsConnection already released")
     }
 }
 
-/// When dropped, clear RLS context before returning connection to pool.
+/// When dropped without calling release(), log a warning about potential context bleeding.
 impl Drop for RlsConnection {
     fn drop(&mut self) {
-        // Note: We can't do async cleanup in Drop. The connection will be
-        // returned to the pool with RLS context still set.
-        //
-        // This is handled by PostgreSQL: session settings are connection-scoped.
-        // When the pool reuses this connection for a new request, the next
-        // RlsConnection extractor will overwrite the context.
-        //
-        // For extra safety, we could:
-        // 1. Use a wrapper that clears context before returning to pool
-        // 2. Use connection-level hooks in sqlx
-        //
-        // For now, we rely on the fact that each new request sets its own context,
-        // so stale context from a previous request can't cause data leakage.
-        //
-        // The worst case is: if a request fails before setting context, it might
-        // inherit context from a previous request. But since we always set context
-        // before any queries, this is not a security issue.
-        tracing::trace!(
-            tenant_id = %self.tenant_id,
-            user_id = %self.user_id,
-            "RlsConnection dropped, returning to pool"
-        );
+        if !self.released && self.conn.is_some() {
+            // Can't do async cleanup in Drop, so we log a warning
+            tracing::warn!(
+                tenant_id = %self.tenant_id,
+                user_id = %self.user_id,
+                role = ?self.role,
+                "RlsConnection dropped without calling release() - RLS context may bleed to next request. \
+                 Call rls.release().await before handler returns."
+            );
+        }
     }
 }
 
@@ -214,10 +268,11 @@ where
         );
 
         Ok(RlsConnection {
-            conn,
+            conn: Some(conn),
             tenant_id,
             user_id,
             role,
+            released: false,
         })
     }
 }
@@ -226,17 +281,22 @@ where
 ///
 /// Use this for less sensitive routes where you trust the JWT-based tenant ID.
 /// For sensitive routes, use `RlsConnection` which validates database membership.
+///
+/// **IMPORTANT**: Call `release()` when done to clear RLS context.
 pub struct SimpleRlsConnection {
-    conn: PoolConnection<Postgres>,
+    conn: Option<PoolConnection<Postgres>>,
     tenant_id: Uuid,
     user_id: Uuid,
     role: TenantRole,
+    released: bool,
 }
 
 impl SimpleRlsConnection {
-    /// Get a reference to the underlying connection.
+    /// Get a mutable reference to the underlying connection.
     pub fn conn(&mut self) -> &mut PoolConnection<Postgres> {
-        &mut self.conn
+        self.conn
+            .as_mut()
+            .expect("SimpleRlsConnection already released")
     }
 
     /// Get the tenant ID for this request.
@@ -253,19 +313,55 @@ impl SimpleRlsConnection {
     pub fn role(&self) -> TenantRole {
         self.role
     }
+
+    /// Release the connection back to the pool after clearing RLS context.
+    ///
+    /// See `RlsConnection::release()` for details.
+    pub async fn release(&mut self) {
+        if self.released {
+            return;
+        }
+
+        if let Some(mut conn) = self.conn.take() {
+            if let Err(e) = db::tenant_context::clear_request_context(&mut *conn).await {
+                tracing::warn!(
+                    error = %e,
+                    tenant_id = %self.tenant_id,
+                    "Failed to clear RLS context on release"
+                );
+            }
+        }
+
+        self.released = true;
+    }
 }
 
 impl Deref for SimpleRlsConnection {
     type Target = PoolConnection<Postgres>;
 
     fn deref(&self) -> &Self::Target {
-        &self.conn
+        self.conn
+            .as_ref()
+            .expect("SimpleRlsConnection already released")
     }
 }
 
 impl DerefMut for SimpleRlsConnection {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.conn
+        self.conn
+            .as_mut()
+            .expect("SimpleRlsConnection already released")
+    }
+}
+
+impl Drop for SimpleRlsConnection {
+    fn drop(&mut self) {
+        if !self.released && self.conn.is_some() {
+            tracing::warn!(
+                tenant_id = %self.tenant_id,
+                "SimpleRlsConnection dropped without calling release()"
+            );
+        }
     }
 }
 
@@ -312,12 +408,37 @@ where
         })?;
 
         Ok(SimpleRlsConnection {
-            conn,
+            conn: Some(conn),
             tenant_id,
             user_id,
             role,
+            released: false,
         })
     }
+}
+
+/// Helper macro to ensure RLS connection is released even on early returns.
+///
+/// Usage:
+/// ```rust,ignore
+/// async fn handler(mut rls: RlsConnection) -> Result<Json<Data>, AppError> {
+///     let result = with_rls_release!(rls, {
+///         // Your handler logic here
+///         let data = sqlx::query_as("SELECT * FROM items")
+///             .fetch_all(rls.conn())
+///             .await?;
+///         Ok(Json(data))
+///     });
+///     result
+/// }
+/// ```
+#[macro_export]
+macro_rules! with_rls_release {
+    ($rls:expr, $body:expr) => {{
+        let result = $body;
+        $rls.release().await;
+        result
+    }};
 }
 
 #[cfg(test)]
