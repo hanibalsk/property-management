@@ -3,7 +3,7 @@
 //! Implements building and unit management including CRUD operations,
 //! unit assignments, and statistics.
 
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -456,23 +456,15 @@ pub struct BulkImportBuildingsResponse {
 )]
 pub async fn create_building(
     State(state): State<AppState>,
-    auth: AuthUser,
+    mut rls: RlsConnection,
     Json(req): Json<CreateBuildingRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    // Validate user has access to the organization
-    let is_member = state
-        .org_member_repo
-        .is_member(req.organization_id, auth.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to check org membership");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
-            )
-        })?;
+    let user_id = rls.user_id();
 
-    if !is_member {
+    // RlsConnection already validates org membership via ValidatedTenantExtractor.
+    // We just need to verify the request org_id matches the authenticated tenant.
+    if req.organization_id != rls.tenant_id() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -484,6 +476,7 @@ pub async fn create_building(
 
     // Validate required fields
     if req.street.trim().is_empty() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new("INVALID_STREET", "Street is required")),
@@ -491,13 +484,14 @@ pub async fn create_building(
     }
 
     if req.city.trim().is_empty() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new("INVALID_CITY", "City is required")),
         ));
     }
 
-    // Create building
+    // Create building using RLS-enabled connection
     let create_data = CreateBuilding {
         organization_id: req.organization_id,
         street: req.street,
@@ -512,20 +506,27 @@ pub async fn create_building(
         amenities: req.amenities,
     };
 
-    let building = state.building_repo.create(create_data).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to create building");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", "Failed to create building")),
-        )
-    })?;
+    let building = state
+        .building_repo
+        .create_rls(&mut **rls.conn(), create_data)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to create building");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", "Failed to create building")),
+            )
+        })?;
 
     tracing::info!(
         building_id = %building.id,
         org_id = %building.organization_id,
-        user_id = %auth.user_id,
+        user_id = %user_id,
         "Building created"
     );
+
+    // Release RLS context before returning connection to pool
+    rls.release().await;
 
     Ok((StatusCode::CREATED, Json(BuildingResponse::from(building))))
 }

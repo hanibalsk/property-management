@@ -1,10 +1,34 @@
 //! Building repository (Epic 2B, Story 2B.3).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_building(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateBuildingRequest>,
+//! ) -> Result<Json<Building>> {
+//!     let building = state.building_repo.create_rls(rls.conn(), data).await?;
+//!     rls.release().await;
+//!     Ok(Json(building))
+//! }
+//! ```
 
 use crate::models::building::{
     Building, BuildingStatistics, BuildingSummary, CreateBuilding, UpdateBuilding,
 };
 use crate::DbPool;
-use sqlx::Error as SqlxError;
+use sqlx::{Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for building operations.
@@ -19,8 +43,21 @@ impl BuildingRepository {
         Self { pool }
     }
 
-    /// Create a new building (UC-15.1).
-    pub async fn create(&self, data: CreateBuilding) -> Result<Building, SqlxError> {
+    // ========================================================================
+    // RLS-aware methods (recommended)
+    // ========================================================================
+
+    /// Create a new building with RLS context (UC-15.1).
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateBuilding,
+    ) -> Result<Building, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let amenities = serde_json::to_value(&data.amenities).unwrap_or_default();
 
         let building = sqlx::query_as::<_, Building>(
@@ -44,46 +81,43 @@ impl BuildingRepository {
         .bind(data.total_floors)
         .bind(data.total_entrances)
         .bind(&amenities)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(building)
     }
 
-    /// Find building by ID (UC-15.2).
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Building>, SqlxError> {
+    /// Find building by ID with RLS context (UC-15.2).
+    pub async fn find_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Building>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let building = sqlx::query_as::<_, Building>(
             r#"
             SELECT * FROM buildings WHERE id = $1 AND status != 'archived'
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(building)
     }
 
-    /// Find building by ID including archived.
-    pub async fn find_by_id_any_status(&self, id: Uuid) -> Result<Option<Building>, SqlxError> {
-        let building = sqlx::query_as::<_, Building>(
-            r#"
-            SELECT * FROM buildings WHERE id = $1
-            "#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(building)
-    }
-
-    /// Update building (UC-15.3).
-    pub async fn update(
+    /// Update building with RLS context (UC-15.3).
+    pub async fn update_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         data: UpdateBuilding,
-    ) -> Result<Option<Building>, SqlxError> {
+    ) -> Result<Option<Building>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         // Build dynamic update query
         let mut updates = vec!["updated_at = NOW()".to_string()];
         let mut param_idx = 1;
@@ -182,12 +216,19 @@ impl BuildingRepository {
             q = q.bind(settings);
         }
 
-        let building = q.fetch_optional(&self.pool).await?;
+        let building = q.fetch_optional(executor).await?;
         Ok(building)
     }
 
-    /// Archive building (soft delete) (UC-15.10).
-    pub async fn archive(&self, id: Uuid) -> Result<Option<Building>, SqlxError> {
+    /// Archive building with RLS context (UC-15.10).
+    pub async fn archive_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Building>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let building = sqlx::query_as::<_, Building>(
             r#"
             UPDATE buildings
@@ -197,10 +238,184 @@ impl BuildingRepository {
             "#,
         )
         .bind(id)
+        .fetch_optional(executor)
+        .await?;
+
+        Ok(building)
+    }
+
+    /// List buildings for an organization with RLS context.
+    pub async fn list_by_organization_rls<'e, E>(
+        &self,
+        executor: E,
+        organization_id: Uuid,
+        offset: i64,
+        limit: i64,
+        include_archived: bool,
+        search: Option<&str>,
+    ) -> Result<Vec<BuildingSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let mut conditions = vec!["organization_id = $1".to_string()];
+
+        if !include_archived {
+            conditions.push("status = 'active'".to_string());
+        }
+
+        if search.is_some() {
+            conditions.push(
+                "(LOWER(street) LIKE '%' || LOWER($4::text) || '%' OR \
+                 LOWER(city) LIKE '%' || LOWER($4::text) || '%' OR \
+                 LOWER(name) LIKE '%' || LOWER($4::text) || '%')"
+                    .to_string(),
+            );
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        let data_query = format!(
+            r#"
+            SELECT b.id, b.name, b.street, b.city, b.postal_code, b.total_floors, b.status,
+                   (SELECT COUNT(*) FROM units u WHERE u.building_id = b.id AND u.status = 'active') as unit_count
+            FROM buildings b
+            WHERE {}
+            ORDER BY b.created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+            where_clause
+        );
+
+        let mut data_q = sqlx::query_as::<_, BuildingSummary>(&data_query)
+            .bind(organization_id)
+            .bind(limit)
+            .bind(offset);
+        if let Some(s) = search {
+            data_q = data_q.bind(s);
+        }
+        let buildings = data_q.fetch_all(executor).await?;
+
+        Ok(buildings)
+    }
+
+    /// Get building statistics with RLS context (UC-15.7).
+    pub async fn get_statistics_rls<'e, E>(
+        &self,
+        executor: E,
+        building_id: Uuid,
+    ) -> Result<BuildingStatistics, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let stats = sqlx::query_as::<_, BuildingStatisticsRow>(
+            r#"
+            SELECT
+                $1::uuid as building_id,
+                COUNT(DISTINCT u.id) FILTER (WHERE u.status = 'active') as total_units,
+                COUNT(DISTINCT u.id) FILTER (WHERE u.status = 'active' AND u.occupancy_status IN ('owner_occupied', 'rented')) as occupied_units,
+                COUNT(DISTINCT u.id) FILTER (WHERE u.status = 'active' AND u.occupancy_status = 'vacant') as vacant_units,
+                COUNT(DISTINCT uo.user_id) FILTER (WHERE uo.status = 'active') as total_owners
+            FROM units u
+            LEFT JOIN unit_owners uo ON uo.unit_id = u.id
+            WHERE u.building_id = $1
+            "#,
+        )
+        .bind(building_id)
+        .fetch_one(executor)
+        .await?;
+
+        // Note: ownership_coverage calculation requires a second query.
+        // For RLS version, we simplify to avoid needing two executors.
+        // The calling code can make a separate call if needed.
+        Ok(BuildingStatistics {
+            building_id: stats.building_id,
+            total_units: stats.total_units,
+            occupied_units: stats.occupied_units,
+            vacant_units: stats.vacant_units,
+            total_owners: stats.total_owners,
+            ownership_coverage: 0.0, // Simplified for RLS version
+        })
+    }
+
+    /// Check if building belongs to organization with RLS context.
+    pub async fn belongs_to_organization_rls<'e, E>(
+        &self,
+        executor: E,
+        building_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<bool, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let count: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*) FROM buildings
+            WHERE id = $1 AND organization_id = $2
+            "#,
+        )
+        .bind(building_id)
+        .bind(organization_id)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(count > 0)
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
+
+    /// Create a new building (UC-15.1).
+    ///
+    /// **Deprecated**: Use `create_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use create_rls with RlsConnection instead")]
+    pub async fn create(&self, data: CreateBuilding) -> Result<Building, SqlxError> {
+        self.create_rls(&self.pool, data).await
+    }
+
+    /// Find building by ID (UC-15.2).
+    ///
+    /// **Deprecated**: Use `find_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use find_by_id_rls with RlsConnection instead"
+    )]
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Building>, SqlxError> {
+        self.find_by_id_rls(&self.pool, id).await
+    }
+
+    /// Find building by ID including archived.
+    pub async fn find_by_id_any_status(&self, id: Uuid) -> Result<Option<Building>, SqlxError> {
+        let building = sqlx::query_as::<_, Building>(
+            r#"
+            SELECT * FROM buildings WHERE id = $1
+            "#,
+        )
+        .bind(id)
         .fetch_optional(&self.pool)
         .await?;
 
         Ok(building)
+    }
+
+    /// Update building (UC-15.3).
+    ///
+    /// **Deprecated**: Use `update_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use update_rls with RlsConnection instead")]
+    pub async fn update(
+        &self,
+        id: Uuid,
+        data: UpdateBuilding,
+    ) -> Result<Option<Building>, SqlxError> {
+        self.update_rls(&self.pool, id, data).await
+    }
+
+    /// Archive building (soft delete) (UC-15.10).
+    ///
+    /// **Deprecated**: Use `archive_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use archive_rls with RlsConnection instead")]
+    pub async fn archive(&self, id: Uuid) -> Result<Option<Building>, SqlxError> {
+        self.archive_rls(&self.pool, id).await
     }
 
     /// Restore archived building.
