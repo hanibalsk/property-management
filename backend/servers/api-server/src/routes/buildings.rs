@@ -560,7 +560,7 @@ pub async fn list_buildings(
     let (buildings, total) = state
         .building_repo
         .list_by_organization_with_count_rls(
-            &mut **rls.conn(),
+            rls.conn(),
             query.organization_id,
             query.offset,
             limit,
@@ -1043,7 +1043,7 @@ pub async fn list_units(
     let (units, total) = state
         .unit_repo
         .list_by_building_with_count_rls(
-            &mut **rls.conn(),
+            rls.conn(),
             building_id,
             query.offset,
             limit,

@@ -108,7 +108,7 @@ async fn alexa_webhook(
 
     // Authenticate user via OAuth token
     let device = if let Some(token) = access_token {
-        authenticate_voice_user(&mut **rls.conn(), token, voice_platform::ALEXA).await?
+        authenticate_voice_user(rls.conn(), token, voice_platform::ALEXA).await?
     } else {
         // Account linking not complete - return link card
         rls.release().await;
@@ -224,7 +224,7 @@ async fn google_actions_webhook(
 
     // Authenticate user via OAuth token
     let device = if let Some(token) = access_token {
-        authenticate_voice_user(&mut **rls.conn(), token, voice_platform::GOOGLE_ASSISTANT).await?
+        authenticate_voice_user(rls.conn(), token, voice_platform::GOOGLE_ASSISTANT).await?
     } else {
         // Account linking not complete
         rls.release().await;

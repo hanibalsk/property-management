@@ -390,7 +390,7 @@ async fn create_announcement(
     if req.target_type != target_type::ALL {
         if let Some(ref target_ids) = req.target_ids {
             let validation_result =
-                validate_target_ids(&mut **rls.conn(), org_id, &req.target_type, target_ids).await;
+                validate_target_ids(rls.conn(), org_id, &req.target_type, target_ids).await;
 
             if let Err(err_msg) = validation_result {
                 rls.release().await;

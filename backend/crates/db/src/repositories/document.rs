@@ -699,6 +699,7 @@ impl DocumentRepository {
     }
 
     /// List documents accessible by a specific user with RLS context (Story 7A.3).
+    #[allow(clippy::too_many_arguments)]
     pub async fn list_accessible_rls<'e, E>(
         &self,
         executor: E,
