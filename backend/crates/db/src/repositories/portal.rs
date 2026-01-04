@@ -655,4 +655,149 @@ impl PortalRepository {
 
         Ok(())
     }
+
+    // ========================================================================
+    // Portal Sessions (Security Fix: DB-backed sessions)
+    // ========================================================================
+
+    /// Create a new portal session.
+    ///
+    /// The token_hash should be a SHA-256 hash of the actual session token.
+    /// This allows token validation without storing the raw token.
+    pub async fn create_session(
+        &self,
+        user_id: Uuid,
+        token_hash: &str,
+        expires_at: chrono::DateTime<Utc>,
+    ) -> Result<crate::models::portal::PortalSession, SqlxError> {
+        let session = sqlx::query_as::<_, crate::models::portal::PortalSession>(
+            r#"
+            INSERT INTO portal_sessions (user_id, token_hash, expires_at)
+            VALUES ($1, $2, $3)
+            RETURNING *
+            "#,
+        )
+        .bind(user_id)
+        .bind(token_hash)
+        .bind(expires_at)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(session)
+    }
+
+    /// Find a session by token hash.
+    pub async fn find_session_by_token_hash(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<crate::models::portal::PortalSession>, SqlxError> {
+        let session = sqlx::query_as::<_, crate::models::portal::PortalSession>(
+            r#"SELECT * FROM portal_sessions WHERE token_hash = $1 AND expires_at > NOW()"#,
+        )
+        .bind(token_hash)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(session)
+    }
+
+    /// Get user for a session by token hash.
+    pub async fn get_session_user(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<PortalUser>, SqlxError> {
+        let user = sqlx::query_as::<_, PortalUser>(
+            r#"
+            SELECT u.* FROM portal_users u
+            JOIN portal_sessions s ON s.user_id = u.id
+            WHERE s.token_hash = $1 AND s.expires_at > NOW()
+            "#,
+        )
+        .bind(token_hash)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(user)
+    }
+
+    /// Refresh a session by extending its expiration time.
+    pub async fn refresh_session(
+        &self,
+        token_hash: &str,
+        new_expires_at: chrono::DateTime<Utc>,
+    ) -> Result<Option<crate::models::portal::PortalSession>, SqlxError> {
+        let session = sqlx::query_as::<_, crate::models::portal::PortalSession>(
+            r#"
+            UPDATE portal_sessions
+            SET expires_at = $2
+            WHERE token_hash = $1 AND expires_at > NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(token_hash)
+        .bind(new_expires_at)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(session)
+    }
+
+    /// Delete a session by token hash.
+    pub async fn delete_session(&self, token_hash: &str) -> Result<bool, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM portal_sessions WHERE token_hash = $1"#)
+            .bind(token_hash)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Delete all sessions for a user.
+    pub async fn delete_user_sessions(&self, user_id: Uuid) -> Result<u64, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM portal_sessions WHERE user_id = $1"#)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// Clean up expired sessions.
+    pub async fn cleanup_expired_sessions(&self) -> Result<u64, SqlxError> {
+        let result = sqlx::query(r#"DELETE FROM portal_sessions WHERE expires_at < NOW()"#)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(result.rows_affected())
+    }
+
+    /// Upsert a user from SSO provider (create if not exists, update if exists).
+    pub async fn upsert_sso_user(
+        &self,
+        pm_user_id: Uuid,
+        email: &str,
+        name: &str,
+        avatar_url: Option<&str>,
+    ) -> Result<PortalUser, SqlxError> {
+        let user = sqlx::query_as::<_, PortalUser>(
+            r#"
+            INSERT INTO portal_users (email, name, pm_user_id, provider, email_verified, profile_image_url)
+            VALUES ($1, $2, $3, 'pm_sso', true, $4)
+            ON CONFLICT (email) DO UPDATE SET
+                name = EXCLUDED.name,
+                pm_user_id = EXCLUDED.pm_user_id,
+                profile_image_url = COALESCE(EXCLUDED.profile_image_url, portal_users.profile_image_url),
+                updated_at = NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(email)
+        .bind(name)
+        .bind(pm_user_id)
+        .bind(avatar_url)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(user)
+    }
 }
