@@ -45,6 +45,33 @@ where
     Ok(())
 }
 
+/// Spawn a task to clear RLS context on a connection.
+///
+/// This is used by Drop implementations that cannot await. The task runs
+/// asynchronously and logs any errors.
+///
+/// # Safety
+///
+/// This provides best-effort cleanup. For guaranteed cleanup, always call
+/// `release().await` explicitly before dropping the guard.
+pub fn spawn_clear_context(mut conn: sqlx::pool::PoolConnection<Postgres>, context_info: String) {
+    tokio::spawn(async move {
+        if let Err(e) = clear_request_context(&mut *conn).await {
+            tracing::error!(
+                error = %e,
+                context = %context_info,
+                "SECURITY: Failed to clear RLS context in Drop cleanup task - context may bleed"
+            );
+        } else {
+            tracing::debug!(
+                context = %context_info,
+                "RLS context cleared via Drop cleanup task"
+            );
+        }
+        // Connection is dropped here, returning to pool with cleared context
+    });
+}
+
 /// Set only the tenant (organization) context.
 pub async fn set_tenant_context<'e, E>(executor: E, org_id: Uuid) -> Result<(), SqlxError>
 where

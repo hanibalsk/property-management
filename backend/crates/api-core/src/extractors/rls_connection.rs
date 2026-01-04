@@ -194,18 +194,29 @@ impl DerefMut for RlsConnection {
     }
 }
 
-/// When dropped without calling release(), log a warning about potential context bleeding.
+/// When dropped without calling release(), spawn a task to clear context.
 impl Drop for RlsConnection {
     fn drop(&mut self) {
-        if !self.released && self.conn.is_some() {
-            // Can't do async cleanup in Drop, so we log a warning
-            tracing::warn!(
-                tenant_id = %self.tenant_id,
-                user_id = %self.user_id,
-                role = ?self.role,
-                "RlsConnection dropped without calling release() - RLS context may bleed to next request. \
-                 Call rls.release().await before handler returns."
-            );
+        if !self.released {
+            if let Some(conn) = self.conn.take() {
+                // Can't do async cleanup in Drop, so we spawn a task
+                tracing::warn!(
+                    tenant_id = %self.tenant_id,
+                    user_id = %self.user_id,
+                    role = ?self.role,
+                    "RlsConnection dropped without calling release() - spawning cleanup task. \
+                     Call rls.release().await before handler returns for guaranteed cleanup."
+                );
+
+                // Spawn async task to clear context before returning connection to pool
+                db::tenant_context::spawn_clear_context(
+                    conn,
+                    format!(
+                        "RlsConnection(tenant={}, user={}, role={:?})",
+                        self.tenant_id, self.user_id, self.role
+                    ),
+                );
+            }
         }
     }
 }
@@ -356,11 +367,18 @@ impl DerefMut for SimpleRlsConnection {
 
 impl Drop for SimpleRlsConnection {
     fn drop(&mut self) {
-        if !self.released && self.conn.is_some() {
-            tracing::warn!(
-                tenant_id = %self.tenant_id,
-                "SimpleRlsConnection dropped without calling release()"
-            );
+        if !self.released {
+            if let Some(conn) = self.conn.take() {
+                tracing::warn!(
+                    tenant_id = %self.tenant_id,
+                    "SimpleRlsConnection dropped without calling release() - spawning cleanup task"
+                );
+
+                db::tenant_context::spawn_clear_context(
+                    conn,
+                    format!("SimpleRlsConnection(tenant={})", self.tenant_id),
+                );
+            }
         }
     }
 }

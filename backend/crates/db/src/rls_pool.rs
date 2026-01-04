@@ -112,8 +112,23 @@ impl RlsPool {
     ///
     /// The returned connection is still wrapped in a guard for consistency,
     /// but no RLS context is set.
+    ///
+    /// # Safety
+    ///
+    /// This method explicitly clears any stale RLS context from a previous request
+    /// to prevent context bleeding.
     pub async fn acquire_public(&self) -> Result<PublicConnection, sqlx::Error> {
-        let conn = self.inner.acquire().await?;
+        let mut conn = self.inner.acquire().await?;
+
+        // Clear any stale RLS context from previous requests to prevent context bleeding
+        // This is critical: a connection might have super-admin context from a previous request
+        if let Err(e) = clear_request_context(&mut *conn).await {
+            tracing::warn!(
+                error = %e,
+                "Failed to clear stale RLS context on public connection acquire"
+            );
+        }
+
         Ok(PublicConnection { conn })
     }
 
@@ -204,19 +219,22 @@ impl DerefMut for RlsGuard {
 
 impl Drop for RlsGuard {
     fn drop(&mut self) {
-        if self.conn.is_some() {
-            // We can't do async cleanup in Drop, but we can spawn a task
-            // to clear context. However, this is best-effort.
+        if let Some(conn) = self.conn.take() {
+            // We can't do async cleanup in Drop, so we spawn a task to clear context.
+            // This provides best-effort cleanup to prevent context bleeding.
             //
             // For guaranteed cleanup, handlers should call release() explicitly.
-            //
-            // We log a warning since the connection is being returned
-            // with context potentially still set.
             tracing::warn!(
                 tenant_id = %self.tenant_id,
                 user_id = %self.user_id,
-                "RlsGuard dropped without calling release() - context may persist on connection. \
+                "RlsGuard dropped without calling release() - spawning cleanup task. \
                  Call guard.release().await for guaranteed cleanup."
+            );
+
+            // Spawn async task to clear context before returning connection to pool
+            crate::tenant_context::spawn_clear_context(
+                conn,
+                format!("RlsGuard(tenant={}, user={})", self.tenant_id, self.user_id),
             );
         }
     }

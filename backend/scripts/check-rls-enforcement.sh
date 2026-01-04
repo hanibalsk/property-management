@@ -37,7 +37,10 @@ VIOLATION_PATTERNS=(
 # Directories to check (handler code that should use RLS)
 CHECK_DIRS=(
     "servers/api-server/src/handlers"
+    "servers/api-server/src/routes"
+    "servers/api-server/src/services"
     "servers/reality-server/src/handlers"
+    "servers/reality-server/src/routes"
 )
 
 VIOLATIONS=0
