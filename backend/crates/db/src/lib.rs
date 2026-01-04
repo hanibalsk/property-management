@@ -2,6 +2,7 @@
 
 pub mod models;
 pub mod repositories;
+pub mod rls_pool;
 pub mod tenant_context;
 
 use sqlx::postgres::PgPoolOptions;
@@ -16,6 +17,9 @@ pub use sqlx::Error as SqlxError;
 pub use tenant_context::{
     clear_request_context, set_request_context, set_tenant_context, user_has_permission,
 };
+
+// Re-export RLS pool types for type-level enforcement
+pub use rls_pool::{PublicConnection, RlsGuard, RlsPool};
 
 // Re-export repositories for direct import
 pub use repositories::FormRepository;
