@@ -1,0 +1,275 @@
+# Docker Compose for Synology NAS Deployment
+# Usage: docker compose -f docker-compose.synology.yml up -d
+#
+# Optimized for:
+# - Synology DS920+ (Intel x86_64) - 4GB RAM
+# - Synology DS223 (ARM64) - 2GB RAM
+# - Container Manager compatibility
+# - Synology reverse proxy integration
+#
+# Volume Paths:
+# - Default: /volume1/docker/ppt
+# - Adjust SYNOLOGY_VOLUME_PATH if using different volume
+
+name: ppt-synology
+
+x-common-env: &common-env
+  TZ: ${TZ:-Europe/Bratislava}
+
+services:
+  # ==========================================================================
+  # Database Services (Resource-Constrained)
+  # ==========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ppt-postgres
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      POSTGRES_USER: ${POSTGRES_USER:-ppt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Database password required}
+      POSTGRES_DB: ${POSTGRES_DB:-ppt}
+      # Synology-optimized PostgreSQL settings
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=256MB"
+      - "-c"
+      - "maintenance_work_mem=32MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=4MB"
+      - "-c"
+      - "max_connections=50"
+    volumes:
+      - ${SYNOLOGY_VOLUME_PATH:-/volume1/docker/ppt}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ppt} -d ${POSTGRES_DB:-ppt}"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
+    networks:
+      - ppt-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ppt-redis
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 64mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - ${SYNOLOGY_VOLUME_PATH:-/volume1/docker/ppt}/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+        reservations:
+          memory: 32M
+    networks:
+      - ppt-network
+
+  # ==========================================================================
+  # Backend Services (Synology-Optimized)
+  # ==========================================================================
+
+  api-server:
+    image: ${REGISTRY:-ghcr.io/hanibalsk}/ppt-api-server:${VERSION:-latest}
+    container_name: ppt-api-server
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgres://${POSTGRES_USER:-ppt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ppt}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?JWT secret required}
+      RUST_LOG: ${RUST_LOG:-warn}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-ppt-documents}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${SYNOLOGY_VOLUME_PATH:-/volume1/docker/ppt}/logs/api-server:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '1'
+        reservations:
+          memory: 64M
+    networks:
+      - ppt-network
+
+  reality-server:
+    image: ${REGISTRY:-ghcr.io/hanibalsk}/ppt-reality-server:${VERSION:-latest}
+    container_name: ppt-reality-server
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgres://${POSTGRES_USER:-ppt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ppt}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      RUST_LOG: ${RUST_LOG:-warn}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-ppt-images}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+    ports:
+      - "8081:8081"
+    volumes:
+      - ${SYNOLOGY_VOLUME_PATH:-/volume1/docker/ppt}/logs/reality-server:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '1'
+        reservations:
+          memory: 64M
+    networks:
+      - ppt-network
+
+  # ==========================================================================
+  # Frontend Services (Synology-Optimized)
+  # ==========================================================================
+
+  ppt-web:
+    image: ${REGISTRY:-ghcr.io/hanibalsk}/ppt-web:${VERSION:-latest}
+    container_name: ppt-web
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 16M
+    networks:
+      - ppt-network
+
+  reality-web:
+    image: ${REGISTRY:-ghcr.io/hanibalsk}/ppt-reality-web:${VERSION:-latest}
+    container_name: ppt-reality-web
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8081}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3001}
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
+    networks:
+      - ppt-network
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+
+networks:
+  ppt-network:
+    driver: bridge
+    # Use bridge mode for Synology Container Manager compatibility
+    # For host networking, change to: network_mode: host
+
+# ==========================================================================
+# Notes for Synology Deployment
+# ==========================================================================
+#
+# 1. Create directory structure:
+#    mkdir -p /volume1/docker/ppt/{postgres,redis,logs/{api-server,reality-server}}
+#
+# 2. Create .env file:
+#    cp docker/.env.synology.example /volume1/docker/ppt/.env
+#
+# 3. Set permissions:
+#    chown -R 1000:1000 /volume1/docker/ppt
+#
+# 4. Deploy via Container Manager:
+#    - Open Container Manager
+#    - Go to Project > Create
+#    - Select docker-compose.synology.yml
+#    - Configure environment variables
+#    - Start the project
+#
+# 5. Configure Synology Reverse Proxy (optional):
+#    Control Panel > Login Portal > Advanced > Reverse Proxy
+#    - ppt.your-nas.synology.me -> localhost:3000
+#    - api.your-nas.synology.me -> localhost:8080
+#    - reality.your-nas.synology.me -> localhost:3001
+#
+# Total Memory Usage (approx.):
+# - PostgreSQL: ~256-384MB
+# - Redis: ~64-96MB
+# - api-server: ~128-256MB
+# - reality-server: ~128-256MB
+# - ppt-web: ~32-64MB
+# - reality-web: ~64-128MB
+# Total: ~700MB - 1.2GB (suitable for 2-4GB NAS)
