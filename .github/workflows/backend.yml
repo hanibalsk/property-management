@@ -42,6 +42,10 @@ jobs:
           SQLX_OFFLINE: true
         run: cargo clippy --workspace -- -D warnings
 
+      - name: RLS Enforcement Check
+        working-directory: backend
+        run: ./scripts/check-rls-enforcement.sh
+
       - name: Check
         working-directory: backend
         env:
