@@ -3,7 +3,7 @@
 //! Implements building and unit management including CRUD operations,
 //! unit assignments, and statistics.
 
-use api_core::extractors::{AuthUser, RlsConnection};
+use api_core::extractors::RlsConnection;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,

@@ -426,10 +426,12 @@ pub async fn list_my_organizations(
         )
     })?;
 
+    // TODO: Migrate to get_user_memberships_rls when RLS variant is available
     let memberships = match state.org_member_repo.get_user_memberships(user_id).await {
         Ok(m) => m,
         Err(e) => {
             tracing::error!(error = %e, "Failed to fetch user organizations");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -443,15 +445,18 @@ pub async fn list_my_organizations(
     // Fetch full organization details for each membership
     let mut organizations = Vec::new();
     for membership in &memberships {
-        // TODO: Migrate to find_by_id_rls when RLS context is available
-        #[allow(deprecated)]
-        if let Ok(Some(org)) = state.org_repo.find_by_id(membership.organization_id).await {
+        if let Ok(Some(org)) = state
+            .org_repo
+            .find_by_id_rls(&mut **rls.conn(), membership.organization_id)
+            .await
+        {
             organizations.push(OrganizationResponse::from(org));
         }
     }
 
     let total = organizations.len() as i64;
 
+    rls.release().await;
     Ok(Json(ListOrganizationsResponse {
         organizations,
         total,
@@ -493,6 +498,7 @@ pub async fn get_organization(
     })?;
 
     // Check if user is member of this organization
+    // TODO: Migrate to find_by_org_and_user_rls when RLS variant is available
     match state
         .org_member_repo
         .find_by_org_and_user(id, user_id)
@@ -500,6 +506,7 @@ pub async fn get_organization(
     {
         Ok(Some(_)) => {}
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
@@ -510,6 +517,7 @@ pub async fn get_organization(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to check membership");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -520,11 +528,10 @@ pub async fn get_organization(
         }
     }
 
-    // TODO: Migrate to find_by_id_rls when RLS context is available
-    #[allow(deprecated)]
-    let org = match state.org_repo.find_by_id(id).await {
+    let org = match state.org_repo.find_by_id_rls(&mut **rls.conn(), id).await {
         Ok(Some(org)) => org,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new(
@@ -535,6 +542,7 @@ pub async fn get_organization(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to fetch organization");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -545,6 +553,7 @@ pub async fn get_organization(
         }
     };
 
+    rls.release().await;
     Ok(Json(OrganizationResponse::from(org)))
 }
 
@@ -599,6 +608,7 @@ pub async fn update_organization(
     })?;
 
     // Check if user is admin of this organization
+    // TODO: Migrate to find_by_org_and_user_rls when RLS variant is available
     let membership = match state
         .org_member_repo
         .find_by_org_and_user(id, user_id)
@@ -606,6 +616,7 @@ pub async fn update_organization(
     {
         Ok(Some(m)) => m,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
@@ -616,6 +627,7 @@ pub async fn update_organization(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to check membership");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -627,10 +639,12 @@ pub async fn update_organization(
     };
 
     // Get role and check permissions
+    // TODO: Migrate to find_by_id_rls when RLS variant is available in role repository
     let role = match membership.role_id {
         Some(role_id) => match state.role_repo.find_by_id(role_id).await {
             Ok(Some(r)) => r,
             Ok(None) => {
+                rls.release().await;
                 return Err((
                     StatusCode::FORBIDDEN,
                     Json(ErrorResponse::new("ROLE_NOT_FOUND", "User role not found")),
@@ -638,6 +652,7 @@ pub async fn update_organization(
             }
             Err(e) => {
                 tracing::error!(error = %e, "Failed to fetch role");
+                rls.release().await;
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
                     Json(ErrorResponse::new("DATABASE_ERROR", "Failed to fetch role")),
@@ -645,6 +660,7 @@ pub async fn update_organization(
             }
         },
         None => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new("NO_ROLE", "User has no role assigned")),
@@ -654,6 +670,7 @@ pub async fn update_organization(
 
     // Check for organization:update permission
     if !role.has_permission("organization:update") {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -672,11 +689,14 @@ pub async fn update_organization(
         settings: None,
     };
 
-    // TODO: Migrate to update_rls when RLS context is available
-    #[allow(deprecated)]
-    let org = match state.org_repo.update(id, update).await {
+    let org = match state
+        .org_repo
+        .update_rls(&mut **rls.conn(), id, update)
+        .await
+    {
         Ok(Some(org)) => org,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new(
@@ -687,6 +707,7 @@ pub async fn update_organization(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to update organization");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -699,6 +720,7 @@ pub async fn update_organization(
 
     tracing::info!(org_id = %id, user_id = %user_id, "Organization updated");
 
+    rls.release().await;
     Ok(Json(OrganizationResponse::from(org)))
 }
 
@@ -2603,6 +2625,7 @@ pub async fn get_organization_settings(
     })?;
 
     // Check if user is member of this organization
+    // TODO: Migrate to find_by_org_and_user_rls when RLS variant is available in OrganizationMemberRepository
     match state
         .org_member_repo
         .find_by_org_and_user(id, user_id)
@@ -2610,6 +2633,7 @@ pub async fn get_organization_settings(
     {
         Ok(Some(_)) => {}
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
@@ -2620,6 +2644,7 @@ pub async fn get_organization_settings(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to check membership");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -2630,11 +2655,10 @@ pub async fn get_organization_settings(
         }
     }
 
-    // TODO: Migrate to find_by_id_rls when RLS context is available
-    #[allow(deprecated)]
-    let org = match state.org_repo.find_by_id(id).await {
+    let org = match state.org_repo.find_by_id_rls(&mut **rls.conn(), id).await {
         Ok(Some(org)) => org,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new(
@@ -2645,6 +2669,7 @@ pub async fn get_organization_settings(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to fetch organization");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -2655,6 +2680,7 @@ pub async fn get_organization_settings(
         }
     };
 
+    rls.release().await;
     Ok(Json(OrganizationSettingsResponse {
         organization_id: id,
         settings: org.settings,
@@ -2696,6 +2722,7 @@ pub async fn update_organization_settings(
     })?;
 
     // Check membership and permissions
+    // TODO: Migrate to find_by_org_and_user_rls when RLS variant is available in OrganizationMemberRepository
     let membership = match state
         .org_member_repo
         .find_by_org_and_user(id, user_id)
@@ -2703,6 +2730,7 @@ pub async fn update_organization_settings(
     {
         Ok(Some(m)) => m,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
@@ -2713,6 +2741,7 @@ pub async fn update_organization_settings(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to check membership");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -2727,6 +2756,7 @@ pub async fn update_organization_settings(
         Some(role_id) => match state.role_repo.find_by_id(role_id).await {
             Ok(Some(r)) => r,
             _ => {
+                rls.release().await;
                 return Err((
                     StatusCode::FORBIDDEN,
                     Json(ErrorResponse::new("ROLE_NOT_FOUND", "User role not found")),
@@ -2734,6 +2764,7 @@ pub async fn update_organization_settings(
             }
         },
         None => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new("NO_ROLE", "User has no role assigned")),
@@ -2742,6 +2773,7 @@ pub async fn update_organization_settings(
     };
 
     if !role.has_permission("organization:update") {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -2760,11 +2792,14 @@ pub async fn update_organization_settings(
         settings: Some(req.settings.clone()),
     };
 
-    // TODO: Migrate to update_rls when RLS context is available
-    #[allow(deprecated)]
-    let org = match state.org_repo.update(id, update).await {
+    let org = match state
+        .org_repo
+        .update_rls(&mut **rls.conn(), id, update)
+        .await
+    {
         Ok(Some(org)) => org,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new(
@@ -2775,6 +2810,7 @@ pub async fn update_organization_settings(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to update organization settings");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -2787,6 +2823,7 @@ pub async fn update_organization_settings(
 
     tracing::info!(org_id = %id, user_id = %user_id, "Organization settings updated");
 
+    rls.release().await;
     Ok(Json(OrganizationSettingsResponse {
         organization_id: id,
         settings: org.settings,
@@ -2850,6 +2887,7 @@ pub async fn get_organization_branding(
     })?;
 
     // Check if user is member of this organization
+    // TODO: Migrate to find_by_org_and_user_rls when RLS variant is available in OrganizationMemberRepository
     match state
         .org_member_repo
         .find_by_org_and_user(id, user_id)
@@ -2857,6 +2895,7 @@ pub async fn get_organization_branding(
     {
         Ok(Some(_)) => {}
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
@@ -2867,6 +2906,7 @@ pub async fn get_organization_branding(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to check membership");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -2877,11 +2917,10 @@ pub async fn get_organization_branding(
         }
     }
 
-    // TODO: Migrate to find_by_id_rls when RLS context is available
-    #[allow(deprecated)]
-    let org = match state.org_repo.find_by_id(id).await {
+    let org = match state.org_repo.find_by_id_rls(&mut **rls.conn(), id).await {
         Ok(Some(org)) => org,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new(
@@ -2892,6 +2931,7 @@ pub async fn get_organization_branding(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to fetch organization");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -2902,6 +2942,7 @@ pub async fn get_organization_branding(
         }
     };
 
+    rls.release().await;
     Ok(Json(OrganizationBrandingResponse {
         organization_id: id,
         logo_url: org.logo_url,
@@ -2948,6 +2989,7 @@ pub async fn update_organization_branding(
     // Validate color format if provided
     if let Some(ref color) = req.primary_color {
         if !is_valid_hex_color(color) {
+            rls.release().await;
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
@@ -2959,6 +3001,7 @@ pub async fn update_organization_branding(
     }
 
     // Check membership and permissions
+    // TODO: Migrate to find_by_org_and_user_rls when RLS variant is available in OrganizationMemberRepository
     let membership = match state
         .org_member_repo
         .find_by_org_and_user(id, user_id)
@@ -2966,6 +3009,7 @@ pub async fn update_organization_branding(
     {
         Ok(Some(m)) => m,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
@@ -2976,6 +3020,7 @@ pub async fn update_organization_branding(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to check membership");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -2990,6 +3035,7 @@ pub async fn update_organization_branding(
         Some(role_id) => match state.role_repo.find_by_id(role_id).await {
             Ok(Some(r)) => r,
             _ => {
+                rls.release().await;
                 return Err((
                     StatusCode::FORBIDDEN,
                     Json(ErrorResponse::new("ROLE_NOT_FOUND", "User role not found")),
@@ -2997,6 +3043,7 @@ pub async fn update_organization_branding(
             }
         },
         None => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new("NO_ROLE", "User has no role assigned")),
@@ -3005,6 +3052,7 @@ pub async fn update_organization_branding(
     };
 
     if !role.has_permission("organization:update") {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -3023,11 +3071,14 @@ pub async fn update_organization_branding(
         settings: None,
     };
 
-    // TODO: Migrate to update_rls when RLS context is available
-    #[allow(deprecated)]
-    let org = match state.org_repo.update(id, update).await {
+    let org = match state
+        .org_repo
+        .update_rls(&mut **rls.conn(), id, update)
+        .await
+    {
         Ok(Some(org)) => org,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new(
@@ -3038,6 +3089,7 @@ pub async fn update_organization_branding(
         }
         Err(e) => {
             tracing::error!(error = %e, "Failed to update organization branding");
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -3050,6 +3102,7 @@ pub async fn update_organization_branding(
 
     tracing::info!(org_id = %id, user_id = %user_id, "Organization branding updated");
 
+    rls.release().await;
     Ok(Json(OrganizationBrandingResponse {
         organization_id: id,
         logo_url: org.logo_url,
@@ -3201,10 +3254,10 @@ pub async fn export_organization_data(
         )
     })?;
 
-    // Check membership and permissions
+    // Check membership and permissions using RLS
     let membership = match state
         .org_member_repo
-        .find_by_org_and_user(id, user_id)
+        .find_by_org_and_user_rls(&mut **rls.conn(), id, user_id)
         .await
     {
         Ok(Some(m)) => m,
@@ -3230,7 +3283,11 @@ pub async fn export_organization_data(
     };
 
     let role = match membership.role_id {
-        Some(role_id) => match state.role_repo.find_by_id(role_id).await {
+        Some(role_id) => match state
+            .role_repo
+            .find_by_id_rls(&mut **rls.conn(), role_id)
+            .await
+        {
             Ok(Some(r)) => r,
             Ok(None) => {
                 return Err((
@@ -3269,10 +3326,8 @@ pub async fn export_organization_data(
         ));
     }
 
-    // Get organization
-    // TODO: Migrate to find_by_id_rls when RLS context is available
-    #[allow(deprecated)]
-    let org = match state.org_repo.find_by_id(id).await {
+    // Get organization using RLS
+    let org = match state.org_repo.find_by_id_rls(&mut **rls.conn(), id).await {
         Ok(Some(org)) => org,
         Ok(None) => {
             return Err((
@@ -3295,10 +3350,10 @@ pub async fn export_organization_data(
         }
     };
 
-    // Get members with user info (paginated export to prevent memory issues)
+    // Get members with user info (paginated export to prevent memory issues) using RLS
     let (members, _total_member_count) = match state
         .org_member_repo
-        .list_org_members(id, 0, MAX_EXPORT_MEMBERS, None)
+        .list_org_members_rls(&mut **rls.conn(), id, 0, MAX_EXPORT_MEMBERS, None)
         .await
     {
         Ok(m) => m,
@@ -3314,8 +3369,8 @@ pub async fn export_organization_data(
         }
     };
 
-    // Get roles
-    let roles = match state.role_repo.list_by_org(id).await {
+    // Get roles using RLS
+    let roles = match state.role_repo.list_by_org_rls(&mut **rls.conn(), id).await {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(error = %e, "Failed to fetch roles");
@@ -3489,6 +3544,7 @@ pub struct UpdateFeaturesResponse {
 pub async fn list_organization_features(
     State(state): State<AppState>,
     headers: axum::http::HeaderMap,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ListOrganizationFeaturesResponse>, (StatusCode, Json<ErrorResponse>)> {
     let token = extract_bearer_token(&headers)?;
@@ -3501,10 +3557,10 @@ pub async fn list_organization_features(
         )
     })?;
 
-    // Check membership
+    // Check membership using RLS
     let _membership = match state
         .org_member_repo
-        .find_by_org_and_user(id, user_id)
+        .find_by_org_and_user_rls(&mut **rls.conn(), id, user_id)
         .await
     {
         Ok(Some(m)) => m,
@@ -3595,6 +3651,7 @@ pub async fn list_organization_features(
 pub async fn bulk_update_organization_features(
     State(state): State<AppState>,
     headers: axum::http::HeaderMap,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<BulkUpdateFeaturesRequest>,
 ) -> Result<Json<UpdateFeaturesResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -3608,10 +3665,10 @@ pub async fn bulk_update_organization_features(
         )
     })?;
 
-    // Check membership and permission
+    // Check membership and permission using RLS
     let membership = match state
         .org_member_repo
-        .find_by_org_and_user(id, user_id)
+        .find_by_org_and_user_rls(&mut **rls.conn(), id, user_id)
         .await
     {
         Ok(Some(m)) => m,
@@ -3636,9 +3693,13 @@ pub async fn bulk_update_organization_features(
         }
     };
 
-    // Get role and check permissions
+    // Get role and check permissions using RLS
     let role = match membership.role_id {
-        Some(role_id) => match state.role_repo.find_by_id(role_id).await {
+        Some(role_id) => match state
+            .role_repo
+            .find_by_id_rls(&mut **rls.conn(), role_id)
+            .await
+        {
             Ok(Some(r)) => r,
             Ok(None) => {
                 return Err((
@@ -3743,6 +3804,7 @@ pub async fn bulk_update_organization_features(
 pub async fn toggle_organization_feature(
     State(state): State<AppState>,
     headers: axum::http::HeaderMap,
+    mut rls: RlsConnection,
     Path((id, key)): Path<(Uuid, String)>,
     Json(req): Json<UpdateFeaturePreferenceRequest>,
 ) -> Result<Json<OrganizationFeatureResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -3756,10 +3818,10 @@ pub async fn toggle_organization_feature(
         )
     })?;
 
-    // Check membership and permission
+    // Check membership and permission using RLS
     let membership = match state
         .org_member_repo
-        .find_by_org_and_user(id, user_id)
+        .find_by_org_and_user_rls(&mut **rls.conn(), id, user_id)
         .await
     {
         Ok(Some(m)) => m,
@@ -3784,9 +3846,13 @@ pub async fn toggle_organization_feature(
         }
     };
 
-    // Get role and check permissions
+    // Get role and check permissions using RLS
     let role = match membership.role_id {
-        Some(role_id) => match state.role_repo.find_by_id(role_id).await {
+        Some(role_id) => match state
+            .role_repo
+            .find_by_id_rls(&mut **rls.conn(), role_id)
+            .await
+        {
             Ok(Some(r)) => r,
             Ok(None) => {
                 return Err((
