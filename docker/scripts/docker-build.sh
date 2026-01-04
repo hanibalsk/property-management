@@ -96,6 +96,11 @@ build_image() {
 
     if [[ "$PUSH" == "true" ]]; then
         build_args+=(--push)
+    elif [[ "$PLATFORMS" == *","* ]]; then
+        # Multi-platform builds require --push; fall back to current platform only
+        log "WARNING: Multi-platform builds require --push. Building for current platform only."
+        build_args=("${build_args[@]/--platform $PLATFORMS/}")
+        build_args+=(--load)
     else
         build_args+=(--load)
     fi

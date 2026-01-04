@@ -93,11 +93,13 @@ temp/
 *.temp
 
 # =============================================================================
-# Docker
+# Docker (be explicit about what to exclude)
 # =============================================================================
-docker-compose*.yml
-!docker-compose.yml
-Dockerfile*
+# Exclude development/synology compose files but keep production
+docker-compose.dev.yml
+docker-compose.synology.yml
+# Note: docker-compose.yml is NOT excluded (production compose)
+# Note: Dockerfiles in docker/ are NOT excluded (needed for builds)
 .dockerignore
 
 # =============================================================================

@@ -81,11 +81,15 @@ setup_directories() {
     # Create backup directory
     mkdir -p "$VOLUME_PATH/backups"
 
-    # Set permissions (UID 1000 is typical for container users)
-    chown -R 1000:1000 "$VOLUME_PATH"
+    # Set permissions for logs and backups (UID 1000 for app containers)
+    chown -R 1000:1000 "$VOLUME_PATH/logs" "$VOLUME_PATH/backups"
 
-    # Set proper permissions for PostgreSQL
+    # Set proper permissions for PostgreSQL (UID 70 is postgres user in alpine)
+    chown -R 70:70 "$VOLUME_PATH/postgres"
     chmod 700 "$VOLUME_PATH/postgres"
+
+    # Set permissions for Redis (UID 999 is redis user in alpine)
+    chown -R 999:999 "$VOLUME_PATH/redis"
 
     log "Directories created successfully"
 }
@@ -104,11 +108,13 @@ setup_environment() {
 
     log "Creating environment configuration..."
 
-    # Generate secure passwords
+    # Generate secure passwords (using stronger entropy)
     local db_password
+    local redis_password
     local jwt_secret
-    db_password=$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 24)
-    jwt_secret=$(openssl rand -base64 48 | tr -dc 'a-zA-Z0-9' | head -c 48)
+    db_password=$(openssl rand -base64 32)
+    redis_password=$(openssl rand -base64 32)
+    jwt_secret=$(openssl rand -base64 64)
 
     cat > "$env_file" << EOF
 # =============================================================================
@@ -125,6 +131,9 @@ TZ=$(cat /etc/timezone 2>/dev/null || echo "Europe/Bratislava")
 POSTGRES_USER=ppt
 POSTGRES_PASSWORD=$db_password
 POSTGRES_DB=ppt
+
+# Redis
+REDIS_PASSWORD=$redis_password
 
 # Security
 JWT_SECRET=$jwt_secret

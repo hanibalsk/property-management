@@ -8,8 +8,8 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm (pinned version for reproducible builds)
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # Copy package files
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
@@ -27,8 +27,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Install pnpm (pinned version for reproducible builds)
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules

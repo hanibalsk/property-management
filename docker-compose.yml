@@ -43,11 +43,11 @@ services:
     image: redis:7-alpine
     container_name: ppt-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:?Redis password required}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -70,7 +70,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-ppt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ppt}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET:?JWT secret required}
       RUST_LOG: ${RUST_LOG:-info}
       S3_ENDPOINT: ${S3_ENDPOINT}
@@ -110,7 +110,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-ppt}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ppt}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
       RUST_LOG: ${RUST_LOG:-info}
       S3_ENDPOINT: ${S3_ENDPOINT}

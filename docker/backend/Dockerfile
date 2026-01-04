@@ -55,12 +55,9 @@ RUN cargo build --release -p api-server -p reality-server
 RUN strip target/release/api-server target/release/reality-server || true
 
 # =============================================================================
-# Stage 4: Runtime - Minimal production image
+# Stage 4: Runtime Base - Minimal production image base
 # =============================================================================
-FROM debian:bookworm-slim AS runtime
-
-ARG SERVICE_NAME=api-server
-ARG SERVICE_PORT=8080
+FROM debian:bookworm-slim AS runtime-base
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -74,8 +71,13 @@ RUN groupadd -r ppt && useradd -r -g ppt ppt
 
 WORKDIR /app
 
+# =============================================================================
+# API Server - Production target
+# =============================================================================
+FROM runtime-base AS api-server
+
 # Copy binary from builder
-COPY --from=builder /app/target/release/${SERVICE_NAME} /app/${SERVICE_NAME}
+COPY --from=builder /app/target/release/api-server /app/api-server
 
 # Set ownership
 RUN chown -R ppt:ppt /app
@@ -84,33 +86,33 @@ RUN chown -R ppt:ppt /app
 USER ppt
 
 # Expose service port
-EXPOSE ${SERVICE_PORT}
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${SERVICE_PORT}/health || exit 1
-
-# Default command
-CMD ["/app/api-server"]
-
-# =============================================================================
-# Service-specific targets
-# =============================================================================
-
-# API Server target
-FROM runtime AS api-server
-COPY --from=builder /app/target/release/api-server /app/api-server
-ENV SERVICE_PORT=8080
-EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
+
 CMD ["/app/api-server"]
 
-# Reality Server target
-FROM runtime AS reality-server
+# =============================================================================
+# Reality Server - Production target
+# =============================================================================
+FROM runtime-base AS reality-server
+
+# Copy binary from builder
 COPY --from=builder /app/target/release/reality-server /app/reality-server
-ENV SERVICE_PORT=8081
+
+# Set ownership
+RUN chown -R ppt:ppt /app
+
+# Switch to non-root user
+USER ppt
+
+# Expose service port
 EXPOSE 8081
+
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8081/health || exit 1
+
 CMD ["/app/reality-server"]
