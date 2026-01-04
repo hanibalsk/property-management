@@ -44,7 +44,7 @@ jobs:
 
       - name: RLS Enforcement Check
         working-directory: backend
-        run: ./scripts/check-rls-enforcement.sh
+        run: ./scripts/check-rls-enforcement.sh --strict
 
       - name: Check
         working-directory: backend

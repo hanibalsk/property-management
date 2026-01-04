@@ -1,4 +1,28 @@
 //! Fault repository (Epic 4: Fault Reporting & Resolution).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_fault(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateFaultRequest>,
+//! ) -> Result<Json<Fault>> {
+//!     let fault = state.fault_repo.create_rls(rls.conn(), data).await?;
+//!     rls.release().await;
+//!     Ok(Json(fault))
+//! }
+//! ```
 
 use crate::models::fault::{
     timeline_action, AddFaultComment, AddWorkNote, AssignFault, CategoryCount, ConfirmFault,
@@ -10,7 +34,7 @@ use crate::models::fault::{
 use crate::DbPool;
 use chrono::{DateTime, Utc};
 use serde_json::Value as JsonValue;
-use sqlx::{Error as SqlxError, FromRow};
+use sqlx::{Error as SqlxError, Executor, FromRow, Postgres};
 use uuid::Uuid;
 
 /// Row struct for fault with details query.
@@ -89,11 +113,20 @@ impl FaultRepository {
     }
 
     // ========================================================================
-    // Fault CRUD
+    // RLS-aware methods (recommended)
     // ========================================================================
 
-    /// Create a new fault (Story 4.1).
-    pub async fn create(&self, data: CreateFault) -> Result<Fault, SqlxError> {
+    /// Create a new fault with RLS context (Story 4.1).
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateFault,
+    ) -> Result<Fault, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let priority = data.priority.as_deref().unwrap_or("medium");
 
         let fault = sqlx::query_as::<_, Fault>(
@@ -117,10 +150,11 @@ impl FaultRepository {
         .bind(&data.category)
         .bind(priority)
         .bind(&data.idempotency_key)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
-        // Create timeline entry
+        // Note: Timeline entry creation uses the pool since we consumed the executor.
+        // For full RLS support, caller should create timeline entry separately.
         self.create_timeline_entry(CreateFaultTimelineEntry {
             fault_id: fault.id,
             user_id: data.reporter_id,
@@ -136,18 +170,161 @@ impl FaultRepository {
         Ok(fault)
     }
 
-    /// Find fault by ID.
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Fault>, SqlxError> {
+    /// Find fault by ID with RLS context.
+    pub async fn find_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Fault>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let fault = sqlx::query_as::<_, Fault>(
             r#"
             SELECT * FROM faults WHERE id = $1
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(fault)
+    }
+
+    /// Update fault details with RLS context (reporter can edit before triage).
+    pub async fn update_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+        data: UpdateFault,
+    ) -> Result<Fault, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let fault = sqlx::query_as::<_, Fault>(
+            r#"
+            UPDATE faults
+            SET
+                title = COALESCE($2, title),
+                description = COALESCE($3, description),
+                location_description = COALESCE($4, location_description),
+                category = COALESCE($5, category),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.title)
+        .bind(&data.description)
+        .bind(&data.location_description)
+        .bind(&data.category)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(fault)
+    }
+
+    /// Update fault status with RLS context (Story 4.4).
+    pub async fn update_status_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+        user_id: Uuid,
+        data: UpdateFaultStatus,
+        current_status: String,
+    ) -> Result<Fault, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let fault = sqlx::query_as::<_, Fault>(
+            r#"
+            UPDATE faults
+            SET
+                status = $2,
+                scheduled_date = COALESCE($3, scheduled_date),
+                estimated_completion = COALESCE($4, estimated_completion),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(&data.status)
+        .bind(data.scheduled_date)
+        .bind(data.estimated_completion)
+        .fetch_one(executor)
+        .await?;
+
+        // Note: Timeline entry creation uses the pool since we consumed the executor.
+        // For full RLS support, caller should create timeline entry separately.
+        self.create_timeline_entry(CreateFaultTimelineEntry {
+            fault_id: id,
+            user_id,
+            action: timeline_action::STATUS_CHANGED.to_string(),
+            note: data.note,
+            old_value: Some(current_status),
+            new_value: Some(data.status),
+            metadata: None,
+            is_internal: false,
+        })
+        .await?;
+
+        Ok(fault)
+    }
+
+    /// List faults by building with RLS context.
+    pub async fn list_by_building_rls<'e, E>(
+        &self,
+        executor: E,
+        building_id: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<FaultSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let faults = sqlx::query_as::<_, FaultSummary>(
+            r#"
+            SELECT id, building_id, unit_id, title, category, priority, status, created_at
+            FROM faults
+            WHERE building_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(building_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(faults)
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
+
+    /// Create a new fault (Story 4.1).
+    ///
+    /// **Deprecated**: Use `create_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use create_rls with RlsConnection instead")]
+    #[allow(deprecated)]
+    pub async fn create(&self, data: CreateFault) -> Result<Fault, SqlxError> {
+        self.create_rls(&self.pool, data).await
+    }
+
+    /// Find fault by ID.
+    ///
+    /// **Deprecated**: Use `find_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use find_by_id_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Fault>, SqlxError> {
+        self.find_by_id_rls(&self.pool, id).await
     }
 
     /// Find fault by idempotency key.
@@ -384,29 +561,12 @@ impl FaultRepository {
     }
 
     /// Update fault details (reporter can edit before triage).
+    ///
+    /// **Deprecated**: Use `update_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use update_rls with RlsConnection instead")]
+    #[allow(deprecated)]
     pub async fn update(&self, id: Uuid, data: UpdateFault) -> Result<Fault, SqlxError> {
-        let fault = sqlx::query_as::<_, Fault>(
-            r#"
-            UPDATE faults
-            SET
-                title = COALESCE($2, title),
-                description = COALESCE($3, description),
-                location_description = COALESCE($4, location_description),
-                category = COALESCE($5, category),
-                updated_at = NOW()
-            WHERE id = $1
-            RETURNING *
-            "#,
-        )
-        .bind(id)
-        .bind(&data.title)
-        .bind(&data.description)
-        .bind(&data.location_description)
-        .bind(&data.category)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(fault)
+        self.update_rls(&self.pool, id, data).await
     }
 
     // ========================================================================
@@ -500,6 +660,13 @@ impl FaultRepository {
     }
 
     /// Update fault status (Story 4.4).
+    ///
+    /// **Deprecated**: Use `update_status_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use update_status_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn update_status(
         &self,
         id: Uuid,
@@ -507,41 +674,12 @@ impl FaultRepository {
         data: UpdateFaultStatus,
     ) -> Result<Fault, SqlxError> {
         // Get current status for timeline
-        let current = self.find_by_id(id).await?.ok_or(SqlxError::RowNotFound)?;
-
-        let fault = sqlx::query_as::<_, Fault>(
-            r#"
-            UPDATE faults
-            SET
-                status = $2,
-                scheduled_date = COALESCE($3, scheduled_date),
-                estimated_completion = COALESCE($4, estimated_completion),
-                updated_at = NOW()
-            WHERE id = $1
-            RETURNING *
-            "#,
-        )
-        .bind(id)
-        .bind(&data.status)
-        .bind(data.scheduled_date)
-        .bind(data.estimated_completion)
-        .fetch_one(&self.pool)
-        .await?;
-
-        // Create timeline entry
-        self.create_timeline_entry(CreateFaultTimelineEntry {
-            fault_id: id,
-            user_id,
-            action: timeline_action::STATUS_CHANGED.to_string(),
-            note: data.note,
-            old_value: Some(current.status),
-            new_value: Some(data.status),
-            metadata: None,
-            is_internal: false,
-        })
-        .await?;
-
-        Ok(fault)
+        let current = self
+            .find_by_id_rls(&self.pool, id)
+            .await?
+            .ok_or(SqlxError::RowNotFound)?;
+        self.update_status_rls(&self.pool, id, user_id, data, current.status)
+            .await
     }
 
     /// Resolve a fault (Story 4.4).
