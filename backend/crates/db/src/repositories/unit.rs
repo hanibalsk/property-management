@@ -30,7 +30,7 @@ use crate::models::unit::{
 };
 use crate::DbPool;
 use rust_decimal::Decimal;
-use sqlx::{Error as SqlxError, Executor, Postgres};
+use sqlx::{postgres::PgConnection, Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for unit operations.
@@ -316,6 +316,91 @@ impl UnitRepository {
         let units = data_q.fetch_all(executor).await?;
 
         Ok(units)
+    }
+
+    /// List units for a building with count and RLS context.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_by_building_with_count_rls(
+        &self,
+        conn: &mut PgConnection,
+        building_id: Uuid,
+        offset: i64,
+        limit: i64,
+        include_archived: bool,
+        unit_type_filter: Option<&str>,
+        floor_filter: Option<i32>,
+    ) -> Result<(Vec<UnitSummary>, i64), SqlxError> {
+        let mut conditions = vec!["building_id = $1".to_string()];
+
+        if !include_archived {
+            conditions.push("status = 'active'".to_string());
+        }
+
+        if unit_type_filter.is_some() {
+            conditions.push("unit_type = $2".to_string());
+        }
+
+        if floor_filter.is_some() {
+            let idx = if unit_type_filter.is_some() { 3 } else { 2 };
+            conditions.push(format!("floor = ${}", idx));
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        // Get count first
+        let count_query = format!("SELECT COUNT(*) FROM units WHERE {}", where_clause);
+
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query).bind(building_id);
+        if let Some(ut) = unit_type_filter {
+            count_q = count_q.bind(ut);
+        }
+        if let Some(f) = floor_filter {
+            count_q = count_q.bind(f);
+        }
+        let total = count_q.fetch_one(&mut *conn).await?;
+
+        // Get data - need to rebuild conditions with offset/limit params
+        let mut data_conditions = vec!["building_id = $1".to_string()];
+
+        if !include_archived {
+            data_conditions.push("status = 'active'".to_string());
+        }
+
+        if unit_type_filter.is_some() {
+            data_conditions.push("unit_type = $4".to_string());
+        }
+
+        if floor_filter.is_some() {
+            let idx = if unit_type_filter.is_some() { 5 } else { 4 };
+            data_conditions.push(format!("floor = ${}", idx));
+        }
+
+        let data_where_clause = data_conditions.join(" AND ");
+
+        let data_query = format!(
+            r#"
+            SELECT id, building_id, designation, floor, unit_type, occupancy_status, status
+            FROM units
+            WHERE {}
+            ORDER BY floor, designation
+            LIMIT $2 OFFSET $3
+            "#,
+            data_where_clause
+        );
+
+        let mut data_q = sqlx::query_as::<_, UnitSummary>(&data_query)
+            .bind(building_id)
+            .bind(limit)
+            .bind(offset);
+        if let Some(ut) = unit_type_filter {
+            data_q = data_q.bind(ut);
+        }
+        if let Some(f) = floor_filter {
+            data_q = data_q.bind(f);
+        }
+        let units = data_q.fetch_all(&mut *conn).await?;
+
+        Ok((units, total))
     }
 
     // ========================================================================

@@ -546,31 +546,11 @@ pub async fn create_building(
 )]
 pub async fn list_buildings(
     State(state): State<AppState>,
-    auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<ListBuildingsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    // Validate user has access to the organization
-    let is_member = state
-        .org_member_repo
-        .is_member(query.organization_id, auth.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to check org membership");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
-            )
-        })?;
-
-    if !is_member {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new(
-                "NOT_AUTHORIZED",
-                "You are not a member of this organization",
-            )),
-        ));
-    }
+    // RLS policies automatically filter by tenant - user can only see buildings
+    // in organizations they belong to
 
     let limit = query
         .limit
@@ -579,7 +559,8 @@ pub async fn list_buildings(
 
     let (buildings, total) = state
         .building_repo
-        .list_by_organization(
+        .list_by_organization_with_count_rls(
+            &mut **rls.conn(),
             query.organization_id,
             query.offset,
             limit,
@@ -594,6 +575,8 @@ pub async fn list_buildings(
                 Json(ErrorResponse::new("DB_ERROR", "Failed to list buildings")),
             )
         })?;
+
+    rls.release().await;
 
     Ok(Json(BuildingsListResponse {
         buildings,
@@ -619,34 +602,17 @@ pub async fn list_buildings(
 )]
 pub async fn bulk_import_buildings(
     State(state): State<AppState>,
-    auth: AuthUser,
+    mut rls: RlsConnection,
     Json(req): Json<BulkImportBuildingsRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    // Validate user has access to the organization
-    let is_member = state
-        .org_member_repo
-        .is_member(req.organization_id, auth.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to check org membership");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
-            )
-        })?;
+    // RLS policies automatically filter by tenant - user can only import to
+    // organizations they belong to
 
-    if !is_member {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new(
-                "NOT_AUTHORIZED",
-                "You are not a member of this organization",
-            )),
-        ));
-    }
+    let user_id = rls.user_id();
 
     // Validate bulk import size
     if req.buildings.is_empty() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -657,6 +623,7 @@ pub async fn bulk_import_buildings(
     }
 
     if req.buildings.len() > MAX_BULK_IMPORT_SIZE {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -712,9 +679,11 @@ pub async fn bulk_import_buildings(
             amenities: entry.amenities,
         };
 
-        // TODO: Migrate to create_rls when this handler has RLS connection
-        #[allow(deprecated)]
-        match state.building_repo.create(create_data).await {
+        match state
+            .building_repo
+            .create_rls(&mut **rls.conn(), create_data)
+            .await
+        {
             Ok(building) => {
                 results.push(BulkImportResult {
                     index,
@@ -739,12 +708,14 @@ pub async fn bulk_import_buildings(
 
     tracing::info!(
         org_id = %req.organization_id,
-        user_id = %auth.user_id,
+        user_id = %user_id,
         total = results.len(),
         successful = successful,
         failed = failed,
         "Bulk import completed"
     );
+
+    rls.release().await;
 
     Ok(Json(BulkImportBuildingsResponse {
         total: results.len(),
@@ -978,15 +949,13 @@ pub async fn restore_building(
 )]
 pub async fn get_building_statistics(
     State(state): State<AppState>,
-    auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    // First get the building to check organization access
-    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
-    #[allow(deprecated)]
-    let building = state
+    // RLS policies automatically filter by tenant - verify building exists in scope
+    let _building = state
         .building_repo
-        .find_by_id(id)
+        .find_by_id_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -1002,39 +971,22 @@ pub async fn get_building_statistics(
             )
         })?;
 
-    // Validate user has access to the organization
-    let is_member = state
-        .org_member_repo
-        .is_member(building.organization_id, auth.user_id)
+    let stats = state
+        .building_repo
+        .get_statistics_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
-            tracing::error!(error = %e, "Failed to check org membership");
+            tracing::error!(error = %e, "Failed to get building statistics");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
+                Json(ErrorResponse::new(
+                    "DB_ERROR",
+                    "Failed to get building statistics",
+                )),
             )
         })?;
 
-    if !is_member {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new(
-                "NOT_AUTHORIZED",
-                "You are not a member of this organization",
-            )),
-        ));
-    }
-
-    let stats = state.building_repo.get_statistics(id).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get building statistics");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                "DB_ERROR",
-                "Failed to get building statistics",
-            )),
-        )
-    })?;
+    rls.release().await;
 
     Ok(Json(stats))
 }
@@ -1088,13 +1040,10 @@ pub async fn list_units(
         .unwrap_or(DEFAULT_LIST_LIMIT)
         .min(MAX_LIST_LIMIT);
 
-    // Note: list_by_building_rls returns Vec without count, need separate count for total
-    // For now, we use the deprecated method which returns (Vec, count) tuple
-    // TODO: Add count_by_building_rls to UnitRepository
-    #[allow(deprecated)]
     let (units, total) = state
         .unit_repo
-        .list_by_building(
+        .list_by_building_with_count_rls(
+            &mut **rls.conn(),
             building_id,
             query.offset,
             limit,

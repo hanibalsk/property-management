@@ -28,7 +28,7 @@ use crate::models::building::{
     Building, BuildingStatistics, BuildingSummary, CreateBuilding, UpdateBuilding,
 };
 use crate::DbPool;
-use sqlx::{Error as SqlxError, Executor, Postgres};
+use sqlx::{postgres::PgConnection, Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for building operations.
@@ -296,6 +296,74 @@ impl BuildingRepository {
         let buildings = data_q.fetch_all(executor).await?;
 
         Ok(buildings)
+    }
+
+    /// List buildings for an organization with count and RLS context.
+    pub async fn list_by_organization_with_count_rls(
+        &self,
+        conn: &mut PgConnection,
+        organization_id: Uuid,
+        offset: i64,
+        limit: i64,
+        include_archived: bool,
+        search: Option<&str>,
+    ) -> Result<(Vec<BuildingSummary>, i64), SqlxError> {
+        let mut conditions = vec!["organization_id = $1".to_string()];
+
+        if !include_archived {
+            conditions.push("status = 'active'".to_string());
+        }
+
+        if search.is_some() {
+            conditions.push(
+                "(LOWER(street) LIKE '%' || LOWER($4::text) || '%' OR \
+                 LOWER(city) LIKE '%' || LOWER($4::text) || '%' OR \
+                 LOWER(name) LIKE '%' || LOWER($4::text) || '%')"
+                    .to_string(),
+            );
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        // Get count first
+        let count_query = format!(
+            r#"
+            SELECT COUNT(*) as count
+            FROM buildings b
+            WHERE {}
+            "#,
+            where_clause
+        );
+
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query).bind(organization_id);
+        if let Some(s) = search {
+            count_q = count_q.bind(s);
+        }
+        let total = count_q.fetch_one(&mut *conn).await?;
+
+        // Get data
+        let data_query = format!(
+            r#"
+            SELECT b.id, b.name, b.street, b.city, b.postal_code, b.total_floors, b.status,
+                   (SELECT COUNT(*) FROM units u WHERE u.building_id = b.id AND u.status = 'active') as unit_count
+            FROM buildings b
+            WHERE {}
+            ORDER BY b.created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+            where_clause
+        );
+
+        let mut data_q = sqlx::query_as::<_, BuildingSummary>(&data_query)
+            .bind(organization_id)
+            .bind(limit)
+            .bind(offset);
+        if let Some(s) = search {
+            data_q = data_q.bind(s);
+        }
+        let buildings = data_q.fetch_all(&mut *conn).await?;
+
+        Ok((buildings, total))
     }
 
     /// Get building statistics with RLS context (UC-15.7).
