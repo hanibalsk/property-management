@@ -23,7 +23,6 @@ VERSION_FILE="$ROOT_DIR/VERSION"
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Check VERSION file exists
@@ -93,6 +92,10 @@ update_package_json() {
     fi
 }
 
+# ==================== Root package.json ====================
+echo "Updating root package.json..."
+update_package_json "$ROOT_DIR/package.json"
+
 # ==================== Backend (Rust) ====================
 echo "Updating backend..."
 CARGO_TOML="$ROOT_DIR/backend/Cargo.toml"
@@ -131,10 +134,12 @@ if [[ -f "$GRADLE_PROPS" ]]; then
     rm -f "$GRADLE_PROPS.tmp"
 
     # Append version properties with single blank line separator
-    echo "" >> "$GRADLE_PROPS"
-    echo "# App version (synced from VERSION file)" >> "$GRADLE_PROPS"
-    echo "app.versionName=$VERSION" >> "$GRADLE_PROPS"
-    echo "app.versionCode=$VERSION_CODE" >> "$GRADLE_PROPS"
+    {
+        echo ""
+        echo "# App version (synced from VERSION file)"
+        echo "app.versionName=$VERSION"
+        echo "app.versionCode=$VERSION_CODE"
+    } >> "$GRADLE_PROPS"
 
     echo -e "  ${GREEN}✓${NC} Updated $GRADLE_PROPS"
 fi
