@@ -147,8 +147,8 @@ async fn main() -> anyhow::Result<()> {
         "postgres://postgres:postgres@localhost:5432/ppt".to_string()
     });
 
-    // Connect to database
-    let pool = db::create_pool(&database_url).await?;
+    // Connect to database with RLS-safe pool
+    let pool = db::create_rls_safe_pool(&database_url).await?;
     let repo = FeatureFlagRepository::new(pool);
 
     match cli.command {

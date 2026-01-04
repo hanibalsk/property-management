@@ -770,14 +770,14 @@ pub async fn bulk_import_buildings(
 )]
 pub async fn get_building(
     State(state): State<AppState>,
-    auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
-    #[allow(deprecated)]
+    // RLS policies automatically filter by tenant - user can only see buildings
+    // in organizations they belong to
     let building = state
         .building_repo
-        .find_by_id(id)
+        .find_by_id_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -787,35 +787,15 @@ pub async fn get_building(
             )
         })?
         .ok_or_else(|| {
+            // RLS will return None if user doesn't have access OR building doesn't exist
+            // This is intentional - we don't leak existence of buildings user can't access
             (
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Building not found")),
             )
         })?;
 
-    // Validate user has access to the organization
-    let is_member = state
-        .org_member_repo
-        .is_member(building.organization_id, auth.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to check org membership");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
-            )
-        })?;
-
-    if !is_member {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new(
-                "NOT_AUTHORIZED",
-                "You are not a member of this organization",
-            )),
-        ));
-    }
-
+    rls.release().await;
     Ok(Json(BuildingResponse::from(building)))
 }
 
@@ -837,54 +817,10 @@ pub async fn get_building(
 )]
 pub async fn update_building(
     State(state): State<AppState>,
-    auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateBuildingRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    // First get the building to check organization access
-    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
-    #[allow(deprecated)]
-    let existing = state
-        .building_repo
-        .find_by_id(id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to get building");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Building not found")),
-            )
-        })?;
-
-    // Validate user has access to the organization
-    let is_member = state
-        .org_member_repo
-        .is_member(existing.organization_id, auth.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to check org membership");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
-            )
-        })?;
-
-    if !is_member {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new(
-                "NOT_AUTHORIZED",
-                "You are not a member of this organization",
-            )),
-        ));
-    }
-
     let update_data = UpdateBuilding {
         street: req.street,
         city: req.city,
@@ -900,11 +836,10 @@ pub async fn update_building(
         settings: None,
     };
 
-    // TODO: Migrate to update_rls when this handler has RLS connection
-    #[allow(deprecated)]
+    // RLS policies automatically enforce tenant isolation and access control
     let building = state
         .building_repo
-        .update(id, update_data)
+        .update_rls(&mut **rls.conn(), id, update_data)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to update building");
@@ -914,14 +849,16 @@ pub async fn update_building(
             )
         })?
         .ok_or_else(|| {
+            // RLS returns None if user doesn't have access OR building doesn't exist
             (
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Building not found")),
             )
         })?;
 
-    tracing::info!(building_id = %id, user_id = %auth.user_id, "Building updated");
+    tracing::info!(building_id = %id, user_id = %rls.user_id(), "Building updated");
 
+    rls.release().await;
     Ok(Json(BuildingResponse::from(building)))
 }
 
@@ -941,66 +878,28 @@ pub async fn update_building(
 )]
 pub async fn archive_building(
     State(state): State<AppState>,
-    auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    // First get the building to check organization access
-    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
-    #[allow(deprecated)]
-    let existing = state
+    // RLS policies automatically enforce tenant isolation and access control
+    let building = state
         .building_repo
-        .find_by_id(id)
+        .archive_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
-            tracing::error!(error = %e, "Failed to get building");
+            tracing::error!(error = %e, "Failed to archive building");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
-            )
-        })?
-        .ok_or_else(|| {
-            (
-                StatusCode::NOT_FOUND,
-                Json(ErrorResponse::new("NOT_FOUND", "Building not found")),
+                Json(ErrorResponse::new("DB_ERROR", "Failed to archive building")),
             )
         })?;
 
-    // Validate user has access to the organization
-    let is_member = state
-        .org_member_repo
-        .is_member(existing.organization_id, auth.user_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Failed to check org membership");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new("DB_ERROR", "Database error")),
-            )
-        })?;
-
-    if !is_member {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new(
-                "NOT_AUTHORIZED",
-                "You are not a member of this organization",
-            )),
-        ));
-    }
-
-    // TODO: Migrate to archive_rls when this handler has RLS connection
-    #[allow(deprecated)]
-    let building = state.building_repo.archive(id).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to archive building");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", "Failed to archive building")),
-        )
-    })?;
+    let user_id = rls.user_id();
+    rls.release().await;
 
     match building {
         Some(b) => {
-            tracing::info!(building_id = %id, user_id = %auth.user_id, "Building archived");
+            tracing::info!(building_id = %id, user_id = %user_id, "Building archived");
             Ok(Json(BuildingResponse::from(b)))
         }
         None => Err((

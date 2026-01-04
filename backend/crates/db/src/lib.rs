@@ -55,10 +55,65 @@ pub use rls_pool::{PublicConnection, RlsGuard, RlsPool};
 pub use repositories::FormRepository;
 
 /// Create database connection pool.
+///
+/// This creates a standard pool without RLS cleanup hooks.
+/// For production use with RLS, prefer `create_rls_safe_pool`.
 pub async fn create_pool(database_url: &str) -> Result<DbPool, sqlx::Error> {
     PgPoolOptions::new()
         .max_connections(10)
         .acquire_timeout(Duration::from_secs(5))
+        .connect(database_url)
+        .await
+}
+
+/// Create an RLS-safe database connection pool with automatic context cleanup.
+///
+/// This pool uses `after_release` hook to ensure RLS context is always cleared
+/// before a connection is returned to the pool, providing defense-in-depth
+/// against context bleeding even if `release()` is not called.
+///
+/// # Security
+///
+/// The `after_release` hook runs `clear_request_context()` on every connection
+/// before it's returned to the idle pool. This guarantees that:
+/// 1. No stale tenant context can bleed between requests
+/// 2. Super-admin privileges cannot persist on pooled connections
+/// 3. Runtime shutdown edge cases are handled (hook runs synchronously in pool)
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let pool = create_rls_safe_pool(&database_url).await?;
+/// // All connections returned to this pool will have RLS context cleared
+/// ```
+pub async fn create_rls_safe_pool(database_url: &str) -> Result<DbPool, sqlx::Error> {
+    use sqlx::Executor;
+
+    PgPoolOptions::new()
+        .max_connections(10)
+        .acquire_timeout(Duration::from_secs(5))
+        .after_release(|conn, _meta| {
+            Box::pin(async move {
+                // Clear RLS context before returning connection to pool
+                // This is defense-in-depth: even if release() wasn't called,
+                // the connection will be scrubbed before reuse
+                match conn.execute("SELECT clear_request_context()").await {
+                    Ok(_) => {
+                        tracing::trace!("RLS context cleared via pool after_release hook");
+                        Ok(true) // Return connection to pool
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            error = %e,
+                            "SECURITY: Failed to clear RLS context in after_release hook - closing connection"
+                        );
+                        // Return false to close the connection rather than reuse it
+                        // with potentially stale RLS context
+                        Ok(false)
+                    }
+                }
+            })
+        })
         .connect(database_url)
         .await
 }
