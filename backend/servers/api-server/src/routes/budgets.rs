@@ -1045,9 +1045,18 @@ async fn get_dashboard(
     mut rls: RlsConnection,
     Query(query): Query<BuildingQuery>,
 ) -> impl IntoResponse {
-    // The dashboard requires multiple queries, so we use the legacy method
-    // which internally uses the pool. For full RLS support, this would need
-    // to be refactored to make all queries using the RLS connection.
+    // The dashboard currently performs multiple queries using the legacy
+    // repository method, which internally uses the shared pool rather than
+    // the RLS-bound connection provided here. This means the queries do not
+    // all run on a single RLS-enforced connection.
+    //
+    // For full RLS support, this handler (or the repository) needs to be
+    // refactored so all dashboard queries execute using `rls.conn()`, either
+    // by:
+    //   - moving the dashboard logic to use the RLS connection inside a
+    //     single transaction, or
+    //   - rewriting the dashboard logic into a combined query (or small set
+    //     of queries) that can run via the RLS-aware connection.
     #[allow(deprecated)]
     match state
         .budget_repo
@@ -1490,9 +1499,17 @@ async fn record_reserve_transaction(
     Path(id): Path<Uuid>,
     Json(data): Json<RecordReserveTransaction>,
 ) -> impl IntoResponse {
-    // The record_reserve_transaction_rls method requires the current balance.
-    // We need to first fetch the reserve fund to get its current balance.
-    // This uses the deprecated method since it requires multiple queries.
+    // The current implementation of record_reserve_transaction requires the
+    // reserve fund's current balance and therefore issues multiple queries.
+    //
+    // This bypasses the RLS-aware API for now and uses a deprecated method.
+    // TODO(epic-24): Refactor this into a single RLS-compatible operation:
+    //   * either implement record_reserve_transaction as a database stored
+    //     procedure that atomically reads the balance and records the
+    //     transaction under RLS, or
+    //   * introduce a record_reserve_transaction_rls(...) repository method
+    //     that performs the required queries within a transaction using
+    //     RlsConnection so that RLS policies are correctly enforced.
     #[allow(deprecated)]
     match state
         .budget_repo

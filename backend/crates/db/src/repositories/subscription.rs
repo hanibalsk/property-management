@@ -240,7 +240,9 @@ impl SubscriptionRepository {
     where
         E: Executor<'e, Database = Postgres>,
     {
-        // Get plan for trial days calculation - use legacy method since we need a separate query
+        // Get plan for trial days calculation - use legacy method since we need a separate query.
+        // TODO: Refactor to accept the plan object as a parameter, or use a JOIN query
+        // within this method to fetch both plan and subscription in one RLS-aware operation.
         let plan = self.find_plan_by_id(data.plan_id).await?;
 
         let billing_cycle = data.billing_cycle.unwrap_or_else(|| "monthly".to_string());

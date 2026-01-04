@@ -351,16 +351,21 @@ impl VoteRepository {
         note = "Use create_poll_rls with RlsConnection instead"
     )]
     pub async fn create(&self, data: CreateVote) -> Result<Vote, SqlxError> {
-        let vote = self.create_poll_rls(&self.pool, data.clone()).await?;
+        // Save fields needed for audit log before moving data into create_poll_rls
+        let created_by = data.created_by;
+        let title = data.title.clone();
+        let quorum_type = data.quorum_type.clone();
+
+        let vote = self.create_poll_rls(&self.pool, data).await?;
 
         // Create audit log entry (using legacy pool)
         self.create_audit_entry(CreateVoteAuditLog {
             vote_id: vote.id,
-            user_id: Some(data.created_by),
+            user_id: Some(created_by),
             action: audit_action::VOTE_CREATED.to_string(),
             data: serde_json::json!({
-                "title": data.title,
-                "quorum_type": data.quorum_type,
+                "title": title,
+                "quorum_type": quorum_type,
             }),
             ip_address: None,
             user_agent: None,
