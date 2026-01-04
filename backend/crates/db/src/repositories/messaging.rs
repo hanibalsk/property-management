@@ -1,4 +1,28 @@
 //! Messaging repository (Epic 6, Story 6.5).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_message(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateMessageRequest>,
+//! ) -> Result<Json<Message>> {
+//!     let message = state.messaging_repo.create_message_rls(rls.conn(), data).await?;
+//!     rls.release().await;
+//!     Ok(Json(message))
+//! }
+//! ```
 
 use crate::models::messaging::{
     BlockWithUserInfo, BlockWithUserInfoRow, CreateBlock, CreateMessage, CreateThread, Message,
@@ -6,7 +30,7 @@ use crate::models::messaging::{
     ThreadWithPreviewRow, UserBlock,
 };
 use crate::DbPool;
-use sqlx::Error as SqlxError;
+use sqlx::{Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for messaging operations.
@@ -22,17 +46,25 @@ impl MessagingRepository {
     }
 
     // ========================================================================
-    // MESSAGE THREAD OPERATIONS
+    // RLS-aware methods (recommended)
     // ========================================================================
 
-    /// Get or create a thread between two users.
+    // ------------------------------------------------------------------------
+    // MESSAGE THREAD OPERATIONS (RLS)
+    // ------------------------------------------------------------------------
+
+    /// Get or create a thread between two users with RLS context.
     ///
     /// If a thread already exists between the two users, return it.
     /// Otherwise, create a new thread.
-    pub async fn get_or_create_thread(
+    pub async fn get_or_create_thread_rls<'e, E>(
         &self,
+        executor: E,
         data: CreateThread,
-    ) -> Result<MessageThread, SqlxError> {
+    ) -> Result<MessageThread, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         // Ensure exactly 2 participants
         if data.participant_ids.len() != 2 {
             return Err(SqlxError::Protocol(
@@ -44,62 +76,58 @@ impl MessagingRepository {
         let mut sorted_ids = data.participant_ids.clone();
         sorted_ids.sort();
 
-        // Check if thread already exists
-        let existing = sqlx::query_as::<_, MessageThread>(
-            r#"
-            SELECT * FROM message_threads
-            WHERE organization_id = $1
-              AND participant_ids @> $2::uuid[]
-              AND participant_ids <@ $2::uuid[]
-            "#,
-        )
-        .bind(data.organization_id)
-        .bind(&sorted_ids)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        if let Some(thread) = existing {
-            return Ok(thread);
-        }
-
-        // Create new thread
+        // Note: For RLS version, we combine check and insert using ON CONFLICT
+        // to avoid needing multiple executor calls
         let thread = sqlx::query_as::<_, MessageThread>(
             r#"
             INSERT INTO message_threads (organization_id, participant_ids)
             VALUES ($1, $2)
+            ON CONFLICT ON CONSTRAINT message_threads_organization_id_participant_ids_key
+            DO UPDATE SET updated_at = message_threads.updated_at
             RETURNING *
             "#,
         )
         .bind(data.organization_id)
         .bind(&sorted_ids)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(thread)
     }
 
-    /// Get a thread by ID.
-    pub async fn get_thread(&self, id: Uuid) -> Result<Option<MessageThread>, SqlxError> {
+    /// Get a thread by ID with RLS context.
+    pub async fn get_thread_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<MessageThread>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let thread = sqlx::query_as::<_, MessageThread>(
             r#"
             SELECT * FROM message_threads WHERE id = $1
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(thread)
     }
 
-    /// List threads for a user with preview info.
-    pub async fn list_threads(
+    /// List threads for a user with preview info with RLS context.
+    pub async fn list_threads_rls<'e, E>(
         &self,
+        executor: E,
         user_id: Uuid,
         organization_id: Uuid,
         limit: Option<i64>,
         offset: Option<i64>,
-    ) -> Result<Vec<ThreadWithPreview>, SqlxError> {
+    ) -> Result<Vec<ThreadWithPreview>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = limit.unwrap_or(20).min(100);
         let offset = offset.unwrap_or(0);
 
@@ -162,7 +190,7 @@ impl MessagingRepository {
         .bind(organization_id)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         let threads = rows
@@ -173,12 +201,16 @@ impl MessagingRepository {
         Ok(threads)
     }
 
-    /// Count threads for a user.
-    pub async fn count_threads(
+    /// Count threads for a user with RLS context.
+    pub async fn count_threads_rls<'e, E>(
         &self,
+        executor: E,
         user_id: Uuid,
         organization_id: Uuid,
-    ) -> Result<i64, SqlxError> {
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let (count,): (i64,) = sqlx::query_as(
             r#"
             SELECT COUNT(*) FROM message_threads
@@ -188,14 +220,22 @@ impl MessagingRepository {
         )
         .bind(user_id)
         .bind(organization_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(count)
     }
 
-    /// Check if user is participant in thread.
-    pub async fn is_participant(&self, thread_id: Uuid, user_id: Uuid) -> Result<bool, SqlxError> {
+    /// Check if user is participant in thread with RLS context.
+    pub async fn is_participant_rls<'e, E>(
+        &self,
+        executor: E,
+        thread_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let (is_participant,): (bool,) = sqlx::query_as(
             r#"
             SELECT $2 = ANY(participant_ids)
@@ -205,18 +245,25 @@ impl MessagingRepository {
         )
         .bind(thread_id)
         .bind(user_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(is_participant)
     }
 
-    // ========================================================================
-    // MESSAGE OPERATIONS
-    // ========================================================================
+    // ------------------------------------------------------------------------
+    // MESSAGE OPERATIONS (RLS)
+    // ------------------------------------------------------------------------
 
-    /// Create a new message.
-    pub async fn create_message(&self, data: CreateMessage) -> Result<Message, SqlxError> {
+    /// Create a new message with RLS context.
+    pub async fn create_message_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateMessage,
+    ) -> Result<Message, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let message = sqlx::query_as::<_, Message>(
             r#"
             INSERT INTO messages (thread_id, sender_id, content)
@@ -227,19 +274,23 @@ impl MessagingRepository {
         .bind(data.thread_id)
         .bind(data.sender_id)
         .bind(&data.content)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(message)
     }
 
-    /// Get messages for a thread with sender info.
-    pub async fn get_thread_messages(
+    /// Get messages for a thread with sender info with RLS context.
+    pub async fn get_thread_messages_rls<'e, E>(
         &self,
+        executor: E,
         thread_id: Uuid,
         limit: Option<i64>,
         offset: Option<i64>,
-    ) -> Result<Vec<MessageWithSender>, SqlxError> {
+    ) -> Result<Vec<MessageWithSender>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = limit.unwrap_or(50).min(100);
         let offset = offset.unwrap_or(0);
 
@@ -266,7 +317,7 @@ impl MessagingRepository {
         .bind(thread_id)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         let messages = rows.into_iter().map(MessageWithSender::from).collect();
@@ -274,8 +325,15 @@ impl MessagingRepository {
         Ok(messages)
     }
 
-    /// Count messages in a thread.
-    pub async fn count_thread_messages(&self, thread_id: Uuid) -> Result<i64, SqlxError> {
+    /// Count messages in a thread with RLS context.
+    pub async fn count_thread_messages_rls<'e, E>(
+        &self,
+        executor: E,
+        thread_id: Uuid,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let (count,): (i64,) = sqlx::query_as(
             r#"
             SELECT COUNT(*) FROM messages
@@ -283,18 +341,22 @@ impl MessagingRepository {
             "#,
         )
         .bind(thread_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(count)
     }
 
-    /// Mark all messages in a thread as read for a user.
-    pub async fn mark_thread_read(
+    /// Mark all messages in a thread as read for a user with RLS context.
+    pub async fn mark_thread_read_rls<'e, E>(
         &self,
+        executor: E,
         thread_id: Uuid,
         reader_id: Uuid,
-    ) -> Result<i64, SqlxError> {
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let result = sqlx::query(
             r#"
             UPDATE messages
@@ -307,18 +369,22 @@ impl MessagingRepository {
         )
         .bind(thread_id)
         .bind(reader_id)
-        .execute(&self.pool)
+        .execute(executor)
         .await?;
 
         Ok(result.rows_affected() as i64)
     }
 
-    /// Count unread messages for a user across all threads.
-    pub async fn count_unread(
+    /// Count unread messages for a user across all threads with RLS context.
+    pub async fn count_unread_rls<'e, E>(
         &self,
+        executor: E,
         user_id: Uuid,
         organization_id: Uuid,
-    ) -> Result<i64, SqlxError> {
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let (count,): (i64,) = sqlx::query_as(
             r#"
             SELECT COUNT(*)
@@ -333,18 +399,22 @@ impl MessagingRepository {
         )
         .bind(user_id)
         .bind(organization_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(count)
     }
 
-    /// Soft delete a message.
-    pub async fn delete_message(
+    /// Soft delete a message with RLS context.
+    pub async fn delete_message_rls<'e, E>(
         &self,
+        executor: E,
         message_id: Uuid,
         deleted_by: Uuid,
-    ) -> Result<Message, SqlxError> {
+    ) -> Result<Message, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let message = sqlx::query_as::<_, Message>(
             r#"
             UPDATE messages
@@ -357,17 +427,401 @@ impl MessagingRepository {
         )
         .bind(message_id)
         .bind(deleted_by)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(message)
     }
 
+    // ------------------------------------------------------------------------
+    // USER BLOCK OPERATIONS (RLS)
+    // ------------------------------------------------------------------------
+
+    /// Block a user with RLS context.
+    pub async fn block_user_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateBlock,
+    ) -> Result<UserBlock, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Use ON CONFLICT to handle already blocked case
+        let block = sqlx::query_as::<_, UserBlock>(
+            r#"
+            INSERT INTO user_blocks (blocker_id, blocked_id, organization_id)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (blocker_id, blocked_id) DO NOTHING
+            RETURNING *
+            "#,
+        )
+        .bind(data.blocker_id)
+        .bind(data.blocked_id)
+        .bind(data.organization_id)
+        .fetch_optional(executor)
+        .await?;
+
+        block.ok_or_else(|| SqlxError::Protocol("User is already blocked".to_string()))
+    }
+
+    /// Unblock a user with RLS context.
+    pub async fn unblock_user_rls<'e, E>(
+        &self,
+        executor: E,
+        blocker_id: Uuid,
+        blocked_id: Uuid,
+    ) -> Result<(), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        sqlx::query(
+            r#"
+            DELETE FROM user_blocks
+            WHERE blocker_id = $1 AND blocked_id = $2
+            "#,
+        )
+        .bind(blocker_id)
+        .bind(blocked_id)
+        .execute(executor)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Get a specific block with RLS context.
+    pub async fn get_block_rls<'e, E>(
+        &self,
+        executor: E,
+        blocker_id: Uuid,
+        blocked_id: Uuid,
+    ) -> Result<Option<UserBlock>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let block = sqlx::query_as::<_, UserBlock>(
+            r#"
+            SELECT * FROM user_blocks
+            WHERE blocker_id = $1 AND blocked_id = $2
+            "#,
+        )
+        .bind(blocker_id)
+        .bind(blocked_id)
+        .fetch_optional(executor)
+        .await?;
+
+        Ok(block)
+    }
+
+    /// Check if either user has blocked the other with RLS context.
+    pub async fn is_blocked_rls<'e, E>(
+        &self,
+        executor: E,
+        user_a: Uuid,
+        user_b: Uuid,
+    ) -> Result<bool, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let (exists,): (bool,) = sqlx::query_as(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM user_blocks
+                WHERE (blocker_id = $1 AND blocked_id = $2)
+                   OR (blocker_id = $2 AND blocked_id = $1)
+            )
+            "#,
+        )
+        .bind(user_a)
+        .bind(user_b)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(exists)
+    }
+
+    /// List blocked users with their info with RLS context.
+    pub async fn list_blocked_users_rls<'e, E>(
+        &self,
+        executor: E,
+        blocker_id: Uuid,
+    ) -> Result<Vec<BlockWithUserInfo>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let rows = sqlx::query_as::<_, BlockWithUserInfoRow>(
+            r#"
+            SELECT
+                b.id,
+                b.blocker_id,
+                b.blocked_id,
+                b.created_at,
+                u.first_name as blocked_first_name,
+                u.last_name as blocked_last_name,
+                u.email as blocked_email
+            FROM user_blocks b
+            JOIN users u ON u.id = b.blocked_id
+            WHERE b.blocker_id = $1
+            ORDER BY b.created_at DESC
+            "#,
+        )
+        .bind(blocker_id)
+        .fetch_all(executor)
+        .await?;
+
+        let blocks = rows.into_iter().map(BlockWithUserInfo::from).collect();
+
+        Ok(blocks)
+    }
+
+    /// Count blocked users with RLS context.
+    pub async fn count_blocked_users_rls<'e, E>(
+        &self,
+        executor: E,
+        blocker_id: Uuid,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let (count,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM user_blocks WHERE blocker_id = $1
+            "#,
+        )
+        .bind(blocker_id)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(count)
+    }
+
     // ========================================================================
-    // USER BLOCK OPERATIONS
+    // Legacy methods (use pool directly - migrate to RLS versions)
     // ========================================================================
 
+    // ------------------------------------------------------------------------
+    // MESSAGE THREAD OPERATIONS (Legacy)
+    // ------------------------------------------------------------------------
+
+    /// Get or create a thread between two users.
+    ///
+    /// If a thread already exists between the two users, return it.
+    /// Otherwise, create a new thread.
+    ///
+    /// **Deprecated**: Use `get_or_create_thread_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_or_create_thread_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn get_or_create_thread(
+        &self,
+        data: CreateThread,
+    ) -> Result<MessageThread, SqlxError> {
+        // Ensure exactly 2 participants
+        if data.participant_ids.len() != 2 {
+            return Err(SqlxError::Protocol(
+                "Thread must have exactly 2 participants".to_string(),
+            ));
+        }
+
+        // Sort participant IDs for consistent lookup
+        let mut sorted_ids = data.participant_ids.clone();
+        sorted_ids.sort();
+
+        // Check if thread already exists
+        let existing = sqlx::query_as::<_, MessageThread>(
+            r#"
+            SELECT * FROM message_threads
+            WHERE organization_id = $1
+              AND participant_ids @> $2::uuid[]
+              AND participant_ids <@ $2::uuid[]
+            "#,
+        )
+        .bind(data.organization_id)
+        .bind(&sorted_ids)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if let Some(thread) = existing {
+            return Ok(thread);
+        }
+
+        // Create new thread
+        let thread = sqlx::query_as::<_, MessageThread>(
+            r#"
+            INSERT INTO message_threads (organization_id, participant_ids)
+            VALUES ($1, $2)
+            RETURNING *
+            "#,
+        )
+        .bind(data.organization_id)
+        .bind(&sorted_ids)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(thread)
+    }
+
+    /// Get a thread by ID.
+    ///
+    /// **Deprecated**: Use `get_thread_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_thread_rls with RlsConnection instead"
+    )]
+    pub async fn get_thread(&self, id: Uuid) -> Result<Option<MessageThread>, SqlxError> {
+        self.get_thread_rls(&self.pool, id).await
+    }
+
+    /// List threads for a user with preview info.
+    ///
+    /// **Deprecated**: Use `list_threads_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use list_threads_rls with RlsConnection instead"
+    )]
+    pub async fn list_threads(
+        &self,
+        user_id: Uuid,
+        organization_id: Uuid,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<ThreadWithPreview>, SqlxError> {
+        self.list_threads_rls(&self.pool, user_id, organization_id, limit, offset)
+            .await
+    }
+
+    /// Count threads for a user.
+    ///
+    /// **Deprecated**: Use `count_threads_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_threads_rls with RlsConnection instead"
+    )]
+    pub async fn count_threads(
+        &self,
+        user_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<i64, SqlxError> {
+        self.count_threads_rls(&self.pool, user_id, organization_id)
+            .await
+    }
+
+    /// Check if user is participant in thread.
+    ///
+    /// **Deprecated**: Use `is_participant_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use is_participant_rls with RlsConnection instead"
+    )]
+    pub async fn is_participant(&self, thread_id: Uuid, user_id: Uuid) -> Result<bool, SqlxError> {
+        self.is_participant_rls(&self.pool, thread_id, user_id)
+            .await
+    }
+
+    // ------------------------------------------------------------------------
+    // MESSAGE OPERATIONS (Legacy)
+    // ------------------------------------------------------------------------
+
+    /// Create a new message.
+    ///
+    /// **Deprecated**: Use `create_message_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_message_rls with RlsConnection instead"
+    )]
+    pub async fn create_message(&self, data: CreateMessage) -> Result<Message, SqlxError> {
+        self.create_message_rls(&self.pool, data).await
+    }
+
+    /// Get messages for a thread with sender info.
+    ///
+    /// **Deprecated**: Use `get_thread_messages_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_thread_messages_rls with RlsConnection instead"
+    )]
+    pub async fn get_thread_messages(
+        &self,
+        thread_id: Uuid,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<MessageWithSender>, SqlxError> {
+        self.get_thread_messages_rls(&self.pool, thread_id, limit, offset)
+            .await
+    }
+
+    /// Count messages in a thread.
+    ///
+    /// **Deprecated**: Use `count_thread_messages_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_thread_messages_rls with RlsConnection instead"
+    )]
+    pub async fn count_thread_messages(&self, thread_id: Uuid) -> Result<i64, SqlxError> {
+        self.count_thread_messages_rls(&self.pool, thread_id).await
+    }
+
+    /// Mark all messages in a thread as read for a user.
+    ///
+    /// **Deprecated**: Use `mark_thread_read_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use mark_thread_read_rls with RlsConnection instead"
+    )]
+    pub async fn mark_thread_read(
+        &self,
+        thread_id: Uuid,
+        reader_id: Uuid,
+    ) -> Result<i64, SqlxError> {
+        self.mark_thread_read_rls(&self.pool, thread_id, reader_id)
+            .await
+    }
+
+    /// Count unread messages for a user across all threads.
+    ///
+    /// **Deprecated**: Use `count_unread_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_unread_rls with RlsConnection instead"
+    )]
+    pub async fn count_unread(
+        &self,
+        user_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<i64, SqlxError> {
+        self.count_unread_rls(&self.pool, user_id, organization_id)
+            .await
+    }
+
+    /// Soft delete a message.
+    ///
+    /// **Deprecated**: Use `delete_message_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use delete_message_rls with RlsConnection instead"
+    )]
+    pub async fn delete_message(
+        &self,
+        message_id: Uuid,
+        deleted_by: Uuid,
+    ) -> Result<Message, SqlxError> {
+        self.delete_message_rls(&self.pool, message_id, deleted_by)
+            .await
+    }
+
+    // ------------------------------------------------------------------------
+    // USER BLOCK OPERATIONS (Legacy)
+    // ------------------------------------------------------------------------
+
     /// Block a user.
+    ///
+    /// **Deprecated**: Use `block_user_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use block_user_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn block_user(&self, data: CreateBlock) -> Result<UserBlock, SqlxError> {
         // Check if already blocked
         let existing = self.get_block(data.blocker_id, data.blocked_id).await?;
@@ -392,101 +846,65 @@ impl MessagingRepository {
     }
 
     /// Unblock a user.
+    ///
+    /// **Deprecated**: Use `unblock_user_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use unblock_user_rls with RlsConnection instead"
+    )]
     pub async fn unblock_user(&self, blocker_id: Uuid, blocked_id: Uuid) -> Result<(), SqlxError> {
-        sqlx::query(
-            r#"
-            DELETE FROM user_blocks
-            WHERE blocker_id = $1 AND blocked_id = $2
-            "#,
-        )
-        .bind(blocker_id)
-        .bind(blocked_id)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
+        self.unblock_user_rls(&self.pool, blocker_id, blocked_id)
+            .await
     }
 
     /// Get a specific block.
+    ///
+    /// **Deprecated**: Use `get_block_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_block_rls with RlsConnection instead"
+    )]
     pub async fn get_block(
         &self,
         blocker_id: Uuid,
         blocked_id: Uuid,
     ) -> Result<Option<UserBlock>, SqlxError> {
-        let block = sqlx::query_as::<_, UserBlock>(
-            r#"
-            SELECT * FROM user_blocks
-            WHERE blocker_id = $1 AND blocked_id = $2
-            "#,
-        )
-        .bind(blocker_id)
-        .bind(blocked_id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(block)
+        self.get_block_rls(&self.pool, blocker_id, blocked_id).await
     }
 
     /// Check if either user has blocked the other.
+    ///
+    /// **Deprecated**: Use `is_blocked_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use is_blocked_rls with RlsConnection instead"
+    )]
     pub async fn is_blocked(&self, user_a: Uuid, user_b: Uuid) -> Result<bool, SqlxError> {
-        let (exists,): (bool,) = sqlx::query_as(
-            r#"
-            SELECT EXISTS(
-                SELECT 1 FROM user_blocks
-                WHERE (blocker_id = $1 AND blocked_id = $2)
-                   OR (blocker_id = $2 AND blocked_id = $1)
-            )
-            "#,
-        )
-        .bind(user_a)
-        .bind(user_b)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(exists)
+        self.is_blocked_rls(&self.pool, user_a, user_b).await
     }
 
     /// List blocked users with their info.
+    ///
+    /// **Deprecated**: Use `list_blocked_users_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use list_blocked_users_rls with RlsConnection instead"
+    )]
     pub async fn list_blocked_users(
         &self,
         blocker_id: Uuid,
     ) -> Result<Vec<BlockWithUserInfo>, SqlxError> {
-        let rows = sqlx::query_as::<_, BlockWithUserInfoRow>(
-            r#"
-            SELECT
-                b.id,
-                b.blocker_id,
-                b.blocked_id,
-                b.created_at,
-                u.first_name as blocked_first_name,
-                u.last_name as blocked_last_name,
-                u.email as blocked_email
-            FROM user_blocks b
-            JOIN users u ON u.id = b.blocked_id
-            WHERE b.blocker_id = $1
-            ORDER BY b.created_at DESC
-            "#,
-        )
-        .bind(blocker_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        let blocks = rows.into_iter().map(BlockWithUserInfo::from).collect();
-
-        Ok(blocks)
+        self.list_blocked_users_rls(&self.pool, blocker_id).await
     }
 
     /// Count blocked users.
+    ///
+    /// **Deprecated**: Use `count_blocked_users_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_blocked_users_rls with RlsConnection instead"
+    )]
     pub async fn count_blocked_users(&self, blocker_id: Uuid) -> Result<i64, SqlxError> {
-        let (count,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT COUNT(*) FROM user_blocks WHERE blocker_id = $1
-            "#,
-        )
-        .bind(blocker_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(count)
+        self.count_blocked_users_rls(&self.pool, blocker_id).await
     }
 }

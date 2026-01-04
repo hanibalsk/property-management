@@ -196,6 +196,9 @@ impl Scheduler {
 
     /// Publish all scheduled announcements that are due and send notifications.
     async fn publish_scheduled_announcements(&self) -> Result<(), sqlx::Error> {
+        // Note: Scheduler runs in background without user context.
+        // These operations are privileged/admin-level and don't need RLS enforcement.
+        #[allow(deprecated)]
         let published = self.announcement_repo.publish_scheduled().await?;
 
         if !published.is_empty() {
@@ -414,8 +417,13 @@ impl Scheduler {
             // Send notifications for each closed vote
             for vote_id in &closed_ids {
                 // Get the vote with results
-                if let Ok(Some(vote)) = self.vote_repo.find_by_id(*vote_id).await {
-                    if let Ok(Some(results)) = self.vote_repo.get_results(*vote_id).await {
+                // Note: Scheduler runs in background without user context - RLS not applicable
+                #[allow(deprecated)]
+                let vote_result = self.vote_repo.find_by_id(*vote_id).await;
+                #[allow(deprecated)]
+                let results_result = self.vote_repo.get_results(*vote_id).await;
+                if let Ok(Some(vote)) = vote_result {
+                    if let Ok(Some(results)) = results_result {
                         // Get participants (users who voted)
                         let participant_ids = self
                             .get_vote_participants(*vote_id)

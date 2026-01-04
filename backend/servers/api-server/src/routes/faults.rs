@@ -1,6 +1,7 @@
 //! Fault routes (Epic 4: Fault Reporting & Resolution).
 
 use crate::state::AppState;
+use api_core::extractors::RlsConnection;
 use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
@@ -283,6 +284,7 @@ pub fn router() -> Router<AppState> {
 async fn create_fault(
     State(state): State<AppState>,
     headers: HeaderMap,
+    mut rls: RlsConnection,
     Json(req): Json<CreateFaultRequest>,
 ) -> Result<(StatusCode, Json<CreateFaultResponse>), (StatusCode, Json<ErrorResponse>)> {
     let context = extract_tenant_context(&headers)?;
@@ -300,17 +302,22 @@ async fn create_fault(
         idempotency_key: req.idempotency_key,
     };
 
-    let fault = state.fault_repo.create(data).await.map_err(|e| {
-        tracing::error!("Failed to create fault: {}", e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                "INTERNAL_ERROR",
-                "Failed to create fault",
-            )),
-        )
-    })?;
+    let fault = state
+        .fault_repo
+        .create_rls(&mut **rls.conn(), data)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to create fault: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    "INTERNAL_ERROR",
+                    "Failed to create fault",
+                )),
+            )
+        })?;
 
+    rls.release().await;
     Ok((
         StatusCode::CREATED,
         Json(CreateFaultResponse {
@@ -488,20 +495,23 @@ async fn get_fault(
 )]
 async fn update_fault(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateFaultRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Check fault exists and can be edited
-    let existing = match state.fault_repo.find_by_id(id).await {
+    let existing = match state.fault_repo.find_by_id_rls(&mut **rls.conn(), id).await {
         Ok(Some(f)) => f,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
-            ))
+            ));
         }
         Err(e) => {
             tracing::error!("Failed to find fault: {}", e);
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to find fault")),
@@ -510,6 +520,7 @@ async fn update_fault(
     };
 
     if !existing.can_reporter_edit() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -526,13 +537,21 @@ async fn update_fault(
         category: req.category,
     };
 
-    match state.fault_repo.update(id, data).await {
-        Ok(fault) => Ok(Json(FaultActionResponse {
-            message: "Fault updated".to_string(),
-            fault,
-        })),
+    match state
+        .fault_repo
+        .update_rls(&mut **rls.conn(), id, data)
+        .await
+    {
+        Ok(fault) => {
+            rls.release().await;
+            Ok(Json(FaultActionResponse {
+                message: "Fault updated".to_string(),
+                fault,
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to update fault: {}", e);
+            rls.release().await;
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new(
@@ -562,22 +581,25 @@ async fn update_fault(
 async fn triage_fault(
     State(state): State<AppState>,
     headers: HeaderMap,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<TriageFaultRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     let context = extract_tenant_context(&headers)?;
 
     // Check fault exists
-    let existing = match state.fault_repo.find_by_id(id).await {
+    let existing = match state.fault_repo.find_by_id_rls(&mut **rls.conn(), id).await {
         Ok(Some(f)) => f,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
-            ))
+            ));
         }
         Err(e) => {
             tracing::error!("Failed to find fault: {}", e);
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to find fault")),
@@ -586,6 +608,7 @@ async fn triage_fault(
     };
 
     if existing.status != "new" {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -616,6 +639,7 @@ async fn triage_fault(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(FaultActionResponse {
         message: "Fault triaged successfully".to_string(),
         fault,
@@ -687,10 +711,31 @@ async fn assign_fault(
 async fn update_status(
     State(state): State<AppState>,
     headers: HeaderMap,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateStatusRequest>,
 ) -> Result<Json<FaultActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     let context = extract_tenant_context(&headers)?;
+
+    // Get current fault to obtain current status
+    let existing = match state.fault_repo.find_by_id_rls(&mut **rls.conn(), id).await {
+        Ok(Some(f)) => f,
+        Ok(None) => {
+            rls.release().await;
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
+            ));
+        }
+        Err(e) => {
+            tracing::error!("Failed to find fault: {}", e);
+            rls.release().await;
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to find fault")),
+            ));
+        }
+    };
 
     let data = UpdateFaultStatus {
         status: req.status,
@@ -701,7 +746,13 @@ async fn update_status(
 
     let fault = state
         .fault_repo
-        .update_status(id, context.user_id, data)
+        .update_status_rls(
+            &mut **rls.conn(),
+            id,
+            context.user_id,
+            data,
+            existing.status,
+        )
         .await
         .map_err(|e| {
             tracing::error!("Failed to update status: {}", e);
@@ -714,6 +765,7 @@ async fn update_status(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(FaultActionResponse {
         message: "Status updated successfully".to_string(),
         fault,
@@ -1112,19 +1164,22 @@ async fn delete_attachment(
 )]
 async fn get_ai_suggestion(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<AiSuggestionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Get fault to analyze
-    let fault = match state.fault_repo.find_by_id(id).await {
+    let fault = match state.fault_repo.find_by_id_rls(&mut **rls.conn(), id).await {
         Ok(Some(f)) => f,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Fault not found")),
-            ))
+            ));
         }
         Err(e) => {
             tracing::error!("Failed to get fault: {}", e);
+            rls.release().await;
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("INTERNAL_ERROR", "Failed to get fault")),
@@ -1232,6 +1287,7 @@ async fn get_ai_suggestion(
         );
     }
 
+    rls.release().await;
     Ok(Json(AiSuggestionResponse {
         suggestion: AiSuggestion {
             category: category.to_string(),

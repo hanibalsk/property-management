@@ -1,6 +1,6 @@
 //! Subscription and billing routes (Epic 26).
 
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, Query, State},
     http::{header::AUTHORIZATION, HeaderMap, StatusCode},
@@ -144,16 +144,17 @@ async fn verify_org_access(
     }
 }
 
-/// Verify user has access to an invoice by its ID.
-async fn verify_invoice_access(
+/// Verify user has access to an invoice by its ID using RLS connection.
+async fn verify_invoice_access_rls(
     state: &AppState,
+    rls: &mut RlsConnection,
     user_id: Uuid,
     invoice_id: Uuid,
 ) -> Result<Uuid, (StatusCode, Json<ErrorResponse>)> {
     // Get invoice to find org_id
     let invoice = state
         .subscription_repo
-        .find_invoice_by_id(invoice_id)
+        .find_invoice_by_id_rls(&mut **rls.conn(), invoice_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to find invoice");
@@ -175,16 +176,17 @@ async fn verify_invoice_access(
     Ok(invoice.organization_id)
 }
 
-/// Verify user has access to a subscription by its ID.
-async fn verify_subscription_access(
+/// Verify user has access to a subscription by its ID using RLS connection.
+async fn verify_subscription_access_rls(
     state: &AppState,
+    rls: &mut RlsConnection,
     user_id: Uuid,
     subscription_id: Uuid,
 ) -> Result<Uuid, (StatusCode, Json<ErrorResponse>)> {
     // Get subscription to find org_id
     let subscription = state
         .subscription_repo
-        .find_subscription_by_id(subscription_id)
+        .find_subscription_by_id_rls(&mut **rls.conn(), subscription_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to find subscription");
@@ -382,6 +384,7 @@ pub struct RecordUsageRequest {
 async fn create_plan(
     headers: HeaderMap,
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Json(data): Json<CreateSubscriptionPlan>,
 ) -> Result<(StatusCode, Json<SubscriptionPlan>), (StatusCode, Json<ErrorResponse>)> {
     // Require super admin role for plan management
@@ -389,7 +392,7 @@ async fn create_plan(
 
     let plan = state
         .subscription_repo
-        .create_plan(data)
+        .create_plan_rls(&mut **rls.conn(), data)
         .await
         .map_err(|e| {
             (
@@ -398,6 +401,7 @@ async fn create_plan(
             )
         })?;
 
+    rls.release().await;
     Ok((StatusCode::CREATED, Json(plan)))
 }
 
@@ -415,11 +419,12 @@ async fn create_plan(
 async fn list_plans(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<ListPlansQuery>,
 ) -> Result<Json<Vec<SubscriptionPlan>>, (StatusCode, Json<ErrorResponse>)> {
     let plans = state
         .subscription_repo
-        .list_plans(query.active_only.unwrap_or(true))
+        .list_plans_rls(&mut **rls.conn(), query.active_only.unwrap_or(true))
         .await
         .map_err(|e| {
             (
@@ -428,6 +433,7 @@ async fn list_plans(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(plans))
 }
 
@@ -449,6 +455,9 @@ async fn list_plans(
 async fn list_public_plans(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<SubscriptionPlan>>, (StatusCode, Json<ErrorResponse>)> {
+    // Public endpoint - no RLS needed as subscription_plans is not tenant-scoped
+    // Using the legacy method is acceptable here since there's no tenant context
+    #[allow(deprecated)]
     let plans = state
         .subscription_repo
         .list_public_plans()
@@ -479,11 +488,12 @@ async fn list_public_plans(
 async fn get_plan(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SubscriptionPlan>, (StatusCode, Json<ErrorResponse>)> {
     let plan = state
         .subscription_repo
-        .find_plan_by_id(id)
+        .find_plan_by_id_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
             (
@@ -498,6 +508,7 @@ async fn get_plan(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(plan))
 }
 
@@ -519,6 +530,7 @@ async fn get_plan(
 async fn update_plan(
     headers: HeaderMap,
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(data): Json<UpdateSubscriptionPlan>,
 ) -> Result<Json<SubscriptionPlan>, (StatusCode, Json<ErrorResponse>)> {
@@ -527,7 +539,7 @@ async fn update_plan(
 
     let plan = state
         .subscription_repo
-        .update_plan(id, data)
+        .update_plan_rls(&mut **rls.conn(), id, data)
         .await
         .map_err(|e| {
             (
@@ -536,6 +548,7 @@ async fn update_plan(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(plan))
 }
 
@@ -556,17 +569,24 @@ async fn update_plan(
 async fn delete_plan(
     headers: HeaderMap,
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Require super admin role for plan management
     let _admin_id = require_super_admin(&headers, &state)?;
 
-    let deleted = state.subscription_repo.delete_plan(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
-        )
-    })?;
+    let deleted = state
+        .subscription_repo
+        .delete_plan_rls(&mut **rls.conn(), id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
+
+    rls.release().await;
 
     if deleted {
         Ok(StatusCode::NO_CONTENT)
@@ -595,6 +615,7 @@ async fn delete_plan(
 async fn create_subscription(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Json(request): Json<CreateSubscriptionRequest>,
 ) -> Result<(StatusCode, Json<OrganizationSubscription>), (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
@@ -602,7 +623,7 @@ async fn create_subscription(
 
     let subscription = state
         .subscription_repo
-        .create_subscription(request.organization_id, request.data)
+        .create_subscription_rls(&mut **rls.conn(), request.organization_id, request.data)
         .await
         .map_err(|e| {
             (
@@ -611,6 +632,7 @@ async fn create_subscription(
             )
         })?;
 
+    rls.release().await;
     Ok((StatusCode::CREATED, Json(subscription)))
 }
 
@@ -629,6 +651,7 @@ async fn create_subscription(
 async fn get_subscription(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
@@ -636,7 +659,7 @@ async fn get_subscription(
 
     let subscription = state
         .subscription_repo
-        .find_subscription_by_org(query.organization_id)
+        .find_subscription_by_org_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map_err(|e| {
             (
@@ -651,6 +674,7 @@ async fn get_subscription(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(subscription))
 }
 
@@ -669,6 +693,7 @@ async fn get_subscription(
 async fn get_subscription_with_plan(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<SubscriptionWithPlan>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
@@ -676,7 +701,7 @@ async fn get_subscription_with_plan(
 
     let subscription = state
         .subscription_repo
-        .get_subscription_with_plan(query.organization_id)
+        .get_subscription_with_plan_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map_err(|e| {
             (
@@ -691,6 +716,7 @@ async fn get_subscription_with_plan(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(subscription))
 }
 
@@ -710,15 +736,16 @@ async fn get_subscription_with_plan(
 async fn update_subscription(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(data): Json<UpdateOrganizationSubscription>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this subscription's organization
-    let _org_id = verify_subscription_access(&state, auth.user_id, id).await?;
+    let _org_id = verify_subscription_access_rls(&state, &mut rls, auth.user_id, id).await?;
 
     let subscription = state
         .subscription_repo
-        .update_subscription(id, data)
+        .update_subscription_rls(&mut **rls.conn(), id, data)
         .await
         .map_err(|e| {
             (
@@ -727,6 +754,7 @@ async fn update_subscription(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(subscription))
 }
 
@@ -746,15 +774,16 @@ async fn update_subscription(
 async fn change_plan(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(data): Json<ChangePlanRequest>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this subscription's organization
-    let _org_id = verify_subscription_access(&state, auth.user_id, id).await?;
+    let _org_id = verify_subscription_access_rls(&state, &mut rls, auth.user_id, id).await?;
 
     let subscription = state
         .subscription_repo
-        .change_plan(id, data)
+        .change_plan_rls(&mut **rls.conn(), id, data)
         .await
         .map_err(|e| {
             (
@@ -763,6 +792,7 @@ async fn change_plan(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(subscription))
 }
 
@@ -782,15 +812,16 @@ async fn change_plan(
 async fn cancel_subscription(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(data): Json<CancelSubscriptionRequest>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this subscription's organization
-    let _org_id = verify_subscription_access(&state, auth.user_id, id).await?;
+    let _org_id = verify_subscription_access_rls(&state, &mut rls, auth.user_id, id).await?;
 
     let subscription = state
         .subscription_repo
-        .cancel_subscription(id, data)
+        .cancel_subscription_rls(&mut **rls.conn(), id, data)
         .await
         .map_err(|e| {
             (
@@ -799,6 +830,7 @@ async fn cancel_subscription(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(subscription))
 }
 
@@ -817,14 +849,15 @@ async fn cancel_subscription(
 async fn reactivate_subscription(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this subscription's organization
-    let _org_id = verify_subscription_access(&state, auth.user_id, id).await?;
+    let _org_id = verify_subscription_access_rls(&state, &mut rls, auth.user_id, id).await?;
 
     let subscription = state
         .subscription_repo
-        .reactivate_subscription(id)
+        .reactivate_subscription_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
             (
@@ -833,6 +866,7 @@ async fn reactivate_subscription(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(subscription))
 }
 
@@ -852,6 +886,7 @@ async fn reactivate_subscription(
 async fn list_all_subscriptions(
     headers: HeaderMap,
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Query(query): Query<ListSubscriptionsQuery>,
 ) -> Result<Json<Vec<SubscriptionWithPlan>>, (StatusCode, Json<ErrorResponse>)> {
     // Require super admin role for admin dashboard
@@ -859,7 +894,8 @@ async fn list_all_subscriptions(
 
     let subscriptions = state
         .subscription_repo
-        .list_all_subscriptions(
+        .list_all_subscriptions_rls(
+            &mut **rls.conn(),
             query.status.as_deref(),
             query.limit.unwrap_or(50),
             query.offset.unwrap_or(0),
@@ -872,6 +908,7 @@ async fn list_all_subscriptions(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(subscriptions))
 }
 
@@ -892,6 +929,7 @@ async fn list_all_subscriptions(
 async fn create_payment_method(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
     Json(data): Json<CreateSubscriptionPaymentMethod>,
 ) -> Result<(StatusCode, Json<SubscriptionPaymentMethod>), (StatusCode, Json<ErrorResponse>)> {
@@ -900,7 +938,7 @@ async fn create_payment_method(
 
     let method = state
         .subscription_repo
-        .create_payment_method(query.organization_id, data)
+        .create_payment_method_rls(&mut **rls.conn(), query.organization_id, data)
         .await
         .map_err(|e| {
             (
@@ -909,6 +947,7 @@ async fn create_payment_method(
             )
         })?;
 
+    rls.release().await;
     Ok((StatusCode::CREATED, Json(method)))
 }
 
@@ -927,6 +966,7 @@ async fn create_payment_method(
 async fn list_payment_methods(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<Vec<SubscriptionPaymentMethod>>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
@@ -934,7 +974,7 @@ async fn list_payment_methods(
 
     let methods = state
         .subscription_repo
-        .list_payment_methods(query.organization_id)
+        .list_payment_methods_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map_err(|e| {
             (
@@ -943,6 +983,7 @@ async fn list_payment_methods(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(methods))
 }
 
@@ -970,6 +1011,8 @@ async fn set_default_payment_method(
     // Verify user has access to this organization
     verify_org_access(&state, auth.user_id, query.organization_id).await?;
 
+    // Note: set_default_payment_method uses internal transaction, not RLS-aware
+    // This is intentional as documented in the repository
     state
         .subscription_repo
         .set_default_payment_method(query.organization_id, id)
@@ -1003,6 +1046,7 @@ async fn set_default_payment_method(
 async fn delete_payment_method(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
@@ -1011,7 +1055,7 @@ async fn delete_payment_method(
 
     let deleted = state
         .subscription_repo
-        .delete_payment_method(id, query.organization_id)
+        .delete_payment_method_rls(&mut **rls.conn(), id, query.organization_id)
         .await
         .map_err(|e| {
             (
@@ -1019,6 +1063,8 @@ async fn delete_payment_method(
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
             )
         })?;
+
+    rls.release().await;
 
     if deleted {
         Ok(StatusCode::NO_CONTENT)
@@ -1047,6 +1093,7 @@ async fn delete_payment_method(
 async fn list_invoices(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<ListInvoicesQuery>,
 ) -> Result<Json<Vec<SubscriptionInvoice>>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
@@ -1054,7 +1101,11 @@ async fn list_invoices(
 
     let invoices = state
         .subscription_repo
-        .list_invoices(query.organization_id, InvoiceQueryParams::from(&query))
+        .list_invoices_rls(
+            &mut **rls.conn(),
+            query.organization_id,
+            InvoiceQueryParams::from(&query),
+        )
         .await
         .map_err(|e| {
             (
@@ -1063,6 +1114,7 @@ async fn list_invoices(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(invoices))
 }
 
@@ -1081,14 +1133,15 @@ async fn list_invoices(
 async fn get_invoice(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SubscriptionInvoice>, (StatusCode, Json<ErrorResponse>)> {
     // Verify access and get the invoice
-    let _org_id = verify_invoice_access(&state, auth.user_id, id).await?;
+    let _org_id = verify_invoice_access_rls(&state, &mut rls, auth.user_id, id).await?;
 
     let invoice = state
         .subscription_repo
-        .find_invoice_by_id(id)
+        .find_invoice_by_id_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
             (
@@ -1103,6 +1156,7 @@ async fn get_invoice(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(invoice))
 }
 
@@ -1120,14 +1174,15 @@ async fn get_invoice(
 async fn get_invoice_line_items(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<InvoiceLineItem>>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this invoice's organization
-    let _org_id = verify_invoice_access(&state, auth.user_id, id).await?;
+    let _org_id = verify_invoice_access_rls(&state, &mut rls, auth.user_id, id).await?;
 
     let items = state
         .subscription_repo
-        .get_invoice_line_items(id)
+        .get_invoice_line_items_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
             (
@@ -1136,6 +1191,7 @@ async fn get_invoice_line_items(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(items))
 }
 
@@ -1154,14 +1210,15 @@ async fn get_invoice_line_items(
 async fn mark_invoice_paid(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SubscriptionInvoice>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this invoice's organization
-    let _org_id = verify_invoice_access(&state, auth.user_id, id).await?;
+    let _org_id = verify_invoice_access_rls(&state, &mut rls, auth.user_id, id).await?;
 
     let invoice = state
         .subscription_repo
-        .mark_invoice_paid(id, None)
+        .mark_invoice_paid_rls(&mut **rls.conn(), id, None)
         .await
         .map_err(|e| {
             (
@@ -1170,6 +1227,7 @@ async fn mark_invoice_paid(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(invoice))
 }
 
@@ -1188,14 +1246,15 @@ async fn mark_invoice_paid(
 async fn void_invoice(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SubscriptionInvoice>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this invoice's organization
-    let _org_id = verify_invoice_access(&state, auth.user_id, id).await?;
+    let _org_id = verify_invoice_access_rls(&state, &mut rls, auth.user_id, id).await?;
 
     let invoice = state
         .subscription_repo
-        .void_invoice(id)
+        .void_invoice_rls(&mut **rls.conn(), id)
         .await
         .map_err(|e| {
             (
@@ -1204,6 +1263,7 @@ async fn void_invoice(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(invoice))
 }
 
@@ -1223,6 +1283,7 @@ async fn void_invoice(
 async fn list_all_invoices(
     headers: HeaderMap,
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Query(query): Query<ListAllInvoicesQuery>,
 ) -> Result<Json<Vec<InvoiceWithDetails>>, (StatusCode, Json<ErrorResponse>)> {
     // Require super admin role for admin dashboard
@@ -1230,7 +1291,7 @@ async fn list_all_invoices(
 
     let invoices = state
         .subscription_repo
-        .list_all_invoices(InvoiceQueryParams::from(&query))
+        .list_all_invoices_rls(&mut **rls.conn(), InvoiceQueryParams::from(&query))
         .await
         .map_err(|e| {
             (
@@ -1239,6 +1300,7 @@ async fn list_all_invoices(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(invoices))
 }
 
@@ -1259,6 +1321,7 @@ async fn list_all_invoices(
 async fn record_usage(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Json(request): Json<RecordUsageRequest>,
 ) -> Result<(StatusCode, Json<db::models::UsageRecord>), (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
@@ -1267,7 +1330,7 @@ async fn record_usage(
     // Get subscription for org
     let subscription = state
         .subscription_repo
-        .find_subscription_by_org(request.organization_id)
+        .find_subscription_by_org_rls(&mut **rls.conn(), request.organization_id)
         .await
         .map_err(|e| {
             (
@@ -1278,7 +1341,8 @@ async fn record_usage(
 
     let record = state
         .subscription_repo
-        .record_usage(
+        .record_usage_rls(
+            &mut **rls.conn(),
             request.organization_id,
             subscription.map(|s| s.id),
             request.data,
@@ -1291,6 +1355,7 @@ async fn record_usage(
             )
         })?;
 
+    rls.release().await;
     Ok((StatusCode::CREATED, Json(record)))
 }
 
@@ -1309,6 +1374,7 @@ async fn record_usage(
 async fn get_usage_summary(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<UsageSummaryQuery>,
 ) -> Result<Json<Vec<UsageSummary>>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
@@ -1323,7 +1389,12 @@ async fn get_usage_summary(
 
     let summary = state
         .subscription_repo
-        .get_usage_summary(query.organization_id, period_start, period_end)
+        .get_usage_summary_rls(
+            &mut **rls.conn(),
+            query.organization_id,
+            period_start,
+            period_end,
+        )
         .await
         .map_err(|e| {
             (
@@ -1332,6 +1403,7 @@ async fn get_usage_summary(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(summary))
 }
 
@@ -1350,6 +1422,7 @@ async fn get_usage_summary(
 async fn get_current_usage(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<CurrentUsageResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
@@ -1357,7 +1430,7 @@ async fn get_current_usage(
 
     let (buildings, units, users, storage) = state
         .subscription_repo
-        .get_current_usage(query.organization_id)
+        .get_current_usage_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map_err(|e| {
             (
@@ -1366,6 +1439,7 @@ async fn get_current_usage(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(CurrentUsageResponse {
         buildings,
         units,
@@ -1392,6 +1466,7 @@ async fn get_current_usage(
 async fn create_coupon(
     headers: HeaderMap,
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Json(data): Json<CreateSubscriptionCoupon>,
 ) -> Result<(StatusCode, Json<SubscriptionCoupon>), (StatusCode, Json<ErrorResponse>)> {
     // Require super admin role for coupon management
@@ -1399,7 +1474,7 @@ async fn create_coupon(
 
     let coupon = state
         .subscription_repo
-        .create_coupon(data)
+        .create_coupon_rls(&mut **rls.conn(), data)
         .await
         .map_err(|e| {
             (
@@ -1408,6 +1483,7 @@ async fn create_coupon(
             )
         })?;
 
+    rls.release().await;
     Ok((StatusCode::CREATED, Json(coupon)))
 }
 
@@ -1426,11 +1502,12 @@ async fn create_coupon(
 async fn list_coupons(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<ListCouponsQuery>,
 ) -> Result<Json<Vec<SubscriptionCoupon>>, (StatusCode, Json<ErrorResponse>)> {
     let coupons = state
         .subscription_repo
-        .list_coupons(query.active_only.unwrap_or(true))
+        .list_coupons_rls(&mut **rls.conn(), query.active_only.unwrap_or(true))
         .await
         .map_err(|e| {
             (
@@ -1439,6 +1516,7 @@ async fn list_coupons(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(coupons))
 }
 
@@ -1459,6 +1537,7 @@ async fn list_coupons(
 async fn update_coupon(
     headers: HeaderMap,
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(data): Json<UpdateSubscriptionCoupon>,
 ) -> Result<Json<SubscriptionCoupon>, (StatusCode, Json<ErrorResponse>)> {
@@ -1467,7 +1546,7 @@ async fn update_coupon(
 
     let coupon = state
         .subscription_repo
-        .update_coupon(id, data)
+        .update_coupon_rls(&mut **rls.conn(), id, data)
         .await
         .map_err(|e| {
             (
@@ -1476,6 +1555,7 @@ async fn update_coupon(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(coupon))
 }
 
@@ -1495,6 +1575,7 @@ async fn update_coupon(
 async fn redeem_coupon(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
     Json(data): Json<RedeemCouponRequest>,
 ) -> Result<Json<CouponRedemption>, (StatusCode, Json<ErrorResponse>)> {
@@ -1504,7 +1585,7 @@ async fn redeem_coupon(
     // Find the coupon
     let coupon = state
         .subscription_repo
-        .find_coupon_by_code(&data.coupon_code)
+        .find_coupon_by_code_rls(&mut **rls.conn(), &data.coupon_code)
         .await
         .map_err(|e| {
             (
@@ -1525,7 +1606,7 @@ async fn redeem_coupon(
     // Get subscription for org
     let subscription = state
         .subscription_repo
-        .find_subscription_by_org(query.organization_id)
+        .find_subscription_by_org_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map_err(|e| {
             (
@@ -1534,6 +1615,11 @@ async fn redeem_coupon(
             )
         })?;
 
+    // Release RLS connection before calling transaction-based method
+    rls.release().await;
+
+    // Note: redeem_coupon uses internal transaction, not RLS-aware
+    // This is intentional as documented in the repository
     let redemption = state
         .subscription_repo
         .redeem_coupon(
@@ -1570,13 +1656,14 @@ async fn redeem_coupon(
 async fn get_statistics(
     headers: HeaderMap,
     State(state): State<AppState>,
+    mut rls: RlsConnection,
 ) -> Result<Json<SubscriptionStatistics>, (StatusCode, Json<ErrorResponse>)> {
     // Require super admin role for statistics dashboard
     let _admin_id = require_super_admin(&headers, &state)?;
 
     let stats = state
         .subscription_repo
-        .get_statistics()
+        .get_statistics_rls(&mut **rls.conn())
         .await
         .map_err(|e| {
             (
@@ -1585,5 +1672,6 @@ async fn get_statistics(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(stats))
 }

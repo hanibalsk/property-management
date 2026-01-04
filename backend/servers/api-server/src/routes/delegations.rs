@@ -203,6 +203,8 @@ pub async fn create_delegation(
 
     // If unit_id is provided, verify user owns it
     if let Some(unit_id) = req.unit_id {
+        // TODO: Migrate to get_owners_rls when this handler has RLS connection
+        #[allow(deprecated)]
         let owners = state.unit_repo.get_owners(unit_id).await.map_err(|e| {
             tracing::error!(error = %e, "Failed to get unit owners");
             (

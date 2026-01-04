@@ -712,6 +712,8 @@ pub async fn bulk_import_buildings(
             amenities: entry.amenities,
         };
 
+        // TODO: Migrate to create_rls when this handler has RLS connection
+        #[allow(deprecated)]
         match state.building_repo.create(create_data).await {
             Ok(building) => {
                 results.push(BulkImportResult {
@@ -771,6 +773,8 @@ pub async fn get_building(
     auth: AuthUser,
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(id)
@@ -838,6 +842,8 @@ pub async fn update_building(
     Json(req): Json<UpdateBuildingRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let existing = state
         .building_repo
         .find_by_id(id)
@@ -894,6 +900,8 @@ pub async fn update_building(
         settings: None,
     };
 
+    // TODO: Migrate to update_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .update(id, update_data)
@@ -937,6 +945,8 @@ pub async fn archive_building(
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let existing = state
         .building_repo
         .find_by_id(id)
@@ -978,6 +988,8 @@ pub async fn archive_building(
         ));
     }
 
+    // TODO: Migrate to archive_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state.building_repo.archive(id).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to archive building");
         (
@@ -1105,6 +1117,8 @@ pub async fn get_building_statistics(
     Path(id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(id)
@@ -1186,6 +1200,8 @@ pub async fn list_units(
     Query(query): Query<ListUnitsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -1232,6 +1248,8 @@ pub async fn list_units(
         .unwrap_or(DEFAULT_LIST_LIMIT)
         .min(MAX_LIST_LIMIT);
 
+    // TODO: Migrate to list_by_building_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let (units, total) = state
         .unit_repo
         .list_by_building(
@@ -1283,6 +1301,8 @@ pub async fn create_unit(
     Json(req): Json<CreateUnitRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -1383,6 +1403,8 @@ pub async fn create_unit(
         description: req.description,
     };
 
+    // TODO: Migrate to create_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let unit = state.unit_repo.create(create_data).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to create unit");
         (
@@ -1424,6 +1446,8 @@ pub async fn get_unit(
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -1525,6 +1549,8 @@ pub async fn update_unit(
     Json(req): Json<UpdateUnitRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -1567,6 +1593,8 @@ pub async fn update_unit(
     }
 
     // Verify unit exists and belongs to building
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let existing = state.unit_repo.find_by_id(unit_id).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get unit");
         (
@@ -1659,6 +1687,8 @@ pub async fn update_unit(
         settings: None,
     };
 
+    // TODO: Migrate to update_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let unit = state
         .unit_repo
         .update(unit_id, update_data)
@@ -1705,6 +1735,8 @@ pub async fn archive_unit(
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -1747,6 +1779,8 @@ pub async fn archive_unit(
     }
 
     // Verify unit exists and belongs to building
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let existing = state.unit_repo.find_by_id(unit_id).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get unit");
         (
@@ -1767,6 +1801,8 @@ pub async fn archive_unit(
         }
     }
 
+    // TODO: Migrate to archive_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let unit = state.unit_repo.archive(unit_id).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to archive unit");
         (
@@ -1813,6 +1849,8 @@ pub async fn restore_unit(
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -1925,6 +1963,8 @@ pub async fn list_unit_owners(
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -1967,6 +2007,8 @@ pub async fn list_unit_owners(
     }
 
     // Verify unit exists and belongs to building
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let unit = state.unit_repo.find_by_id(unit_id).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get unit");
         (
@@ -1992,6 +2034,8 @@ pub async fn list_unit_owners(
         ));
     }
 
+    // TODO: Migrate to get_owners_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let owners = state.unit_repo.get_owners(unit_id).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get unit owners");
         (
@@ -2029,6 +2073,8 @@ pub async fn assign_unit_owner(
     Json(req): Json<AssignOwnerRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -2071,6 +2117,8 @@ pub async fn assign_unit_owner(
     }
 
     // Verify unit exists and belongs to building
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let unit = state.unit_repo.find_by_id(unit_id).await.map_err(|e| {
         tracing::error!(error = %e, "Failed to get unit");
         (
@@ -2243,6 +2291,8 @@ pub async fn update_unit_owner(
     Json(req): Json<UpdateOwnerRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)
@@ -2397,6 +2447,8 @@ pub async fn remove_unit_owner(
     Path((building_id, unit_id, user_id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // First get the building to check organization access
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(building_id)

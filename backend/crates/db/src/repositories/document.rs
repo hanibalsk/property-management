@@ -1,4 +1,28 @@
 //! Document repository (Epic 7A: Basic Document Management, Epic 7B: Document Versioning, Epic 28: Document Intelligence).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_document(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateDocument>,
+//! ) -> Result<Json<Document>> {
+//!     let document = state.document_repo.create_rls(rls.conn(), data).await?;
+//!     rls.release().await;
+//!     Ok(Json(document))
+//! }
+//! ```
 
 use crate::models::{
     access_scope, ClassificationFeedback, CreateDocument, CreateDocumentVersion, CreateFolder,
@@ -10,7 +34,7 @@ use crate::models::{
     ShareWithDocument, UpdateDocument, UpdateFolder,
 };
 use chrono::{NaiveDate, Utc};
-use sqlx::{Error as SqlxError, PgPool, Row};
+use sqlx::{Error as SqlxError, Executor, PgPool, Postgres, Row};
 use uuid::Uuid;
 
 /// Repository for document operations.
@@ -26,11 +50,20 @@ impl DocumentRepository {
     }
 
     // ========================================================================
-    // Folder Operations (Story 7A.2)
+    // RLS-aware Folder Operations (Story 7A.2)
     // ========================================================================
 
-    /// Create a new folder.
-    pub async fn create_folder(&self, data: CreateFolder) -> Result<DocumentFolder, SqlxError> {
+    /// Create a new folder with RLS context.
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_folder_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateFolder,
+    ) -> Result<DocumentFolder, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as::<_, DocumentFolder>(
             r#"
             INSERT INTO document_folders (organization_id, parent_id, name, description, created_by)
@@ -43,12 +76,19 @@ impl DocumentRepository {
         .bind(&data.name)
         .bind(&data.description)
         .bind(data.created_by)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await
     }
 
-    /// Find folder by ID.
-    pub async fn find_folder_by_id(&self, id: Uuid) -> Result<Option<DocumentFolder>, SqlxError> {
+    /// Find folder by ID with RLS context.
+    pub async fn find_folder_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<DocumentFolder>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as::<_, DocumentFolder>(
             r#"
             SELECT * FROM document_folders
@@ -56,16 +96,20 @@ impl DocumentRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await
     }
 
-    /// Get all folders for an organization.
-    pub async fn get_folders(
+    /// Get all folders for an organization with RLS context.
+    pub async fn get_folders_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         parent_id: Option<Uuid>,
-    ) -> Result<Vec<FolderWithCount>, SqlxError> {
+    ) -> Result<Vec<FolderWithCount>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let rows = sqlx::query(
             r#"
             SELECT
@@ -94,7 +138,7 @@ impl DocumentRepository {
         )
         .bind(org_id)
         .bind(parent_id)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(rows
@@ -117,8 +161,15 @@ impl DocumentRepository {
             .collect())
     }
 
-    /// Get folder tree for an organization.
-    pub async fn get_folder_tree(&self, org_id: Uuid) -> Result<Vec<FolderTreeNode>, SqlxError> {
+    /// Get folder tree for an organization with RLS context.
+    pub async fn get_folder_tree_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+    ) -> Result<Vec<FolderTreeNode>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let rows = sqlx::query(
             r#"
             WITH folder_counts AS (
@@ -139,7 +190,7 @@ impl DocumentRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         // Build tree structure
@@ -157,12 +208,16 @@ impl DocumentRepository {
         Ok(build_folder_tree(nodes))
     }
 
-    /// Update a folder.
-    pub async fn update_folder(
+    /// Update a folder with RLS context.
+    pub async fn update_folder_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         data: UpdateFolder,
-    ) -> Result<DocumentFolder, SqlxError> {
+    ) -> Result<DocumentFolder, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as::<_, DocumentFolder>(
             r#"
             UPDATE document_folders
@@ -179,17 +234,21 @@ impl DocumentRepository {
         .bind(&data.name)
         .bind(&data.description)
         .bind(data.parent_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await
     }
 
-    /// Check if a folder is a descendant of another folder.
+    /// Check if a folder is a descendant of another folder with RLS context.
     /// Used to prevent circular references when updating parent_id.
-    pub async fn is_descendant_of(
+    pub async fn is_descendant_of_rls<'e, E>(
         &self,
+        executor: E,
         folder_id: Uuid,
         potential_ancestor_id: Uuid,
-    ) -> Result<bool, SqlxError> {
+    ) -> Result<bool, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let row = sqlx::query(
             r#"
             WITH RECURSIVE ancestors AS (
@@ -204,13 +263,164 @@ impl DocumentRepository {
         )
         .bind(folder_id)
         .bind(potential_ancestor_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(row.get("is_descendant"))
     }
 
+    /// Delete a folder (soft delete) with RLS context.
+    pub async fn delete_folder_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+        _cascade: bool,
+    ) -> Result<(), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Note: For RLS version, we only support non-cascade delete to avoid
+        // needing multiple executor calls. Use the legacy version for cascade.
+        // Move documents to root and delete the folder.
+        sqlx::query(
+            r#"
+            WITH moved_docs AS (
+                UPDATE documents
+                SET folder_id = NULL
+                WHERE folder_id = $1 AND deleted_at IS NULL
+            )
+            UPDATE document_folders
+            SET deleted_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .execute(executor)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Count documents in a folder with RLS context.
+    pub async fn count_documents_in_folder_rls<'e, E>(
+        &self,
+        executor: E,
+        folder_id: Uuid,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let row = sqlx::query(
+            r#"
+            SELECT COUNT(*) as count
+            FROM documents
+            WHERE folder_id = $1 AND deleted_at IS NULL
+            "#,
+        )
+        .bind(folder_id)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(row.get("count"))
+    }
+
+    // ========================================================================
+    // Legacy Folder Operations (Story 7A.2) - migrate to RLS versions
+    // ========================================================================
+
+    /// Create a new folder.
+    ///
+    /// **Deprecated**: Use `create_folder_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_folder_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn create_folder(&self, data: CreateFolder) -> Result<DocumentFolder, SqlxError> {
+        self.create_folder_rls(&self.pool, data).await
+    }
+
+    /// Find folder by ID.
+    ///
+    /// **Deprecated**: Use `find_folder_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_folder_by_id_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn find_folder_by_id(&self, id: Uuid) -> Result<Option<DocumentFolder>, SqlxError> {
+        self.find_folder_by_id_rls(&self.pool, id).await
+    }
+
+    /// Get all folders for an organization.
+    ///
+    /// **Deprecated**: Use `get_folders_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_folders_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn get_folders(
+        &self,
+        org_id: Uuid,
+        parent_id: Option<Uuid>,
+    ) -> Result<Vec<FolderWithCount>, SqlxError> {
+        self.get_folders_rls(&self.pool, org_id, parent_id).await
+    }
+
+    /// Get folder tree for an organization.
+    ///
+    /// **Deprecated**: Use `get_folder_tree_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_folder_tree_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn get_folder_tree(&self, org_id: Uuid) -> Result<Vec<FolderTreeNode>, SqlxError> {
+        self.get_folder_tree_rls(&self.pool, org_id).await
+    }
+
+    /// Update a folder.
+    ///
+    /// **Deprecated**: Use `update_folder_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use update_folder_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn update_folder(
+        &self,
+        id: Uuid,
+        data: UpdateFolder,
+    ) -> Result<DocumentFolder, SqlxError> {
+        self.update_folder_rls(&self.pool, id, data).await
+    }
+
+    /// Check if a folder is a descendant of another folder.
+    /// Used to prevent circular references when updating parent_id.
+    ///
+    /// **Deprecated**: Use `is_descendant_of_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use is_descendant_of_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn is_descendant_of(
+        &self,
+        folder_id: Uuid,
+        potential_ancestor_id: Uuid,
+    ) -> Result<bool, SqlxError> {
+        self.is_descendant_of_rls(&self.pool, folder_id, potential_ancestor_id)
+            .await
+    }
+
     /// Delete a folder (soft delete).
+    ///
+    /// **Deprecated**: Use `delete_folder_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use delete_folder_rls with RlsConnection instead"
+    )]
     pub async fn delete_folder(&self, id: Uuid, cascade: bool) -> Result<(), SqlxError> {
         if cascade {
             // Delete all documents in folder
@@ -270,27 +480,33 @@ impl DocumentRepository {
     }
 
     /// Count documents in a folder.
+    ///
+    /// **Deprecated**: Use `count_documents_in_folder_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_documents_in_folder_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn count_documents_in_folder(&self, folder_id: Uuid) -> Result<i64, SqlxError> {
-        let row = sqlx::query(
-            r#"
-            SELECT COUNT(*) as count
-            FROM documents
-            WHERE folder_id = $1 AND deleted_at IS NULL
-            "#,
-        )
-        .bind(folder_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(row.get("count"))
+        self.count_documents_in_folder_rls(&self.pool, folder_id)
+            .await
     }
 
     // ========================================================================
-    // Document Operations (Story 7A.1)
+    // RLS-aware Document Operations (Story 7A.1)
     // ========================================================================
 
-    /// Create a new document.
-    pub async fn create(&self, data: CreateDocument) -> Result<Document, SqlxError> {
+    /// Create a new document with RLS context.
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateDocument,
+    ) -> Result<Document, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let access_target_ids =
             serde_json::to_value(data.access_target_ids.unwrap_or_default()).unwrap();
         let access_roles = serde_json::to_value(data.access_roles.unwrap_or_default()).unwrap();
@@ -323,12 +539,19 @@ impl DocumentRepository {
         .bind(&access_target_ids)
         .bind(&access_roles)
         .bind(data.created_by)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await
     }
 
-    /// Find document by ID.
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Document>, SqlxError> {
+    /// Find document by ID with RLS context.
+    pub async fn find_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Document>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as::<_, Document>(
             r#"
             SELECT * FROM documents
@@ -336,15 +559,19 @@ impl DocumentRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await
     }
 
-    /// Find document by ID with details.
-    pub async fn find_by_id_with_details(
+    /// Find document by ID with details with RLS context.
+    pub async fn find_by_id_with_details_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
-    ) -> Result<Option<DocumentWithDetails>, SqlxError> {
+    ) -> Result<Option<DocumentWithDetails>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let row = sqlx::query(
             r#"
             SELECT
@@ -365,7 +592,7 @@ impl DocumentRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(row.map(|r| DocumentWithDetails {
@@ -399,12 +626,16 @@ impl DocumentRepository {
         }))
     }
 
-    /// List documents for an organization with filters.
-    pub async fn list(
+    /// List documents for an organization with filters with RLS context.
+    pub async fn list_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         query: DocumentListQuery,
-    ) -> Result<Vec<DocumentSummary>, SqlxError> {
+    ) -> Result<Vec<DocumentSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = query.limit.unwrap_or(50).min(100);
         let offset = query.offset.unwrap_or(0);
 
@@ -430,12 +661,20 @@ impl DocumentRepository {
         .bind(&query.search)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await
     }
 
-    /// Count documents matching query.
-    pub async fn count(&self, org_id: Uuid, query: DocumentListQuery) -> Result<i64, SqlxError> {
+    /// Count documents matching query with RLS context.
+    pub async fn count_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+        query: DocumentListQuery,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let row = sqlx::query(
             r#"
             SELECT COUNT(*) as count
@@ -453,22 +692,26 @@ impl DocumentRepository {
         .bind(&query.category)
         .bind(query.created_by)
         .bind(&query.search)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(row.get("count"))
     }
 
-    /// List documents accessible by a specific user (Story 7A.3).
-    pub async fn list_accessible(
+    /// List documents accessible by a specific user with RLS context (Story 7A.3).
+    pub async fn list_accessible_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         user_id: Uuid,
         user_building_ids: &[Uuid],
         user_unit_ids: &[Uuid],
         user_roles: &[String],
         query: DocumentListQuery,
-    ) -> Result<Vec<DocumentSummary>, SqlxError> {
+    ) -> Result<Vec<DocumentSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = query.limit.unwrap_or(50).min(100);
         let offset = query.offset.unwrap_or(0);
 
@@ -514,19 +757,23 @@ impl DocumentRepository {
         .bind(&query.search)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await
     }
 
-    /// List documents accessible by user (simplified - org-wide + own documents + role-based).
+    /// List documents accessible by user (simplified) with RLS context.
     /// Used when building/unit context is not available.
-    pub async fn list_accessible_simple(
+    pub async fn list_accessible_simple_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         user_id: Uuid,
         user_role: &str,
         query: DocumentListQuery,
-    ) -> Result<Vec<DocumentSummary>, SqlxError> {
+    ) -> Result<Vec<DocumentSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = query.limit.unwrap_or(50).min(100);
         let offset = query.offset.unwrap_or(0);
 
@@ -560,18 +807,22 @@ impl DocumentRepository {
         .bind(&query.search)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await
     }
 
-    /// Count documents accessible by user (simplified).
-    pub async fn count_accessible_simple(
+    /// Count documents accessible by user (simplified) with RLS context.
+    pub async fn count_accessible_simple_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         user_id: Uuid,
         user_role: &str,
         query: DocumentListQuery,
-    ) -> Result<i64, SqlxError> {
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let row = sqlx::query(
             r#"
             SELECT COUNT(*) as count
@@ -594,14 +845,22 @@ impl DocumentRepository {
         .bind(query.folder_id)
         .bind(&query.category)
         .bind(&query.search)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(row.get("count"))
     }
 
-    /// Update a document.
-    pub async fn update(&self, id: Uuid, data: UpdateDocument) -> Result<Document, SqlxError> {
+    /// Update a document with RLS context.
+    pub async fn update_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+        data: UpdateDocument,
+    ) -> Result<Document, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let access_target_ids = data
             .access_target_ids
             .map(|v| serde_json::to_value(v).unwrap());
@@ -631,12 +890,19 @@ impl DocumentRepository {
         .bind(&data.access_scope)
         .bind(&access_target_ids)
         .bind(&access_roles)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await
     }
 
-    /// Move a document to a folder.
-    pub async fn move_document(&self, data: MoveDocument) -> Result<Document, SqlxError> {
+    /// Move a document to a folder with RLS context.
+    pub async fn move_document_rls<'e, E>(
+        &self,
+        executor: E,
+        data: MoveDocument,
+    ) -> Result<Document, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as::<_, Document>(
             r#"
             UPDATE documents
@@ -647,12 +913,15 @@ impl DocumentRepository {
         )
         .bind(data.document_id)
         .bind(data.folder_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await
     }
 
-    /// Delete a document (soft delete).
-    pub async fn delete(&self, id: Uuid) -> Result<(), SqlxError> {
+    /// Delete a document (soft delete) with RLS context.
+    pub async fn delete_rls<'e, E>(&self, executor: E, id: Uuid) -> Result<(), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query(
             r#"
             UPDATE documents
@@ -661,20 +930,24 @@ impl DocumentRepository {
             "#,
         )
         .bind(id)
-        .execute(&self.pool)
+        .execute(executor)
         .await?;
         Ok(())
     }
 
-    /// Check if user has access to a document (Story 7A.3).
-    pub async fn check_access(
+    /// Check if user has access to a document with RLS context (Story 7A.3).
+    pub async fn check_access_rls<'e, E>(
         &self,
+        executor: E,
         document_id: Uuid,
         user_id: Uuid,
         user_building_ids: &[Uuid],
         user_unit_ids: &[Uuid],
         user_roles: &[String],
-    ) -> Result<bool, SqlxError> {
+    ) -> Result<bool, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let building_ids_json = serde_json::to_value(user_building_ids).unwrap();
         let unit_ids_json = serde_json::to_value(user_unit_ids).unwrap();
         let roles_json = serde_json::to_value(user_roles).unwrap();
@@ -701,18 +974,212 @@ impl DocumentRepository {
         .bind(&building_ids_json)
         .bind(&unit_ids_json)
         .bind(&roles_json)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(row.get("has_access"))
     }
 
     // ========================================================================
-    // Share Operations (Story 7A.5)
+    // Legacy Document Operations (Story 7A.1) - migrate to RLS versions
     // ========================================================================
 
-    /// Create a new share.
-    pub async fn create_share(&self, data: CreateShare) -> Result<DocumentShare, SqlxError> {
+    /// Create a new document.
+    ///
+    /// **Deprecated**: Use `create_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use create_rls with RlsConnection instead")]
+    #[allow(deprecated)]
+    pub async fn create(&self, data: CreateDocument) -> Result<Document, SqlxError> {
+        self.create_rls(&self.pool, data).await
+    }
+
+    /// Find document by ID.
+    ///
+    /// **Deprecated**: Use `find_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_by_id_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Document>, SqlxError> {
+        self.find_by_id_rls(&self.pool, id).await
+    }
+
+    /// Find document by ID with details.
+    ///
+    /// **Deprecated**: Use `find_by_id_with_details_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_by_id_with_details_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn find_by_id_with_details(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<DocumentWithDetails>, SqlxError> {
+        self.find_by_id_with_details_rls(&self.pool, id).await
+    }
+
+    /// List documents for an organization with filters.
+    ///
+    /// **Deprecated**: Use `list_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use list_rls with RlsConnection instead")]
+    #[allow(deprecated)]
+    pub async fn list(
+        &self,
+        org_id: Uuid,
+        query: DocumentListQuery,
+    ) -> Result<Vec<DocumentSummary>, SqlxError> {
+        self.list_rls(&self.pool, org_id, query).await
+    }
+
+    /// Count documents matching query.
+    ///
+    /// **Deprecated**: Use `count_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use count_rls with RlsConnection instead")]
+    #[allow(deprecated)]
+    pub async fn count(&self, org_id: Uuid, query: DocumentListQuery) -> Result<i64, SqlxError> {
+        self.count_rls(&self.pool, org_id, query).await
+    }
+
+    /// List documents accessible by a specific user (Story 7A.3).
+    ///
+    /// **Deprecated**: Use `list_accessible_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use list_accessible_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn list_accessible(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        user_building_ids: &[Uuid],
+        user_unit_ids: &[Uuid],
+        user_roles: &[String],
+        query: DocumentListQuery,
+    ) -> Result<Vec<DocumentSummary>, SqlxError> {
+        self.list_accessible_rls(
+            &self.pool,
+            org_id,
+            user_id,
+            user_building_ids,
+            user_unit_ids,
+            user_roles,
+            query,
+        )
+        .await
+    }
+
+    /// List documents accessible by user (simplified - org-wide + own documents + role-based).
+    /// Used when building/unit context is not available.
+    ///
+    /// **Deprecated**: Use `list_accessible_simple_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use list_accessible_simple_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn list_accessible_simple(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        user_role: &str,
+        query: DocumentListQuery,
+    ) -> Result<Vec<DocumentSummary>, SqlxError> {
+        self.list_accessible_simple_rls(&self.pool, org_id, user_id, user_role, query)
+            .await
+    }
+
+    /// Count documents accessible by user (simplified).
+    ///
+    /// **Deprecated**: Use `count_accessible_simple_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_accessible_simple_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn count_accessible_simple(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        user_role: &str,
+        query: DocumentListQuery,
+    ) -> Result<i64, SqlxError> {
+        self.count_accessible_simple_rls(&self.pool, org_id, user_id, user_role, query)
+            .await
+    }
+
+    /// Update a document.
+    ///
+    /// **Deprecated**: Use `update_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use update_rls with RlsConnection instead")]
+    #[allow(deprecated)]
+    pub async fn update(&self, id: Uuid, data: UpdateDocument) -> Result<Document, SqlxError> {
+        self.update_rls(&self.pool, id, data).await
+    }
+
+    /// Move a document to a folder.
+    ///
+    /// **Deprecated**: Use `move_document_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use move_document_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn move_document(&self, data: MoveDocument) -> Result<Document, SqlxError> {
+        self.move_document_rls(&self.pool, data).await
+    }
+
+    /// Delete a document (soft delete).
+    ///
+    /// **Deprecated**: Use `delete_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use delete_rls with RlsConnection instead")]
+    #[allow(deprecated)]
+    pub async fn delete(&self, id: Uuid) -> Result<(), SqlxError> {
+        self.delete_rls(&self.pool, id).await
+    }
+
+    /// Check if user has access to a document (Story 7A.3).
+    ///
+    /// **Deprecated**: Use `check_access_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use check_access_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn check_access(
+        &self,
+        document_id: Uuid,
+        user_id: Uuid,
+        user_building_ids: &[Uuid],
+        user_unit_ids: &[Uuid],
+        user_roles: &[String],
+    ) -> Result<bool, SqlxError> {
+        self.check_access_rls(
+            &self.pool,
+            document_id,
+            user_id,
+            user_building_ids,
+            user_unit_ids,
+            user_roles,
+        )
+        .await
+    }
+
+    // ========================================================================
+    // RLS-aware Share Operations (Story 7A.5)
+    // ========================================================================
+
+    /// Create a new share with RLS context.
+    pub async fn create_share_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateShare,
+    ) -> Result<DocumentShare, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let share_token = if data.share_type == crate::models::share_type::LINK {
             Some(generate_share_token())
         } else {
@@ -742,12 +1209,19 @@ impl DocumentRepository {
         .bind(&share_token)
         .bind(&password_hash)
         .bind(data.expires_at)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await
     }
 
-    /// Find share by ID.
-    pub async fn find_share_by_id(&self, id: Uuid) -> Result<Option<DocumentShare>, SqlxError> {
+    /// Find share by ID with RLS context.
+    pub async fn find_share_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<DocumentShare>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as::<_, DocumentShare>(
             r#"
             SELECT * FROM document_shares
@@ -755,15 +1229,19 @@ impl DocumentRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await
     }
 
-    /// Find share by token.
-    pub async fn find_share_by_token(
+    /// Find share by token with RLS context.
+    pub async fn find_share_by_token_rls<'e, E>(
         &self,
+        executor: E,
         token: &str,
-    ) -> Result<Option<DocumentShare>, SqlxError> {
+    ) -> Result<Option<DocumentShare>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query_as::<_, DocumentShare>(
             r#"
             SELECT * FROM document_shares
@@ -773,12 +1251,19 @@ impl DocumentRepository {
             "#,
         )
         .bind(token)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await
     }
 
-    /// Get shares for a document.
-    pub async fn get_shares(&self, document_id: Uuid) -> Result<Vec<ShareWithDocument>, SqlxError> {
+    /// Get shares for a document with RLS context.
+    pub async fn get_shares_rls<'e, E>(
+        &self,
+        executor: E,
+        document_id: Uuid,
+    ) -> Result<Vec<ShareWithDocument>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let rows = sqlx::query(
             r#"
             SELECT
@@ -793,7 +1278,7 @@ impl DocumentRepository {
             "#,
         )
         .bind(document_id)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(rows
@@ -818,8 +1303,11 @@ impl DocumentRepository {
             .collect())
     }
 
-    /// Revoke a share.
-    pub async fn revoke_share(&self, id: Uuid) -> Result<(), SqlxError> {
+    /// Revoke a share with RLS context.
+    pub async fn revoke_share_rls<'e, E>(&self, executor: E, id: Uuid) -> Result<(), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query(
             r#"
             UPDATE document_shares
@@ -828,12 +1316,131 @@ impl DocumentRepository {
             "#,
         )
         .bind(id)
-        .execute(&self.pool)
+        .execute(executor)
         .await?;
         Ok(())
     }
 
+    /// Log share access with RLS context.
+    pub async fn log_share_access_rls<'e, E>(
+        &self,
+        executor: E,
+        data: LogShareAccess,
+    ) -> Result<ShareAccessLog, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        sqlx::query_as::<_, ShareAccessLog>(
+            r#"
+            INSERT INTO document_share_access_log (share_id, accessed_by, ip_address)
+            VALUES ($1, $2, $3::inet)
+            RETURNING *
+            "#,
+        )
+        .bind(data.share_id)
+        .bind(data.accessed_by)
+        .bind(&data.ip_address)
+        .fetch_one(executor)
+        .await
+    }
+
+    /// Get share access log with RLS context.
+    pub async fn get_share_access_log_rls<'e, E>(
+        &self,
+        executor: E,
+        share_id: Uuid,
+        limit: Option<i64>,
+    ) -> Result<Vec<ShareAccessLog>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let limit = limit.unwrap_or(100).min(500);
+
+        sqlx::query_as::<_, ShareAccessLog>(
+            r#"
+            SELECT * FROM document_share_access_log
+            WHERE share_id = $1
+            ORDER BY accessed_at DESC
+            LIMIT $2
+            "#,
+        )
+        .bind(share_id)
+        .bind(limit)
+        .fetch_all(executor)
+        .await
+    }
+
+    // ========================================================================
+    // Legacy Share Operations (Story 7A.5) - migrate to RLS versions
+    // ========================================================================
+
+    /// Create a new share.
+    ///
+    /// **Deprecated**: Use `create_share_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_share_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn create_share(&self, data: CreateShare) -> Result<DocumentShare, SqlxError> {
+        self.create_share_rls(&self.pool, data).await
+    }
+
+    /// Find share by ID.
+    ///
+    /// **Deprecated**: Use `find_share_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_share_by_id_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn find_share_by_id(&self, id: Uuid) -> Result<Option<DocumentShare>, SqlxError> {
+        self.find_share_by_id_rls(&self.pool, id).await
+    }
+
+    /// Find share by token.
+    ///
+    /// **Deprecated**: Use `find_share_by_token_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_share_by_token_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn find_share_by_token(
+        &self,
+        token: &str,
+    ) -> Result<Option<DocumentShare>, SqlxError> {
+        self.find_share_by_token_rls(&self.pool, token).await
+    }
+
+    /// Get shares for a document.
+    ///
+    /// **Deprecated**: Use `get_shares_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_shares_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn get_shares(&self, document_id: Uuid) -> Result<Vec<ShareWithDocument>, SqlxError> {
+        self.get_shares_rls(&self.pool, document_id).await
+    }
+
+    /// Revoke a share.
+    ///
+    /// **Deprecated**: Use `revoke_share_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use revoke_share_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn revoke_share(&self, id: Uuid) -> Result<(), SqlxError> {
+        self.revoke_share_rls(&self.pool, id).await
+    }
+
     /// Verify share password.
+    ///
+    /// Note: This method requires fetching the share first, so it uses internal deprecated methods.
+    #[allow(deprecated)]
     pub async fn verify_share_password(
         &self,
         share_id: Uuid,
@@ -853,48 +1460,239 @@ impl DocumentRepository {
     }
 
     /// Log share access.
+    ///
+    /// **Deprecated**: Use `log_share_access_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use log_share_access_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn log_share_access(
         &self,
         data: LogShareAccess,
     ) -> Result<ShareAccessLog, SqlxError> {
-        sqlx::query_as::<_, ShareAccessLog>(
-            r#"
-            INSERT INTO document_share_access_log (share_id, accessed_by, ip_address)
-            VALUES ($1, $2, $3::inet)
-            RETURNING *
-            "#,
-        )
-        .bind(data.share_id)
-        .bind(data.accessed_by)
-        .bind(&data.ip_address)
-        .fetch_one(&self.pool)
-        .await
+        self.log_share_access_rls(&self.pool, data).await
     }
 
     /// Get share access log.
+    ///
+    /// **Deprecated**: Use `get_share_access_log_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_share_access_log_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn get_share_access_log(
         &self,
         share_id: Uuid,
         limit: Option<i64>,
     ) -> Result<Vec<ShareAccessLog>, SqlxError> {
-        let limit = limit.unwrap_or(100).min(500);
+        self.get_share_access_log_rls(&self.pool, share_id, limit)
+            .await
+    }
 
-        sqlx::query_as::<_, ShareAccessLog>(
+    // ========================================================================
+    // RLS-aware Version Operations (Story 7B.1)
+    // ========================================================================
+
+    /// Create a new version of an existing document with RLS context.
+    ///
+    /// This creates a new document record with:
+    /// - An incremented version number
+    /// - Reference to the original document (parent_document_id)
+    /// - is_current_version set to true (previous versions are auto-updated to false via trigger)
+    pub async fn create_version_rls<'e, E>(
+        &self,
+        executor: E,
+        document_id: Uuid,
+        data: CreateDocumentVersion,
+    ) -> Result<Document, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Note: This RLS version performs a single query that combines finding the original
+        // and creating the new version. For full functionality with multiple queries,
+        // use the legacy version or handle the transaction externally.
+        sqlx::query_as::<_, Document>(
             r#"
-            SELECT * FROM document_share_access_log
-            WHERE share_id = $1
-            ORDER BY accessed_at DESC
-            LIMIT $2
+            WITH original AS (
+                SELECT * FROM documents WHERE id = $1 AND deleted_at IS NULL
+            ),
+            next_ver AS (
+                SELECT get_next_document_version($1) as version_number
+            )
+            INSERT INTO documents (
+                organization_id, folder_id, title, description, category,
+                file_key, file_name, mime_type, size_bytes,
+                access_scope, access_target_ids, access_roles, created_by,
+                version_number, parent_document_id, is_current_version
+            )
+            SELECT
+                o.organization_id, o.folder_id, o.title, o.description, o.category,
+                $2, $3, $4, $5,
+                o.access_scope, o.access_target_ids, o.access_roles, $6,
+                n.version_number, COALESCE(o.parent_document_id, o.id), true
+            FROM original o, next_ver n
+            RETURNING *
             "#,
         )
-        .bind(share_id)
-        .bind(limit)
-        .fetch_all(&self.pool)
+        .bind(document_id)
+        .bind(&data.file_key)
+        .bind(&data.file_name)
+        .bind(&data.mime_type)
+        .bind(data.size_bytes)
+        .bind(data.created_by)
+        .fetch_one(executor)
+        .await
+    }
+
+    /// Get version history for a document with RLS context.
+    ///
+    /// Returns all versions in the chain, ordered by version number (descending).
+    pub async fn get_version_history_rls<'e, E>(
+        &self,
+        executor: E,
+        document_id: Uuid,
+    ) -> Result<DocumentVersionHistory, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Single query to get document info and all versions
+        let rows = sqlx::query(
+            r#"
+            WITH doc AS (
+                SELECT
+                    COALESCE(parent_document_id, id) as root_id,
+                    title
+                FROM documents
+                WHERE id = $1 AND deleted_at IS NULL
+            )
+            SELECT
+                d.id,
+                d.version_number,
+                d.is_current_version,
+                d.file_key,
+                d.file_name,
+                d.mime_type,
+                d.size_bytes,
+                d.created_by,
+                CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+                d.created_at,
+                doc.root_id,
+                doc.title
+            FROM documents d
+            JOIN users u ON u.id = d.created_by
+            CROSS JOIN doc
+            WHERE d.deleted_at IS NULL
+              AND (d.id = doc.root_id OR d.parent_document_id = doc.root_id)
+            ORDER BY d.version_number DESC
+            "#,
+        )
+        .bind(document_id)
+        .fetch_all(executor)
+        .await?;
+
+        if rows.is_empty() {
+            return Err(SqlxError::RowNotFound);
+        }
+
+        let root_id: Uuid = rows[0].get("root_id");
+        let title: String = rows[0].get("title");
+
+        let versions: Vec<DocumentVersion> = rows
+            .into_iter()
+            .map(|row| DocumentVersion {
+                id: row.get("id"),
+                version_number: row.get("version_number"),
+                is_current_version: row.get("is_current_version"),
+                file_key: row.get("file_key"),
+                file_name: row.get("file_name"),
+                mime_type: row.get("mime_type"),
+                size_bytes: row.get("size_bytes"),
+                created_by: row.get("created_by"),
+                created_by_name: row.get("created_by_name"),
+                created_at: row.get("created_at"),
+            })
+            .collect();
+
+        let total_versions = versions.len() as i32;
+
+        Ok(DocumentVersionHistory {
+            document_id: root_id,
+            title,
+            total_versions,
+            versions,
+        })
+    }
+
+    /// Get a specific version of a document with RLS context.
+    pub async fn get_version_rls<'e, E>(
+        &self,
+        executor: E,
+        document_id: Uuid,
+        version_id: Uuid,
+    ) -> Result<Option<DocumentVersion>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        sqlx::query_as::<_, DocumentVersion>(
+            r#"
+            WITH doc AS (
+                SELECT COALESCE(parent_document_id, id) as root_id
+                FROM documents
+                WHERE id = $1 AND deleted_at IS NULL
+            )
+            SELECT
+                d.id,
+                d.version_number,
+                d.is_current_version,
+                d.file_key,
+                d.file_name,
+                d.mime_type,
+                d.size_bytes,
+                d.created_by,
+                CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+                d.created_at
+            FROM documents d
+            JOIN users u ON u.id = d.created_by
+            JOIN doc ON (d.id = doc.root_id OR d.parent_document_id = doc.root_id)
+            WHERE d.id = $2 AND d.deleted_at IS NULL
+            "#,
+        )
+        .bind(document_id)
+        .bind(version_id)
+        .fetch_optional(executor)
+        .await
+    }
+
+    /// Get the current (latest) version of a document with RLS context.
+    pub async fn get_current_version_rls<'e, E>(
+        &self,
+        executor: E,
+        document_id: Uuid,
+    ) -> Result<Option<Document>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        sqlx::query_as::<_, Document>(
+            r#"
+            WITH doc AS (
+                SELECT COALESCE(parent_document_id, id) as root_id
+                FROM documents
+                WHERE id = $1 AND deleted_at IS NULL
+            )
+            SELECT d.* FROM documents d
+            JOIN doc ON (d.id = doc.root_id OR d.parent_document_id = doc.root_id)
+            WHERE d.deleted_at IS NULL AND d.is_current_version = true
+            "#,
+        )
+        .bind(document_id)
+        .fetch_optional(executor)
         .await
     }
 
     // ========================================================================
-    // Version Operations (Story 7B.1)
+    // Legacy Version Operations (Story 7B.1) - migrate to RLS versions
     // ========================================================================
 
     /// Create a new version of an existing document.
@@ -903,6 +1701,13 @@ impl DocumentRepository {
     /// - An incremented version number
     /// - Reference to the original document (parent_document_id)
     /// - is_current_version set to true (previous versions are auto-updated to false via trigger)
+    ///
+    /// **Deprecated**: Use `create_version_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_version_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn create_version(
         &self,
         document_id: Uuid,
@@ -958,6 +1763,13 @@ impl DocumentRepository {
     /// Get version history for a document.
     ///
     /// Returns all versions in the chain, ordered by version number (descending).
+    ///
+    /// **Deprecated**: Use `get_version_history_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_version_history_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn get_version_history(
         &self,
         document_id: Uuid,
@@ -1006,6 +1818,13 @@ impl DocumentRepository {
     }
 
     /// Get a specific version of a document.
+    ///
+    /// **Deprecated**: Use `get_version_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_version_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn get_version(
         &self,
         document_id: Uuid,
@@ -1049,6 +1868,13 @@ impl DocumentRepository {
     ///
     /// This creates a new version entry with the content from the old version,
     /// making it non-destructive (preserving full history).
+    ///
+    /// **Deprecated**: Use `restore_version_rls` or handle externally with RLS-enabled connection.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use restore_version with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn restore_version(
         &self,
         document_id: Uuid,
@@ -1084,6 +1910,13 @@ impl DocumentRepository {
     }
 
     /// Get the current (latest) version of a document.
+    ///
+    /// **Deprecated**: Use `get_current_version_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_current_version_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn get_current_version(
         &self,
         document_id: Uuid,
@@ -1111,6 +1944,9 @@ impl DocumentRepository {
 
     // ========================================================================
     // Document Intelligence (Epic 28)
+    // Note: These methods involve complex operations with queues and stats
+    // that often require multiple queries. They are kept as legacy methods
+    // for now, but can be migrated to RLS versions as needed.
     // ========================================================================
 
     // ------------------------------------------------------------------------

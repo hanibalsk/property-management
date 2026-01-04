@@ -61,6 +61,8 @@ pub async fn get_preferences(
     })?;
 
     // Get all preferences for the user
+    // TODO: Migrate to get_by_user_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let preferences = match state.notification_pref_repo.get_by_user(user_id).await {
         Ok(prefs) => prefs,
         Err(e) => {
@@ -163,6 +165,8 @@ pub async fn update_preference(
 
     // If disabling, check if this would disable all channels
     if !req.enabled {
+        // TODO: Migrate to count_enabled_rls and get_by_user_and_channel_rls
+        #[allow(deprecated)]
         let would_disable_all = match state
             .notification_pref_repo
             .would_disable_all(user_id, channel)
@@ -194,6 +198,8 @@ pub async fn update_preference(
     }
 
     // Update the preference
+    // TODO: Migrate to update_channel_rls
+    #[allow(deprecated)]
     let updated = match state
         .notification_pref_repo
         .update_channel(user_id, channel, req.enabled)
@@ -213,6 +219,8 @@ pub async fn update_preference(
     };
 
     // Check if all channels are now disabled
+    // TODO: Migrate to count_enabled_rls
+    #[allow(deprecated)]
     let has_any_enabled = match state.notification_pref_repo.has_any_enabled(user_id).await {
         Ok(result) => result,
         Err(e) => {

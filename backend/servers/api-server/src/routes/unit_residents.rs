@@ -3,7 +3,7 @@
 //! Implements resident management for units including adding, updating,
 //! and ending residencies.
 
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -181,12 +181,13 @@ impl From<UnitResidentWithUser> for ResidentWithUserResponse {
 pub async fn list_residents(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -216,6 +217,7 @@ pub async fn list_residents(
         })?;
 
     if !is_member {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -226,13 +228,17 @@ pub async fn list_residents(
     }
 
     // Verify unit exists and belongs to building
-    let unit = state.unit_repo.find_by_id(unit_id).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get unit");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", "Database error")),
-        )
-    })?;
+    let unit = state
+        .unit_repo
+        .find_by_id_rls(&mut **rls.conn(), unit_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get unit");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", "Database error")),
+            )
+        })?;
 
     let unit = unit.ok_or_else(|| {
         (
@@ -242,6 +248,7 @@ pub async fn list_residents(
     })?;
 
     if unit.building_id != building_id {
+        rls.release().await;
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -266,6 +273,7 @@ pub async fn list_residents(
 
     let response: Vec<ResidentWithUserResponse> = residents.into_iter().map(Into::into).collect();
 
+    rls.release().await;
     Ok(Json(response))
 }
 
@@ -292,13 +300,14 @@ pub async fn list_residents(
 pub async fn add_resident(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<AddResidentRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -328,6 +337,7 @@ pub async fn add_resident(
         })?;
 
     if !is_member {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -338,13 +348,17 @@ pub async fn add_resident(
     }
 
     // Verify unit exists and belongs to building
-    let unit = state.unit_repo.find_by_id(unit_id).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get unit");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", "Database error")),
-        )
-    })?;
+    let unit = state
+        .unit_repo
+        .find_by_id_rls(&mut **rls.conn(), unit_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get unit");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", "Database error")),
+            )
+        })?;
 
     let unit = unit.ok_or_else(|| {
         (
@@ -354,6 +368,7 @@ pub async fn add_resident(
     })?;
 
     if unit.building_id != building_id {
+        rls.release().await;
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -371,6 +386,7 @@ pub async fn add_resident(
         resident_type::SUBTENANT,
     ];
     if !valid_types.contains(&req.resident_type.as_str()) {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -395,6 +411,7 @@ pub async fn add_resident(
         .is_some();
 
     if !user_exists {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new("USER_NOT_FOUND", "User not found")),
@@ -443,6 +460,7 @@ pub async fn add_resident(
         "Resident added to unit"
     );
 
+    rls.release().await;
     Ok((StatusCode::CREATED, Json(ResidentResponse::from(resident))))
 }
 
@@ -467,12 +485,13 @@ pub async fn add_resident(
 pub async fn get_resident(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id, resident_id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -502,6 +521,7 @@ pub async fn get_resident(
         })?;
 
     if !is_member {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -532,6 +552,7 @@ pub async fn get_resident(
 
     // Verify resident belongs to the unit
     if resident.unit_id != unit_id {
+        rls.release().await;
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -541,6 +562,7 @@ pub async fn get_resident(
         ));
     }
 
+    rls.release().await;
     Ok(Json(ResidentResponse::from(resident)))
 }
 
@@ -567,13 +589,14 @@ pub async fn get_resident(
 pub async fn update_resident(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id, resident_id)): Path<(Uuid, Uuid, Uuid)>,
     Json(req): Json<UpdateResidentRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -603,6 +626,7 @@ pub async fn update_resident(
         })?;
 
     if !is_member {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -632,6 +656,7 @@ pub async fn update_resident(
         })?;
 
     if existing.unit_id != unit_id {
+        rls.release().await;
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -650,6 +675,7 @@ pub async fn update_resident(
             resident_type::SUBTENANT,
         ];
         if !valid_types.contains(&rtype.as_str()) {
+            rls.release().await;
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
@@ -693,6 +719,7 @@ pub async fn update_resident(
         "Resident updated"
     );
 
+    rls.release().await;
     Ok(Json(ResidentResponse::from(resident)))
 }
 
@@ -717,12 +744,13 @@ pub async fn update_resident(
 pub async fn remove_resident(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id, resident_id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -752,6 +780,7 @@ pub async fn remove_resident(
         })?;
 
     if !is_member {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -776,6 +805,7 @@ pub async fn remove_resident(
 
     if let Some(r) = existing {
         if r.unit_id != unit_id {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new(
@@ -798,6 +828,7 @@ pub async fn remove_resident(
             )
         })?;
 
+    rls.release().await;
     if deleted {
         tracing::info!(
             resident_id = %resident_id,
@@ -836,13 +867,14 @@ pub async fn remove_resident(
 pub async fn end_residency(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id, resident_id)): Path<(Uuid, Uuid, Uuid)>,
     Json(req): Json<EndResidencyRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -872,6 +904,7 @@ pub async fn end_residency(
         })?;
 
     if !is_member {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -901,6 +934,7 @@ pub async fn end_residency(
         })?;
 
     if existing.unit_id != unit_id {
+        rls.release().await;
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -912,6 +946,7 @@ pub async fn end_residency(
 
     // Validate end date is after start date
     if req.end_date < existing.start_date {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -946,6 +981,7 @@ pub async fn end_residency(
         "Residency ended"
     );
 
+    rls.release().await;
     Ok(Json(ResidentResponse::from(resident)))
 }
 
@@ -969,12 +1005,13 @@ pub async fn end_residency(
 pub async fn list_resident_history(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -1004,6 +1041,7 @@ pub async fn list_resident_history(
         })?;
 
     if !is_member {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -1014,13 +1052,17 @@ pub async fn list_resident_history(
     }
 
     // Verify unit exists and belongs to building
-    let unit = state.unit_repo.find_by_id(unit_id).await.map_err(|e| {
-        tracing::error!(error = %e, "Failed to get unit");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", "Database error")),
-        )
-    })?;
+    let unit = state
+        .unit_repo
+        .find_by_id_rls(&mut **rls.conn(), unit_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to get unit");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", "Database error")),
+            )
+        })?;
 
     let unit = unit.ok_or_else(|| {
         (
@@ -1030,6 +1072,7 @@ pub async fn list_resident_history(
     })?;
 
     if unit.building_id != building_id {
+        rls.release().await;
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(
@@ -1057,5 +1100,6 @@ pub async fn list_resident_history(
 
     let response: Vec<ResidentWithUserResponse> = residents.into_iter().map(Into::into).collect();
 
+    rls.release().await;
     Ok(Json(response))
 }

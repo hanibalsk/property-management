@@ -1,7 +1,7 @@
 //! Messaging routes (Epic 6, Story 6.5: Direct Messaging).
 
 use crate::state::AppState;
-use api_core::{AuthUser, TenantExtractor};
+use api_core::extractors::RlsConnection;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -144,16 +144,18 @@ pub fn router() -> Router<AppState> {
 )]
 async fn list_threads(
     State(state): State<AppState>,
-    tenant: TenantExtractor,
-    auth_user: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<ListThreadsQuery>,
 ) -> Result<Json<ThreadListResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = MessagingRepository::new(state.db.clone());
+    let user_id = rls.user_id();
+    let tenant_id = rls.tenant_id();
 
     let threads = repo
-        .list_threads(
-            auth_user.user_id,
-            tenant.tenant_id,
+        .list_threads_rls(
+            &mut **rls.conn(),
+            user_id,
+            tenant_id,
             query.limit,
             query.offset,
         )
@@ -167,7 +169,7 @@ async fn list_threads(
         })?;
 
     let total = repo
-        .count_threads(auth_user.user_id, tenant.tenant_id)
+        .count_threads_rls(&mut **rls.conn(), user_id, tenant_id)
         .await
         .map_err(|e| {
             tracing::error!("Failed to count threads: {:?}", e);
@@ -176,6 +178,8 @@ async fn list_threads(
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
             )
         })?;
+
+    rls.release().await;
 
     Ok(Json(ThreadListResponse {
         count: threads.len(),
@@ -199,12 +203,15 @@ async fn list_threads(
 )]
 async fn start_thread(
     State(state): State<AppState>,
-    tenant: TenantExtractor,
-    auth_user: AuthUser,
+    mut rls: RlsConnection,
     Json(body): Json<StartThreadRequest>,
 ) -> Result<Json<ThreadDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = rls.user_id();
+    let tenant_id = rls.tenant_id();
+
     // Can't message yourself
-    if body.recipient_id == auth_user.user_id {
+    if body.recipient_id == user_id {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -229,12 +236,14 @@ async fn start_thread(
 
     match recipient_org {
         None => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("USER_NOT_FOUND", "Recipient not found")),
             ));
         }
-        Some((org_id,)) if org_id != tenant.tenant_id => {
+        Some((org_id,)) if org_id != tenant_id => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
@@ -250,7 +259,7 @@ async fn start_thread(
 
     // Check if either user has blocked the other
     let is_blocked = repo
-        .is_blocked(auth_user.user_id, body.recipient_id)
+        .is_blocked_rls(&mut **rls.conn(), user_id, body.recipient_id)
         .await
         .map_err(|e| {
             tracing::error!("Failed to check block status: {:?}", e);
@@ -261,6 +270,7 @@ async fn start_thread(
         })?;
 
     if is_blocked {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -272,10 +282,13 @@ async fn start_thread(
 
     // Get or create thread
     let thread = repo
-        .get_or_create_thread(CreateThread {
-            organization_id: tenant.tenant_id,
-            participant_ids: vec![auth_user.user_id, body.recipient_id],
-        })
+        .get_or_create_thread_rls(
+            &mut **rls.conn(),
+            CreateThread {
+                organization_id: tenant_id,
+                participant_ids: vec![user_id, body.recipient_id],
+            },
+        )
         .await
         .map_err(|e| {
             tracing::error!("Failed to create thread: {:?}", e);
@@ -288,6 +301,7 @@ async fn start_thread(
     // Send initial message if provided
     if let Some(content) = body.initial_message {
         if content.len() > MAX_MESSAGE_LENGTH {
+            rls.release().await;
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
@@ -297,11 +311,14 @@ async fn start_thread(
             ));
         }
 
-        repo.create_message(CreateMessage {
-            thread_id: thread.id,
-            sender_id: auth_user.user_id,
-            content,
-        })
+        repo.create_message_rls(
+            &mut **rls.conn(),
+            CreateMessage {
+                thread_id: thread.id,
+                sender_id: user_id,
+                content,
+            },
+        )
         .await
         .map_err(|e| {
             tracing::error!("Failed to send initial message: {:?}", e);
@@ -314,7 +331,7 @@ async fn start_thread(
 
     // Get messages and other participant info
     let messages = repo
-        .get_thread_messages(thread.id, Some(50), None)
+        .get_thread_messages_rls(&mut **rls.conn(), thread.id, Some(50), None)
         .await
         .map_err(|e| {
             (
@@ -323,15 +340,20 @@ async fn start_thread(
             )
         })?;
 
-    let message_count = repo.count_thread_messages(thread.id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
-        )
-    })?;
+    let message_count = repo
+        .count_thread_messages_rls(&mut **rls.conn(), thread.id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
 
     // Get other participant info
-    let other_participant = get_other_participant(&state, &thread, auth_user.user_id).await?;
+    let other_participant = get_other_participant(&state, &thread, user_id).await?;
+
+    rls.release().await;
 
     Ok(Json(ThreadDetailResponse {
         thread,
@@ -358,20 +380,24 @@ async fn start_thread(
 )]
 async fn get_thread(
     State(state): State<AppState>,
-    tenant: TenantExtractor,
-    auth_user: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<ListMessagesQuery>,
 ) -> Result<Json<ThreadDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = MessagingRepository::new(state.db.clone());
+    let user_id = rls.user_id();
+    let tenant_id = rls.tenant_id();
 
     // Get thread
-    let thread = repo.get_thread(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
-        )
-    })?;
+    let thread = repo
+        .get_thread_rls(&mut **rls.conn(), id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
 
     let thread = thread.ok_or_else(|| {
         (
@@ -381,7 +407,8 @@ async fn get_thread(
     })?;
 
     // Security: Verify thread belongs to current tenant (Critical 1.1 fix)
-    if thread.organization_id != tenant.tenant_id {
+    if thread.organization_id != tenant_id {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -392,7 +419,8 @@ async fn get_thread(
     }
 
     // Check if user is a participant
-    if !thread.participant_ids.contains(&auth_user.user_id) {
+    if !thread.participant_ids.contains(&user_id) {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -404,7 +432,7 @@ async fn get_thread(
 
     // Get messages
     let messages = repo
-        .get_thread_messages(id, query.limit, query.offset)
+        .get_thread_messages_rls(&mut **rls.conn(), id, query.limit, query.offset)
         .await
         .map_err(|e| {
             (
@@ -413,18 +441,25 @@ async fn get_thread(
             )
         })?;
 
-    let message_count = repo.count_thread_messages(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
-        )
-    })?;
+    let message_count = repo
+        .count_thread_messages_rls(&mut **rls.conn(), id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
 
     // Get other participant info
-    let other_participant = get_other_participant(&state, &thread, auth_user.user_id).await?;
+    let other_participant = get_other_participant(&state, &thread, user_id).await?;
 
     // Mark thread as read
-    let _ = repo.mark_thread_read(id, auth_user.user_id).await;
+    let _ = repo
+        .mark_thread_read_rls(&mut **rls.conn(), id, user_id)
+        .await;
+
+    rls.release().await;
 
     Ok(Json(ThreadDetailResponse {
         thread,
@@ -452,13 +487,16 @@ async fn get_thread(
 )]
 async fn send_message(
     State(state): State<AppState>,
-    tenant: TenantExtractor,
-    auth_user: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(body): Json<SendMessageRequest>,
 ) -> Result<Json<SendMessageResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = rls.user_id();
+    let tenant_id = rls.tenant_id();
+
     // Validate content
     if body.content.trim().is_empty() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -469,6 +507,7 @@ async fn send_message(
     }
 
     if body.content.len() > MAX_MESSAGE_LENGTH {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -481,12 +520,15 @@ async fn send_message(
     let repo = MessagingRepository::new(state.db.clone());
 
     // Get thread and verify participation
-    let thread = repo.get_thread(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
-        )
-    })?;
+    let thread = repo
+        .get_thread_rls(&mut **rls.conn(), id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
 
     let thread = thread.ok_or_else(|| {
         (
@@ -496,7 +538,8 @@ async fn send_message(
     })?;
 
     // Security: Verify thread belongs to current tenant (Critical 1.1 fix)
-    if thread.organization_id != tenant.tenant_id {
+    if thread.organization_id != tenant_id {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -506,7 +549,8 @@ async fn send_message(
         ));
     }
 
-    if !thread.participant_ids.contains(&auth_user.user_id) {
+    if !thread.participant_ids.contains(&user_id) {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -520,7 +564,7 @@ async fn send_message(
     let other_user_id = thread
         .participant_ids
         .iter()
-        .find(|&&uid| uid != auth_user.user_id)
+        .find(|&&uid| uid != user_id)
         .copied()
         .ok_or_else(|| {
             (
@@ -533,7 +577,7 @@ async fn send_message(
         })?;
 
     let is_blocked = repo
-        .is_blocked(auth_user.user_id, other_user_id)
+        .is_blocked_rls(&mut **rls.conn(), user_id, other_user_id)
         .await
         .map_err(|e| {
             (
@@ -543,6 +587,7 @@ async fn send_message(
         })?;
 
     if is_blocked {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -554,11 +599,14 @@ async fn send_message(
 
     // Send message
     let message = repo
-        .create_message(CreateMessage {
-            thread_id: id,
-            sender_id: auth_user.user_id,
-            content: body.content,
-        })
+        .create_message_rls(
+            &mut **rls.conn(),
+            CreateMessage {
+                thread_id: id,
+                sender_id: user_id,
+                content: body.content,
+            },
+        )
         .await
         .map_err(|e| {
             tracing::error!("Failed to send message: {:?}", e);
@@ -567,6 +615,8 @@ async fn send_message(
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
             )
         })?;
+
+    rls.release().await;
 
     Ok(Json(SendMessageResponse {
         message: "Message sent successfully".to_string(),
@@ -590,19 +640,23 @@ async fn send_message(
 )]
 async fn mark_thread_read(
     State(state): State<AppState>,
-    tenant: TenantExtractor,
-    auth_user: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<MessageSuccessResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = MessagingRepository::new(state.db.clone());
+    let user_id = rls.user_id();
+    let tenant_id = rls.tenant_id();
 
     // Get thread to verify tenant (Critical 1.1 fix)
-    let thread = repo.get_thread(id).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new("DB_ERROR", e.to_string())),
-        )
-    })?;
+    let thread = repo
+        .get_thread_rls(&mut **rls.conn(), id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new("DB_ERROR", e.to_string())),
+            )
+        })?;
 
     let thread = thread.ok_or_else(|| {
         (
@@ -612,7 +666,8 @@ async fn mark_thread_read(
     })?;
 
     // Security: Verify thread belongs to current tenant
-    if thread.organization_id != tenant.tenant_id {
+    if thread.organization_id != tenant_id {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -623,7 +678,8 @@ async fn mark_thread_read(
     }
 
     // Check if user is participant
-    if !thread.participant_ids.contains(&auth_user.user_id) {
+    if !thread.participant_ids.contains(&user_id) {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -634,7 +690,7 @@ async fn mark_thread_read(
     }
 
     let marked = repo
-        .mark_thread_read(id, auth_user.user_id)
+        .mark_thread_read_rls(&mut **rls.conn(), id, user_id)
         .await
         .map_err(|e| {
             (
@@ -642,6 +698,8 @@ async fn mark_thread_read(
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
             )
         })?;
+
+    rls.release().await;
 
     Ok(Json(MessageSuccessResponse {
         message: format!("{} messages marked as read", marked),
@@ -664,12 +722,13 @@ async fn mark_thread_read(
 )]
 async fn list_blocked_users(
     State(state): State<AppState>,
-    auth_user: AuthUser,
+    mut rls: RlsConnection,
 ) -> Result<Json<BlockedUsersResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = MessagingRepository::new(state.db.clone());
+    let user_id = rls.user_id();
 
     let blocked_users = repo
-        .list_blocked_users(auth_user.user_id)
+        .list_blocked_users_rls(&mut **rls.conn(), user_id)
         .await
         .map_err(|e| {
             (
@@ -677,6 +736,8 @@ async fn list_blocked_users(
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
             )
         })?;
+
+    rls.release().await;
 
     Ok(Json(BlockedUsersResponse {
         count: blocked_users.len(),
@@ -700,12 +761,15 @@ async fn list_blocked_users(
 )]
 async fn block_user(
     State(state): State<AppState>,
-    tenant: TenantExtractor,
-    auth_user: AuthUser,
-    Path(user_id): Path<Uuid>,
+    mut rls: RlsConnection,
+    Path(user_id_to_block): Path<Uuid>,
 ) -> Result<Json<MessageSuccessResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let user_id = rls.user_id();
+    let tenant_id = rls.tenant_id();
+
     // Can't block yourself
-    if user_id == auth_user.user_id {
+    if user_id_to_block == user_id {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new("INVALID_BLOCK", "Cannot block yourself")),
@@ -714,11 +778,14 @@ async fn block_user(
 
     let repo = MessagingRepository::new(state.db.clone());
 
-    repo.block_user(CreateBlock {
-        blocker_id: auth_user.user_id,
-        blocked_id: user_id,
-        organization_id: tenant.tenant_id,
-    })
+    repo.block_user_rls(
+        &mut **rls.conn(),
+        CreateBlock {
+            blocker_id: user_id,
+            blocked_id: user_id_to_block,
+            organization_id: tenant_id,
+        },
+    )
     .await
     .map_err(|e| match e {
         SqlxError::Protocol(msg) if msg.contains("already blocked") => (
@@ -733,6 +800,8 @@ async fn block_user(
             )
         }
     })?;
+
+    rls.release().await;
 
     Ok(Json(MessageSuccessResponse {
         message: "User blocked successfully".to_string(),
@@ -754,12 +823,13 @@ async fn block_user(
 )]
 async fn unblock_user(
     State(state): State<AppState>,
-    auth_user: AuthUser,
-    Path(user_id): Path<Uuid>,
+    mut rls: RlsConnection,
+    Path(user_id_to_unblock): Path<Uuid>,
 ) -> Result<Json<MessageSuccessResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = MessagingRepository::new(state.db.clone());
+    let user_id = rls.user_id();
 
-    repo.unblock_user(auth_user.user_id, user_id)
+    repo.unblock_user_rls(&mut **rls.conn(), user_id, user_id_to_unblock)
         .await
         .map_err(|e| {
             tracing::error!("Failed to unblock user: {:?}", e);
@@ -768,6 +838,8 @@ async fn unblock_user(
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
             )
         })?;
+
+    rls.release().await;
 
     Ok(Json(MessageSuccessResponse {
         message: "User unblocked successfully".to_string(),
@@ -790,13 +862,14 @@ async fn unblock_user(
 )]
 async fn get_unread_count(
     State(state): State<AppState>,
-    tenant: TenantExtractor,
-    auth_user: AuthUser,
+    mut rls: RlsConnection,
 ) -> Result<Json<UnreadMessagesResponse>, (StatusCode, Json<ErrorResponse>)> {
     let repo = MessagingRepository::new(state.db.clone());
+    let user_id = rls.user_id();
+    let tenant_id = rls.tenant_id();
 
     let unread_count = repo
-        .count_unread(auth_user.user_id, tenant.tenant_id)
+        .count_unread_rls(&mut **rls.conn(), user_id, tenant_id)
         .await
         .map_err(|e| {
             (
@@ -804,6 +877,8 @@ async fn get_unread_count(
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
             )
         })?;
+
+    rls.release().await;
 
     Ok(Json(UnreadMessagesResponse { unread_count }))
 }

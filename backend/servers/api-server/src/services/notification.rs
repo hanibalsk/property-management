@@ -250,6 +250,9 @@ impl NotificationService {
             NotificationChannel::InApp => DbNotificationChannel::InApp,
         };
 
+        // Note: NotificationService is used in background tasks without user RLS context.
+        // These are system-level lookups for notification preferences.
+        #[allow(deprecated)]
         if let Some(pref) = self
             .notification_pref_repo
             .get_by_user_and_channel(user_id, db_channel)

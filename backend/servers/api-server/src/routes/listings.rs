@@ -129,6 +129,8 @@ pub async fn create_from_unit(
     Json(data): Json<CreateListingFromUnit>,
 ) -> Result<Json<Listing>, (axum::http::StatusCode, String)> {
     // Fetch unit data
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let unit = state
         .unit_repo
         .find_by_id(data.unit_id)
@@ -147,6 +149,8 @@ pub async fn create_from_unit(
         })?;
 
     // Fetch building data for address
+    // TODO: Migrate to find_by_id_rls when this handler has RLS connection
+    #[allow(deprecated)]
     let building = state
         .building_repo
         .find_by_id(unit.building_id)

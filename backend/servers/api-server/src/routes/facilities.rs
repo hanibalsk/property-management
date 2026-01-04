@@ -2,7 +2,7 @@
 //!
 //! Implements common area and facility management including booking system.
 
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -321,12 +321,13 @@ pub struct AvailabilitySlot {
 pub async fn list_facilities(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(building_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -355,6 +356,7 @@ pub async fn list_facilities(
         })?;
 
     if !is_member {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -397,13 +399,14 @@ pub async fn list_facilities(
 pub async fn create_facility(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(building_id): Path<Uuid>,
     Json(req): Json<CreateFacilityRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -520,12 +523,13 @@ pub async fn create_facility(
 pub async fn get_facility(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -616,13 +620,14 @@ pub async fn get_facility(
 pub async fn update_facility(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, id)): Path<(Uuid, Uuid)>,
     Json(req): Json<UpdateFacilityRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -734,12 +739,13 @@ pub async fn update_facility(
 pub async fn delete_facility(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -818,13 +824,14 @@ pub async fn delete_facility(
 pub async fn list_facility_bookings(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, facility_id)): Path<(Uuid, Uuid)>,
     Query(query): Query<BookingsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building and access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -906,13 +913,14 @@ pub async fn list_facility_bookings(
 pub async fn create_booking(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, facility_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<CreateBookingRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building and access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -1046,13 +1054,14 @@ pub async fn create_booking(
 pub async fn check_availability(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, facility_id)): Path<(Uuid, Uuid)>,
     Query(query): Query<AvailabilityQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building and access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -1402,12 +1411,13 @@ pub async fn cancel_booking(
 pub async fn list_pending_bookings(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(building_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building and access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");

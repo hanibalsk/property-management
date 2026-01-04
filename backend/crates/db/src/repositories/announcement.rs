@@ -1,4 +1,28 @@
 //! Announcement repository (Epic 6: Announcements & Communication).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_announcement(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateAnnouncementRequest>,
+//! ) -> Result<Json<Announcement>> {
+//!     let announcement = state.announcement_repo.create_rls(rls.conn(), data).await?;
+//!     rls.release().await;
+//!     Ok(Json(announcement))
+//! }
+//! ```
 
 use crate::models::announcement::{
     announcement_status, AcknowledgmentStats, Announcement, AnnouncementAttachment,
@@ -9,7 +33,7 @@ use crate::models::announcement::{
 };
 use crate::DbPool;
 use chrono::{DateTime, Utc};
-use sqlx::{Error as SqlxError, FromRow};
+use sqlx::{Error as SqlxError, Executor, FromRow, Postgres};
 use uuid::Uuid;
 
 /// Row struct for announcement with details query.
@@ -54,11 +78,24 @@ impl AnnouncementRepository {
     }
 
     // ========================================================================
-    // Announcement CRUD
+    // RLS-aware methods (recommended)
     // ========================================================================
 
-    /// Create a new announcement (Story 6.1).
-    pub async fn create(&self, data: CreateAnnouncement) -> Result<Announcement, SqlxError> {
+    // ------------------------------------------------------------------------
+    // Announcement CRUD
+    // ------------------------------------------------------------------------
+
+    /// Create a new announcement with RLS context (Story 6.1).
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateAnnouncement,
+    ) -> Result<Announcement, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let target_ids_json = serde_json::to_value(&data.target_ids).unwrap_or_default();
         let comments_enabled = data.comments_enabled.unwrap_or(true);
         let acknowledgment_required = data.acknowledgment_required.unwrap_or(false);
@@ -91,14 +128,21 @@ impl AnnouncementRepository {
         .bind(data.scheduled_at)
         .bind(comments_enabled)
         .bind(acknowledgment_required)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(announcement)
     }
 
-    /// Find announcement by ID.
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Announcement>, SqlxError> {
+    /// Find announcement by ID with RLS context.
+    pub async fn find_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Announcement>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let announcement = sqlx::query_as::<_, Announcement>(
             r#"
             SELECT
@@ -111,17 +155,21 @@ impl AnnouncementRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(announcement)
     }
 
-    /// Find announcement with full details.
-    pub async fn find_by_id_with_details(
+    /// Find announcement with full details with RLS context.
+    pub async fn find_by_id_with_details_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
-    ) -> Result<Option<AnnouncementWithDetails>, SqlxError> {
+    ) -> Result<Option<AnnouncementWithDetails>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let result = sqlx::query_as::<_, AnnouncementDetailsRow>(
             r#"
             SELECT
@@ -141,7 +189,7 @@ impl AnnouncementRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(result.map(|row| {
@@ -175,12 +223,16 @@ impl AnnouncementRepository {
         }))
     }
 
-    /// List announcements with filters.
-    pub async fn list(
+    /// List announcements with filters with RLS context.
+    pub async fn list_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         query: AnnouncementListQuery,
-    ) -> Result<Vec<AnnouncementSummary>, SqlxError> {
+    ) -> Result<Vec<AnnouncementSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = query.limit.unwrap_or(50).min(100);
         let offset = query.offset.unwrap_or(0);
 
@@ -251,17 +303,21 @@ impl AnnouncementRepository {
             query_builder = query_builder.bind(to_date);
         }
 
-        let announcements = query_builder.fetch_all(&self.pool).await?;
+        let announcements = query_builder.fetch_all(executor).await?;
         Ok(announcements)
     }
 
-    /// List published announcements for users (respecting targeting).
-    pub async fn list_published(
+    /// List published announcements for users with RLS context.
+    pub async fn list_published_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         limit: Option<i64>,
         offset: Option<i64>,
-    ) -> Result<Vec<AnnouncementSummary>, SqlxError> {
+    ) -> Result<Vec<AnnouncementSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = limit.unwrap_or(50).min(100);
         let offset = offset.unwrap_or(0);
 
@@ -279,18 +335,22 @@ impl AnnouncementRepository {
         .bind(org_id)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(announcements)
     }
 
-    /// Count announcements matching filters (for pagination).
-    pub async fn count(
+    /// Count announcements matching filters with RLS context.
+    pub async fn count_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         query: AnnouncementListQuery,
-    ) -> Result<i64, SqlxError> {
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         // Build dynamic WHERE clause
         let mut conditions = vec!["organization_id = $1".to_string()];
         let mut param_idx = 2;
@@ -349,28 +409,39 @@ impl AnnouncementRepository {
             query_builder = query_builder.bind(to_date);
         }
 
-        let count = query_builder.fetch_one(&self.pool).await?;
+        let count = query_builder.fetch_one(executor).await?;
         Ok(count)
     }
 
-    /// Count published announcements (for pagination).
-    pub async fn count_published(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+    /// Count published announcements with RLS context.
+    pub async fn count_published_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let count = sqlx::query_scalar::<_, i64>(
             "SELECT COUNT(*) FROM announcements WHERE organization_id = $1 AND status = 'published'",
         )
         .bind(org_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(count)
     }
 
-    /// Update announcement details (only in draft/scheduled status).
-    pub async fn update(
+    /// Update announcement details with RLS context.
+    pub async fn update_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         data: UpdateAnnouncement,
-    ) -> Result<Announcement, SqlxError> {
+    ) -> Result<Announcement, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let target_ids_json = data
             .target_ids
             .as_ref()
@@ -405,14 +476,17 @@ impl AnnouncementRepository {
         .bind(data.scheduled_at)
         .bind(data.comments_enabled)
         .bind(data.acknowledgment_required)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(announcement)
     }
 
-    /// Archive an announcement (soft delete).
-    pub async fn archive(&self, id: Uuid) -> Result<Announcement, SqlxError> {
+    /// Archive an announcement with RLS context.
+    pub async fn archive_rls<'e, E>(&self, executor: E, id: Uuid) -> Result<Announcement, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let announcement = sqlx::query_as::<_, Announcement>(
             r#"
             UPDATE announcements
@@ -427,28 +501,34 @@ impl AnnouncementRepository {
             "#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(announcement)
     }
 
-    /// Delete an announcement (only in draft status).
-    pub async fn delete(&self, id: Uuid) -> Result<(), SqlxError> {
+    /// Delete an announcement with RLS context.
+    pub async fn delete_rls<'e, E>(&self, executor: E, id: Uuid) -> Result<(), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query("DELETE FROM announcements WHERE id = $1 AND status = 'draft'")
             .bind(id)
-            .execute(&self.pool)
+            .execute(executor)
             .await?;
 
         Ok(())
     }
 
-    // ========================================================================
+    // ------------------------------------------------------------------------
     // Publishing Operations (Story 6.1)
-    // ========================================================================
+    // ------------------------------------------------------------------------
 
-    /// Publish an announcement immediately.
-    pub async fn publish(&self, id: Uuid) -> Result<Announcement, SqlxError> {
+    /// Publish an announcement immediately with RLS context.
+    pub async fn publish_rls<'e, E>(&self, executor: E, id: Uuid) -> Result<Announcement, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let announcement = sqlx::query_as::<_, Announcement>(
             r#"
             UPDATE announcements
@@ -466,18 +546,22 @@ impl AnnouncementRepository {
             "#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(announcement)
     }
 
-    /// Schedule an announcement for future publishing.
-    pub async fn schedule(
+    /// Schedule an announcement for future publishing with RLS context.
+    pub async fn schedule_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         scheduled_at: DateTime<Utc>,
-    ) -> Result<Announcement, SqlxError> {
+    ) -> Result<Announcement, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let announcement = sqlx::query_as::<_, Announcement>(
             r#"
             UPDATE announcements
@@ -496,14 +580,20 @@ impl AnnouncementRepository {
         )
         .bind(id)
         .bind(scheduled_at)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(announcement)
     }
 
-    /// Find scheduled announcements ready to be published.
-    pub async fn find_scheduled_for_publishing(&self) -> Result<Vec<Announcement>, SqlxError> {
+    /// Find scheduled announcements ready to be published with RLS context.
+    pub async fn find_scheduled_for_publishing_rls<'e, E>(
+        &self,
+        executor: E,
+    ) -> Result<Vec<Announcement>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let announcements = sqlx::query_as::<_, Announcement>(
             r#"
             SELECT
@@ -516,14 +606,20 @@ impl AnnouncementRepository {
             WHERE status = 'scheduled' AND scheduled_at <= NOW()
             "#,
         )
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(announcements)
     }
 
-    /// Publish all scheduled announcements that are due.
-    pub async fn publish_scheduled(&self) -> Result<Vec<Announcement>, SqlxError> {
+    /// Publish all scheduled announcements that are due with RLS context.
+    pub async fn publish_scheduled_rls<'e, E>(
+        &self,
+        executor: E,
+    ) -> Result<Vec<Announcement>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let announcements = sqlx::query_as::<_, Announcement>(
             r#"
             UPDATE announcements
@@ -537,66 +633,49 @@ impl AnnouncementRepository {
                 acknowledgment_required, created_at, updated_at
             "#,
         )
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(announcements)
     }
 
-    // ========================================================================
+    // ------------------------------------------------------------------------
     // Pinning Operations (Story 6.4)
-    // ========================================================================
+    // ------------------------------------------------------------------------
 
     /// Maximum number of pinned announcements per organization.
     const MAX_PINNED_PER_ORG: i64 = 3;
 
-    /// Count pinned announcements for an organization.
-    pub async fn count_pinned(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+    /// Count pinned announcements for an organization with RLS context.
+    pub async fn count_pinned_rls<'e, E>(&self, executor: E, org_id: Uuid) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let (count,): (i64,) = sqlx::query_as(
             "SELECT COUNT(*) FROM announcements WHERE organization_id = $1 AND pinned = true",
         )
         .bind(org_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(count)
     }
 
-    /// Pin an announcement.
+    /// Pin an announcement with RLS context.
     /// Returns error if max pinned limit (3) is reached.
-    pub async fn pin(&self, id: Uuid, pinned_by: Uuid) -> Result<Announcement, SqlxError> {
-        // Get announcement to check org_id and if already pinned
-        let announcement = sqlx::query_as::<_, Announcement>(
-            r#"
-            SELECT
-                id, organization_id, author_id, title, content,
-                target_type::text as target_type, target_ids,
-                status::text as status, scheduled_at, published_at,
-                pinned, pinned_at, pinned_by, comments_enabled,
-                acknowledgment_required, created_at, updated_at
-            FROM announcements WHERE id = $1 AND status = 'published'
-            "#,
-        )
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        // If already pinned, just return it
-        if announcement.pinned {
-            return Ok(announcement);
-        }
-
-        // Check pinned count
-        let pinned_count = self.count_pinned(announcement.organization_id).await?;
-        if pinned_count >= Self::MAX_PINNED_PER_ORG {
-            // Return a custom error - the caller should interpret this
-            return Err(SqlxError::Protocol(format!(
-                "Maximum of {} pinned announcements reached",
-                Self::MAX_PINNED_PER_ORG
-            )));
-        }
-
-        // Pin the announcement
+    ///
+    /// Note: This method requires two queries and cannot use a single executor.
+    /// Use `pin` for the full implementation or handle the logic at the service layer.
+    pub async fn pin_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+        pinned_by: Uuid,
+    ) -> Result<Announcement, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Pin the announcement (caller should verify pinned count beforehand)
         let pinned = sqlx::query_as::<_, Announcement>(
             r#"
             UPDATE announcements
@@ -612,14 +691,17 @@ impl AnnouncementRepository {
         )
         .bind(id)
         .bind(pinned_by)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(pinned)
     }
 
-    /// Unpin an announcement.
-    pub async fn unpin(&self, id: Uuid) -> Result<Announcement, SqlxError> {
+    /// Unpin an announcement with RLS context.
+    pub async fn unpin_rls<'e, E>(&self, executor: E, id: Uuid) -> Result<Announcement, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let announcement = sqlx::query_as::<_, Announcement>(
             r#"
             UPDATE announcements
@@ -634,21 +716,25 @@ impl AnnouncementRepository {
             "#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(announcement)
     }
 
-    // ========================================================================
+    // ------------------------------------------------------------------------
     // Attachments
-    // ========================================================================
+    // ------------------------------------------------------------------------
 
-    /// Add an attachment to an announcement.
-    pub async fn add_attachment(
+    /// Add an attachment to an announcement with RLS context.
+    pub async fn add_attachment_rls<'e, E>(
         &self,
+        executor: E,
         data: CreateAnnouncementAttachment,
-    ) -> Result<AnnouncementAttachment, SqlxError> {
+    ) -> Result<AnnouncementAttachment, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let attachment = sqlx::query_as::<_, AnnouncementAttachment>(
             r#"
             INSERT INTO announcement_attachments (announcement_id, file_key, file_name, file_type, file_size)
@@ -661,17 +747,21 @@ impl AnnouncementRepository {
         .bind(&data.file_name)
         .bind(&data.file_type)
         .bind(data.file_size)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(attachment)
     }
 
-    /// Get attachments for an announcement.
-    pub async fn get_attachments(
+    /// Get attachments for an announcement with RLS context.
+    pub async fn get_attachments_rls<'e, E>(
         &self,
+        executor: E,
         announcement_id: Uuid,
-    ) -> Result<Vec<AnnouncementAttachment>, SqlxError> {
+    ) -> Result<Vec<AnnouncementAttachment>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let attachments = sqlx::query_as::<_, AnnouncementAttachment>(
             r#"
             SELECT * FROM announcement_attachments
@@ -680,32 +770,39 @@ impl AnnouncementRepository {
             "#,
         )
         .bind(announcement_id)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(attachments)
     }
 
-    /// Delete an attachment.
-    pub async fn delete_attachment(&self, id: Uuid) -> Result<(), SqlxError> {
+    /// Delete an attachment with RLS context.
+    pub async fn delete_attachment_rls<'e, E>(&self, executor: E, id: Uuid) -> Result<(), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         sqlx::query("DELETE FROM announcement_attachments WHERE id = $1")
             .bind(id)
-            .execute(&self.pool)
+            .execute(executor)
             .await?;
 
         Ok(())
     }
 
-    // ========================================================================
+    // ------------------------------------------------------------------------
     // Read Tracking (Foundation for Story 6.2)
-    // ========================================================================
+    // ------------------------------------------------------------------------
 
-    /// Mark an announcement as read by a user.
-    pub async fn mark_read(
+    /// Mark an announcement as read by a user with RLS context.
+    pub async fn mark_read_rls<'e, E>(
         &self,
+        executor: E,
         announcement_id: Uuid,
         user_id: Uuid,
-    ) -> Result<AnnouncementRead, SqlxError> {
+    ) -> Result<AnnouncementRead, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let read = sqlx::query_as::<_, AnnouncementRead>(
             r#"
             INSERT INTO announcement_reads (announcement_id, user_id)
@@ -717,18 +814,22 @@ impl AnnouncementRepository {
         )
         .bind(announcement_id)
         .bind(user_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(read)
     }
 
-    /// Acknowledge an announcement.
-    pub async fn acknowledge(
+    /// Acknowledge an announcement with RLS context.
+    pub async fn acknowledge_rls<'e, E>(
         &self,
+        executor: E,
         announcement_id: Uuid,
         user_id: Uuid,
-    ) -> Result<AnnouncementRead, SqlxError> {
+    ) -> Result<AnnouncementRead, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let read = sqlx::query_as::<_, AnnouncementRead>(
             r#"
             INSERT INTO announcement_reads (announcement_id, user_id, acknowledged_at)
@@ -740,18 +841,22 @@ impl AnnouncementRepository {
         )
         .bind(announcement_id)
         .bind(user_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(read)
     }
 
-    /// Get read status for a user.
-    pub async fn get_read_status(
+    /// Get read status for a user with RLS context.
+    pub async fn get_read_status_rls<'e, E>(
         &self,
+        executor: E,
         announcement_id: Uuid,
         user_id: Uuid,
-    ) -> Result<Option<AnnouncementRead>, SqlxError> {
+    ) -> Result<Option<AnnouncementRead>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let read = sqlx::query_as::<_, AnnouncementRead>(
             r#"
             SELECT * FROM announcement_reads
@@ -760,18 +865,25 @@ impl AnnouncementRepository {
         )
         .bind(announcement_id)
         .bind(user_id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(read)
     }
 
-    // ========================================================================
+    // ------------------------------------------------------------------------
     // Statistics
-    // ========================================================================
+    // ------------------------------------------------------------------------
 
-    /// Get announcement statistics for an organization.
-    pub async fn get_statistics(&self, org_id: Uuid) -> Result<AnnouncementStatistics, SqlxError> {
+    /// Get announcement statistics for an organization with RLS context.
+    pub async fn get_statistics_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+    ) -> Result<AnnouncementStatistics, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let stats = sqlx::query_as::<_, AnnouncementStatistics>(
             r#"
             SELECT
@@ -785,14 +897,22 @@ impl AnnouncementRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(stats)
     }
 
-    /// Count unread announcements for a user.
-    pub async fn count_unread(&self, org_id: Uuid, user_id: Uuid) -> Result<i64, SqlxError> {
+    /// Count unread announcements for a user with RLS context.
+    pub async fn count_unread_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let count: (i64,) = sqlx::query_as(
             r#"
             SELECT COUNT(*)
@@ -807,68 +927,62 @@ impl AnnouncementRepository {
         )
         .bind(org_id)
         .bind(user_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(count.0)
     }
 
-    // ========================================================================
+    // ------------------------------------------------------------------------
     // Acknowledgment Stats (Story 6.2)
-    // ========================================================================
+    // ------------------------------------------------------------------------
 
-    /// Get acknowledgment statistics for an announcement (for managers).
-    pub async fn get_acknowledgment_stats(
+    /// Get acknowledgment statistics for an announcement with RLS context.
+    pub async fn get_acknowledgment_stats_rls<'e, E>(
         &self,
+        executor: E,
         announcement_id: Uuid,
-    ) -> Result<AcknowledgmentStats, SqlxError> {
-        // Count reads and acknowledgments
-        let (read_count,): (i64,) =
-            sqlx::query_as("SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1")
-                .bind(announcement_id)
-                .fetch_one(&self.pool)
-                .await?;
-
-        let (acknowledged_count,): (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1 AND acknowledged_at IS NOT NULL",
-        )
-        .bind(announcement_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        // For now, total_targeted is based on all org users
-        // In future, this should respect target_type and target_ids
-        let (total_targeted,): (i64,) = sqlx::query_as(
+    ) -> Result<AcknowledgmentStats, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Single query to get all stats
+        let stats: (i64, i64, i64) = sqlx::query_as(
             r#"
-            SELECT COUNT(DISTINCT u.id)
-            FROM users u
-            JOIN announcements a ON a.organization_id = u.organization_id
-            WHERE a.id = $1
+            SELECT
+                (SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1) as read_count,
+                (SELECT COUNT(*) FROM announcement_reads WHERE announcement_id = $1 AND acknowledged_at IS NOT NULL) as acknowledged_count,
+                (SELECT COUNT(DISTINCT u.id) FROM users u
+                 JOIN announcements a ON a.organization_id = u.organization_id
+                 WHERE a.id = $1) as total_targeted
             "#,
         )
         .bind(announcement_id)
-        .fetch_one(&self.pool)
-        .await
-        .unwrap_or((0,));
+        .fetch_one(executor)
+        .await?;
 
-        let pending_count = total_targeted - read_count;
+        let pending_count = stats.2 - stats.0;
 
         Ok(AcknowledgmentStats {
             announcement_id,
-            total_targeted,
-            read_count,
-            acknowledged_count,
+            total_targeted: stats.2,
+            read_count: stats.0,
+            acknowledged_count: stats.1,
             pending_count: pending_count.max(0),
         })
     }
 
-    /// Get list of users with their acknowledgment status for an announcement.
-    pub async fn get_acknowledgment_list(
+    /// Get list of users with their acknowledgment status with RLS context.
+    pub async fn get_acknowledgment_list_rls<'e, E>(
         &self,
+        executor: E,
         announcement_id: Uuid,
         limit: Option<i64>,
         offset: Option<i64>,
-    ) -> Result<Vec<UserAcknowledgmentStatus>, SqlxError> {
+    ) -> Result<Vec<UserAcknowledgmentStatus>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = limit.unwrap_or(50).min(100);
         let offset = offset.unwrap_or(0);
 
@@ -893,21 +1007,25 @@ impl AnnouncementRepository {
         .bind(announcement_id)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(users)
     }
 
-    // ========================================================================
+    // ------------------------------------------------------------------------
     // Comments (Story 6.3)
-    // ========================================================================
+    // ------------------------------------------------------------------------
 
-    /// Create a new comment on an announcement.
-    pub async fn create_comment(
+    /// Create a new comment on an announcement with RLS context.
+    pub async fn create_comment_rls<'e, E>(
         &self,
+        executor: E,
         data: CreateComment,
-    ) -> Result<AnnouncementComment, SqlxError> {
+    ) -> Result<AnnouncementComment, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let comment = sqlx::query_as::<_, AnnouncementComment>(
             r#"
             INSERT INTO announcement_comments (announcement_id, user_id, parent_id, content, ai_training_consent)
@@ -920,32 +1038,42 @@ impl AnnouncementRepository {
         .bind(data.parent_id)
         .bind(&data.content)
         .bind(data.ai_training_consent)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(comment)
     }
 
-    /// Get a comment by ID.
-    pub async fn get_comment(&self, id: Uuid) -> Result<Option<AnnouncementComment>, SqlxError> {
+    /// Get a comment by ID with RLS context.
+    pub async fn get_comment_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<AnnouncementComment>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let comment = sqlx::query_as::<_, AnnouncementComment>(
             "SELECT * FROM announcement_comments WHERE id = $1",
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(comment)
     }
 
-    /// Get comments for an announcement with author info.
-    /// Returns top-level comments only; replies are fetched separately.
-    pub async fn get_comments(
+    /// Get comments for an announcement with author info with RLS context.
+    pub async fn get_comments_rls<'e, E>(
         &self,
+        executor: E,
         announcement_id: Uuid,
         limit: Option<i64>,
         offset: Option<i64>,
-    ) -> Result<Vec<CommentWithAuthorRow>, SqlxError> {
+    ) -> Result<Vec<CommentWithAuthorRow>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = limit.unwrap_or(50).min(100);
         let offset = offset.unwrap_or(0);
 
@@ -965,17 +1093,21 @@ impl AnnouncementRepository {
         .bind(announcement_id)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(comments)
     }
 
-    /// Get replies to a comment.
-    pub async fn get_comment_replies(
+    /// Get replies to a comment with RLS context.
+    pub async fn get_comment_replies_rls<'e, E>(
         &self,
+        executor: E,
         parent_id: Uuid,
-    ) -> Result<Vec<CommentWithAuthorRow>, SqlxError> {
+    ) -> Result<Vec<CommentWithAuthorRow>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let replies = sqlx::query_as::<_, CommentWithAuthorRow>(
             r#"
             SELECT
@@ -989,13 +1121,507 @@ impl AnnouncementRepository {
             "#,
         )
         .bind(parent_id)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(replies)
     }
 
+    /// Soft-delete a comment with RLS context.
+    pub async fn delete_comment_rls<'e, E>(
+        &self,
+        executor: E,
+        data: DeleteComment,
+    ) -> Result<AnnouncementComment, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let comment = sqlx::query_as::<_, AnnouncementComment>(
+            r#"
+            UPDATE announcement_comments
+            SET deleted_at = NOW(), deleted_by = $2, deletion_reason = $3, updated_at = NOW()
+            WHERE id = $1 AND deleted_at IS NULL
+            RETURNING *
+            "#,
+        )
+        .bind(data.comment_id)
+        .bind(data.deleted_by)
+        .bind(&data.deletion_reason)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(comment)
+    }
+
+    /// Get comment count for an announcement with RLS context.
+    pub async fn get_comment_count_rls<'e, E>(
+        &self,
+        executor: E,
+        announcement_id: Uuid,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let (count,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM announcement_comments WHERE announcement_id = $1 AND deleted_at IS NULL",
+        )
+        .bind(announcement_id)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(count)
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
+
+    // ------------------------------------------------------------------------
+    // Announcement CRUD
+    // ------------------------------------------------------------------------
+
+    /// Create a new announcement (Story 6.1).
+    ///
+    /// **Deprecated**: Use `create_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use create_rls with RlsConnection instead")]
+    pub async fn create(&self, data: CreateAnnouncement) -> Result<Announcement, SqlxError> {
+        self.create_rls(&self.pool, data).await
+    }
+
+    /// Find announcement by ID.
+    ///
+    /// **Deprecated**: Use `find_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_by_id_rls with RlsConnection instead"
+    )]
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Announcement>, SqlxError> {
+        self.find_by_id_rls(&self.pool, id).await
+    }
+
+    /// Find announcement with full details.
+    ///
+    /// **Deprecated**: Use `find_by_id_with_details_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_by_id_with_details_rls with RlsConnection instead"
+    )]
+    pub async fn find_by_id_with_details(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<AnnouncementWithDetails>, SqlxError> {
+        self.find_by_id_with_details_rls(&self.pool, id).await
+    }
+
+    /// List announcements with filters.
+    ///
+    /// **Deprecated**: Use `list_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use list_rls with RlsConnection instead")]
+    pub async fn list(
+        &self,
+        org_id: Uuid,
+        query: AnnouncementListQuery,
+    ) -> Result<Vec<AnnouncementSummary>, SqlxError> {
+        self.list_rls(&self.pool, org_id, query).await
+    }
+
+    /// List published announcements for users (respecting targeting).
+    ///
+    /// **Deprecated**: Use `list_published_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use list_published_rls with RlsConnection instead"
+    )]
+    pub async fn list_published(
+        &self,
+        org_id: Uuid,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<AnnouncementSummary>, SqlxError> {
+        self.list_published_rls(&self.pool, org_id, limit, offset)
+            .await
+    }
+
+    /// Count announcements matching filters (for pagination).
+    ///
+    /// **Deprecated**: Use `count_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use count_rls with RlsConnection instead")]
+    pub async fn count(
+        &self,
+        org_id: Uuid,
+        query: AnnouncementListQuery,
+    ) -> Result<i64, SqlxError> {
+        self.count_rls(&self.pool, org_id, query).await
+    }
+
+    /// Count published announcements (for pagination).
+    ///
+    /// **Deprecated**: Use `count_published_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_published_rls with RlsConnection instead"
+    )]
+    pub async fn count_published(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+        self.count_published_rls(&self.pool, org_id).await
+    }
+
+    /// Update announcement details (only in draft/scheduled status).
+    ///
+    /// **Deprecated**: Use `update_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use update_rls with RlsConnection instead")]
+    pub async fn update(
+        &self,
+        id: Uuid,
+        data: UpdateAnnouncement,
+    ) -> Result<Announcement, SqlxError> {
+        self.update_rls(&self.pool, id, data).await
+    }
+
+    /// Archive an announcement (soft delete).
+    ///
+    /// **Deprecated**: Use `archive_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use archive_rls with RlsConnection instead")]
+    pub async fn archive(&self, id: Uuid) -> Result<Announcement, SqlxError> {
+        self.archive_rls(&self.pool, id).await
+    }
+
+    /// Delete an announcement (only in draft status).
+    ///
+    /// **Deprecated**: Use `delete_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use delete_rls with RlsConnection instead")]
+    pub async fn delete(&self, id: Uuid) -> Result<(), SqlxError> {
+        self.delete_rls(&self.pool, id).await
+    }
+
+    // ------------------------------------------------------------------------
+    // Publishing Operations (Story 6.1)
+    // ------------------------------------------------------------------------
+
+    /// Publish an announcement immediately.
+    ///
+    /// **Deprecated**: Use `publish_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use publish_rls with RlsConnection instead")]
+    pub async fn publish(&self, id: Uuid) -> Result<Announcement, SqlxError> {
+        self.publish_rls(&self.pool, id).await
+    }
+
+    /// Schedule an announcement for future publishing.
+    ///
+    /// **Deprecated**: Use `schedule_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use schedule_rls with RlsConnection instead"
+    )]
+    pub async fn schedule(
+        &self,
+        id: Uuid,
+        scheduled_at: DateTime<Utc>,
+    ) -> Result<Announcement, SqlxError> {
+        self.schedule_rls(&self.pool, id, scheduled_at).await
+    }
+
+    /// Find scheduled announcements ready to be published.
+    ///
+    /// **Deprecated**: Use `find_scheduled_for_publishing_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_scheduled_for_publishing_rls with RlsConnection instead"
+    )]
+    pub async fn find_scheduled_for_publishing(&self) -> Result<Vec<Announcement>, SqlxError> {
+        self.find_scheduled_for_publishing_rls(&self.pool).await
+    }
+
+    /// Publish all scheduled announcements that are due.
+    ///
+    /// **Deprecated**: Use `publish_scheduled_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use publish_scheduled_rls with RlsConnection instead"
+    )]
+    pub async fn publish_scheduled(&self) -> Result<Vec<Announcement>, SqlxError> {
+        self.publish_scheduled_rls(&self.pool).await
+    }
+
+    // ------------------------------------------------------------------------
+    // Pinning Operations (Story 6.4)
+    // ------------------------------------------------------------------------
+
+    /// Count pinned announcements for an organization.
+    ///
+    /// **Deprecated**: Use `count_pinned_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_pinned_rls with RlsConnection instead"
+    )]
+    pub async fn count_pinned(&self, org_id: Uuid) -> Result<i64, SqlxError> {
+        self.count_pinned_rls(&self.pool, org_id).await
+    }
+
+    /// Pin an announcement.
+    /// Returns error if max pinned limit (3) is reached.
+    #[allow(deprecated)]
+    pub async fn pin(&self, id: Uuid, pinned_by: Uuid) -> Result<Announcement, SqlxError> {
+        // Get announcement to check org_id and if already pinned
+        let announcement = self
+            .find_by_id(id)
+            .await?
+            .ok_or_else(|| SqlxError::RowNotFound)?;
+
+        // Check if it's published
+        if announcement.status != "published" {
+            return Err(SqlxError::RowNotFound);
+        }
+
+        // If already pinned, just return it
+        if announcement.pinned {
+            return Ok(announcement);
+        }
+
+        // Check pinned count
+        let pinned_count = self.count_pinned(announcement.organization_id).await?;
+        if pinned_count >= Self::MAX_PINNED_PER_ORG {
+            // Return a custom error - the caller should interpret this
+            return Err(SqlxError::Protocol(format!(
+                "Maximum of {} pinned announcements reached",
+                Self::MAX_PINNED_PER_ORG
+            )));
+        }
+
+        // Pin the announcement
+        self.pin_rls(&self.pool, id, pinned_by).await
+    }
+
+    /// Unpin an announcement.
+    ///
+    /// **Deprecated**: Use `unpin_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.276", note = "Use unpin_rls with RlsConnection instead")]
+    pub async fn unpin(&self, id: Uuid) -> Result<Announcement, SqlxError> {
+        self.unpin_rls(&self.pool, id).await
+    }
+
+    // ------------------------------------------------------------------------
+    // Attachments
+    // ------------------------------------------------------------------------
+
+    /// Add an attachment to an announcement.
+    ///
+    /// **Deprecated**: Use `add_attachment_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use add_attachment_rls with RlsConnection instead"
+    )]
+    pub async fn add_attachment(
+        &self,
+        data: CreateAnnouncementAttachment,
+    ) -> Result<AnnouncementAttachment, SqlxError> {
+        self.add_attachment_rls(&self.pool, data).await
+    }
+
+    /// Get attachments for an announcement.
+    ///
+    /// **Deprecated**: Use `get_attachments_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_attachments_rls with RlsConnection instead"
+    )]
+    pub async fn get_attachments(
+        &self,
+        announcement_id: Uuid,
+    ) -> Result<Vec<AnnouncementAttachment>, SqlxError> {
+        self.get_attachments_rls(&self.pool, announcement_id).await
+    }
+
+    /// Delete an attachment.
+    ///
+    /// **Deprecated**: Use `delete_attachment_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use delete_attachment_rls with RlsConnection instead"
+    )]
+    pub async fn delete_attachment(&self, id: Uuid) -> Result<(), SqlxError> {
+        self.delete_attachment_rls(&self.pool, id).await
+    }
+
+    // ------------------------------------------------------------------------
+    // Read Tracking (Foundation for Story 6.2)
+    // ------------------------------------------------------------------------
+
+    /// Mark an announcement as read by a user.
+    ///
+    /// **Deprecated**: Use `mark_read_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use mark_read_rls with RlsConnection instead"
+    )]
+    pub async fn mark_read(
+        &self,
+        announcement_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<AnnouncementRead, SqlxError> {
+        self.mark_read_rls(&self.pool, announcement_id, user_id)
+            .await
+    }
+
+    /// Acknowledge an announcement.
+    ///
+    /// **Deprecated**: Use `acknowledge_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use acknowledge_rls with RlsConnection instead"
+    )]
+    pub async fn acknowledge(
+        &self,
+        announcement_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<AnnouncementRead, SqlxError> {
+        self.acknowledge_rls(&self.pool, announcement_id, user_id)
+            .await
+    }
+
+    /// Get read status for a user.
+    ///
+    /// **Deprecated**: Use `get_read_status_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_read_status_rls with RlsConnection instead"
+    )]
+    pub async fn get_read_status(
+        &self,
+        announcement_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<AnnouncementRead>, SqlxError> {
+        self.get_read_status_rls(&self.pool, announcement_id, user_id)
+            .await
+    }
+
+    // ------------------------------------------------------------------------
+    // Statistics
+    // ------------------------------------------------------------------------
+
+    /// Get announcement statistics for an organization.
+    ///
+    /// **Deprecated**: Use `get_statistics_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_statistics_rls with RlsConnection instead"
+    )]
+    pub async fn get_statistics(&self, org_id: Uuid) -> Result<AnnouncementStatistics, SqlxError> {
+        self.get_statistics_rls(&self.pool, org_id).await
+    }
+
+    /// Count unread announcements for a user.
+    ///
+    /// **Deprecated**: Use `count_unread_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use count_unread_rls with RlsConnection instead"
+    )]
+    pub async fn count_unread(&self, org_id: Uuid, user_id: Uuid) -> Result<i64, SqlxError> {
+        self.count_unread_rls(&self.pool, org_id, user_id).await
+    }
+
+    // ------------------------------------------------------------------------
+    // Acknowledgment Stats (Story 6.2)
+    // ------------------------------------------------------------------------
+
+    /// Get acknowledgment statistics for an announcement (for managers).
+    ///
+    /// **Deprecated**: Use `get_acknowledgment_stats_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_acknowledgment_stats_rls with RlsConnection instead"
+    )]
+    pub async fn get_acknowledgment_stats(
+        &self,
+        announcement_id: Uuid,
+    ) -> Result<AcknowledgmentStats, SqlxError> {
+        self.get_acknowledgment_stats_rls(&self.pool, announcement_id)
+            .await
+    }
+
+    /// Get list of users with their acknowledgment status for an announcement.
+    ///
+    /// **Deprecated**: Use `get_acknowledgment_list_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_acknowledgment_list_rls with RlsConnection instead"
+    )]
+    pub async fn get_acknowledgment_list(
+        &self,
+        announcement_id: Uuid,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<UserAcknowledgmentStatus>, SqlxError> {
+        self.get_acknowledgment_list_rls(&self.pool, announcement_id, limit, offset)
+            .await
+    }
+
+    // ------------------------------------------------------------------------
+    // Comments (Story 6.3)
+    // ------------------------------------------------------------------------
+
+    /// Create a new comment on an announcement.
+    ///
+    /// **Deprecated**: Use `create_comment_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_comment_rls with RlsConnection instead"
+    )]
+    pub async fn create_comment(
+        &self,
+        data: CreateComment,
+    ) -> Result<AnnouncementComment, SqlxError> {
+        self.create_comment_rls(&self.pool, data).await
+    }
+
+    /// Get a comment by ID.
+    ///
+    /// **Deprecated**: Use `get_comment_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_comment_rls with RlsConnection instead"
+    )]
+    pub async fn get_comment(&self, id: Uuid) -> Result<Option<AnnouncementComment>, SqlxError> {
+        self.get_comment_rls(&self.pool, id).await
+    }
+
+    /// Get comments for an announcement with author info.
+    /// Returns top-level comments only; replies are fetched separately.
+    ///
+    /// **Deprecated**: Use `get_comments_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_comments_rls with RlsConnection instead"
+    )]
+    pub async fn get_comments(
+        &self,
+        announcement_id: Uuid,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<CommentWithAuthorRow>, SqlxError> {
+        self.get_comments_rls(&self.pool, announcement_id, limit, offset)
+            .await
+    }
+
+    /// Get replies to a comment.
+    ///
+    /// **Deprecated**: Use `get_comment_replies_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_comment_replies_rls with RlsConnection instead"
+    )]
+    pub async fn get_comment_replies(
+        &self,
+        parent_id: Uuid,
+    ) -> Result<Vec<CommentWithAuthorRow>, SqlxError> {
+        self.get_comment_replies_rls(&self.pool, parent_id).await
+    }
+
     /// Get threaded comments (top-level with nested replies).
+    ///
+    /// Note: This method uses multiple queries and cannot be easily converted to RLS.
+    /// Consider using `get_comments_rls` and `get_comment_replies_rls` at the service layer.
+    #[allow(deprecated)]
     pub async fn get_threaded_comments(
         &self,
         announcement_id: Uuid,
@@ -1054,36 +1680,28 @@ impl AnnouncementRepository {
     }
 
     /// Soft-delete a comment (author or manager moderation).
+    ///
+    /// **Deprecated**: Use `delete_comment_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use delete_comment_rls with RlsConnection instead"
+    )]
     pub async fn delete_comment(
         &self,
         data: DeleteComment,
     ) -> Result<AnnouncementComment, SqlxError> {
-        let comment = sqlx::query_as::<_, AnnouncementComment>(
-            r#"
-            UPDATE announcement_comments
-            SET deleted_at = NOW(), deleted_by = $2, deletion_reason = $3, updated_at = NOW()
-            WHERE id = $1 AND deleted_at IS NULL
-            RETURNING *
-            "#,
-        )
-        .bind(data.comment_id)
-        .bind(data.deleted_by)
-        .bind(&data.deletion_reason)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(comment)
+        self.delete_comment_rls(&self.pool, data).await
     }
 
     /// Get comment count for an announcement (excluding deleted).
+    ///
+    /// **Deprecated**: Use `get_comment_count_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_comment_count_rls with RlsConnection instead"
+    )]
     pub async fn get_comment_count(&self, announcement_id: Uuid) -> Result<i64, SqlxError> {
-        let (count,): (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM announcement_comments WHERE announcement_id = $1 AND deleted_at IS NULL",
-        )
-        .bind(announcement_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(count)
+        self.get_comment_count_rls(&self.pool, announcement_id)
+            .await
     }
 }

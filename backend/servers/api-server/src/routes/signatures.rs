@@ -63,6 +63,8 @@ pub async fn create_signature_request(
     }
 
     // Get the document to verify it exists and get organization_id
+    // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
     let document = state
         .document_repo
         .find_by_id(document_id)
@@ -182,6 +184,8 @@ pub async fn list_signature_requests(
     Path(document_id): Path<Uuid>,
 ) -> Result<Json<ListSignatureRequestsResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify document exists
+    // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
     let _document = state
         .document_repo
         .find_by_id(document_id)
@@ -557,6 +561,8 @@ async fn store_signed_document(
     signed_url: &str,
 ) -> Result<Uuid, String> {
     // Get the original document
+    // TODO: Migrate to find_by_id_rls when RlsConnection is available in webhook context
+    #[allow(deprecated)]
     let original_doc = state
         .document_repo
         .find_by_id(signature_request.document_id)
@@ -637,6 +643,8 @@ async fn store_signed_document(
         created_by: signature_request.created_by,
     };
 
+    // TODO: Migrate to create_rls when RlsConnection is available in webhook context
+    #[allow(deprecated)]
     let signed_doc = state
         .document_repo
         .create(create_doc)

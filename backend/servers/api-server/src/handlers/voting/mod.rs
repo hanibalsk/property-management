@@ -350,6 +350,8 @@ impl VotingHandler {
             created_by: context.user_id,
         };
 
+        // TODO: Migrate to create_poll_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let vote = state.vote_repo.create(create_data).await.map_err(|e| {
             tracing::error!(error = %e, "Failed to create vote");
             VotingHandlerError::Database("Failed to create vote".into())
@@ -419,6 +421,8 @@ impl VotingHandler {
         data: UpdateVoteData,
     ) -> Result<Vote, VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -476,6 +480,8 @@ impl VotingHandler {
     /// Delete vote.
     pub async fn delete_vote(state: &AppState, vote_id: Uuid) -> Result<(), VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -513,6 +519,8 @@ impl VotingHandler {
         data: PublishVoteData,
     ) -> Result<Vote, VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -568,6 +576,8 @@ impl VotingHandler {
         data: CancelVoteData,
     ) -> Result<Vote, VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -615,6 +625,8 @@ impl VotingHandler {
     /// Close a vote and calculate results.
     pub async fn close_vote(state: &AppState, vote_id: Uuid) -> Result<Vote, VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -651,6 +663,8 @@ impl VotingHandler {
         data: AddQuestionData,
     ) -> Result<VoteQuestion, VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -734,6 +748,8 @@ impl VotingHandler {
         data: UpdateQuestionData,
     ) -> Result<VoteQuestion, VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -778,6 +794,8 @@ impl VotingHandler {
         question_id: Uuid,
     ) -> Result<(), VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -837,6 +855,8 @@ impl VotingHandler {
         data: CastVoteData,
     ) -> Result<VoteReceipt, VotingHandlerError> {
         // Get existing vote
+        // TODO: Migrate to find_poll_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .vote_repo
             .find_by_id(vote_id)
@@ -865,6 +885,8 @@ impl VotingHandler {
             answers: data.answers,
         };
 
+        // TODO: Migrate to cast_vote_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let receipt = state.vote_repo.cast_vote(cast_data).await.map_err(|e| {
             // Check for duplicate vote error
             let err_str = e.to_string();
@@ -1032,6 +1054,8 @@ impl VotingHandler {
         state: &AppState,
         vote_id: Uuid,
     ) -> Result<VoteResults, VotingHandlerError> {
+        // TODO: Migrate to get_poll_results_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let results = state
             .vote_repo
             .get_results(vote_id)
@@ -1088,6 +1112,8 @@ impl VotingHandler {
         state: &AppState,
         building_id: Uuid,
     ) -> Result<Vec<VoteSummary>, VotingHandlerError> {
+        // TODO: Migrate to list_polls_by_building_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let votes = state
             .vote_repo
             .list_active_by_building(building_id)
