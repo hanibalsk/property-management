@@ -1,0 +1,34 @@
+# Development Dockerfile for Rust backend with hot-reload
+# Uses cargo-watch for automatic recompilation
+
+FROM rust:1.75-slim-bookworm
+
+# Install development dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cargo-watch for hot-reloading
+RUN cargo install cargo-watch --locked
+
+WORKDIR /app
+
+# Copy Cargo files for dependency caching
+COPY backend/Cargo.toml backend/Cargo.lock ./
+COPY backend/crates ./crates
+COPY backend/servers ./servers
+
+# Build dependencies (cached)
+RUN cargo build
+
+# The source will be mounted as a volume at runtime
+VOLUME ["/app"]
+
+# Expose both server ports
+EXPOSE 8080 8081
+
+# Default: run api-server with hot-reload
+# Override with command to run reality-server instead
+CMD ["cargo", "watch", "-x", "run -p api-server"]
