@@ -225,7 +225,7 @@ async fn start_thread(
     let recipient_org: Option<(Uuid,)> =
         sqlx::query_as("SELECT organization_id FROM users WHERE id = $1")
             .bind(body.recipient_id)
-            .fetch_optional(&state.db)
+            .fetch_optional(&mut **rls.conn())
             .await
             .map_err(|e| {
                 (
@@ -351,7 +351,7 @@ async fn start_thread(
         })?;
 
     // Get other participant info
-    let other_participant = get_other_participant(&state, &thread, user_id).await?;
+    let other_participant = get_other_participant(&mut rls, &thread, user_id).await?;
 
     rls.release().await;
 
@@ -452,7 +452,7 @@ async fn get_thread(
         })?;
 
     // Get other participant info
-    let other_participant = get_other_participant(&state, &thread, user_id).await?;
+    let other_participant = get_other_participant(&mut rls, &thread, user_id).await?;
 
     // Mark thread as read
     let _ = repo
@@ -889,7 +889,7 @@ async fn get_unread_count(
 
 /// Get the other participant's info from a thread.
 async fn get_other_participant(
-    state: &AppState,
+    rls: &mut RlsConnection,
     thread: &MessageThread,
     current_user_id: Uuid,
 ) -> Result<ParticipantInfo, (StatusCode, Json<ErrorResponse>)> {
@@ -915,7 +915,7 @@ async fn get_other_participant(
         "#,
     )
     .bind(other_user_id)
-    .fetch_optional(&state.db)
+    .fetch_optional(&mut **rls.conn())
     .await
     .map_err(|e| {
         (

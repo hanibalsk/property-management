@@ -390,7 +390,7 @@ async fn create_announcement(
     if req.target_type != target_type::ALL {
         if let Some(ref target_ids) = req.target_ids {
             let validation_result =
-                validate_target_ids(&state.db, org_id, &req.target_type, target_ids).await;
+                validate_target_ids(&mut **rls.conn(), org_id, &req.target_type, target_ids).await;
 
             if let Err(err_msg) = validation_result {
                 rls.release().await;
@@ -1785,7 +1785,7 @@ async fn get_acknowledgments(
 /// Security fix (Critical 1.3): Ensures managers can only target buildings/units
 /// that belong to their organization.
 async fn validate_target_ids(
-    db: &sqlx::PgPool,
+    conn: &mut sqlx::PgConnection,
     org_id: Uuid,
     target_type: &str,
     target_ids: &[Uuid],
@@ -1805,7 +1805,7 @@ async fn validate_target_ids(
             )
             .bind(target_ids)
             .bind(org_id)
-            .fetch_one(db)
+            .fetch_one(&mut *conn)
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
@@ -1828,7 +1828,7 @@ async fn validate_target_ids(
             )
             .bind(target_ids)
             .bind(org_id)
-            .fetch_one(db)
+            .fetch_one(&mut *conn)
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 

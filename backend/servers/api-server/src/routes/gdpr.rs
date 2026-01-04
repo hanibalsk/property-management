@@ -3,7 +3,7 @@
 //! Handles data export, data deletion, and privacy settings.
 
 use crate::state::AppState;
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -580,6 +580,7 @@ pub struct UpdatePrivacySettingsRequest {
 async fn update_privacy_settings(
     State(state): State<AppState>,
     user: AuthUser,
+    mut rls: RlsConnection,
     Json(req): Json<UpdatePrivacySettingsRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, (StatusCode, String)> {
     // Validate visibility if provided
@@ -622,7 +623,7 @@ async fn update_privacy_settings(
     .bind(new_visibility)
     .bind(new_show_contact)
     .bind(user.user_id)
-    .execute(&state.db)
+    .execute(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 

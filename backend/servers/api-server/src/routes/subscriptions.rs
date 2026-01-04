@@ -111,9 +111,9 @@ fn require_super_admin(
     Ok(user_id)
 }
 
-/// Verify user has access to the organization.
-async fn verify_org_access(
-    state: &AppState,
+/// Verify user has access to the organization using RLS connection.
+async fn verify_org_access_rls(
+    rls: &mut RlsConnection,
     user_id: Uuid,
     org_id: Uuid,
 ) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
@@ -122,7 +122,7 @@ async fn verify_org_access(
     )
     .bind(user_id)
     .bind(org_id)
-    .fetch_optional(&state.db)
+    .fetch_optional(&mut **rls.conn())
     .await
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to check org membership");
@@ -171,7 +171,7 @@ async fn verify_invoice_access_rls(
         })?;
 
     // Verify user has access to this organization
-    verify_org_access(state, user_id, invoice.organization_id).await?;
+    verify_org_access_rls(rls, user_id, invoice.organization_id).await?;
 
     Ok(invoice.organization_id)
 }
@@ -203,7 +203,7 @@ async fn verify_subscription_access_rls(
         })?;
 
     // Verify user has access to this organization
-    verify_org_access(state, user_id, subscription.organization_id).await?;
+    verify_org_access_rls(rls, user_id, subscription.organization_id).await?;
 
     Ok(subscription.organization_id)
 }
@@ -619,7 +619,7 @@ async fn create_subscription(
     Json(request): Json<CreateSubscriptionRequest>,
 ) -> Result<(StatusCode, Json<OrganizationSubscription>), (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, request.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, request.organization_id).await?;
 
     let subscription = state
         .subscription_repo
@@ -655,7 +655,7 @@ async fn get_subscription(
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<OrganizationSubscription>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     let subscription = state
         .subscription_repo
@@ -697,7 +697,7 @@ async fn get_subscription_with_plan(
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<SubscriptionWithPlan>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     let subscription = state
         .subscription_repo
@@ -934,7 +934,7 @@ async fn create_payment_method(
     Json(data): Json<CreateSubscriptionPaymentMethod>,
 ) -> Result<(StatusCode, Json<SubscriptionPaymentMethod>), (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     let method = state
         .subscription_repo
@@ -970,7 +970,7 @@ async fn list_payment_methods(
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<Vec<SubscriptionPaymentMethod>>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     let methods = state
         .subscription_repo
@@ -1005,11 +1005,15 @@ async fn list_payment_methods(
 async fn set_default_payment_method(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
+
+    // Release RLS connection before calling transaction-based method
+    rls.release().await;
 
     // Note: set_default_payment_method uses internal transaction, not RLS-aware
     // This is intentional as documented in the repository
@@ -1051,7 +1055,7 @@ async fn delete_payment_method(
     Query(query): Query<OrgQuery>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     let deleted = state
         .subscription_repo
@@ -1097,7 +1101,7 @@ async fn list_invoices(
     Query(query): Query<ListInvoicesQuery>,
 ) -> Result<Json<Vec<SubscriptionInvoice>>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     let invoices = state
         .subscription_repo
@@ -1325,7 +1329,7 @@ async fn record_usage(
     Json(request): Json<RecordUsageRequest>,
 ) -> Result<(StatusCode, Json<db::models::UsageRecord>), (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, request.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, request.organization_id).await?;
 
     // Get subscription for org
     let subscription = state
@@ -1378,7 +1382,7 @@ async fn get_usage_summary(
     Query(query): Query<UsageSummaryQuery>,
 ) -> Result<Json<Vec<UsageSummary>>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     let now = Utc::now();
     let period_start = query.period_start.unwrap_or(
@@ -1426,7 +1430,7 @@ async fn get_current_usage(
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<CurrentUsageResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     let (buildings, units, users, storage) = state
         .subscription_repo
@@ -1580,7 +1584,7 @@ async fn redeem_coupon(
     Json(data): Json<RedeemCouponRequest>,
 ) -> Result<Json<CouponRedemption>, (StatusCode, Json<ErrorResponse>)> {
     // Verify user has access to this organization
-    verify_org_access(&state, auth.user_id, query.organization_id).await?;
+    verify_org_access_rls(&mut rls, auth.user_id, query.organization_id).await?;
 
     // Find the coupon
     let coupon = state
