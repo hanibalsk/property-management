@@ -139,17 +139,16 @@ export function TemplatesPage() {
   }, []);
 
   // Handle template selection (for use)
-  const handleSelect = useCallback((_template: ImportTemplateSummary) => {
-    // TODO: Navigate to import page with template
+  const handleSelect = useCallback((template: ImportTemplateSummary) => {
+    // Navigate to import page with template pre-selected
+    window.location.href = `/import?templateId=${template.id}`;
   }, []);
 
   // Handle download
-  const handleDownload = useCallback(
-    (_template: ImportTemplateSummary, _format: 'csv' | 'xlsx') => {
-      // TODO: Trigger file download from API
-    },
-    []
-  );
+  const handleDownload = useCallback((template: ImportTemplateSummary, format: 'csv' | 'xlsx') => {
+    // Trigger file download from API
+    window.open(`/api/v1/migration/templates/${template.id}/download?format=${format}`, '_blank');
+  }, []);
 
   // Handle duplicate
   const handleDuplicate = useCallback((template: ImportTemplateSummary) => {
