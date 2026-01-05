@@ -5,7 +5,7 @@
 #![allow(clippy::type_complexity)]
 
 use crate::state::AppState;
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -375,8 +375,9 @@ pub struct DeletionRequestsReportResponse {
 
 /// Get deletion requests report.
 async fn get_deletion_requests_report(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     user: AuthUser,
+    mut rls: RlsConnection,
 ) -> Result<Json<DeletionRequestsReportResponse>, (StatusCode, String)> {
     require_super_admin(&user)?;
     // Query users with scheduled_deletion_at set
@@ -388,7 +389,7 @@ async fn get_deletion_requests_report(
         ORDER BY scheduled_deletion_at ASC
         "#,
     )
-    .fetch_all(&state.db)
+    .fetch_all(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -408,6 +409,7 @@ async fn get_deletion_requests_report(
 
     let total_pending = requests.len() as i64;
 
+    rls.release().await;
     Ok(Json(DeletionRequestsReportResponse {
         requests,
         total_pending,
@@ -431,8 +433,9 @@ pub struct PrivacySettingsReportResponse {
 
 /// Get privacy settings report.
 async fn get_privacy_settings_report(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     user: AuthUser,
+    mut rls: RlsConnection,
 ) -> Result<Json<PrivacySettingsReportResponse>, (StatusCode, String)> {
     require_super_admin(&user)?;
     // Get visibility distribution
@@ -444,7 +447,7 @@ async fn get_privacy_settings_report(
         GROUP BY profile_visibility
         "#,
     )
-    .fetch_all(&state.db)
+    .fetch_all(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -460,7 +463,7 @@ async fn get_privacy_settings_report(
         WHERE status = 'active' AND show_contact_info = true
         "#,
     )
-    .fetch_one(&state.db)
+    .fetch_one(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -470,10 +473,11 @@ async fn get_privacy_settings_report(
         SELECT COUNT(*) FROM users WHERE status = 'active'
         "#,
     )
-    .fetch_one(&state.db)
+    .fetch_one(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    rls.release().await;
     Ok(Json(PrivacySettingsReportResponse {
         visibility_distribution,
         show_contact_info_count: show_contact_count,
@@ -504,8 +508,9 @@ pub struct LoginActivityReportResponse {
 
 /// Get login activity report.
 async fn get_login_activity_report(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     user: AuthUser,
+    mut rls: RlsConnection,
     Query(params): Query<ReportQueryParams>,
 ) -> Result<Json<LoginActivityReportResponse>, (StatusCode, String)> {
     require_super_admin(&user)?;
@@ -528,7 +533,7 @@ async fn get_login_activity_report(
     )
     .bind(from_date)
     .bind(to_date)
-    .fetch_all(&state.db)
+    .fetch_all(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -563,6 +568,7 @@ async fn get_login_activity_report(
 
     let period_days = (to_date - from_date).num_days();
 
+    rls.release().await;
     Ok(Json(LoginActivityReportResponse {
         activity,
         total_logins,
@@ -589,8 +595,9 @@ pub struct MfaStatusReportResponse {
 
 /// Get MFA status report.
 async fn get_mfa_status_report(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     user: AuthUser,
+    mut rls: RlsConnection,
 ) -> Result<Json<MfaStatusReportResponse>, (StatusCode, String)> {
     require_super_admin(&user)?;
     // Count users with MFA enabled
@@ -599,7 +606,7 @@ async fn get_mfa_status_report(
         SELECT COUNT(*) FROM user_2fa WHERE enabled = true
         "#,
     )
-    .fetch_one(&state.db)
+    .fetch_one(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -609,7 +616,7 @@ async fn get_mfa_status_report(
         SELECT COUNT(*) FROM users WHERE status = 'active'
         "#,
     )
-    .fetch_one(&state.db)
+    .fetch_one(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -620,6 +627,7 @@ async fn get_mfa_status_report(
         0.0
     };
 
+    rls.release().await;
     Ok(Json(MfaStatusReportResponse {
         mfa_enabled_count: mfa_enabled,
         mfa_disabled_count: mfa_disabled,
@@ -647,8 +655,9 @@ pub struct FailedLoginsReportResponse {
 
 /// Get failed logins report.
 async fn get_failed_logins_report(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     user: AuthUser,
+    mut rls: RlsConnection,
     Query(params): Query<ReportQueryParams>,
 ) -> Result<Json<FailedLoginsReportResponse>, (StatusCode, String)> {
     require_super_admin(&user)?;
@@ -670,7 +679,7 @@ async fn get_failed_logins_report(
         "#,
     )
     .bind(from_date)
-    .fetch_all(&state.db)
+    .fetch_all(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -694,7 +703,7 @@ async fn get_failed_logins_report(
         "#,
     )
     .bind(from_date)
-    .fetch_one(&state.db)
+    .fetch_one(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -706,10 +715,11 @@ async fn get_failed_logins_report(
         "#,
     )
     .bind(from_date)
-    .fetch_one(&state.db)
+    .fetch_one(&mut **rls.conn())
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    rls.release().await;
     Ok(Json(FailedLoginsReportResponse {
         failed_logins,
         total_failed,

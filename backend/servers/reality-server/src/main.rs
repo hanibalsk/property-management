@@ -294,9 +294,9 @@ async fn main() -> anyhow::Result<()> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://localhost:5432/ppt".to_string());
 
-    // Create database pool
-    let db = db::create_pool(&database_url).await?;
-    tracing::info!("Connected to database");
+    // Create RLS-safe database pool with automatic context cleanup
+    let db = db::create_rls_safe_pool(&database_url).await?;
+    tracing::info!("Connected to database with RLS-safe pool");
 
     // Create application state
     let state = AppState::new(db);

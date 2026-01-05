@@ -88,120 +88,100 @@ impl AppConfig {
     }
 }
 
-/// Portal user stored in database.
-#[derive(Clone, Debug)]
-pub struct PortalUser {
-    pub id: uuid::Uuid,
-    pub pm_user_id: String,
-    pub email: String,
-    pub name: String,
-    pub avatar_url: Option<String>,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
-}
-
-/// User service for managing portal users.
+/// User service for managing portal users (database-backed).
 #[derive(Clone)]
 pub struct UserService {
-    // In-memory store for now (will be replaced with DB)
-    users: Arc<Mutex<HashMap<String, PortalUser>>>,
-}
-
-impl Default for UserService {
-    fn default() -> Self {
-        Self::new()
-    }
+    repo: PortalRepository,
 }
 
 impl UserService {
-    pub fn new() -> Self {
+    /// Create a new user service with database repository.
+    pub fn new(pool: DbPool) -> Self {
         Self {
-            users: Arc::new(Mutex::new(HashMap::new())),
+            repo: PortalRepository::new(pool),
         }
     }
 
     /// Create or update a portal user from SSO user info.
-    pub async fn upsert_sso_user(&self, info: &SsoUserInfo) -> Result<PortalUser, anyhow::Error> {
-        let mut users = self.users.lock().await;
-        let now = chrono::Utc::now();
+    pub async fn upsert_sso_user(
+        &self,
+        info: &SsoUserInfo,
+    ) -> Result<db::models::portal::PortalUser, anyhow::Error> {
+        // Parse PM user ID as UUID
+        let pm_user_id = uuid::Uuid::parse_str(&info.user_id)
+            .map_err(|e| anyhow::anyhow!("Invalid PM user ID: {}", e))?;
 
-        let user = if let Some(existing) = users.get_mut(&info.user_id) {
-            existing.email.clone_from(&info.email);
-            existing.name.clone_from(&info.name);
-            existing.avatar_url.clone_from(&info.avatar_url);
-            existing.updated_at = now;
-            existing.clone()
-        } else {
-            let user = PortalUser {
-                id: uuid::Uuid::new_v4(),
-                pm_user_id: info.user_id.clone(),
-                email: info.email.clone(),
-                name: info.name.clone(),
-                avatar_url: info.avatar_url.clone(),
-                created_at: now,
-                updated_at: now,
-            };
-            users.insert(info.user_id.clone(), user.clone());
-            user
-        };
+        let user = self
+            .repo
+            .upsert_sso_user(
+                pm_user_id,
+                &info.email,
+                &info.name,
+                info.avatar_url.as_deref(),
+            )
+            .await
+            .map_err(|e| anyhow::anyhow!("Database error: {}", e))?;
 
         Ok(user)
     }
 
     /// Get portal user by PM user ID.
-    pub async fn get_by_pm_id(&self, pm_user_id: &str) -> Option<PortalUser> {
-        self.users.lock().await.get(pm_user_id).cloned()
+    pub async fn get_by_pm_id(&self, pm_user_id: &str) -> Option<db::models::portal::PortalUser> {
+        let pm_user_uuid = uuid::Uuid::parse_str(pm_user_id).ok()?;
+        self.repo
+            .find_user_by_pm_id(pm_user_uuid)
+            .await
+            .ok()
+            .flatten()
+    }
+
+    /// Get portal user by email.
+    pub async fn get_by_email(&self, email: &str) -> Option<db::models::portal::PortalUser> {
+        self.repo.find_user_by_email(email).await.ok().flatten()
     }
 }
 
-/// Session data stored in memory/Redis.
-#[derive(Clone, Debug)]
-pub struct Session {
-    pub user_id: uuid::Uuid,
-    pub email: String,
-    pub name: String,
-    pub pm_tokens: Option<OAuthTokens>,
-    pub expires_at: chrono::DateTime<chrono::Utc>,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-}
-
-/// Session service for managing user sessions.
+/// Session service for managing user sessions (database-backed).
+///
+/// Sessions are stored in the database for persistence across restarts
+/// and horizontal scaling. Tokens are hashed with SHA-256 before storage.
 #[derive(Clone)]
 pub struct SessionService {
-    sessions: Arc<Mutex<HashMap<String, Session>>>,
+    repo: PortalRepository,
     jwt_secret: String,
 }
 
 impl SessionService {
-    pub fn new(jwt_secret: String) -> Self {
+    /// Create a new session service with database repository.
+    pub fn new(pool: DbPool, jwt_secret: String) -> Self {
         Self {
-            sessions: Arc::new(Mutex::new(HashMap::new())),
+            repo: PortalRepository::new(pool),
             jwt_secret,
         }
+    }
+
+    /// Hash a session token for storage (SHA-256).
+    fn hash_token(token: &str) -> String {
+        use sha2::{Digest, Sha256};
+        let hash = Sha256::digest(token.as_bytes());
+        hex::encode(hash)
     }
 
     /// Create a new session for a user after SSO login.
     pub async fn create_session(
         &self,
         user_id: uuid::Uuid,
-        tokens: &OAuthTokens,
+        _tokens: &OAuthTokens,
     ) -> Result<String, anyhow::Error> {
         let session_token = self.generate_session_token(user_id)?;
-        let now = chrono::Utc::now();
+        let token_hash = Self::hash_token(&session_token);
+        let expires_at = chrono::Utc::now() + chrono::Duration::days(7);
 
-        let session = Session {
-            user_id,
-            email: String::new(), // Will be populated from user info
-            name: String::new(),
-            pm_tokens: Some(tokens.clone()),
-            expires_at: now + chrono::Duration::days(7),
-            created_at: now,
-        };
-
-        self.sessions
-            .lock()
+        self.repo
+            .create_session(user_id, &token_hash, expires_at)
             .await
-            .insert(session_token.clone(), session);
+            .map_err(|e| anyhow::anyhow!("Failed to create session: {}", e))?;
+
         Ok(session_token)
     }
 
@@ -211,65 +191,89 @@ impl SessionService {
         user_id: uuid::Uuid,
     ) -> Result<String, anyhow::Error> {
         let session_token = self.generate_session_token(user_id)?;
-        let now = chrono::Utc::now();
+        let token_hash = Self::hash_token(&session_token);
+        let expires_at = chrono::Utc::now() + chrono::Duration::days(7);
 
-        let session = Session {
-            user_id,
-            email: String::new(),
-            name: String::new(),
-            pm_tokens: None,
-            expires_at: now + chrono::Duration::days(7),
-            created_at: now,
-        };
-
-        self.sessions
-            .lock()
+        self.repo
+            .create_session(user_id, &token_hash, expires_at)
             .await
-            .insert(session_token.clone(), session);
+            .map_err(|e| anyhow::anyhow!("Failed to create mobile session: {}", e))?;
+
         Ok(session_token)
     }
 
     /// Get session info by token.
     pub async fn get_session(&self, token: &str) -> Result<SessionInfo, anyhow::Error> {
-        let sessions = self.sessions.lock().await;
-        let session = sessions
-            .get(token)
+        let token_hash = Self::hash_token(token);
+
+        // Get session from database
+        let session = self
+            .repo
+            .find_session_by_token_hash(&token_hash)
+            .await
+            .map_err(|e| anyhow::anyhow!("Database error: {}", e))?
             .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
 
-        if session.expires_at < chrono::Utc::now() {
-            return Err(anyhow::anyhow!("Session expired"));
-        }
+        // Get user info
+        let user = self
+            .repo
+            .find_user_by_id(session.user_id)
+            .await
+            .map_err(|e| anyhow::anyhow!("Database error: {}", e))?
+            .ok_or_else(|| anyhow::anyhow!("User not found"))?;
 
         Ok(SessionInfo {
             user_id: session.user_id,
-            email: session.email.clone(),
-            name: session.name.clone(),
+            email: user.email,
+            name: user.name,
             expires_at: session.expires_at,
         })
     }
 
     /// Refresh session (extend expiry).
     pub async fn refresh_session(&self, token: &str) -> Result<SessionInfo, anyhow::Error> {
-        let mut sessions = self.sessions.lock().await;
-        let session = sessions
-            .get_mut(token)
-            .ok_or_else(|| anyhow::anyhow!("Session not found"))?;
+        let token_hash = Self::hash_token(token);
+        let new_expires_at = chrono::Utc::now() + chrono::Duration::days(7);
 
-        // Extend expiry by 7 days
-        session.expires_at = chrono::Utc::now() + chrono::Duration::days(7);
+        let session = self
+            .repo
+            .refresh_session(&token_hash, new_expires_at)
+            .await
+            .map_err(|e| anyhow::anyhow!("Database error: {}", e))?
+            .ok_or_else(|| anyhow::anyhow!("Session not found or expired"))?;
+
+        // Get user info
+        let user = self
+            .repo
+            .find_user_by_id(session.user_id)
+            .await
+            .map_err(|e| anyhow::anyhow!("Database error: {}", e))?
+            .ok_or_else(|| anyhow::anyhow!("User not found"))?;
 
         Ok(SessionInfo {
             user_id: session.user_id,
-            email: session.email.clone(),
-            name: session.name.clone(),
+            email: user.email,
+            name: user.name,
             expires_at: session.expires_at,
         })
     }
 
     /// Invalidate a session (logout).
     pub async fn invalidate_session(&self, token: &str) -> Result<(), anyhow::Error> {
-        self.sessions.lock().await.remove(token);
+        let token_hash = Self::hash_token(token);
+        self.repo
+            .delete_session(&token_hash)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to invalidate session: {}", e))?;
         Ok(())
+    }
+
+    /// Clean up expired sessions (call periodically).
+    pub async fn cleanup_expired_sessions(&self) -> Result<u64, anyhow::Error> {
+        self.repo
+            .cleanup_expired_sessions()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to cleanup sessions: {}", e))
     }
 
     fn generate_session_token(&self, user_id: uuid::Uuid) -> Result<String, anyhow::Error> {
@@ -736,14 +740,18 @@ impl AppState {
         // Epic 104.2: Token validation cache with 60 second TTL, 10000 max entries
         let token_cache = TokenValidationCache::new(60, 10000);
 
+        // Security fix: Use database-backed services for persistence
+        let user_service = UserService::new(db.clone());
+        let session_service = SessionService::new(db.clone(), jwt_secret);
+
         Self {
             db,
             portal_repo,
             reality_portal_repo,
             config,
             sso_sessions: Arc::new(Mutex::new(HashMap::new())),
-            user_service: UserService::new(),
-            session_service: SessionService::new(jwt_secret),
+            user_service,
+            session_service,
             sso_token_service: SsoTokenService::new(),
             pm_api_client,
             health_cache,

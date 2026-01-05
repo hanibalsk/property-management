@@ -351,6 +351,8 @@ impl FaultHandler {
             idempotency_key: data.idempotency_key,
         };
 
+        // TODO: Migrate to create_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let fault = state.fault_repo.create(create_data).await.map_err(|e| {
             // Check for idempotency key conflict
             if e.to_string().contains("idempotency") {
@@ -472,6 +474,8 @@ impl FaultHandler {
         data: UpdateFaultData,
     ) -> Result<Fault, FaultHandlerError> {
         // Get existing fault
+        // TODO: Migrate to find_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .fault_repo
             .find_by_id(fault_id)
@@ -499,6 +503,8 @@ impl FaultHandler {
             category: data.category,
         };
 
+        // TODO: Migrate to update_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let fault = state
             .fault_repo
             .update(fault_id, update_data)
@@ -525,6 +531,8 @@ impl FaultHandler {
         data: TriageFaultData,
     ) -> Result<Fault, FaultHandlerError> {
         // Get existing fault
+        // TODO: Migrate to find_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let existing = state
             .fault_repo
             .find_by_id(fault_id)
@@ -620,6 +628,8 @@ impl FaultHandler {
             estimated_completion: data.estimated_completion,
         };
 
+        // TODO: Migrate to update_status_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let fault = state
             .fault_repo
             .update_status(fault_id, context.user_id, status_data)
@@ -950,6 +960,8 @@ impl FaultHandler {
         fault_id: Uuid,
     ) -> Result<AiSuggestionResult, FaultHandlerError> {
         // Get fault to analyze
+        // TODO: Migrate to find_by_id_rls when route handlers pass RLS connection
+        #[allow(deprecated)]
         let fault = state
             .fault_repo
             .find_by_id(fault_id)

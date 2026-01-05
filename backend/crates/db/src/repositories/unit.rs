@@ -1,4 +1,28 @@
 //! Unit repository (Epic 2B, Story 2B.4-5).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_unit(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateUnitRequest>,
+//! ) -> Result<Json<Unit>> {
+//!     let unit = state.unit_repo.create_rls(rls.conn(), data).await?;
+//!     rls.release().await;
+//!     Ok(Json(unit))
+//! }
+//! ```
 
 use crate::models::unit::{
     AssignUnitOwner, CreateUnit, Unit, UnitOwner, UnitOwnerInfo, UnitSummary, UnitWithOwners,
@@ -6,7 +30,7 @@ use crate::models::unit::{
 };
 use crate::DbPool;
 use rust_decimal::Decimal;
-use sqlx::Error as SqlxError;
+use sqlx::{postgres::PgConnection, Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for unit operations.
@@ -21,8 +45,17 @@ impl UnitRepository {
         Self { pool }
     }
 
-    /// Create a new unit (UC-15.4).
-    pub async fn create(&self, data: CreateUnit) -> Result<Unit, SqlxError> {
+    // ========================================================================
+    // RLS-aware methods (recommended)
+    // ========================================================================
+
+    /// Create a new unit with RLS context (UC-15.4).
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_rls<'e, E>(&self, executor: E, data: CreateUnit) -> Result<Unit, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let unit = sqlx::query_as::<_, Unit>(
             r#"
             INSERT INTO units (
@@ -42,69 +75,43 @@ impl UnitRepository {
         .bind(data.rooms)
         .bind(data.ownership_share)
         .bind(&data.description)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(unit)
     }
 
-    /// Find unit by ID (UC-15.5).
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Unit>, SqlxError> {
+    /// Find unit by ID with RLS context (UC-15.5).
+    pub async fn find_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Unit>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let unit = sqlx::query_as::<_, Unit>(
             r#"
             SELECT * FROM units WHERE id = $1 AND status != 'archived'
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(unit)
     }
 
-    /// Find unit by ID with owners.
-    pub async fn find_by_id_with_owners(
+    /// Update unit with RLS context.
+    pub async fn update_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
-    ) -> Result<Option<UnitWithOwners>, SqlxError> {
-        let unit = self.find_by_id(id).await?;
-
-        match unit {
-            Some(u) => {
-                let owners = self.get_owners(id).await?;
-                Ok(Some(UnitWithOwners { unit: u, owners }))
-            }
-            None => Ok(None),
-        }
-    }
-
-    /// Get owners for a unit.
-    pub async fn get_owners(&self, unit_id: Uuid) -> Result<Vec<UnitOwnerInfo>, SqlxError> {
-        let owners = sqlx::query_as::<_, UnitOwnerInfo>(
-            r#"
-            SELECT
-                uo.user_id,
-                u.name as user_name,
-                u.email as user_email,
-                uo.ownership_percentage,
-                uo.is_primary
-            FROM unit_owners uo
-            INNER JOIN users u ON u.id = uo.user_id
-            WHERE uo.unit_id = $1
-              AND uo.status = 'active'
-              AND (uo.valid_until IS NULL OR uo.valid_until > CURRENT_DATE)
-            ORDER BY uo.is_primary DESC, uo.ownership_percentage DESC
-            "#,
-        )
-        .bind(unit_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(owners)
-    }
-
-    /// Update unit.
-    pub async fn update(&self, id: Uuid, data: UpdateUnit) -> Result<Option<Unit>, SqlxError> {
+        data: UpdateUnit,
+    ) -> Result<Option<Unit>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         // Build dynamic update query
         let mut updates = vec!["updated_at = NOW()".to_string()];
         let mut param_idx = 1;
@@ -195,12 +202,15 @@ impl UnitRepository {
             q = q.bind(settings);
         }
 
-        let unit = q.fetch_optional(&self.pool).await?;
+        let unit = q.fetch_optional(executor).await?;
         Ok(unit)
     }
 
-    /// Archive unit (soft delete).
-    pub async fn archive(&self, id: Uuid) -> Result<Option<Unit>, SqlxError> {
+    /// Archive unit with RLS context (soft delete).
+    pub async fn archive_rls<'e, E>(&self, executor: E, id: Uuid) -> Result<Option<Unit>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let unit = sqlx::query_as::<_, Unit>(
             r#"
             UPDATE units
@@ -210,10 +220,255 @@ impl UnitRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(unit)
+    }
+
+    /// Get owners for a unit with RLS context.
+    pub async fn get_owners_rls<'e, E>(
+        &self,
+        executor: E,
+        unit_id: Uuid,
+    ) -> Result<Vec<UnitOwnerInfo>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let owners = sqlx::query_as::<_, UnitOwnerInfo>(
+            r#"
+            SELECT
+                uo.user_id,
+                u.name as user_name,
+                u.email as user_email,
+                uo.ownership_percentage,
+                uo.is_primary
+            FROM unit_owners uo
+            INNER JOIN users u ON u.id = uo.user_id
+            WHERE uo.unit_id = $1
+              AND uo.status = 'active'
+              AND (uo.valid_until IS NULL OR uo.valid_until > CURRENT_DATE)
+            ORDER BY uo.is_primary DESC, uo.ownership_percentage DESC
+            "#,
+        )
+        .bind(unit_id)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(owners)
+    }
+
+    /// List units for a building with RLS context.
+    ///
+    /// Returns a simplified Vec without count - use separate count query if needed.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_by_building_rls<'e, E>(
+        &self,
+        executor: E,
+        building_id: Uuid,
+        offset: i64,
+        limit: i64,
+        include_archived: bool,
+        unit_type_filter: Option<&str>,
+        floor_filter: Option<i32>,
+    ) -> Result<Vec<UnitSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let mut conditions = vec!["building_id = $1".to_string()];
+
+        if !include_archived {
+            conditions.push("status = 'active'".to_string());
+        }
+
+        if unit_type_filter.is_some() {
+            conditions.push("unit_type = $4".to_string());
+        }
+
+        if floor_filter.is_some() {
+            let idx = if unit_type_filter.is_some() { 5 } else { 4 };
+            conditions.push(format!("floor = ${}", idx));
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        let data_query = format!(
+            r#"
+            SELECT id, building_id, designation, floor, unit_type, occupancy_status, status
+            FROM units
+            WHERE {}
+            ORDER BY floor, designation
+            LIMIT $2 OFFSET $3
+            "#,
+            where_clause
+        );
+
+        let mut data_q = sqlx::query_as::<_, UnitSummary>(&data_query)
+            .bind(building_id)
+            .bind(limit)
+            .bind(offset);
+        if let Some(ut) = unit_type_filter {
+            data_q = data_q.bind(ut);
+        }
+        if let Some(f) = floor_filter {
+            data_q = data_q.bind(f);
+        }
+        let units = data_q.fetch_all(executor).await?;
+
+        Ok(units)
+    }
+
+    /// List units for a building with count and RLS context.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn list_by_building_with_count_rls(
+        &self,
+        conn: &mut PgConnection,
+        building_id: Uuid,
+        offset: i64,
+        limit: i64,
+        include_archived: bool,
+        unit_type_filter: Option<&str>,
+        floor_filter: Option<i32>,
+    ) -> Result<(Vec<UnitSummary>, i64), SqlxError> {
+        let mut conditions = vec!["building_id = $1".to_string()];
+
+        if !include_archived {
+            conditions.push("status = 'active'".to_string());
+        }
+
+        if unit_type_filter.is_some() {
+            conditions.push("unit_type = $2".to_string());
+        }
+
+        if floor_filter.is_some() {
+            let idx = if unit_type_filter.is_some() { 3 } else { 2 };
+            conditions.push(format!("floor = ${}", idx));
+        }
+
+        let where_clause = conditions.join(" AND ");
+
+        // Get count first
+        let count_query = format!("SELECT COUNT(*) FROM units WHERE {}", where_clause);
+
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query).bind(building_id);
+        if let Some(ut) = unit_type_filter {
+            count_q = count_q.bind(ut);
+        }
+        if let Some(f) = floor_filter {
+            count_q = count_q.bind(f);
+        }
+        let total = count_q.fetch_one(&mut *conn).await?;
+
+        // Get data - need to rebuild conditions with offset/limit params
+        let mut data_conditions = vec!["building_id = $1".to_string()];
+
+        if !include_archived {
+            data_conditions.push("status = 'active'".to_string());
+        }
+
+        if unit_type_filter.is_some() {
+            data_conditions.push("unit_type = $4".to_string());
+        }
+
+        if floor_filter.is_some() {
+            let idx = if unit_type_filter.is_some() { 5 } else { 4 };
+            data_conditions.push(format!("floor = ${}", idx));
+        }
+
+        let data_where_clause = data_conditions.join(" AND ");
+
+        let data_query = format!(
+            r#"
+            SELECT id, building_id, designation, floor, unit_type, occupancy_status, status
+            FROM units
+            WHERE {}
+            ORDER BY floor, designation
+            LIMIT $2 OFFSET $3
+            "#,
+            data_where_clause
+        );
+
+        let mut data_q = sqlx::query_as::<_, UnitSummary>(&data_query)
+            .bind(building_id)
+            .bind(limit)
+            .bind(offset);
+        if let Some(ut) = unit_type_filter {
+            data_q = data_q.bind(ut);
+        }
+        if let Some(f) = floor_filter {
+            data_q = data_q.bind(f);
+        }
+        let units = data_q.fetch_all(&mut *conn).await?;
+
+        Ok((units, total))
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
+
+    /// Create a new unit (UC-15.4).
+    ///
+    /// **Deprecated**: Use `create_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.275", note = "Use create_rls with RlsConnection instead")]
+    pub async fn create(&self, data: CreateUnit) -> Result<Unit, SqlxError> {
+        self.create_rls(&self.pool, data).await
+    }
+
+    /// Find unit by ID (UC-15.5).
+    ///
+    /// **Deprecated**: Use `find_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.275",
+        note = "Use find_by_id_rls with RlsConnection instead"
+    )]
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Unit>, SqlxError> {
+        self.find_by_id_rls(&self.pool, id).await
+    }
+
+    /// Find unit by ID with owners.
+    pub async fn find_by_id_with_owners(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<UnitWithOwners>, SqlxError> {
+        #[allow(deprecated)]
+        let unit = self.find_by_id(id).await?;
+
+        match unit {
+            Some(u) => {
+                #[allow(deprecated)]
+                let owners = self.get_owners(id).await?;
+                Ok(Some(UnitWithOwners { unit: u, owners }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Get owners for a unit.
+    ///
+    /// **Deprecated**: Use `get_owners_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.275",
+        note = "Use get_owners_rls with RlsConnection instead"
+    )]
+    pub async fn get_owners(&self, unit_id: Uuid) -> Result<Vec<UnitOwnerInfo>, SqlxError> {
+        self.get_owners_rls(&self.pool, unit_id).await
+    }
+
+    /// Update unit.
+    ///
+    /// **Deprecated**: Use `update_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.275", note = "Use update_rls with RlsConnection instead")]
+    pub async fn update(&self, id: Uuid, data: UpdateUnit) -> Result<Option<Unit>, SqlxError> {
+        self.update_rls(&self.pool, id, data).await
+    }
+
+    /// Archive unit (soft delete).
+    ///
+    /// **Deprecated**: Use `archive_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.275", note = "Use archive_rls with RlsConnection instead")]
+    pub async fn archive(&self, id: Uuid) -> Result<Option<Unit>, SqlxError> {
+        self.archive_rls(&self.pool, id).await
     }
 
     /// Restore archived unit.
@@ -234,6 +489,13 @@ impl UnitRepository {
     }
 
     /// List units for a building.
+    ///
+    /// **Deprecated**: Use `list_by_building_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.275",
+        note = "Use list_by_building_rls with RlsConnection instead"
+    )]
+    #[allow(clippy::too_many_arguments)]
     pub async fn list_by_building(
         &self,
         building_id: Uuid,
@@ -261,16 +523,6 @@ impl UnitRepository {
         let where_clause = conditions.join(" AND ");
 
         let count_query = format!("SELECT COUNT(*) FROM units WHERE {}", where_clause);
-        let data_query = format!(
-            r#"
-            SELECT id, building_id, designation, floor, unit_type, occupancy_status, status
-            FROM units
-            WHERE {}
-            ORDER BY floor, designation
-            LIMIT $2 OFFSET $3
-            "#,
-            where_clause
-        );
 
         // Execute count query
         let mut count_q = sqlx::query_scalar::<_, i64>(&count_query).bind(building_id);
@@ -282,18 +534,18 @@ impl UnitRepository {
         }
         let total = count_q.fetch_one(&self.pool).await?;
 
-        // Execute data query
-        let mut data_q = sqlx::query_as::<_, UnitSummary>(&data_query)
-            .bind(building_id)
-            .bind(limit)
-            .bind(offset);
-        if let Some(ut) = unit_type_filter {
-            data_q = data_q.bind(ut);
-        }
-        if let Some(f) = floor_filter {
-            data_q = data_q.bind(f);
-        }
-        let units = data_q.fetch_all(&self.pool).await?;
+        // Execute data query via RLS method
+        let units = self
+            .list_by_building_rls(
+                &self.pool,
+                building_id,
+                offset,
+                limit,
+                include_archived,
+                unit_type_filter,
+                floor_filter,
+            )
+            .await?;
 
         Ok((units, total))
     }

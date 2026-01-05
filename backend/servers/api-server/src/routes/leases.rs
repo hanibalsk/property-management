@@ -3,7 +3,7 @@
 //! Implements tenant application intake, screening, lease creation,
 //! lifecycle management, and expiration tracking.
 
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -123,11 +123,24 @@ fn default_days() -> i32 {
 
 async fn create_application(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Json(payload): Json<CreateApplicationRequest>,
 ) -> Result<(StatusCode, Json<db::models::TenantApplication>), (StatusCode, Json<ErrorResponse>)> {
-    state
+    // Verify request org_id matches authenticated tenant
+    if payload.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .create_application(payload.organization_id, payload.data)
+        .create_application_rls(&mut **rls.conn(), payload.organization_id, payload.data)
         .await
         .map(|app| (StatusCode::CREATED, Json(app)))
         .map_err(|e| {
@@ -139,7 +152,10 @@ async fn create_application(
                     "Failed to create application",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 /// List applications query with org.
@@ -168,8 +184,21 @@ pub struct ListApplicationsResponse {
 
 async fn list_applications(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Query(query): Query<ListApplicationsQuery>,
 ) -> Result<Json<ListApplicationsResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify request org_id matches authenticated tenant
+    if query.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
     let org_id = query.organization_id;
     let app_query = ApplicationListQuery {
         unit_id: query.unit_id,
@@ -177,9 +206,10 @@ async fn list_applications(
         limit: query.limit,
         offset: query.offset,
     };
-    state
+
+    let result = state
         .lease_repo
-        .list_applications(org_id, app_query)
+        .list_applications_rls(&mut **rls.conn(), org_id, app_query)
         .await
         .map(|(items, total)| Json(ListApplicationsResponse { items, total }))
         .map_err(|e| {
@@ -191,14 +221,22 @@ async fn list_applications(
                     "Failed to list applications",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn get_application(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<db::models::TenantApplication>, (StatusCode, Json<ErrorResponse>)> {
-    match state.lease_repo.find_application_by_id(id).await {
+    let result = match state
+        .lease_repo
+        .find_application_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(app)) => Ok(Json(app)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
@@ -211,17 +249,21 @@ async fn get_application(
                 Json(ErrorResponse::new("DB_ERROR", "Failed to get application")),
             ))
         }
-    }
+    };
+
+    rls.release().await;
+    result
 }
 
 async fn update_application(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateApplication>,
 ) -> Result<Json<db::models::TenantApplication>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .update_application(id, payload)
+        .update_application_rls(&mut **rls.conn(), id, payload)
         .await
         .map(Json)
         .map_err(|e| {
@@ -233,17 +275,21 @@ async fn update_application(
                     "Failed to update application",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn submit_application(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<SubmitApplication>,
 ) -> Result<Json<db::models::TenantApplication>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .submit_application(id, payload)
+        .submit_application_rls(&mut **rls.conn(), id, payload)
         .await
         .map(Json)
         .map_err(|e| {
@@ -255,18 +301,22 @@ async fn submit_application(
                     "Failed to submit application",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn review_application(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<ReviewApplication>,
 ) -> Result<Json<db::models::TenantApplication>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .review_application(id, auth.user_id, payload)
+        .review_application_rls(&mut **rls.conn(), id, auth.user_id, payload)
         .await
         .map(Json)
         .map_err(|e| {
@@ -278,7 +328,10 @@ async fn review_application(
                     "Failed to review application",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 // ==================== Screening Handlers (Story 19.2) ====================
@@ -295,13 +348,26 @@ pub struct InitiateScreeningRequest {
 
 async fn initiate_screening(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<InitiateScreeningRequest>,
 ) -> Result<(StatusCode, Json<Vec<db::models::TenantScreening>>), (StatusCode, Json<ErrorResponse>)>
 {
-    state
+    // Verify request org_id matches authenticated tenant
+    if payload.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .initiate_screening(id, payload.organization_id, payload.data)
+        .initiate_screening_rls(&mut **rls.conn(), id, payload.organization_id, payload.data)
         .await
         .map(|s| (StatusCode::CREATED, Json(s)))
         .map_err(|e| {
@@ -313,17 +379,21 @@ async fn initiate_screening(
                     "Failed to initiate screening",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn record_consent(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<ScreeningConsent>,
 ) -> Result<Json<db::models::TenantScreening>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .submit_screening_consent(id, payload)
+        .submit_screening_consent_rls(&mut **rls.conn(), id, payload)
         .await
         .map(Json)
         .map_err(|e| {
@@ -332,16 +402,20 @@ async fn record_consent(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to record consent")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn get_screening(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Vec<db::models::ScreeningSummary>>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .get_screenings_for_application(id)
+        .get_screenings_for_application_rls(&mut **rls.conn(), id)
         .await
         .map(Json)
         .map_err(|e| {
@@ -350,17 +424,21 @@ async fn get_screening(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to get screenings")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn update_screening_result(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateScreeningResult>,
 ) -> Result<Json<db::models::TenantScreening>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .update_screening_result(id, payload)
+        .update_screening_result_rls(&mut **rls.conn(), id, payload)
         .await
         .map(Json)
         .map_err(|e| {
@@ -372,7 +450,10 @@ async fn update_screening_result(
                     "Failed to update screening result",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 // ==================== Template Handlers (Story 19.3) ====================
@@ -380,11 +461,29 @@ async fn update_screening_result(
 async fn create_template(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Json(payload): Json<CreateTemplateRequest>,
 ) -> Result<(StatusCode, Json<db::models::LeaseTemplate>), (StatusCode, Json<ErrorResponse>)> {
-    state
+    // Verify request org_id matches authenticated tenant
+    if payload.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .create_template(payload.organization_id, auth.user_id, payload.data)
+        .create_template_rls(
+            &mut **rls.conn(),
+            payload.organization_id,
+            auth.user_id,
+            payload.data,
+        )
         .await
         .map(|t| (StatusCode::CREATED, Json(t)))
         .map_err(|e| {
@@ -393,16 +492,32 @@ async fn create_template(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to create template")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn list_templates(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<Vec<db::models::LeaseTemplate>>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    // Verify request org_id matches authenticated tenant
+    if query.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .list_templates(query.organization_id)
+        .list_templates_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map(Json)
         .map_err(|e| {
@@ -411,14 +526,22 @@ async fn list_templates(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to list templates")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn get_template(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<db::models::LeaseTemplate>, (StatusCode, Json<ErrorResponse>)> {
-    match state.lease_repo.find_template_by_id(id).await {
+    let result = match state
+        .lease_repo
+        .find_template_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(t)) => Ok(Json(t)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
@@ -431,7 +554,10 @@ async fn get_template(
                 Json(ErrorResponse::new("DB_ERROR", "Failed to get template")),
             ))
         }
-    }
+    };
+
+    rls.release().await;
+    result
 }
 
 /// Update template with org context.
@@ -446,12 +572,25 @@ pub struct UpdateTemplateRequest {
 
 async fn update_template(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateTemplateRequest>,
 ) -> Result<Json<db::models::LeaseTemplate>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    // Verify request org_id matches authenticated tenant
+    if payload.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .update_template(id, payload.organization_id, payload.data)
+        .update_template_rls(&mut **rls.conn(), id, payload.organization_id, payload.data)
         .await
         .map(Json)
         .map_err(|e| {
@@ -460,7 +599,10 @@ async fn update_template(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to update template")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 // ==================== Lease Handlers (Story 19.3, 19.4) ====================
@@ -468,11 +610,29 @@ async fn update_template(
 async fn create_lease(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Json(payload): Json<CreateLeaseRequest>,
 ) -> Result<(StatusCode, Json<db::models::Lease>), (StatusCode, Json<ErrorResponse>)> {
-    state
+    // Verify request org_id matches authenticated tenant
+    if payload.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .create_lease(payload.organization_id, auth.user_id, payload.data)
+        .create_lease_rls(
+            &mut **rls.conn(),
+            payload.organization_id,
+            auth.user_id,
+            payload.data,
+        )
         .await
         .map(|l| (StatusCode::CREATED, Json(l)))
         .map_err(|e| {
@@ -481,7 +641,10 @@ async fn create_lease(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to create lease")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 /// List leases query with org.
@@ -514,8 +677,21 @@ pub struct ListLeasesResponse {
 
 async fn list_leases(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Query(query): Query<ListLeasesQuery>,
 ) -> Result<Json<ListLeasesResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Verify request org_id matches authenticated tenant
+    if query.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
     let org_id = query.organization_id;
     let lease_query = LeaseListQuery {
         unit_id: query.unit_id,
@@ -525,9 +701,10 @@ async fn list_leases(
         limit: query.limit,
         offset: query.offset,
     };
-    state
+
+    let result = state
         .lease_repo
-        .list_leases(org_id, lease_query)
+        .list_leases_rls(&mut **rls.conn(), org_id, lease_query)
         .await
         .map(|(items, total)| Json(ListLeasesResponse { items, total }))
         .map_err(|e| {
@@ -536,14 +713,22 @@ async fn list_leases(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to list leases")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn get_lease(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<db::models::LeaseWithDetails>, (StatusCode, Json<ErrorResponse>)> {
-    match state.lease_repo.get_lease_with_details(id).await {
+    let result = match state
+        .lease_repo
+        .get_lease_with_details_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(l)) => Ok(Json(l)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
@@ -556,17 +741,21 @@ async fn get_lease(
                 Json(ErrorResponse::new("DB_ERROR", "Failed to get lease")),
             ))
         }
-    }
+    };
+
+    rls.release().await;
+    result
 }
 
 async fn update_lease(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdateLease>,
 ) -> Result<Json<db::models::Lease>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .update_lease(id, payload)
+        .update_lease_rls(&mut **rls.conn(), id, payload)
         .await
         .map(Json)
         .map_err(|e| {
@@ -575,18 +764,22 @@ async fn update_lease(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to update lease")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn terminate_lease(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<TerminateLease>,
 ) -> Result<Json<db::models::Lease>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .terminate_lease(id, auth.user_id, payload)
+        .terminate_lease_rls(&mut **rls.conn(), id, auth.user_id, payload)
         .await
         .map(Json)
         .map_err(|e| {
@@ -595,18 +788,22 @@ async fn terminate_lease(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to terminate lease")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn renew_lease(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<RenewLease>,
 ) -> Result<(StatusCode, Json<db::models::Lease>), (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .renew_lease(id, auth.user_id, payload)
+        .renew_lease_rls(&mut **rls.conn(), id, auth.user_id, payload)
         .await
         .map(|l| (StatusCode::CREATED, Json(l)))
         .map_err(|e| {
@@ -615,7 +812,10 @@ async fn renew_lease(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to renew lease")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 // ==================== Amendment Handlers ====================
@@ -623,12 +823,13 @@ async fn renew_lease(
 async fn create_amendment(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<CreateAmendment>,
 ) -> Result<(StatusCode, Json<db::models::LeaseAmendment>), (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .create_amendment(id, auth.user_id, payload)
+        .create_amendment_rls(&mut **rls.conn(), id, auth.user_id, payload)
         .await
         .map(|a| (StatusCode::CREATED, Json(a)))
         .map_err(|e| {
@@ -637,15 +838,23 @@ async fn create_amendment(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to create amendment")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn list_amendments(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<db::models::LeaseWithDetails>, (StatusCode, Json<ErrorResponse>)> {
     // For now, use get_lease_with_details which includes amendments
-    match state.lease_repo.get_lease_with_details(id).await {
+    let result = match state
+        .lease_repo
+        .get_lease_with_details_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(details)) => Ok(Json(details)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
@@ -658,7 +867,10 @@ async fn list_amendments(
                 Json(ErrorResponse::new("DB_ERROR", "Failed to list amendments")),
             ))
         }
-    }
+    };
+
+    rls.release().await;
+    result
 }
 
 // ==================== Payment Handlers ====================
@@ -674,12 +886,13 @@ pub struct PaymentPath {
 
 async fn record_payment(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(payment_id): Path<Uuid>,
     Json(payload): Json<RecordPayment>,
 ) -> Result<Json<db::models::LeasePayment>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .record_payment(payment_id, payload)
+        .record_payment_rls(&mut **rls.conn(), payment_id, payload)
         .await
         .map(Json)
         .map_err(|e| {
@@ -688,15 +901,23 @@ async fn record_payment(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to record payment")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn list_payments(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<db::models::LeaseWithDetails>, (StatusCode, Json<ErrorResponse>)> {
     // Use get_lease_with_details which includes upcoming_payments
-    match state.lease_repo.get_lease_with_details(id).await {
+    let result = match state
+        .lease_repo
+        .get_lease_with_details_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(details)) => Ok(Json(details)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
@@ -709,16 +930,32 @@ async fn list_payments(
                 Json(ErrorResponse::new("DB_ERROR", "Failed to list payments")),
             ))
         }
-    }
+    };
+
+    rls.release().await;
+    result
 }
 
 async fn get_payment_summary(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<Vec<db::models::PaymentSummary>>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    // Verify request org_id matches authenticated tenant
+    if query.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .get_overdue_payments(query.organization_id)
+        .get_overdue_payments_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map(Json)
         .map_err(|e| {
@@ -730,19 +967,23 @@ async fn get_payment_summary(
                     "Failed to get payment summary",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 // ==================== Reminder Handlers (Story 19.5) ====================
 
 async fn create_reminder(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(payload): Json<CreateReminder>,
 ) -> Result<(StatusCode, Json<db::models::LeaseReminder>), (StatusCode, Json<ErrorResponse>)> {
-    state
+    let result = state
         .lease_repo
-        .create_reminder(id, payload)
+        .create_reminder_rls(&mut **rls.conn(), id, payload)
         .await
         .map(|r| (StatusCode::CREATED, Json(r)))
         .map_err(|e| {
@@ -751,15 +992,23 @@ async fn create_reminder(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to create reminder")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn list_reminders(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<db::models::LeaseWithDetails>, (StatusCode, Json<ErrorResponse>)> {
     // Use get_lease_with_details which includes reminders
-    match state.lease_repo.get_lease_with_details(id).await {
+    let result = match state
+        .lease_repo
+        .get_lease_with_details_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(details)) => Ok(Json(details)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
@@ -772,18 +1021,34 @@ async fn list_reminders(
                 Json(ErrorResponse::new("DB_ERROR", "Failed to list reminders")),
             ))
         }
-    }
+    };
+
+    rls.release().await;
+    result
 }
 
 // ==================== Dashboard/Statistics Handlers ====================
 
 async fn get_expiring_leases(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<db::models::ExpirationOverview>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    // Verify request org_id matches authenticated tenant
+    if query.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .get_expiration_overview(query.organization_id)
+        .get_expiration_overview_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map(Json)
         .map_err(|e| {
@@ -795,16 +1060,32 @@ async fn get_expiring_leases(
                     "Failed to get expiring leases",
                 )),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }
 
 async fn get_statistics(
     State(state): State<AppState>,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> Result<Json<db::models::LeaseStatistics>, (StatusCode, Json<ErrorResponse>)> {
-    state
+    // Verify request org_id matches authenticated tenant
+    if query.organization_id != rls.tenant_id() {
+        rls.release().await;
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                "NOT_AUTHORIZED",
+                "Organization ID mismatch",
+            )),
+        ));
+    }
+
+    let result = state
         .lease_repo
-        .get_statistics(query.organization_id)
+        .get_statistics_rls(&mut **rls.conn(), query.organization_id)
         .await
         .map(Json)
         .map_err(|e| {
@@ -813,5 +1094,8 @@ async fn get_statistics(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", "Failed to get statistics")),
             )
-        })
+        });
+
+    rls.release().await;
+    result
 }

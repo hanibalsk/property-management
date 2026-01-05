@@ -1,4 +1,28 @@
 //! Lease repository (Epic 19: Lease Management & Tenant Screening).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_lease(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateLeaseRequest>,
+//! ) -> Result<Json<Lease>> {
+//!     let lease = state.lease_repo.create_lease_rls(rls.conn(), org_id, user_id, data).await?;
+//!     rls.release().await;
+//!     Ok(Json(lease))
+//! }
+//! ```
 
 use crate::models::lease::{
     lease_status, screening_status, ApplicationListQuery, ApplicationSummary, CreateAmendment,
@@ -12,7 +36,7 @@ use crate::models::lease::{
 use crate::DbPool;
 use chrono::{Datelike, Duration, NaiveDate, Utc};
 use rust_decimal::Decimal;
-use sqlx::Error as SqlxError;
+use sqlx::{Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for lease operations.
@@ -28,15 +52,25 @@ impl LeaseRepository {
     }
 
     // ========================================================================
-    // Applications (Story 19.1)
+    // RLS-aware methods (recommended)
     // ========================================================================
 
-    /// Create tenant application.
-    pub async fn create_application(
+    // ------------------------------------------------------------------------
+    // Applications (Story 19.1) - RLS versions
+    // ------------------------------------------------------------------------
+
+    /// Create tenant application with RLS context.
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_application_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         data: CreateApplication,
-    ) -> Result<TenantApplication, SqlxError> {
+    ) -> Result<TenantApplication, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let app = sqlx::query_as::<_, TenantApplication>(
             r#"
             INSERT INTO tenant_applications (
@@ -74,33 +108,41 @@ impl LeaseRepository {
         .bind(&data.co_applicants)
         .bind(&data.source)
         .bind(&data.referral_code)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(app)
     }
 
-    /// Find application by ID.
-    pub async fn find_application_by_id(
+    /// Find application by ID with RLS context.
+    pub async fn find_application_by_id_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
-    ) -> Result<Option<TenantApplication>, SqlxError> {
+    ) -> Result<Option<TenantApplication>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let app = sqlx::query_as::<_, TenantApplication>(
             r#"SELECT * FROM tenant_applications WHERE id = $1"#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(app)
     }
 
-    /// Update application.
-    pub async fn update_application(
+    /// Update application with RLS context.
+    pub async fn update_application_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         data: UpdateApplication,
-    ) -> Result<TenantApplication, SqlxError> {
+    ) -> Result<TenantApplication, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let app = sqlx::query_as::<_, TenantApplication>(
             r#"
             UPDATE tenant_applications SET
@@ -148,18 +190,22 @@ impl LeaseRepository {
         .bind(data.desired_lease_term_months)
         .bind(data.proposed_rent)
         .bind(&data.co_applicants)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(app)
     }
 
-    /// Submit application.
-    pub async fn submit_application(
+    /// Submit application with RLS context.
+    pub async fn submit_application_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         data: SubmitApplication,
-    ) -> Result<TenantApplication, SqlxError> {
+    ) -> Result<TenantApplication, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let app = sqlx::query_as::<_, TenantApplication>(
             r#"
             UPDATE tenant_applications SET
@@ -173,19 +219,23 @@ impl LeaseRepository {
         )
         .bind(id)
         .bind(&data.documents)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(app)
     }
 
-    /// Review application.
-    pub async fn review_application(
+    /// Review application with RLS context.
+    pub async fn review_application_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         reviewer_id: Uuid,
         data: ReviewApplication,
-    ) -> Result<TenantApplication, SqlxError> {
+    ) -> Result<TenantApplication, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let app = sqlx::query_as::<_, TenantApplication>(
             r#"
             UPDATE tenant_applications SET
@@ -202,45 +252,45 @@ impl LeaseRepository {
         .bind(&data.status)
         .bind(reviewer_id)
         .bind(&data.decision_notes)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(app)
     }
 
-    /// Delete application.
-    pub async fn delete_application(&self, id: Uuid) -> Result<bool, SqlxError> {
+    /// Delete application with RLS context.
+    pub async fn delete_application_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<bool, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let result = sqlx::query(r#"DELETE FROM tenant_applications WHERE id = $1"#)
             .bind(id)
-            .execute(&self.pool)
+            .execute(executor)
             .await?;
 
         Ok(result.rows_affected() > 0)
     }
 
-    /// List applications for organization.
-    pub async fn list_applications(
+    /// List applications for organization with RLS context.
+    pub async fn list_applications_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         query: ApplicationListQuery,
-    ) -> Result<(Vec<ApplicationSummary>, i64), SqlxError> {
+    ) -> Result<(Vec<ApplicationSummary>, i64), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = query.limit.unwrap_or(20);
         let offset = query.offset.unwrap_or(0);
 
-        // Get total count
-        let (total,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT COUNT(*) FROM tenant_applications
-            WHERE organization_id = $1
-                AND ($2::uuid IS NULL OR unit_id = $2)
-                AND ($3::text IS NULL OR status = $3::tenant_application_status)
-            "#,
-        )
-        .bind(org_id)
-        .bind(query.unit_id)
-        .bind(&query.status)
-        .fetch_one(&self.pool)
-        .await?;
+        // Note: For RLS version, we need to use a single executor call.
+        // We'll get count in a subquery or accept that we need two calls.
+        // For simplicity, we'll return total as 0 and let the caller make a separate count call if needed.
 
         // Get applications with summaries
         let apps = sqlx::query_as::<_, (Uuid, Uuid, String, String, String, String, String, Option<chrono::DateTime<Utc>>, Option<Decimal>, Option<NaiveDate>, i64, bool)>(
@@ -266,7 +316,7 @@ impl LeaseRepository {
         .bind(&query.status)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         let summaries = apps
@@ -304,57 +354,94 @@ impl LeaseRepository {
             )
             .collect();
 
-        Ok((summaries, total))
+        // For RLS version, we return -1 to indicate count was not fetched
+        // Caller should use count_applications_rls if total is needed
+        Ok((summaries, -1))
     }
 
-    // ========================================================================
-    // Screening (Story 19.2)
-    // ========================================================================
-
-    /// Initiate screening for application.
-    pub async fn initiate_screening(
+    /// Count applications for organization with RLS context.
+    pub async fn count_applications_rls<'e, E>(
         &self,
+        executor: E,
+        org_id: Uuid,
+        query: &ApplicationListQuery,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let (total,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM tenant_applications
+            WHERE organization_id = $1
+                AND ($2::uuid IS NULL OR unit_id = $2)
+                AND ($3::text IS NULL OR status = $3::tenant_application_status)
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.unit_id)
+        .bind(&query.status)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(total)
+    }
+
+    // ------------------------------------------------------------------------
+    // Screening (Story 19.2) - RLS versions
+    // ------------------------------------------------------------------------
+
+    /// Initiate screening for application with RLS context.
+    pub async fn initiate_screening_rls<'e, E>(
+        &self,
+        executor: E,
         application_id: Uuid,
         org_id: Uuid,
         data: InitiateScreening,
-    ) -> Result<Vec<TenantScreening>, SqlxError> {
-        let mut screenings = Vec::new();
+    ) -> Result<Vec<TenantScreening>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Note: For RLS version, we execute a single batch insert
+        // This is more efficient and uses only one executor call
+        let screening_types_json = serde_json::to_value(&data.screening_types).unwrap_or_default();
+        let provider = data.provider.as_deref();
 
-        for screening_type in &data.screening_types {
-            let screening = sqlx::query_as::<_, TenantScreening>(
-                r#"
+        let screenings = sqlx::query_as::<_, TenantScreening>(
+            r#"
+            WITH inserted AS (
                 INSERT INTO tenant_screenings (
                     application_id, organization_id, screening_type, provider, status, consent_requested_at
                 )
-                VALUES ($1, $2, $3::screening_type, $4, 'pending_consent', NOW())
+                SELECT $1, $2, st::screening_type, $3, 'pending_consent', NOW()
+                FROM jsonb_array_elements_text($4::jsonb) AS st
                 RETURNING *
-                "#,
+            ),
+            app_update AS (
+                UPDATE tenant_applications SET status = 'screening_pending' WHERE id = $1
             )
-            .bind(application_id)
-            .bind(org_id)
-            .bind(screening_type)
-            .bind(&data.provider)
-            .fetch_one(&self.pool)
-            .await?;
-
-            screenings.push(screening);
-        }
-
-        // Update application status
-        sqlx::query(r#"UPDATE tenant_applications SET status = 'screening_pending' WHERE id = $1"#)
-            .bind(application_id)
-            .execute(&self.pool)
-            .await?;
+            SELECT * FROM inserted
+            "#,
+        )
+        .bind(application_id)
+        .bind(org_id)
+        .bind(provider)
+        .bind(&screening_types_json)
+        .fetch_all(executor)
+        .await?;
 
         Ok(screenings)
     }
 
-    /// Submit screening consent.
-    pub async fn submit_screening_consent(
+    /// Submit screening consent with RLS context.
+    pub async fn submit_screening_consent_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         data: ScreeningConsent,
-    ) -> Result<TenantScreening, SqlxError> {
+    ) -> Result<TenantScreening, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let screening = sqlx::query_as::<_, TenantScreening>(
             r#"
             UPDATE tenant_screenings SET
@@ -368,14 +455,21 @@ impl LeaseRepository {
         )
         .bind(id)
         .bind(&data.consent_document_url)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(screening)
     }
 
-    /// Start screening process.
-    pub async fn start_screening(&self, id: Uuid) -> Result<TenantScreening, SqlxError> {
+    /// Start screening process with RLS context.
+    pub async fn start_screening_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<TenantScreening, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let screening = sqlx::query_as::<_, TenantScreening>(
             r#"
             UPDATE tenant_screenings SET
@@ -387,18 +481,22 @@ impl LeaseRepository {
             "#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(screening)
     }
 
-    /// Update screening result.
-    pub async fn update_screening_result(
+    /// Update screening result with RLS context.
+    pub async fn update_screening_result_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         data: UpdateScreeningResult,
-    ) -> Result<TenantScreening, SqlxError> {
+    ) -> Result<TenantScreening, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let status = if data.passed.unwrap_or(false) {
             screening_status::COMPLETED
         } else if data.passed == Some(false) {
@@ -407,19 +505,33 @@ impl LeaseRepository {
             screening_status::COMPLETED
         };
 
+        // Update screening and application status in a single query using CTE
         let screening = sqlx::query_as::<_, TenantScreening>(
             r#"
-            UPDATE tenant_screenings SET
-                status = $2::screening_status,
-                result_summary = $3,
-                risk_score = $4,
-                passed = $5,
-                flags = $6,
-                completed_at = NOW(),
-                expires_at = NOW() + INTERVAL '90 days',
-                updated_at = NOW()
-            WHERE id = $1
-            RETURNING *
+            WITH updated_screening AS (
+                UPDATE tenant_screenings SET
+                    status = $2::screening_status,
+                    result_summary = $3,
+                    risk_score = $4,
+                    passed = $5,
+                    flags = $6,
+                    completed_at = NOW(),
+                    expires_at = NOW() + INTERVAL '90 days',
+                    updated_at = NOW()
+                WHERE id = $1
+                RETURNING *
+            ),
+            app_update AS (
+                UPDATE tenant_applications SET status = 'screening_complete'
+                WHERE id = (SELECT application_id FROM updated_screening)
+                AND NOT EXISTS (
+                    SELECT 1 FROM tenant_screenings
+                    WHERE application_id = (SELECT application_id FROM updated_screening)
+                    AND id != $1
+                    AND status NOT IN ('completed', 'failed', 'expired')
+                )
+            )
+            SELECT * FROM updated_screening
             "#,
         )
         .bind(id)
@@ -428,40 +540,21 @@ impl LeaseRepository {
         .bind(data.risk_score)
         .bind(data.passed)
         .bind(&data.flags)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
-
-        // Check if all screenings complete and update application
-        let (app_id,): (Uuid,) =
-            sqlx::query_as(r#"SELECT application_id FROM tenant_screenings WHERE id = $1"#)
-                .bind(id)
-                .fetch_one(&self.pool)
-                .await?;
-
-        let (pending,): (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM tenant_screenings WHERE application_id = $1 AND status NOT IN ('completed', 'failed', 'expired')"#,
-        )
-        .bind(app_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        if pending == 0 {
-            sqlx::query(
-                r#"UPDATE tenant_applications SET status = 'screening_complete' WHERE id = $1"#,
-            )
-            .bind(app_id)
-            .execute(&self.pool)
-            .await?;
-        }
 
         Ok(screening)
     }
 
-    /// Get screenings for application.
-    pub async fn get_screenings_for_application(
+    /// Get screenings for application with RLS context.
+    pub async fn get_screenings_for_application_rls<'e, E>(
         &self,
+        executor: E,
         application_id: Uuid,
-    ) -> Result<Vec<ScreeningSummary>, SqlxError> {
+    ) -> Result<Vec<ScreeningSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let screenings = sqlx::query_as::<
             _,
             (
@@ -482,7 +575,7 @@ impl LeaseRepository {
             "#,
         )
         .bind(application_id)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(screenings
@@ -503,29 +596,28 @@ impl LeaseRepository {
             .collect())
     }
 
-    // ========================================================================
-    // Lease Templates (Story 19.3)
-    // ========================================================================
+    // ------------------------------------------------------------------------
+    // Lease Templates (Story 19.3) - RLS versions
+    // ------------------------------------------------------------------------
 
-    /// Create lease template.
-    pub async fn create_template(
+    /// Create lease template with RLS context.
+    pub async fn create_template_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         user_id: Uuid,
         data: CreateLeaseTemplate,
-    ) -> Result<LeaseTemplate, SqlxError> {
-        // If marking as default, unset other defaults first
-        if data.is_default == Some(true) {
-            sqlx::query(
-                r#"UPDATE lease_templates SET is_default = false WHERE organization_id = $1"#,
-            )
-            .bind(org_id)
-            .execute(&self.pool)
-            .await?;
-        }
-
+    ) -> Result<LeaseTemplate, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // If marking as default, unset other defaults and insert in a single transaction using CTE
         let template = sqlx::query_as::<_, LeaseTemplate>(
             r#"
+            WITH clear_defaults AS (
+                UPDATE lease_templates SET is_default = false
+                WHERE organization_id = $1 AND $10 = true
+            )
             INSERT INTO lease_templates (
                 organization_id, name, description, content_html, content_variables,
                 default_term_months, default_security_deposit_months, default_notice_period_days,
@@ -546,54 +638,59 @@ impl LeaseRepository {
         .bind(&data.clauses)
         .bind(data.is_default.unwrap_or(false))
         .bind(user_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(template)
     }
 
-    /// Find template by ID.
-    pub async fn find_template_by_id(&self, id: Uuid) -> Result<Option<LeaseTemplate>, SqlxError> {
+    /// Find template by ID with RLS context.
+    pub async fn find_template_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<LeaseTemplate>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let template =
             sqlx::query_as::<_, LeaseTemplate>(r#"SELECT * FROM lease_templates WHERE id = $1"#)
                 .bind(id)
-                .fetch_optional(&self.pool)
+                .fetch_optional(executor)
                 .await?;
 
         Ok(template)
     }
 
-    /// Update template.
-    pub async fn update_template(
+    /// Update template with RLS context.
+    pub async fn update_template_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         org_id: Uuid,
         data: UpdateLeaseTemplate,
-    ) -> Result<LeaseTemplate, SqlxError> {
-        // If marking as default, unset other defaults first
-        if data.is_default == Some(true) {
-            sqlx::query(
-                r#"UPDATE lease_templates SET is_default = false WHERE organization_id = $1 AND id != $2"#,
-            )
-            .bind(org_id)
-            .bind(id)
-            .execute(&self.pool)
-            .await?;
-        }
-
+    ) -> Result<LeaseTemplate, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // If marking as default, unset other defaults and update in a single query using CTE
         let template = sqlx::query_as::<_, LeaseTemplate>(
             r#"
+            WITH clear_defaults AS (
+                UPDATE lease_templates SET is_default = false
+                WHERE organization_id = $2 AND id != $1 AND $10 = true
+            )
             UPDATE lease_templates SET
-                name = COALESCE($2, name),
-                description = COALESCE($3, description),
-                content_html = COALESCE($4, content_html),
-                content_variables = COALESCE($5, content_variables),
-                default_term_months = COALESCE($6, default_term_months),
-                default_security_deposit_months = COALESCE($7, default_security_deposit_months),
-                default_notice_period_days = COALESCE($8, default_notice_period_days),
-                clauses = COALESCE($9, clauses),
+                name = COALESCE($3, name),
+                description = COALESCE($4, description),
+                content_html = COALESCE($5, content_html),
+                content_variables = COALESCE($6, content_variables),
+                default_term_months = COALESCE($7, default_term_months),
+                default_security_deposit_months = COALESCE($8, default_security_deposit_months),
+                default_notice_period_days = COALESCE($9, default_notice_period_days),
+                clauses = COALESCE($11, clauses),
                 is_default = COALESCE($10, is_default),
-                is_active = COALESCE($11, is_active),
+                is_active = COALESCE($12, is_active),
                 version = version + 1,
                 updated_at = NOW()
             WHERE id = $1
@@ -601,6 +698,7 @@ impl LeaseRepository {
             "#,
         )
         .bind(id)
+        .bind(org_id)
         .bind(&data.name)
         .bind(&data.description)
         .bind(&data.content_html)
@@ -608,17 +706,24 @@ impl LeaseRepository {
         .bind(data.default_term_months)
         .bind(data.default_security_deposit_months)
         .bind(data.default_notice_period_days)
-        .bind(&data.clauses)
         .bind(data.is_default)
+        .bind(&data.clauses)
         .bind(data.is_active)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(template)
     }
 
-    /// List templates for organization.
-    pub async fn list_templates(&self, org_id: Uuid) -> Result<Vec<LeaseTemplate>, SqlxError> {
+    /// List templates for organization with RLS context.
+    pub async fn list_templates_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+    ) -> Result<Vec<LeaseTemplate>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let templates = sqlx::query_as::<_, LeaseTemplate>(
             r#"
             SELECT * FROM lease_templates
@@ -627,23 +732,27 @@ impl LeaseRepository {
             "#,
         )
         .bind(org_id)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         Ok(templates)
     }
 
-    // ========================================================================
-    // Leases (Story 19.3, 19.4)
-    // ========================================================================
+    // ------------------------------------------------------------------------
+    // Leases (Story 19.3, 19.4) - RLS versions
+    // ------------------------------------------------------------------------
 
-    /// Create lease.
-    pub async fn create_lease(
+    /// Create lease with RLS context.
+    pub async fn create_lease_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         user_id: Uuid,
         data: CreateLease,
-    ) -> Result<Lease, SqlxError> {
+    ) -> Result<Lease, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let lease = sqlx::query_as::<_, Lease>(
             r#"
             INSERT INTO leases (
@@ -692,24 +801,39 @@ impl LeaseRepository {
         .bind(data.smoking_allowed.unwrap_or(false))
         .bind(&data.notes)
         .bind(user_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(lease)
     }
 
-    /// Find lease by ID.
-    pub async fn find_lease_by_id(&self, id: Uuid) -> Result<Option<Lease>, SqlxError> {
+    /// Find lease by ID with RLS context.
+    pub async fn find_lease_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Lease>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let lease = sqlx::query_as::<_, Lease>(r#"SELECT * FROM leases WHERE id = $1"#)
             .bind(id)
-            .fetch_optional(&self.pool)
+            .fetch_optional(executor)
             .await?;
 
         Ok(lease)
     }
 
-    /// Update lease.
-    pub async fn update_lease(&self, id: Uuid, data: UpdateLease) -> Result<Lease, SqlxError> {
+    /// Update lease with RLS context.
+    pub async fn update_lease_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+        data: UpdateLease,
+    ) -> Result<Lease, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let lease = sqlx::query_as::<_, Lease>(
             r#"
             UPDATE leases SET
@@ -741,14 +865,21 @@ impl LeaseRepository {
         .bind(data.max_occupants)
         .bind(data.smoking_allowed)
         .bind(&data.notes)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(lease)
     }
 
-    /// Send lease for signature.
-    pub async fn send_for_signature(&self, id: Uuid) -> Result<Lease, SqlxError> {
+    /// Send lease for signature with RLS context.
+    pub async fn send_for_signature_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Lease, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let lease = sqlx::query_as::<_, Lease>(
             r#"
             UPDATE leases SET
@@ -759,14 +890,21 @@ impl LeaseRepository {
             "#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(lease)
     }
 
-    /// Record landlord signature.
-    pub async fn record_landlord_signature(&self, id: Uuid) -> Result<Lease, SqlxError> {
+    /// Record landlord signature with RLS context.
+    pub async fn record_landlord_signature_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Lease, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let lease = sqlx::query_as::<_, Lease>(
             r#"
             UPDATE leases SET
@@ -781,14 +919,21 @@ impl LeaseRepository {
             "#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(lease)
     }
 
-    /// Record tenant signature.
-    pub async fn record_tenant_signature(&self, id: Uuid) -> Result<Lease, SqlxError> {
+    /// Record tenant signature with RLS context.
+    pub async fn record_tenant_signature_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Lease, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let lease = sqlx::query_as::<_, Lease>(
             r#"
             UPDATE leases SET
@@ -803,19 +948,23 @@ impl LeaseRepository {
             "#,
         )
         .bind(id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(lease)
     }
 
-    /// Terminate lease.
-    pub async fn terminate_lease(
+    /// Terminate lease with RLS context.
+    pub async fn terminate_lease_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         user_id: Uuid,
         data: TerminateLease,
-    ) -> Result<Lease, SqlxError> {
+    ) -> Result<Lease, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let lease = sqlx::query_as::<_, Lease>(
             r#"
             UPDATE leases SET
@@ -834,51 +983,62 @@ impl LeaseRepository {
         .bind(&data.termination_notes)
         .bind(data.effective_date)
         .bind(user_id)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(lease)
     }
 
-    /// Renew lease.
-    pub async fn renew_lease(
+    /// Renew lease with RLS context.
+    ///
+    /// Note: This method creates a new lease based on an existing one.
+    /// The new lease is created in 'draft' status and the old lease is marked as 'renewed'.
+    pub async fn renew_lease_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         user_id: Uuid,
         data: RenewLease,
-    ) -> Result<Lease, SqlxError> {
-        // Get existing lease (verify it exists)
-        let _old_lease = self
-            .find_lease_by_id(id)
-            .await?
-            .ok_or(SqlxError::RowNotFound)?;
-
-        // Create new lease based on old one
+    ) -> Result<Lease, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Use a CTE to create new lease and update old one in a single query
         let new_lease = sqlx::query_as::<_, Lease>(
             r#"
-            INSERT INTO leases (
-                organization_id, unit_id, template_id,
-                landlord_user_id, landlord_name, landlord_address,
-                tenant_user_id, tenant_name, tenant_email, tenant_phone, occupants,
-                start_date, end_date, term_months, is_fixed_term,
-                monthly_rent, security_deposit, deposit_held_by, rent_due_day,
-                late_fee_amount, late_fee_grace_days,
-                utilities_included, parking_spaces, storage_units,
-                pets_allowed, pet_deposit, max_occupants, smoking_allowed,
-                notes, status, previous_lease_id, created_by
+            WITH new_lease AS (
+                INSERT INTO leases (
+                    organization_id, unit_id, template_id,
+                    landlord_user_id, landlord_name, landlord_address,
+                    tenant_user_id, tenant_name, tenant_email, tenant_phone, occupants,
+                    start_date, end_date, term_months, is_fixed_term,
+                    monthly_rent, security_deposit, deposit_held_by, rent_due_day,
+                    late_fee_amount, late_fee_grace_days,
+                    utilities_included, parking_spaces, storage_units,
+                    pets_allowed, pet_deposit, max_occupants, smoking_allowed,
+                    notes, status, previous_lease_id, created_by
+                )
+                SELECT
+                    organization_id, unit_id, template_id,
+                    landlord_user_id, landlord_name, landlord_address,
+                    tenant_user_id, tenant_name, tenant_email, tenant_phone, occupants,
+                    end_date + INTERVAL '1 day', $2, $3, is_fixed_term,
+                    COALESCE($4, monthly_rent), COALESCE($5, security_deposit), deposit_held_by, rent_due_day,
+                    late_fee_amount, late_fee_grace_days,
+                    utilities_included, parking_spaces, storage_units,
+                    pets_allowed, pet_deposit, max_occupants, smoking_allowed,
+                    $6, 'draft', id, $7
+                FROM leases WHERE id = $1
+                RETURNING *
+            ),
+            update_old AS (
+                UPDATE leases SET
+                    status = 'renewed',
+                    renewed_to_lease_id = (SELECT id FROM new_lease),
+                    updated_at = NOW()
+                WHERE id = $1
             )
-            SELECT
-                organization_id, unit_id, template_id,
-                landlord_user_id, landlord_name, landlord_address,
-                tenant_user_id, tenant_name, tenant_email, tenant_phone, occupants,
-                end_date + INTERVAL '1 day', $2, $3, is_fixed_term,
-                COALESCE($4, monthly_rent), COALESCE($5, security_deposit), deposit_held_by, rent_due_day,
-                late_fee_amount, late_fee_grace_days,
-                utilities_included, parking_spaces, storage_units,
-                pets_allowed, pet_deposit, max_occupants, smoking_allowed,
-                $6, 'draft', id, $7
-            FROM leases WHERE id = $1
-            RETURNING *
+            SELECT * FROM new_lease
             "#,
         )
         .bind(id)
@@ -888,50 +1048,25 @@ impl LeaseRepository {
         .bind(data.new_security_deposit)
         .bind(&data.notes)
         .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        // Update old lease
-        sqlx::query(
-            r#"UPDATE leases SET status = 'renewed', renewed_to_lease_id = $2, updated_at = NOW() WHERE id = $1"#,
-        )
-        .bind(id)
-        .bind(new_lease.id)
-        .execute(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(new_lease)
     }
 
-    /// List leases for organization.
-    pub async fn list_leases(
+    /// List leases for organization with RLS context.
+    pub async fn list_leases_rls<'e, E>(
         &self,
+        executor: E,
         org_id: Uuid,
         query: LeaseListQuery,
-    ) -> Result<(Vec<LeaseSummary>, i64), SqlxError> {
+    ) -> Result<(Vec<LeaseSummary>, i64), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let limit = query.limit.unwrap_or(20);
         let offset = query.offset.unwrap_or(0);
         let today = Utc::now().date_naive();
-
-        // Get total
-        let (total,): (i64,) = sqlx::query_as(
-            r#"
-            SELECT COUNT(*) FROM leases l
-            WHERE l.organization_id = $1
-                AND ($2::uuid IS NULL OR l.unit_id = $2)
-                AND ($3::uuid IS NULL OR l.tenant_user_id = $3)
-                AND ($4::text IS NULL OR l.status = $4::lease_status)
-                AND ($5::int IS NULL OR l.end_date <= $6::date + ($5 || ' days')::interval)
-            "#,
-        )
-        .bind(org_id)
-        .bind(query.unit_id)
-        .bind(query.tenant_id)
-        .bind(&query.status)
-        .bind(query.expiring_within_days)
-        .bind(today)
-        .fetch_one(&self.pool)
-        .await?;
 
         // Get leases
         let leases = sqlx::query_as::<
@@ -976,7 +1111,7 @@ impl LeaseRepository {
         .bind(today)
         .bind(limit)
         .bind(offset)
-        .fetch_all(&self.pool)
+        .fetch_all(executor)
         .await?;
 
         let summaries = leases
@@ -1012,10 +1147,927 @@ impl LeaseRepository {
             )
             .collect();
 
+        // For RLS version, return -1 to indicate count was not fetched
+        Ok((summaries, -1))
+    }
+
+    /// Count leases for organization with RLS context.
+    pub async fn count_leases_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+        query: &LeaseListQuery,
+    ) -> Result<i64, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let today = Utc::now().date_naive();
+
+        let (total,): (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM leases l
+            WHERE l.organization_id = $1
+                AND ($2::uuid IS NULL OR l.unit_id = $2)
+                AND ($3::uuid IS NULL OR l.tenant_user_id = $3)
+                AND ($4::text IS NULL OR l.status = $4::lease_status)
+                AND ($5::int IS NULL OR l.end_date <= $6::date + ($5 || ' days')::interval)
+            "#,
+        )
+        .bind(org_id)
+        .bind(query.unit_id)
+        .bind(query.tenant_id)
+        .bind(&query.status)
+        .bind(query.expiring_within_days)
+        .bind(today)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(total)
+    }
+
+    /// Get lease with full details with RLS context.
+    ///
+    /// Note: This is a simplified RLS version that returns the lease without amendments,
+    /// payments, and reminders. For full details, make separate calls using
+    /// `list_amendments_rls`, `list_upcoming_payments_rls`, and `list_pending_reminders_rls`.
+    pub async fn get_lease_with_details_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<LeaseWithDetails>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Get lease first
+        let lease = match sqlx::query_as::<_, Lease>(r#"SELECT * FROM leases WHERE id = $1"#)
+            .bind(id)
+            .fetch_optional(executor)
+            .await?
+        {
+            Some(l) => l,
+            None => return Ok(None),
+        };
+
+        // Note: For RLS version, we can't make additional queries with the same executor
+        // since it's consumed. Return lease with empty related data.
+        // Callers should use list_amendments_rls, list_upcoming_payments_rls, etc.
+        // with a fresh executor if they need the related data.
+        Ok(Some(LeaseWithDetails {
+            lease,
+            unit_name: String::new(),      // Simplified for RLS version
+            building_name: String::new(),  // Simplified for RLS version
+            amendments: Vec::new(),        // Simplified for RLS version
+            upcoming_payments: Vec::new(), // Simplified for RLS version
+            reminders: Vec::new(),         // Simplified for RLS version
+        }))
+    }
+
+    // ------------------------------------------------------------------------
+    // Amendments - RLS versions
+    // ------------------------------------------------------------------------
+
+    /// Create lease amendment with RLS context.
+    pub async fn create_amendment_rls<'e, E>(
+        &self,
+        executor: E,
+        lease_id: Uuid,
+        user_id: Uuid,
+        data: CreateAmendment,
+    ) -> Result<LeaseAmendment, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let amendment = sqlx::query_as::<_, LeaseAmendment>(
+            r#"
+            INSERT INTO lease_amendments (
+                lease_id, amendment_number, title, description, changes, effective_date, created_by
+            )
+            VALUES (
+                $1,
+                (SELECT COALESCE(MAX(amendment_number), 0) + 1 FROM lease_amendments WHERE lease_id = $1),
+                $2, $3, $4, $5, $6
+            )
+            RETURNING *
+            "#,
+        )
+        .bind(lease_id)
+        .bind(&data.title)
+        .bind(&data.description)
+        .bind(&data.changes)
+        .bind(data.effective_date)
+        .bind(user_id)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(amendment)
+    }
+
+    /// List amendments for lease with RLS context.
+    pub async fn list_amendments_rls<'e, E>(
+        &self,
+        executor: E,
+        lease_id: Uuid,
+    ) -> Result<Vec<LeaseAmendment>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let amendments = sqlx::query_as::<_, LeaseAmendment>(
+            r#"SELECT * FROM lease_amendments WHERE lease_id = $1 ORDER BY amendment_number"#,
+        )
+        .bind(lease_id)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(amendments)
+    }
+
+    // ------------------------------------------------------------------------
+    // Payments - RLS versions
+    // ------------------------------------------------------------------------
+
+    /// Generate payment schedule for lease with RLS context.
+    ///
+    /// Note: This creates payment records for each month from lease start to end.
+    pub async fn generate_payment_schedule_rls<'e, E>(
+        &self,
+        executor: E,
+        lease_id: Uuid,
+    ) -> Result<Vec<LeasePayment>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Use a single query with generate_series to create all payments
+        let payments = sqlx::query_as::<_, LeasePayment>(
+            r#"
+            WITH lease_info AS (
+                SELECT id, organization_id, start_date, end_date, monthly_rent, rent_due_day
+                FROM leases WHERE id = $1
+            ),
+            months AS (
+                SELECT generate_series(
+                    date_trunc('month', (SELECT start_date FROM lease_info)),
+                    (SELECT end_date FROM lease_info),
+                    '1 month'::interval
+                )::date as month_start
+            )
+            INSERT INTO lease_payments (lease_id, organization_id, due_date, amount, payment_type, description)
+            SELECT
+                $1,
+                (SELECT organization_id FROM lease_info),
+                make_date(
+                    EXTRACT(YEAR FROM m.month_start)::int,
+                    EXTRACT(MONTH FROM m.month_start)::int,
+                    LEAST((SELECT rent_due_day FROM lease_info), EXTRACT(DAY FROM (m.month_start + INTERVAL '1 month' - INTERVAL '1 day'))::int)
+                ),
+                (SELECT monthly_rent FROM lease_info),
+                'rent',
+                'Monthly rent'
+            FROM months m
+            WHERE m.month_start < (SELECT end_date FROM lease_info)
+            ON CONFLICT DO NOTHING
+            RETURNING *
+            "#,
+        )
+        .bind(lease_id)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(payments)
+    }
+
+    /// Record payment with RLS context.
+    pub async fn record_payment_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+        data: RecordPayment,
+    ) -> Result<LeasePayment, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let payment = sqlx::query_as::<_, LeasePayment>(
+            r#"
+            UPDATE lease_payments SET
+                paid_at = COALESCE($2, NOW()),
+                paid_amount = $3,
+                payment_method = $4,
+                payment_reference = $5,
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(data.paid_at)
+        .bind(data.paid_amount)
+        .bind(&data.payment_method)
+        .bind(&data.payment_reference)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(payment)
+    }
+
+    /// Get overdue payments with RLS context.
+    pub async fn get_overdue_payments_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+    ) -> Result<Vec<PaymentSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let today = Utc::now().date_naive();
+
+        let payments = sqlx::query_as::<_, (Uuid, NaiveDate, Decimal, String, Option<chrono::DateTime<Utc>>, Option<Decimal>, bool, Option<Decimal>)>(
+            r#"
+            SELECT id, due_date, amount, payment_type, paid_at, paid_amount, is_late, late_fee_applied
+            FROM lease_payments
+            WHERE organization_id = $1 AND due_date < $2 AND paid_at IS NULL
+            ORDER BY due_date
+            "#,
+        )
+        .bind(org_id)
+        .bind(today)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(payments
+            .into_iter()
+            .map(
+                |(
+                    id,
+                    due_date,
+                    amount,
+                    payment_type,
+                    paid_at,
+                    paid_amount,
+                    is_late,
+                    late_fee_applied,
+                )| {
+                    PaymentSummary {
+                        id,
+                        due_date,
+                        amount,
+                        payment_type,
+                        paid_at,
+                        paid_amount,
+                        is_late,
+                        late_fee_applied,
+                    }
+                },
+            )
+            .collect())
+    }
+
+    /// List upcoming payments for lease with RLS context.
+    pub async fn list_upcoming_payments_rls<'e, E>(
+        &self,
+        executor: E,
+        lease_id: Uuid,
+        limit: i64,
+    ) -> Result<Vec<LeasePayment>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let today = Utc::now().date_naive();
+
+        let payments = sqlx::query_as::<_, LeasePayment>(
+            r#"SELECT * FROM lease_payments WHERE lease_id = $1 AND due_date >= $2 ORDER BY due_date LIMIT $3"#,
+        )
+        .bind(lease_id)
+        .bind(today)
+        .bind(limit)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(payments)
+    }
+
+    // ------------------------------------------------------------------------
+    // Reminders (Story 19.5) - RLS versions
+    // ------------------------------------------------------------------------
+
+    /// Create reminder with RLS context.
+    pub async fn create_reminder_rls<'e, E>(
+        &self,
+        executor: E,
+        lease_id: Uuid,
+        data: CreateReminder,
+    ) -> Result<LeaseReminder, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let reminder = sqlx::query_as::<_, LeaseReminder>(
+            r#"
+            INSERT INTO lease_reminders (
+                lease_id, reminder_type, trigger_date, days_before_event,
+                subject, message, recipients, is_recurring, recurrence_pattern
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *
+            "#,
+        )
+        .bind(lease_id)
+        .bind(&data.reminder_type)
+        .bind(data.trigger_date)
+        .bind(data.days_before_event)
+        .bind(&data.subject)
+        .bind(&data.message)
+        .bind(&data.recipients)
+        .bind(data.is_recurring.unwrap_or(false))
+        .bind(&data.recurrence_pattern)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(reminder)
+    }
+
+    /// List pending reminders for lease with RLS context.
+    pub async fn list_pending_reminders_rls<'e, E>(
+        &self,
+        executor: E,
+        lease_id: Uuid,
+    ) -> Result<Vec<LeaseReminder>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let reminders = sqlx::query_as::<_, LeaseReminder>(
+            r#"SELECT * FROM lease_reminders WHERE lease_id = $1 AND sent_at IS NULL ORDER BY trigger_date"#,
+        )
+        .bind(lease_id)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(reminders)
+    }
+
+    /// Get expiration overview with RLS context.
+    ///
+    /// Note: This is a simplified version that returns lease counts by expiration period.
+    pub async fn get_expiration_overview_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+    ) -> Result<ExpirationOverview, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let today = Utc::now().date_naive();
+        let day_30 = today + Duration::days(30);
+        let day_60 = today + Duration::days(60);
+        let day_90 = today + Duration::days(90);
+
+        // Get all counts and lists in a single query using CASE expressions
+        let leases = sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                Uuid,
+                String,
+                String,
+                String,
+                String,
+                NaiveDate,
+                NaiveDate,
+                Decimal,
+                String,
+                i64,
+            ),
+        >(
+            r#"
+            SELECT
+                l.id, l.unit_id, u.name, b.name,
+                l.tenant_name, l.tenant_email,
+                l.start_date, l.end_date, l.monthly_rent, l.status,
+                (l.end_date - $2::date)::int8 as days_until_expiry
+            FROM leases l
+            JOIN units u ON u.id = l.unit_id
+            JOIN buildings b ON b.id = u.building_id
+            WHERE l.organization_id = $1
+                AND l.status = 'active'
+                AND l.end_date <= $5
+            ORDER BY l.end_date ASC
+            "#,
+        )
+        .bind(org_id)
+        .bind(today)
+        .bind(day_30)
+        .bind(day_60)
+        .bind(day_90)
+        .fetch_all(executor)
+        .await?;
+
+        let mut expiring_30_days = Vec::new();
+        let mut expiring_60_days = Vec::new();
+        let mut expiring_90_days = Vec::new();
+
+        for (
+            id,
+            unit_id,
+            unit_name,
+            building_name,
+            tenant_name,
+            tenant_email,
+            start_date,
+            end_date,
+            monthly_rent,
+            status,
+            days_until_expiry,
+        ) in leases
+        {
+            let summary = LeaseSummary {
+                id,
+                unit_id,
+                unit_name,
+                building_name,
+                tenant_name,
+                tenant_email,
+                start_date,
+                end_date,
+                monthly_rent,
+                status,
+                days_until_expiry,
+            };
+
+            if end_date <= day_30 {
+                expiring_30_days.push(summary);
+            } else if end_date <= day_60 {
+                expiring_60_days.push(summary);
+            } else {
+                expiring_90_days.push(summary);
+            }
+        }
+
+        let total_expiring_soon =
+            (expiring_30_days.len() + expiring_60_days.len() + expiring_90_days.len()) as i64;
+
+        Ok(ExpirationOverview {
+            expiring_30_days,
+            expiring_60_days,
+            expiring_90_days,
+            total_active_leases: -1, // Simplified - caller can make separate count call
+            total_expiring_soon,
+        })
+    }
+
+    // ------------------------------------------------------------------------
+    // Statistics - RLS versions
+    // ------------------------------------------------------------------------
+
+    /// Get lease statistics with RLS context.
+    pub async fn get_statistics_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+    ) -> Result<LeaseStatistics, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let today = Utc::now().date_naive();
+        let day_90 = today + Duration::days(90);
+
+        // Get all statistics in a single query
+        let stats = sqlx::query_as::<_, (i64, i64, i64, i64, i64, i64, Option<Decimal>, i64, i64)>(
+            r#"
+            SELECT
+                (SELECT COUNT(*) FROM leases WHERE organization_id = $1) as total_leases,
+                (SELECT COUNT(*) FROM leases WHERE organization_id = $1 AND status = 'active') as active_leases,
+                (SELECT COUNT(*) FROM leases WHERE organization_id = $1 AND status = 'pending_signature') as pending_signatures,
+                (SELECT COUNT(*) FROM leases WHERE organization_id = $1 AND status = 'active' AND end_date <= $2) as expiring_soon,
+                (SELECT COUNT(*) FROM tenant_applications WHERE organization_id = $1) as total_applications,
+                (SELECT COUNT(*) FROM tenant_applications WHERE organization_id = $1 AND status IN ('submitted', 'under_review', 'screening_pending')) as pending_applications,
+                (SELECT COALESCE(SUM(monthly_rent), 0) FROM leases WHERE organization_id = $1 AND status = 'active') as total_monthly_rent,
+                (SELECT COUNT(*) FROM units WHERE organization_id = $1) as total_units,
+                (SELECT COUNT(DISTINCT unit_id) FROM leases WHERE organization_id = $1 AND status = 'active') as occupied_units
+            "#,
+        )
+        .bind(org_id)
+        .bind(day_90)
+        .fetch_one(executor)
+        .await?;
+
+        let (
+            total_leases,
+            active_leases,
+            pending_signatures,
+            expiring_soon,
+            total_applications,
+            pending_applications,
+            total_monthly_rent,
+            total_units,
+            occupied_units,
+        ) = stats;
+
+        let occupancy_rate = if total_units > 0 {
+            (occupied_units as f64 / total_units as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        Ok(LeaseStatistics {
+            total_leases,
+            active_leases,
+            pending_signatures,
+            expiring_soon,
+            total_applications,
+            pending_applications,
+            total_monthly_rent: total_monthly_rent.unwrap_or_default(),
+            occupancy_rate,
+        })
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
+
+    // ------------------------------------------------------------------------
+    // Applications (Story 19.1) - Legacy versions
+    // ------------------------------------------------------------------------
+
+    /// Create tenant application.
+    ///
+    /// **Deprecated**: Use `create_application_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_application_rls with RlsConnection instead"
+    )]
+    pub async fn create_application(
+        &self,
+        org_id: Uuid,
+        data: CreateApplication,
+    ) -> Result<TenantApplication, SqlxError> {
+        self.create_application_rls(&self.pool, org_id, data).await
+    }
+
+    /// Find application by ID.
+    ///
+    /// **Deprecated**: Use `find_application_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_application_by_id_rls with RlsConnection instead"
+    )]
+    pub async fn find_application_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<TenantApplication>, SqlxError> {
+        self.find_application_by_id_rls(&self.pool, id).await
+    }
+
+    /// Update application.
+    ///
+    /// **Deprecated**: Use `update_application_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use update_application_rls with RlsConnection instead"
+    )]
+    pub async fn update_application(
+        &self,
+        id: Uuid,
+        data: UpdateApplication,
+    ) -> Result<TenantApplication, SqlxError> {
+        self.update_application_rls(&self.pool, id, data).await
+    }
+
+    /// Submit application.
+    ///
+    /// **Deprecated**: Use `submit_application_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use submit_application_rls with RlsConnection instead"
+    )]
+    pub async fn submit_application(
+        &self,
+        id: Uuid,
+        data: SubmitApplication,
+    ) -> Result<TenantApplication, SqlxError> {
+        self.submit_application_rls(&self.pool, id, data).await
+    }
+
+    /// Review application.
+    ///
+    /// **Deprecated**: Use `review_application_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use review_application_rls with RlsConnection instead"
+    )]
+    pub async fn review_application(
+        &self,
+        id: Uuid,
+        reviewer_id: Uuid,
+        data: ReviewApplication,
+    ) -> Result<TenantApplication, SqlxError> {
+        self.review_application_rls(&self.pool, id, reviewer_id, data)
+            .await
+    }
+
+    /// Delete application.
+    ///
+    /// **Deprecated**: Use `delete_application_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use delete_application_rls with RlsConnection instead"
+    )]
+    pub async fn delete_application(&self, id: Uuid) -> Result<bool, SqlxError> {
+        self.delete_application_rls(&self.pool, id).await
+    }
+
+    /// List applications for organization.
+    ///
+    /// **Deprecated**: Use `list_applications_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use list_applications_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn list_applications(
+        &self,
+        org_id: Uuid,
+        query: ApplicationListQuery,
+    ) -> Result<(Vec<ApplicationSummary>, i64), SqlxError> {
+        // For legacy version, we need to get the count separately
+        let total = self
+            .count_applications_rls(&self.pool, org_id, &query)
+            .await?;
+        let (summaries, _) = self
+            .list_applications_rls(&self.pool, org_id, query)
+            .await?;
+        Ok((summaries, total))
+    }
+
+    // ------------------------------------------------------------------------
+    // Screening (Story 19.2) - Legacy versions
+    // ------------------------------------------------------------------------
+
+    /// Initiate screening for application.
+    ///
+    /// **Deprecated**: Use `initiate_screening_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use initiate_screening_rls with RlsConnection instead"
+    )]
+    pub async fn initiate_screening(
+        &self,
+        application_id: Uuid,
+        org_id: Uuid,
+        data: InitiateScreening,
+    ) -> Result<Vec<TenantScreening>, SqlxError> {
+        self.initiate_screening_rls(&self.pool, application_id, org_id, data)
+            .await
+    }
+
+    /// Submit screening consent.
+    ///
+    /// **Deprecated**: Use `submit_screening_consent_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use submit_screening_consent_rls with RlsConnection instead"
+    )]
+    pub async fn submit_screening_consent(
+        &self,
+        id: Uuid,
+        data: ScreeningConsent,
+    ) -> Result<TenantScreening, SqlxError> {
+        self.submit_screening_consent_rls(&self.pool, id, data)
+            .await
+    }
+
+    /// Start screening process.
+    ///
+    /// **Deprecated**: Use `start_screening_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use start_screening_rls with RlsConnection instead"
+    )]
+    pub async fn start_screening(&self, id: Uuid) -> Result<TenantScreening, SqlxError> {
+        self.start_screening_rls(&self.pool, id).await
+    }
+
+    /// Update screening result.
+    ///
+    /// **Deprecated**: Use `update_screening_result_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use update_screening_result_rls with RlsConnection instead"
+    )]
+    pub async fn update_screening_result(
+        &self,
+        id: Uuid,
+        data: UpdateScreeningResult,
+    ) -> Result<TenantScreening, SqlxError> {
+        self.update_screening_result_rls(&self.pool, id, data).await
+    }
+
+    /// Get screenings for application.
+    ///
+    /// **Deprecated**: Use `get_screenings_for_application_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_screenings_for_application_rls with RlsConnection instead"
+    )]
+    pub async fn get_screenings_for_application(
+        &self,
+        application_id: Uuid,
+    ) -> Result<Vec<ScreeningSummary>, SqlxError> {
+        self.get_screenings_for_application_rls(&self.pool, application_id)
+            .await
+    }
+
+    // ------------------------------------------------------------------------
+    // Lease Templates (Story 19.3) - Legacy versions
+    // ------------------------------------------------------------------------
+
+    /// Create lease template.
+    ///
+    /// **Deprecated**: Use `create_template_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_template_rls with RlsConnection instead"
+    )]
+    pub async fn create_template(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        data: CreateLeaseTemplate,
+    ) -> Result<LeaseTemplate, SqlxError> {
+        self.create_template_rls(&self.pool, org_id, user_id, data)
+            .await
+    }
+
+    /// Find template by ID.
+    ///
+    /// **Deprecated**: Use `find_template_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_template_by_id_rls with RlsConnection instead"
+    )]
+    pub async fn find_template_by_id(&self, id: Uuid) -> Result<Option<LeaseTemplate>, SqlxError> {
+        self.find_template_by_id_rls(&self.pool, id).await
+    }
+
+    /// Update template.
+    ///
+    /// **Deprecated**: Use `update_template_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use update_template_rls with RlsConnection instead"
+    )]
+    pub async fn update_template(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+        data: UpdateLeaseTemplate,
+    ) -> Result<LeaseTemplate, SqlxError> {
+        self.update_template_rls(&self.pool, id, org_id, data).await
+    }
+
+    /// List templates for organization.
+    ///
+    /// **Deprecated**: Use `list_templates_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use list_templates_rls with RlsConnection instead"
+    )]
+    pub async fn list_templates(&self, org_id: Uuid) -> Result<Vec<LeaseTemplate>, SqlxError> {
+        self.list_templates_rls(&self.pool, org_id).await
+    }
+
+    // ------------------------------------------------------------------------
+    // Leases (Story 19.3, 19.4) - Legacy versions
+    // ------------------------------------------------------------------------
+
+    /// Create lease.
+    ///
+    /// **Deprecated**: Use `create_lease_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_lease_rls with RlsConnection instead"
+    )]
+    pub async fn create_lease(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        data: CreateLease,
+    ) -> Result<Lease, SqlxError> {
+        self.create_lease_rls(&self.pool, org_id, user_id, data)
+            .await
+    }
+
+    /// Find lease by ID.
+    ///
+    /// **Deprecated**: Use `find_lease_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use find_lease_by_id_rls with RlsConnection instead"
+    )]
+    pub async fn find_lease_by_id(&self, id: Uuid) -> Result<Option<Lease>, SqlxError> {
+        self.find_lease_by_id_rls(&self.pool, id).await
+    }
+
+    /// Update lease.
+    ///
+    /// **Deprecated**: Use `update_lease_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use update_lease_rls with RlsConnection instead"
+    )]
+    pub async fn update_lease(&self, id: Uuid, data: UpdateLease) -> Result<Lease, SqlxError> {
+        self.update_lease_rls(&self.pool, id, data).await
+    }
+
+    /// Send lease for signature.
+    ///
+    /// **Deprecated**: Use `send_for_signature_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use send_for_signature_rls with RlsConnection instead"
+    )]
+    pub async fn send_for_signature(&self, id: Uuid) -> Result<Lease, SqlxError> {
+        self.send_for_signature_rls(&self.pool, id).await
+    }
+
+    /// Record landlord signature.
+    ///
+    /// **Deprecated**: Use `record_landlord_signature_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use record_landlord_signature_rls with RlsConnection instead"
+    )]
+    pub async fn record_landlord_signature(&self, id: Uuid) -> Result<Lease, SqlxError> {
+        self.record_landlord_signature_rls(&self.pool, id).await
+    }
+
+    /// Record tenant signature.
+    ///
+    /// **Deprecated**: Use `record_tenant_signature_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use record_tenant_signature_rls with RlsConnection instead"
+    )]
+    pub async fn record_tenant_signature(&self, id: Uuid) -> Result<Lease, SqlxError> {
+        self.record_tenant_signature_rls(&self.pool, id).await
+    }
+
+    /// Terminate lease.
+    ///
+    /// **Deprecated**: Use `terminate_lease_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use terminate_lease_rls with RlsConnection instead"
+    )]
+    pub async fn terminate_lease(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+        data: TerminateLease,
+    ) -> Result<Lease, SqlxError> {
+        self.terminate_lease_rls(&self.pool, id, user_id, data)
+            .await
+    }
+
+    /// Renew lease.
+    ///
+    /// **Deprecated**: Use `renew_lease_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use renew_lease_rls with RlsConnection instead"
+    )]
+    pub async fn renew_lease(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+        data: RenewLease,
+    ) -> Result<Lease, SqlxError> {
+        self.renew_lease_rls(&self.pool, id, user_id, data).await
+    }
+
+    /// List leases for organization.
+    ///
+    /// **Deprecated**: Use `list_leases_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use list_leases_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
+    pub async fn list_leases(
+        &self,
+        org_id: Uuid,
+        query: LeaseListQuery,
+    ) -> Result<(Vec<LeaseSummary>, i64), SqlxError> {
+        // For legacy version, we need to get the count separately
+        let total = self.count_leases_rls(&self.pool, org_id, &query).await?;
+        let (summaries, _) = self.list_leases_rls(&self.pool, org_id, query).await?;
         Ok((summaries, total))
     }
 
     /// Get lease with full details.
+    ///
+    /// **Deprecated**: Use `get_lease_with_details_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_lease_with_details_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn get_lease_with_details(
         &self,
         id: Uuid,
@@ -1069,52 +2121,39 @@ impl LeaseRepository {
         }))
     }
 
-    // ========================================================================
-    // Amendments
-    // ========================================================================
+    // ------------------------------------------------------------------------
+    // Amendments - Legacy versions
+    // ------------------------------------------------------------------------
 
     /// Create lease amendment.
+    ///
+    /// **Deprecated**: Use `create_amendment_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_amendment_rls with RlsConnection instead"
+    )]
     pub async fn create_amendment(
         &self,
         lease_id: Uuid,
         user_id: Uuid,
         data: CreateAmendment,
     ) -> Result<LeaseAmendment, SqlxError> {
-        // Get next amendment number
-        let (next_num,): (i64,) = sqlx::query_as(
-            r#"SELECT COALESCE(MAX(amendment_number), 0) + 1 FROM lease_amendments WHERE lease_id = $1"#,
-        )
-        .bind(lease_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let amendment = sqlx::query_as::<_, LeaseAmendment>(
-            r#"
-            INSERT INTO lease_amendments (
-                lease_id, amendment_number, title, description, changes, effective_date, created_by
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING *
-            "#,
-        )
-        .bind(lease_id)
-        .bind(next_num as i32)
-        .bind(&data.title)
-        .bind(&data.description)
-        .bind(&data.changes)
-        .bind(data.effective_date)
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(amendment)
+        self.create_amendment_rls(&self.pool, lease_id, user_id, data)
+            .await
     }
 
-    // ========================================================================
-    // Payments
-    // ========================================================================
+    // ------------------------------------------------------------------------
+    // Payments - Legacy versions
+    // ------------------------------------------------------------------------
 
     /// Generate payment schedule for lease.
+    ///
+    /// **Deprecated**: Use `generate_payment_schedule_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use generate_payment_schedule_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn generate_payment_schedule(
         &self,
         lease_id: Uuid,
@@ -1165,118 +2204,61 @@ impl LeaseRepository {
     }
 
     /// Record payment.
+    ///
+    /// **Deprecated**: Use `record_payment_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use record_payment_rls with RlsConnection instead"
+    )]
     pub async fn record_payment(
         &self,
         id: Uuid,
         data: RecordPayment,
     ) -> Result<LeasePayment, SqlxError> {
-        let payment = sqlx::query_as::<_, LeasePayment>(
-            r#"
-            UPDATE lease_payments SET
-                paid_at = COALESCE($2, NOW()),
-                paid_amount = $3,
-                payment_method = $4,
-                payment_reference = $5,
-                updated_at = NOW()
-            WHERE id = $1
-            RETURNING *
-            "#,
-        )
-        .bind(id)
-        .bind(data.paid_at)
-        .bind(data.paid_amount)
-        .bind(&data.payment_method)
-        .bind(&data.payment_reference)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(payment)
+        self.record_payment_rls(&self.pool, id, data).await
     }
 
     /// Get overdue payments.
+    ///
+    /// **Deprecated**: Use `get_overdue_payments_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_overdue_payments_rls with RlsConnection instead"
+    )]
     pub async fn get_overdue_payments(
         &self,
         org_id: Uuid,
     ) -> Result<Vec<PaymentSummary>, SqlxError> {
-        let today = Utc::now().date_naive();
-
-        let payments = sqlx::query_as::<_, (Uuid, NaiveDate, Decimal, String, Option<chrono::DateTime<Utc>>, Option<Decimal>, bool, Option<Decimal>)>(
-            r#"
-            SELECT id, due_date, amount, payment_type, paid_at, paid_amount, is_late, late_fee_applied
-            FROM lease_payments
-            WHERE organization_id = $1 AND due_date < $2 AND paid_at IS NULL
-            ORDER BY due_date
-            "#,
-        )
-        .bind(org_id)
-        .bind(today)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(payments
-            .into_iter()
-            .map(
-                |(
-                    id,
-                    due_date,
-                    amount,
-                    payment_type,
-                    paid_at,
-                    paid_amount,
-                    is_late,
-                    late_fee_applied,
-                )| {
-                    PaymentSummary {
-                        id,
-                        due_date,
-                        amount,
-                        payment_type,
-                        paid_at,
-                        paid_amount,
-                        is_late,
-                        late_fee_applied,
-                    }
-                },
-            )
-            .collect())
+        self.get_overdue_payments_rls(&self.pool, org_id).await
     }
 
-    // ========================================================================
-    // Reminders (Story 19.5)
-    // ========================================================================
+    // ------------------------------------------------------------------------
+    // Reminders (Story 19.5) - Legacy versions
+    // ------------------------------------------------------------------------
 
     /// Create reminder.
+    ///
+    /// **Deprecated**: Use `create_reminder_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use create_reminder_rls with RlsConnection instead"
+    )]
     pub async fn create_reminder(
         &self,
         lease_id: Uuid,
         data: CreateReminder,
     ) -> Result<LeaseReminder, SqlxError> {
-        let reminder = sqlx::query_as::<_, LeaseReminder>(
-            r#"
-            INSERT INTO lease_reminders (
-                lease_id, reminder_type, trigger_date, days_before_event,
-                subject, message, recipients, is_recurring, recurrence_pattern
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING *
-            "#,
-        )
-        .bind(lease_id)
-        .bind(&data.reminder_type)
-        .bind(data.trigger_date)
-        .bind(data.days_before_event)
-        .bind(&data.subject)
-        .bind(&data.message)
-        .bind(&data.recipients)
-        .bind(data.is_recurring.unwrap_or(false))
-        .bind(&data.recurrence_pattern)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(reminder)
+        self.create_reminder_rls(&self.pool, lease_id, data).await
     }
 
     /// Get expiration overview.
+    ///
+    /// **Deprecated**: Use `get_expiration_overview_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_expiration_overview_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn get_expiration_overview(
         &self,
         org_id: Uuid,
@@ -1328,94 +2310,19 @@ impl LeaseRepository {
         })
     }
 
-    // ========================================================================
-    // Statistics
-    // ========================================================================
+    // ------------------------------------------------------------------------
+    // Statistics - Legacy versions
+    // ------------------------------------------------------------------------
 
     /// Get lease statistics.
+    ///
+    /// **Deprecated**: Use `get_statistics_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.276",
+        note = "Use get_statistics_rls with RlsConnection instead"
+    )]
     pub async fn get_statistics(&self, org_id: Uuid) -> Result<LeaseStatistics, SqlxError> {
-        let today = Utc::now().date_naive();
-        let day_90 = today + Duration::days(90);
-
-        let (total_leases,): (i64,) =
-            sqlx::query_as(r#"SELECT COUNT(*) FROM leases WHERE organization_id = $1"#)
-                .bind(org_id)
-                .fetch_one(&self.pool)
-                .await?;
-
-        let (active_leases,): (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM leases WHERE organization_id = $1 AND status = 'active'"#,
-        )
-        .bind(org_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let (pending_signatures,): (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM leases WHERE organization_id = $1 AND status = 'pending_signature'"#,
-        )
-        .bind(org_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let (expiring_soon,): (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM leases WHERE organization_id = $1 AND status = 'active' AND end_date <= $2"#,
-        )
-        .bind(org_id)
-        .bind(day_90)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let (total_applications,): (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM tenant_applications WHERE organization_id = $1"#,
-        )
-        .bind(org_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let (pending_applications,): (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM tenant_applications WHERE organization_id = $1 AND status IN ('submitted', 'under_review', 'screening_pending')"#,
-        )
-        .bind(org_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let (total_monthly_rent,): (Option<Decimal>,) = sqlx::query_as(
-            r#"SELECT COALESCE(SUM(monthly_rent), 0) FROM leases WHERE organization_id = $1 AND status = 'active'"#,
-        )
-        .bind(org_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        // Calculate occupancy rate
-        let (total_units,): (i64,) =
-            sqlx::query_as(r#"SELECT COUNT(*) FROM units WHERE organization_id = $1"#)
-                .bind(org_id)
-                .fetch_one(&self.pool)
-                .await?;
-
-        let (occupied_units,): (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(DISTINCT unit_id) FROM leases WHERE organization_id = $1 AND status = 'active'"#,
-        )
-        .bind(org_id)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let occupancy_rate = if total_units > 0 {
-            (occupied_units as f64 / total_units as f64) * 100.0
-        } else {
-            0.0
-        };
-
-        Ok(LeaseStatistics {
-            total_leases,
-            active_leases,
-            pending_signatures,
-            expiring_soon,
-            total_applications,
-            pending_applications,
-            total_monthly_rent: total_monthly_rent.unwrap_or_default(),
-            occupancy_rate,
-        })
+        self.get_statistics_rls(&self.pool, org_id).await
     }
 }
 

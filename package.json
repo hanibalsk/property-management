@@ -1,0 +1,43 @@
+{
+  "name": "property-management",
+  "private": true,
+  "version": "0.2.287",
+  "description": "Property Management System - Monorepo Root",
+  "repository": "https://github.com/hanibalsk/property-management",
+  "license": "MIT",
+  "scripts": {
+    "setup": "./scripts/setup.sh",
+    "api": "cd backend && cargo run -p api-server",
+    "reality-server": "cd backend && cargo run -p reality-server",
+    "web": "cd frontend && pnpm dev:ppt",
+    "reality-web": "cd frontend && pnpm dev:reality",
+    "mobile": "cd frontend && pnpm dev:mobile",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && cargo build --release --workspace",
+    "build:frontend": "cd frontend && pnpm build",
+    "build:mobile-native": "cd mobile-native && ./gradlew build",
+    "check": "npm run check:backend && npm run check:frontend",
+    "check:backend": "cd backend && cargo fmt --all -- --check && cargo clippy --workspace -- -D warnings",
+    "check:frontend": "cd frontend && pnpm check",
+    "fix": "npm run fix:backend && npm run fix:frontend",
+    "fix:backend": "cd backend && cargo fmt --all",
+    "fix:frontend": "cd frontend && pnpm check:fix",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && cargo test --workspace",
+    "test:frontend": "cd frontend && pnpm test",
+    "generate:api": "cd frontend && pnpm generate-api",
+    "generate:reality-api": "cd frontend && pnpm generate-reality-api",
+    "db:migrate": "cd backend/crates/db && sqlx migrate run",
+    "db:prepare": "cd backend && cargo sqlx prepare --workspace",
+    "show-version": "cat VERSION",
+    "bump:patch": "./scripts/bump-version.sh patch",
+    "bump:minor": "./scripts/bump-version.sh minor",
+    "bump:major": "./scripts/bump-version.sh major",
+    "clean": "./scripts/clean.sh",
+    "health": "./scripts/health-check.sh",
+    "ci": "npm run check && npm run test && npm run build"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

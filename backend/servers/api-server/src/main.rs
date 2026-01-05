@@ -265,9 +265,11 @@ async fn main() -> anyhow::Result<()> {
         "postgres://postgres:postgres@localhost:5432/ppt".to_string()
     });
 
-    // Create database pool
-    let db_pool = db::create_pool(&database_url).await?;
-    tracing::info!("Connected to database");
+    // Create RLS-safe database pool with automatic context cleanup
+    // The after_release hook ensures RLS context is cleared before connections
+    // are returned to the pool, providing defense-in-depth against context bleeding
+    let db_pool = db::create_rls_safe_pool(&database_url).await?;
+    tracing::info!("Connected to database with RLS-safe pool");
 
     // Create email service (development mode by default)
     let email_enabled = std::env::var("EMAIL_ENABLED")

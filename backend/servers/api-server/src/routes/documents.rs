@@ -1,7 +1,7 @@
 //! Document routes (Epic 7A: Basic Document Management, Epic 7B: Document Versioning, Epic 28: Document Intelligence, Epic 92: Intelligent Document Generation).
 
 use crate::state::AppState;
-use api_core::{AuthUser, TenantExtractor};
+use api_core::{extractors::RlsConnection, AuthUser, TenantExtractor};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -451,6 +451,7 @@ async fn create_document(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Json(req): Json<CreateDocumentRequest>,
 ) -> Result<(StatusCode, Json<CreateDocumentResponse>), (StatusCode, Json<ErrorResponse>)> {
     let user_id = auth.user_id;
@@ -573,14 +574,21 @@ async fn create_document(
         created_by: user_id,
     };
 
-    match state.document_repo.create(data).await {
-        Ok(document) => Ok((
-            StatusCode::CREATED,
-            Json(CreateDocumentResponse {
-                id: document.id,
-                message: "Document created successfully".to_string(),
-            }),
-        )),
+    match state
+        .document_repo
+        .create_rls(&mut **rls.conn(), data)
+        .await
+    {
+        Ok(document) => {
+            rls.release().await;
+            Ok((
+                StatusCode::CREATED,
+                Json(CreateDocumentResponse {
+                    id: document.id,
+                    message: "Document created successfully".to_string(),
+                }),
+            ))
+        }
         Err(e) => {
             tracing::error!("Failed to create document: {}", e);
             Err((
@@ -610,6 +618,7 @@ async fn list_documents(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Query(query): Query<ListDocumentsQuery>,
 ) -> Result<Json<DocumentListResponse>, (StatusCode, Json<ErrorResponse>)> {
     let org_id = tenant.tenant_id;
@@ -630,12 +639,12 @@ async fn list_documents(
     let (documents, total) = if is_manager {
         let docs = state
             .document_repo
-            .list(org_id, list_query.clone())
+            .list_rls(&mut **rls.conn(), org_id, list_query.clone())
             .await
             .unwrap_or_default();
         let total = state
             .document_repo
-            .count(org_id, list_query)
+            .count_rls(&mut **rls.conn(), org_id, list_query)
             .await
             .unwrap_or(0);
         (docs, total)
@@ -646,18 +655,25 @@ async fn list_documents(
         let user_role = tenant.role.to_string().to_lowercase().replace(' ', "_");
         let docs = state
             .document_repo
-            .list_accessible_simple(org_id, user_id, &user_role, list_query.clone())
+            .list_accessible_simple_rls(
+                &mut **rls.conn(),
+                org_id,
+                user_id,
+                &user_role,
+                list_query.clone(),
+            )
             .await
             .unwrap_or_default();
         let total = state
             .document_repo
-            .count_accessible_simple(org_id, user_id, &user_role, list_query)
+            .count_accessible_simple_rls(&mut **rls.conn(), org_id, user_id, &user_role, list_query)
             .await
             .unwrap_or(0);
         (docs, total)
     };
 
     let count = documents.len();
+    rls.release().await;
     Ok(Json(DocumentListResponse {
         documents,
         count,
@@ -683,10 +699,18 @@ async fn get_document(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<DocumentDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
-    match state.document_repo.find_by_id_with_details(id).await {
-        Ok(Some(document)) => Ok(Json(DocumentDetailResponse { document })),
+    match state
+        .document_repo
+        .find_by_id_with_details_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(Some(document)) => {
+            rls.release().await;
+            Ok(Json(DocumentDetailResponse { document }))
+        }
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
@@ -723,11 +747,16 @@ async fn update_document(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateDocumentRequest>,
 ) -> Result<Json<DocumentActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -793,11 +822,18 @@ async fn update_document(
         access_roles: req.access_roles,
     };
 
-    match state.document_repo.update(id, data).await {
-        Ok(document) => Ok(Json(DocumentActionResponse {
-            message: "Document updated".to_string(),
-            document,
-        })),
+    match state
+        .document_repo
+        .update_rls(&mut **rls.conn(), id, data)
+        .await
+    {
+        Ok(document) => {
+            rls.release().await;
+            Ok(Json(DocumentActionResponse {
+                message: "Document updated".to_string(),
+                document,
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to update document: {}", e);
             Err((
@@ -829,10 +865,15 @@ async fn delete_document(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -863,8 +904,11 @@ async fn delete_document(
         ));
     }
 
-    match state.document_repo.delete(id).await {
-        Ok(_) => Ok(StatusCode::NO_CONTENT),
+    match state.document_repo.delete_rls(&mut **rls.conn(), id).await {
+        Ok(_) => {
+            rls.release().await;
+            Ok(StatusCode::NO_CONTENT)
+        }
         Err(e) => {
             tracing::error!("Failed to delete document: {}", e);
             Err((
@@ -897,11 +941,16 @@ async fn move_document(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<MoveDocumentRequest>,
 ) -> Result<Json<DocumentActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -937,11 +986,18 @@ async fn move_document(
         folder_id: req.folder_id,
     };
 
-    match state.document_repo.move_document(data).await {
-        Ok(document) => Ok(Json(DocumentActionResponse {
-            message: "Document moved".to_string(),
-            document,
-        })),
+    match state
+        .document_repo
+        .move_document_rls(&mut **rls.conn(), data)
+        .await
+    {
+        Ok(document) => {
+            rls.release().await;
+            Ok(Json(DocumentActionResponse {
+                message: "Document moved".to_string(),
+                document,
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to move document: {}", e);
             Err((
@@ -975,11 +1031,16 @@ async fn update_document_access(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateAccessRequest>,
 ) -> Result<Json<DocumentActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -1028,11 +1089,18 @@ async fn update_document_access(
         access_roles: req.access_roles,
     };
 
-    match state.document_repo.update(id, data).await {
-        Ok(document) => Ok(Json(DocumentActionResponse {
-            message: "Document access updated".to_string(),
-            document,
-        })),
+    match state
+        .document_repo
+        .update_rls(&mut **rls.conn(), id, data)
+        .await
+    {
+        Ok(document) => {
+            rls.release().await;
+            Ok(Json(DocumentActionResponse {
+                message: "Document access updated".to_string(),
+                document,
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to update document access: {}", e);
             Err((
@@ -1068,9 +1136,14 @@ async fn get_download_url(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<UrlResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let document = match state.document_repo.find_by_id(id).await {
+    let document = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -1132,6 +1205,7 @@ async fn get_download_url(
         }
     };
 
+    rls.release().await;
     Ok(Json(UrlResponse { url, expires_at }))
 }
 
@@ -1153,9 +1227,14 @@ async fn get_preview_url(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<UrlResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let document = match state.document_repo.find_by_id(id).await {
+    let document = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -1228,6 +1307,7 @@ async fn get_preview_url(
         }
     };
 
+    rls.release().await;
     Ok(Json(UrlResponse { url, expires_at }))
 }
 
@@ -1253,10 +1333,18 @@ async fn get_version_history(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<VersionHistoryResponse>, (StatusCode, Json<ErrorResponse>)> {
-    match state.document_repo.get_version_history(id).await {
-        Ok(history) => Ok(Json(VersionHistoryResponse { history })),
+    match state
+        .document_repo
+        .get_version_history_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(history) => {
+            rls.release().await;
+            Ok(Json(VersionHistoryResponse { history }))
+        }
         Err(sqlx::Error::RowNotFound) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Document not found")),
@@ -1295,13 +1383,18 @@ async fn create_version(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UploadVersionRequest>,
 ) -> Result<(StatusCode, Json<CreateVersionResponse>), (StatusCode, Json<ErrorResponse>)> {
     let user_id = auth.user_id;
 
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -1365,18 +1458,25 @@ async fn create_version(
         created_by: user_id,
     };
 
-    match state.document_repo.create_version(id, data).await {
-        Ok(new_version) => Ok((
-            StatusCode::CREATED,
-            Json(CreateVersionResponse {
-                id: new_version.id,
-                version_number: new_version.version_number,
-                message: format!(
-                    "Version {} created successfully",
-                    new_version.version_number
-                ),
-            }),
-        )),
+    match state
+        .document_repo
+        .create_version_rls(&mut **rls.conn(), id, data)
+        .await
+    {
+        Ok(new_version) => {
+            rls.release().await;
+            Ok((
+                StatusCode::CREATED,
+                Json(CreateVersionResponse {
+                    id: new_version.id,
+                    version_number: new_version.version_number,
+                    message: format!(
+                        "Version {} created successfully",
+                        new_version.version_number
+                    ),
+                }),
+            ))
+        }
         Err(e) => {
             tracing::error!("Failed to create version: {}", e);
             Err((
@@ -1409,10 +1509,18 @@ async fn get_version(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path((id, version_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<VersionResponse>, (StatusCode, Json<ErrorResponse>)> {
-    match state.document_repo.get_version(id, version_id).await {
-        Ok(Some(version)) => Ok(Json(VersionResponse { version })),
+    match state
+        .document_repo
+        .get_version_rls(&mut **rls.conn(), id, version_id)
+        .await
+    {
+        Ok(Some(version)) => {
+            rls.release().await;
+            Ok(Json(VersionResponse { version }))
+        }
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Version not found")),
@@ -1450,12 +1558,17 @@ async fn restore_version(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path((id, version_id)): Path<(Uuid, Uuid)>,
 ) -> Result<(StatusCode, Json<CreateVersionResponse>), (StatusCode, Json<ErrorResponse>)> {
     let user_id = auth.user_id;
 
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -1487,7 +1600,11 @@ async fn restore_version(
     }
 
     // Check version exists in the same chain
-    match state.document_repo.get_version(id, version_id).await {
+    match state
+        .document_repo
+        .get_version_rls(&mut **rls.conn(), id, version_id)
+        .await
+    {
         Ok(None) => {
             return Err((
                 StatusCode::NOT_FOUND,
@@ -1510,22 +1627,27 @@ async fn restore_version(
         Ok(Some(_)) => {}
     }
 
+    // TODO: Migrate restore_version to RLS pattern
+    #[allow(deprecated)]
     match state
         .document_repo
         .restore_version(id, version_id, user_id)
         .await
     {
-        Ok(new_version) => Ok((
-            StatusCode::CREATED,
-            Json(CreateVersionResponse {
-                id: new_version.id,
-                version_number: new_version.version_number,
-                message: format!(
-                    "Version restored successfully as version {}",
-                    new_version.version_number
-                ),
-            }),
-        )),
+        Ok(new_version) => {
+            rls.release().await;
+            Ok((
+                StatusCode::CREATED,
+                Json(CreateVersionResponse {
+                    id: new_version.id,
+                    version_number: new_version.version_number,
+                    message: format!(
+                        "Version restored successfully as version {}",
+                        new_version.version_number
+                    ),
+                }),
+            ))
+        }
         Err(sqlx::Error::RowNotFound) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Version not found")),
@@ -1563,16 +1685,20 @@ async fn list_folders(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Query(query): Query<ListFoldersQuery>,
 ) -> Result<Json<FolderListResponse>, (StatusCode, Json<ErrorResponse>)> {
     let org_id = tenant.tenant_id;
 
     match state
         .document_repo
-        .get_folders(org_id, query.parent_id)
+        .get_folders_rls(&mut **rls.conn(), org_id, query.parent_id)
         .await
     {
-        Ok(folders) => Ok(Json(FolderListResponse { folders })),
+        Ok(folders) => {
+            rls.release().await;
+            Ok(Json(FolderListResponse { folders }))
+        }
         Err(e) => {
             tracing::error!("Failed to list folders: {}", e);
             Err((
@@ -1601,11 +1727,19 @@ async fn get_folder_tree(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
 ) -> Result<Json<FolderTreeResponse>, (StatusCode, Json<ErrorResponse>)> {
     let org_id = tenant.tenant_id;
 
-    match state.document_repo.get_folder_tree(org_id).await {
-        Ok(tree) => Ok(Json(FolderTreeResponse { tree })),
+    match state
+        .document_repo
+        .get_folder_tree_rls(&mut **rls.conn(), org_id)
+        .await
+    {
+        Ok(tree) => {
+            rls.release().await;
+            Ok(Json(FolderTreeResponse { tree }))
+        }
         Err(e) => {
             tracing::error!("Failed to get folder tree: {}", e);
             Err((
@@ -1636,6 +1770,7 @@ async fn create_folder(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Json(req): Json<CreateFolderRequest>,
 ) -> Result<(StatusCode, Json<CreateFolderResponse>), (StatusCode, Json<ErrorResponse>)> {
     // Only managers can create folders
@@ -1674,14 +1809,21 @@ async fn create_folder(
         created_by: user_id,
     };
 
-    match state.document_repo.create_folder(data).await {
-        Ok(folder) => Ok((
-            StatusCode::CREATED,
-            Json(CreateFolderResponse {
-                id: folder.id,
-                message: "Folder created successfully".to_string(),
-            }),
-        )),
+    match state
+        .document_repo
+        .create_folder_rls(&mut **rls.conn(), data)
+        .await
+    {
+        Ok(folder) => {
+            rls.release().await;
+            Ok((
+                StatusCode::CREATED,
+                Json(CreateFolderResponse {
+                    id: folder.id,
+                    message: "Folder created successfully".to_string(),
+                }),
+            ))
+        }
         Err(e) => {
             // Check for depth violation
             if e.to_string().contains("Maximum folder depth") {
@@ -1723,10 +1865,18 @@ async fn get_folder(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<FolderDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
-    match state.document_repo.find_folder_by_id(id).await {
-        Ok(Some(folder)) => Ok(Json(FolderDetailResponse { folder })),
+    match state
+        .document_repo
+        .find_folder_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(Some(folder)) => {
+            rls.release().await;
+            Ok(Json(FolderDetailResponse { folder }))
+        }
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Folder not found")),
@@ -1761,6 +1911,7 @@ async fn update_folder(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateFolderRequest>,
 ) -> Result<Json<FolderActionResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -1776,7 +1927,11 @@ async fn update_folder(
     }
 
     // Check folder exists
-    match state.document_repo.find_folder_by_id(id).await {
+    match state
+        .document_repo
+        .find_folder_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -1828,7 +1983,7 @@ async fn update_folder(
         // Check that new parent is not a descendant of this folder
         match state
             .document_repo
-            .is_descendant_of(new_parent_id, id)
+            .is_descendant_of_rls(&mut **rls.conn(), new_parent_id, id)
             .await
         {
             Ok(true) => {
@@ -1860,11 +2015,18 @@ async fn update_folder(
         parent_id: req.parent_id,
     };
 
-    match state.document_repo.update_folder(id, data).await {
-        Ok(folder) => Ok(Json(FolderActionResponse {
-            message: "Folder updated".to_string(),
-            folder,
-        })),
+    match state
+        .document_repo
+        .update_folder_rls(&mut **rls.conn(), id, data)
+        .await
+    {
+        Ok(folder) => {
+            rls.release().await;
+            Ok(Json(FolderActionResponse {
+                message: "Folder updated".to_string(),
+                folder,
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to update folder: {}", e);
             Err((
@@ -1898,6 +2060,7 @@ async fn delete_folder(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     body: Option<Json<DeleteFolderRequest>>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
@@ -1913,7 +2076,11 @@ async fn delete_folder(
     }
 
     // Check folder exists
-    match state.document_repo.find_folder_by_id(id).await {
+    match state
+        .document_repo
+        .find_folder_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -1939,7 +2106,7 @@ async fn delete_folder(
     if !cascade {
         let doc_count = state
             .document_repo
-            .count_documents_in_folder(id)
+            .count_documents_in_folder_rls(&mut **rls.conn(), id)
             .await
             .unwrap_or(0);
         if doc_count > 0 {
@@ -1952,8 +2119,15 @@ async fn delete_folder(
         }
     }
 
-    match state.document_repo.delete_folder(id, cascade).await {
-        Ok(_) => Ok(StatusCode::NO_CONTENT),
+    match state
+        .document_repo
+        .delete_folder_rls(&mut **rls.conn(), id, cascade)
+        .await
+    {
+        Ok(_) => {
+            rls.release().await;
+            Ok(StatusCode::NO_CONTENT)
+        }
         Err(e) => {
             tracing::error!("Failed to delete folder: {}", e);
             Err((
@@ -1989,10 +2163,15 @@ async fn list_shares(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ShareListResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -2023,8 +2202,15 @@ async fn list_shares(
         ));
     }
 
-    match state.document_repo.get_shares(id).await {
-        Ok(shares) => Ok(Json(ShareListResponse { shares })),
+    match state
+        .document_repo
+        .get_shares_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(shares) => {
+            rls.release().await;
+            Ok(Json(ShareListResponse { shares }))
+        }
         Err(e) => {
             tracing::error!("Failed to list shares: {}", e);
             Err((
@@ -2059,11 +2245,16 @@ async fn create_share(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<CreateShareRequest>,
 ) -> Result<(StatusCode, Json<CreateShareResponse>), (StatusCode, Json<ErrorResponse>)> {
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -2123,13 +2314,18 @@ async fn create_share(
         expires_at: req.expires_at,
     };
 
-    match state.document_repo.create_share(data).await {
+    match state
+        .document_repo
+        .create_share_rls(&mut **rls.conn(), data)
+        .await
+    {
         Ok(share) => {
             let share_url = share
                 .share_token
                 .as_ref()
                 .map(|token| format!("/documents/shared/{}", token));
 
+            rls.release().await;
             Ok((
                 StatusCode::CREATED,
                 Json(CreateShareResponse {
@@ -2173,10 +2369,15 @@ async fn revoke_share(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path((id, share_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Check document exists
-    let existing = match state.document_repo.find_by_id(id).await {
+    let existing = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -2208,7 +2409,11 @@ async fn revoke_share(
     }
 
     // Check share exists
-    match state.document_repo.find_share_by_id(share_id).await {
+    match state
+        .document_repo
+        .find_share_by_id_rls(&mut **rls.conn(), share_id)
+        .await
+    {
         Ok(Some(_)) => {}
         Ok(None) => {
             return Err((
@@ -2225,8 +2430,15 @@ async fn revoke_share(
         }
     }
 
-    match state.document_repo.revoke_share(share_id).await {
-        Ok(_) => Ok(StatusCode::NO_CONTENT),
+    match state
+        .document_repo
+        .revoke_share_rls(&mut **rls.conn(), share_id)
+        .await
+    {
+        Ok(_) => {
+            rls.release().await;
+            Ok(StatusCode::NO_CONTENT)
+        }
         Err(e) => {
             tracing::error!("Failed to revoke share: {}", e);
             Err((
@@ -2265,6 +2477,8 @@ async fn access_shared_document(
 ) -> Result<Json<SharedDocumentResponse>, (StatusCode, Json<ErrorResponse>)> {
     let ip_address = addr.ip().to_string();
     // Find share by token
+    // TODO: This endpoint is public, no RLS context available
+    #[allow(deprecated)]
     let share = match state.document_repo.find_share_by_token(&token).await {
         Ok(Some(s)) => s,
         Ok(None) => {
@@ -2299,7 +2513,8 @@ async fn access_shared_document(
         ));
     }
 
-    // Get document
+    // Get document - public endpoint, no RLS context
+    #[allow(deprecated)]
     let document = match state.document_repo.find_by_id(share.document_id).await {
         Ok(Some(d)) => d,
         Ok(None) => {
@@ -2321,6 +2536,8 @@ async fn access_shared_document(
     };
 
     // Log access - important for audit trail but shouldn't fail the request
+    // Public endpoint, no RLS context
+    #[allow(deprecated)]
     if let Err(e) = state
         .document_repo
         .log_share_access(LogShareAccess {
@@ -2385,6 +2602,8 @@ async fn access_protected_share(
 ) -> Result<Json<SharedDocumentResponse>, (StatusCode, Json<ErrorResponse>)> {
     let ip_address = addr.ip().to_string();
     // Find share by token
+    // TODO: This endpoint is public, no RLS context available
+    #[allow(deprecated)]
     let share = match state.document_repo.find_share_by_token(&token).await {
         Ok(Some(s)) => s,
         Ok(None) => {
@@ -2421,7 +2640,8 @@ async fn access_protected_share(
         ));
     }
 
-    // Get document
+    // Get document - public endpoint, no RLS context
+    #[allow(deprecated)]
     let document = match state.document_repo.find_by_id(share.document_id).await {
         Ok(Some(d)) => d,
         Ok(None) => {
@@ -2443,6 +2663,8 @@ async fn access_protected_share(
     };
 
     // Log access - important for audit trail but shouldn't fail the request
+    // Public endpoint, no RLS context
+    #[allow(deprecated)]
     if let Err(e) = state
         .document_repo
         .log_share_access(LogShareAccess {
@@ -2507,10 +2729,15 @@ async fn reprocess_ocr(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<OcrReprocessResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify document exists and user has access
-    let document = match state.document_repo.find_by_id(id).await {
+    let document = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -2540,10 +2767,13 @@ async fn reprocess_ocr(
 
     // Queue for OCR
     match state.document_repo.queue_for_ocr(id, Some(1)).await {
-        Ok(queue_id) => Ok(Json(OcrReprocessResponse {
-            message: "Document queued for OCR processing".to_string(),
-            queue_id,
-        })),
+        Ok(queue_id) => {
+            rls.release().await;
+            Ok(Json(OcrReprocessResponse {
+                message: "Document queued for OCR processing".to_string(),
+                queue_id,
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to queue document for OCR: {}", e);
             Err((
@@ -2574,6 +2804,7 @@ async fn search_documents(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Json(req): Json<SearchDocumentsRequest>,
 ) -> Result<Json<DocumentSearchResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Validate query
@@ -2608,7 +2839,10 @@ async fn search_documents(
     };
 
     match state.document_repo.full_text_search(search_request).await {
-        Ok(response) => Ok(Json(response)),
+        Ok(response) => {
+            rls.release().await;
+            Ok(Json(response))
+        }
         Err(e) => {
             tracing::error!("Failed to search documents: {}", e);
             Err((
@@ -2641,10 +2875,15 @@ async fn get_classification(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ClassificationResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Find document with details
-    let document = match state.document_repo.find_by_id(id).await {
+    let document = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -2673,6 +2912,7 @@ async fn get_classification(
     }
 
     // Return response based on the document's category
+    rls.release().await;
     Ok(Json(ClassificationResponse {
         document_id: id,
         predicted_category: Some(document.category.clone()),
@@ -2702,11 +2942,16 @@ async fn submit_classification_feedback(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<ClassificationFeedbackRequest>,
 ) -> Result<Json<MessageResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify document exists
-    let document = match state.document_repo.find_by_id(id).await {
+    let document = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -2756,9 +3001,12 @@ async fn submit_classification_feedback(
         .submit_classification_feedback(feedback)
         .await
     {
-        Ok(()) => Ok(Json(MessageResponse {
-            message: "Classification feedback submitted".to_string(),
-        })),
+        Ok(()) => {
+            rls.release().await;
+            Ok(Json(MessageResponse {
+                message: "Classification feedback submitted".to_string(),
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to submit classification feedback: {}", e);
             Err((
@@ -2791,10 +3039,15 @@ async fn get_classification_history(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ClassificationHistoryResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify document exists and belongs to tenant
-    let document = match state.document_repo.find_by_id(id).await {
+    let document = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -2822,7 +3075,10 @@ async fn get_classification_history(
     }
 
     match state.document_repo.get_classification_history(id).await {
-        Ok(history) => Ok(Json(ClassificationHistoryResponse { history })),
+        Ok(history) => {
+            rls.release().await;
+            Ok(Json(ClassificationHistoryResponse { history }))
+        }
         Err(e) => {
             tracing::error!("Failed to get classification history: {}", e);
             Err((
@@ -2855,10 +3111,15 @@ async fn request_summarization(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<SummarizationResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify document exists
-    let document = match state.document_repo.find_by_id(id).await {
+    let document = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -2893,10 +3154,13 @@ async fn request_summarization(
     };
 
     match state.document_repo.queue_for_summarization(request).await {
-        Ok(queue_id) => Ok(Json(SummarizationResponse {
-            message: "Document queued for summarization".to_string(),
-            queue_id,
-        })),
+        Ok(queue_id) => {
+            rls.release().await;
+            Ok(Json(SummarizationResponse {
+                message: "Document queued for summarization".to_string(),
+                queue_id,
+            }))
+        }
         Err(e) => {
             tracing::error!("Failed to queue document for summarization: {}", e);
             Err((
@@ -2926,6 +3190,7 @@ async fn get_intelligence_stats(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Query(query): Query<IntelligenceStatsQuery>,
 ) -> Result<Json<IntelligenceStatsResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Parse dates, default to last 30 days
@@ -2946,7 +3211,10 @@ async fn get_intelligence_stats(
         .get_intelligence_stats(tenant.tenant_id, start_date, end_date)
         .await
     {
-        Ok(stats) => Ok(Json(IntelligenceStatsResponse { stats })),
+        Ok(stats) => {
+            rls.release().await;
+            Ok(Json(IntelligenceStatsResponse { stats }))
+        }
         Err(e) => {
             tracing::error!("Failed to get intelligence stats: {}", e);
             Err((
@@ -2994,6 +3262,7 @@ async fn ai_summarize_document(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<AiSummarizeRequest>,
 ) -> Result<Json<AiSummarizeResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -3002,7 +3271,11 @@ async fn ai_summarize_document(
     let start_time = Instant::now();
 
     // Verify document exists
-    let document = match state.document_repo.find_by_id(id).await {
+    let document = match state
+        .document_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(d)) => d,
         Ok(None) => {
             return Err((
@@ -3213,6 +3486,7 @@ KEY POINTS:
         processing_time_ms
     );
 
+    rls.release().await;
     Ok(Json(AiSummarizeResponse {
         document_id: id,
         summary: summary.clone(),

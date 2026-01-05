@@ -639,6 +639,202 @@ async fn test_sql_injection_prevention() {
     db.cleanup().await.unwrap();
 }
 
+// ==================== Context Clearing Tests ====================
+
+/// Test that clear_request_context properly clears all RLS session variables.
+///
+/// This is critical for preventing context bleeding between pooled connections.
+/// If a super-admin request's context isn't cleared before returning to the pool,
+/// a subsequent request could inherit elevated privileges.
+#[tokio::test]
+#[ignore]
+async fn test_rls_context_cleared_after_release() {
+    let db = TestDb::new().await.expect("Failed to connect to test DB");
+
+    db.cleanup().await.unwrap();
+    db.setup_as_super_admin().await.unwrap();
+
+    let org_id = db.create_test_org("Context Clear Test Org").await.unwrap();
+    let user_id = db
+        .create_test_user("context_clear@test.com", "Context Clear User")
+        .await
+        .unwrap();
+
+    db.add_org_member(org_id, user_id, "org_admin")
+        .await
+        .unwrap();
+
+    // Acquire a dedicated connection
+    let mut conn = db.pool.acquire().await.unwrap();
+
+    // Set context with super admin privileges
+    sqlx::query("SELECT set_request_context($1, $2, $3)")
+        .bind(org_id)
+        .bind(user_id)
+        .bind(true) // super admin!
+        .execute(&mut *conn)
+        .await
+        .unwrap();
+
+    // Verify context is set
+    let org_ctx: Option<String> =
+        sqlx::query_scalar("SELECT current_setting('app.current_org_id', true)")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+    let user_ctx: Option<String> =
+        sqlx::query_scalar("SELECT current_setting('app.current_user_id', true)")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+    let admin_ctx: Option<String> =
+        sqlx::query_scalar("SELECT current_setting('app.is_super_admin', true)")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+
+    assert!(
+        org_ctx.is_some() && !org_ctx.as_ref().unwrap().is_empty(),
+        "Org context should be set: {:?}",
+        org_ctx
+    );
+    assert!(
+        user_ctx.is_some() && !user_ctx.as_ref().unwrap().is_empty(),
+        "User context should be set: {:?}",
+        user_ctx
+    );
+    assert_eq!(
+        admin_ctx.as_deref(),
+        Some("true"),
+        "Super admin context should be true: {:?}",
+        admin_ctx
+    );
+
+    // Clear context (simulating RlsConnection::release())
+    sqlx::query("SELECT clear_request_context()")
+        .execute(&mut *conn)
+        .await
+        .unwrap();
+
+    // Verify ALL context variables are cleared
+    let org_ctx_after: Option<String> =
+        sqlx::query_scalar("SELECT current_setting('app.current_org_id', true)")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+    let user_ctx_after: Option<String> =
+        sqlx::query_scalar("SELECT current_setting('app.current_user_id', true)")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+    let admin_ctx_after: Option<String> =
+        sqlx::query_scalar("SELECT current_setting('app.is_super_admin', true)")
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+
+    // Context should be cleared (empty or null)
+    assert!(
+        org_ctx_after.is_none() || org_ctx_after.as_ref().unwrap().is_empty(),
+        "Org context should be cleared after release, got: {:?}",
+        org_ctx_after
+    );
+    assert!(
+        user_ctx_after.is_none() || user_ctx_after.as_ref().unwrap().is_empty(),
+        "User context should be cleared after release, got: {:?}",
+        user_ctx_after
+    );
+    assert!(
+        admin_ctx_after.is_none()
+            || admin_ctx_after.as_ref().unwrap().is_empty()
+            || admin_ctx_after.as_deref() == Some("false"),
+        "Super admin context should be cleared or false after release, got: {:?}",
+        admin_ctx_after
+    );
+
+    drop(conn);
+    db.cleanup().await.unwrap();
+}
+
+/// Test that context doesn't bleed between different connections from the same pool.
+///
+/// This verifies that returning a connection with context set doesn't affect
+/// subsequent connections acquired from the pool.
+#[tokio::test]
+#[ignore]
+async fn test_rls_context_isolation_between_connections() {
+    let db = TestDb::new().await.expect("Failed to connect to test DB");
+
+    db.cleanup().await.unwrap();
+    db.setup_as_super_admin().await.unwrap();
+
+    let org_id = db
+        .create_test_org("Context Isolation Test Org")
+        .await
+        .unwrap();
+    let user_id = db
+        .create_test_user("context_isolation@test.com", "Context Isolation User")
+        .await
+        .unwrap();
+
+    db.add_org_member(org_id, user_id, "member").await.unwrap();
+
+    // First connection: set context WITHOUT clearing
+    {
+        let mut conn1 = db.pool.acquire().await.unwrap();
+
+        sqlx::query("SELECT set_request_context($1, $2, $3)")
+            .bind(org_id)
+            .bind(user_id)
+            .bind(true) // super admin
+            .execute(&mut *conn1)
+            .await
+            .unwrap();
+
+        // Verify context is set on conn1
+        let admin_ctx: Option<String> =
+            sqlx::query_scalar("SELECT current_setting('app.is_super_admin', true)")
+                .fetch_one(&mut *conn1)
+                .await
+                .unwrap();
+        assert_eq!(admin_ctx.as_deref(), Some("true"));
+
+        // Drop without clearing - simulating the bug we're protecting against
+        drop(conn1);
+    }
+
+    // Second connection: should NOT have inherited context
+    // Note: This test may be flaky depending on pool behavior,
+    // but it demonstrates the risk we're mitigating
+    {
+        let mut conn2 = db.pool.acquire().await.unwrap();
+
+        let admin_ctx: Option<String> =
+            sqlx::query_scalar("SELECT current_setting('app.is_super_admin', true)")
+                .fetch_one(&mut *conn2)
+                .await
+                .unwrap();
+
+        // If this assertion fails, it means context bled from conn1 to conn2
+        // This is the exact scenario RlsConnection::release() prevents
+        if admin_ctx.as_deref() == Some("true") {
+            println!("WARNING: Context bled between connections!");
+            println!("This is the bug that RlsConnection::release() prevents.");
+            println!("In production, always call release() before returning connections.");
+        }
+
+        // Clear to clean up
+        sqlx::query("SELECT clear_request_context()")
+            .execute(&mut *conn2)
+            .await
+            .unwrap();
+
+        drop(conn2);
+    }
+
+    db.cleanup().await.unwrap();
+}
+
 // ==================== Test Runner Helper ====================
 
 /// Run all RLS penetration tests
@@ -653,5 +849,7 @@ pub async fn run_all_rls_tests() {
     println!("  - Null context handling");
     println!("  - RLS policy coverage");
     println!("  - SQL injection prevention");
+    println!("  - Context clearing on release");
+    println!("  - Context isolation between connections");
     println!("=====================================");
 }

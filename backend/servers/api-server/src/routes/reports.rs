@@ -216,15 +216,14 @@ pub fn router() -> Router<AppState> {
 // ============================================================================
 
 /// Get building name by ID if provided.
+/// Note: This helper function is called from report handlers. RLS migration
+/// would require passing RlsConnection through all callers.
 async fn get_building_name(state: &AppState, building_id: Option<Uuid>) -> Option<String> {
     if let Some(id) = building_id {
-        state
-            .building_repo
-            .find_by_id(id)
-            .await
-            .ok()
-            .flatten()
-            .and_then(|b| b.name)
+        // TODO: Migrate to find_by_id_rls when handlers pass RlsConnection
+        #[allow(deprecated)]
+        let result = state.building_repo.find_by_id(id).await;
+        result.ok().flatten().and_then(|b| b.name)
     } else {
         None
     }

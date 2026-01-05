@@ -3,6 +3,7 @@
 //! API routes for managing feature packages, including admin CRUD operations
 //! and public endpoints for package listings and comparisons.
 
+use api_core::extractors::RlsConnection;
 use axum::{
     extract::{Path, Query, State},
     http::{header::AUTHORIZATION, HeaderMap, StatusCode},
@@ -111,8 +112,9 @@ fn require_super_admin(
 }
 
 /// Verify user has access to the organization.
+#[allow(dead_code)]
 async fn verify_org_access(
-    state: &AppState,
+    rls: &mut RlsConnection,
     user_id: Uuid,
     org_id: Uuid,
 ) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
@@ -121,7 +123,7 @@ async fn verify_org_access(
     )
     .bind(user_id)
     .bind(org_id)
-    .fetch_optional(&state.db)
+    .fetch_optional(&mut **rls.conn())
     .await
     .map_err(|e| {
         tracing::error!(error = %e, "Failed to check org membership");

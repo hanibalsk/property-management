@@ -2,7 +2,7 @@
 //!
 //! Handles budgets, budget items, capital plans, reserve funds, and forecasts.
 
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -266,16 +266,26 @@ pub fn router() -> Router<AppState> {
 async fn create_budget(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Json(req): Json<CreateBudgetRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .create_budget(req.organization_id, auth.user_id, req.data)
+        .create_budget_rls(
+            &mut **rls.conn(),
+            req.organization_id,
+            auth.user_id,
+            req.data,
+        )
         .await
     {
-        Ok(budget) => (StatusCode::CREATED, Json(budget)).into_response(),
+        Ok(budget) => {
+            rls.release().await;
+            (StatusCode::CREATED, Json(budget)).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to create budget: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -288,16 +298,25 @@ async fn create_budget(
 async fn list_budgets(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<BudgetListQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .list_budgets(query.organization_id, BudgetQuery::from(&query))
+        .list_budgets_rls(
+            &mut **rls.conn(),
+            query.organization_id,
+            BudgetQuery::from(&query),
+        )
         .await
     {
-        Ok(budgets) => Json(budgets).into_response(),
+        Ok(budgets) => {
+            rls.release().await;
+            Json(budgets).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list budgets: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -310,22 +329,30 @@ async fn list_budgets(
 async fn get_budget(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .find_budget_by_id(query.organization_id, id)
+        .find_budget_by_id_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(Some(budget)) => Json(budget).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Budget not found")),
-        )
-            .into_response(),
+        Ok(Some(budget)) => {
+            rls.release().await;
+            Json(budget).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Budget not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get budget: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -338,22 +365,30 @@ async fn get_budget(
 async fn update_budget(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateBudgetRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .update_budget(req.organization_id, id, req.data)
+        .update_budget_rls(&mut **rls.conn(), req.organization_id, id, req.data)
         .await
     {
-        Ok(Some(budget)) => Json(budget).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Budget not found")),
-        )
-            .into_response(),
+        Ok(Some(budget)) => {
+            rls.release().await;
+            Json(budget).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Budget not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to update budget: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -366,25 +401,33 @@ async fn update_budget(
 async fn delete_budget(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .delete_budget(query.organization_id, id)
+        .delete_budget_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(true) => StatusCode::NO_CONTENT.into_response(),
-        Ok(false) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_STATE",
-                "Only draft budgets can be deleted",
-            )),
-        )
-            .into_response(),
+        Ok(true) => {
+            rls.release().await;
+            StatusCode::NO_CONTENT.into_response()
+        }
+        Ok(false) => {
+            rls.release().await;
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_STATE",
+                    "Only draft budgets can be deleted",
+                )),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to delete budget: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -397,25 +440,33 @@ async fn delete_budget(
 async fn submit_budget(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .submit_budget_for_approval(query.organization_id, id)
+        .submit_budget_for_approval_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(Some(budget)) => Json(budget).into_response(),
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_STATE",
-                "Budget cannot be submitted",
-            )),
-        )
-            .into_response(),
+        Ok(Some(budget)) => {
+            rls.release().await;
+            Json(budget).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_STATE",
+                    "Budget cannot be submitted",
+                )),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to submit budget: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -428,25 +479,33 @@ async fn submit_budget(
 async fn approve_budget(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .approve_budget(query.organization_id, id, auth.user_id)
+        .approve_budget_rls(&mut **rls.conn(), query.organization_id, id, auth.user_id)
         .await
     {
-        Ok(Some(budget)) => Json(budget).into_response(),
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_STATE",
-                "Budget cannot be approved",
-            )),
-        )
-            .into_response(),
+        Ok(Some(budget)) => {
+            rls.release().await;
+            Json(budget).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_STATE",
+                    "Budget cannot be approved",
+                )),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to approve budget: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -459,25 +518,33 @@ async fn approve_budget(
 async fn activate_budget(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .activate_budget(query.organization_id, id)
+        .activate_budget_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(Some(budget)) => Json(budget).into_response(),
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_STATE",
-                "Budget cannot be activated",
-            )),
-        )
-            .into_response(),
+        Ok(Some(budget)) => {
+            rls.release().await;
+            Json(budget).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_STATE",
+                    "Budget cannot be activated",
+                )),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to activate budget: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -490,25 +557,33 @@ async fn activate_budget(
 async fn close_budget(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .close_budget(query.organization_id, id)
+        .close_budget_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(Some(budget)) => Json(budget).into_response(),
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_STATE",
-                "Budget cannot be closed",
-            )),
-        )
-            .into_response(),
+        Ok(Some(budget)) => {
+            rls.release().await;
+            Json(budget).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_STATE",
+                    "Budget cannot be closed",
+                )),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to close budget: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -521,12 +596,21 @@ async fn close_budget(
 async fn get_budget_summary(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    match state.budget_repo.get_budget_summary(id).await {
-        Ok(summary) => Json(summary).into_response(),
+    match state
+        .budget_repo
+        .get_budget_summary_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(summary) => {
+            rls.release().await;
+            Json(summary).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get budget summary: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -539,12 +623,21 @@ async fn get_budget_summary(
 async fn get_category_variance(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    match state.budget_repo.get_category_variance(id).await {
-        Ok(variance) => Json(variance).into_response(),
+    match state
+        .budget_repo
+        .get_category_variance_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(variance) => {
+            rls.release().await;
+            Json(variance).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get category variance: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -562,17 +655,22 @@ struct AlertsQuery {
 async fn list_variance_alerts(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<AlertsQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .list_variance_alerts(id, query.acknowledged)
+        .list_variance_alerts_rls(&mut **rls.conn(), id, query.acknowledged)
         .await
     {
-        Ok(alerts) => Json(alerts).into_response(),
+        Ok(alerts) => {
+            rls.release().await;
+            Json(alerts).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list variance alerts: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -589,13 +687,22 @@ async fn list_variance_alerts(
 async fn add_budget_item(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(data): Json<CreateBudgetItem>,
 ) -> impl IntoResponse {
-    match state.budget_repo.add_budget_item(id, data).await {
-        Ok(item) => (StatusCode::CREATED, Json(item)).into_response(),
+    match state
+        .budget_repo
+        .add_budget_item_rls(&mut **rls.conn(), id, data)
+        .await
+    {
+        Ok(item) => {
+            rls.release().await;
+            (StatusCode::CREATED, Json(item)).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to add budget item: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -608,12 +715,21 @@ async fn add_budget_item(
 async fn list_budget_items(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    match state.budget_repo.list_budget_items(id).await {
-        Ok(items) => Json(items).into_response(),
+    match state
+        .budget_repo
+        .list_budget_items_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(items) => {
+            rls.release().await;
+            Json(items).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list budget items: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -626,18 +742,30 @@ async fn list_budget_items(
 async fn update_budget_item(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(item_id): Path<Uuid>,
     Json(data): Json<UpdateBudgetItem>,
 ) -> impl IntoResponse {
-    match state.budget_repo.update_budget_item(item_id, data).await {
-        Ok(Some(item)) => Json(item).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Budget item not found")),
-        )
-            .into_response(),
+    match state
+        .budget_repo
+        .update_budget_item_rls(&mut **rls.conn(), item_id, data)
+        .await
+    {
+        Ok(Some(item)) => {
+            rls.release().await;
+            Json(item).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Budget item not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to update budget item: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -650,17 +778,29 @@ async fn update_budget_item(
 async fn delete_budget_item(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(item_id): Path<Uuid>,
 ) -> impl IntoResponse {
-    match state.budget_repo.delete_budget_item(item_id).await {
-        Ok(true) => StatusCode::NO_CONTENT.into_response(),
-        Ok(false) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Budget item not found")),
-        )
-            .into_response(),
+    match state
+        .budget_repo
+        .delete_budget_item_rls(&mut **rls.conn(), item_id)
+        .await
+    {
+        Ok(true) => {
+            rls.release().await;
+            StatusCode::NO_CONTENT.into_response()
+        }
+        Ok(false) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Budget item not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to delete budget item: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -673,17 +813,22 @@ async fn delete_budget_item(
 async fn record_actual(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(item_id): Path<Uuid>,
     Json(data): Json<RecordBudgetActual>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .record_actual(item_id, auth.user_id, data)
+        .record_actual_rls(&mut **rls.conn(), item_id, auth.user_id, data)
         .await
     {
-        Ok(actual) => (StatusCode::CREATED, Json(actual)).into_response(),
+        Ok(actual) => {
+            rls.release().await;
+            (StatusCode::CREATED, Json(actual)).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to record actual: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -696,12 +841,21 @@ async fn record_actual(
 async fn list_actuals(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(item_id): Path<Uuid>,
 ) -> impl IntoResponse {
-    match state.budget_repo.list_actuals(item_id).await {
-        Ok(actuals) => Json(actuals).into_response(),
+    match state
+        .budget_repo
+        .list_actuals_rls(&mut **rls.conn(), item_id)
+        .await
+    {
+        Ok(actuals) => {
+            rls.release().await;
+            Json(actuals).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list actuals: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -718,16 +872,21 @@ async fn list_actuals(
 async fn create_category(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Json(req): Json<CreateCategoryRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .create_category(req.organization_id, req.data)
+        .create_category_rls(&mut **rls.conn(), req.organization_id, req.data)
         .await
     {
-        Ok(category) => (StatusCode::CREATED, Json(category)).into_response(),
+        Ok(category) => {
+            rls.release().await;
+            (StatusCode::CREATED, Json(category)).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to create category: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -740,16 +899,21 @@ async fn create_category(
 async fn list_categories(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .list_categories(query.organization_id)
+        .list_categories_rls(&mut **rls.conn(), query.organization_id)
         .await
     {
-        Ok(categories) => Json(categories).into_response(),
+        Ok(categories) => {
+            rls.release().await;
+            Json(categories).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list categories: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -762,22 +926,30 @@ async fn list_categories(
 async fn update_category(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateCategoryRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .update_category(req.organization_id, id, req.data)
+        .update_category_rls(&mut **rls.conn(), req.organization_id, id, req.data)
         .await
     {
-        Ok(Some(category)) => Json(category).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Category not found")),
-        )
-            .into_response(),
+        Ok(Some(category)) => {
+            rls.release().await;
+            Json(category).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Category not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to update category: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -790,22 +962,30 @@ async fn update_category(
 async fn delete_category(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .delete_category(query.organization_id, id)
+        .delete_category_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(true) => StatusCode::NO_CONTENT.into_response(),
-        Ok(false) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Category not found")),
-        )
-            .into_response(),
+        Ok(true) => {
+            rls.release().await;
+            StatusCode::NO_CONTENT.into_response()
+        }
+        Ok(false) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Category not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to delete category: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -822,22 +1002,30 @@ async fn delete_category(
 async fn acknowledge_alert(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(data): Json<AcknowledgeVarianceAlert>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .acknowledge_alert(id, auth.user_id, data)
+        .acknowledge_alert_rls(&mut **rls.conn(), id, auth.user_id, data)
         .await
     {
-        Ok(Some(alert)) => Json(alert).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Alert not found")),
-        )
-            .into_response(),
+        Ok(Some(alert)) => {
+            rls.release().await;
+            Json(alert).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Alert not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to acknowledge alert: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -854,16 +1042,34 @@ async fn acknowledge_alert(
 async fn get_dashboard(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<BuildingQuery>,
 ) -> impl IntoResponse {
+    // The dashboard currently performs multiple queries using the legacy
+    // repository method, which internally uses the shared pool rather than
+    // the RLS-bound connection provided here. This means the queries do not
+    // all run on a single RLS-enforced connection.
+    //
+    // For full RLS support, this handler (or the repository) needs to be
+    // refactored so all dashboard queries execute using `rls.conn()`, either
+    // by:
+    //   - moving the dashboard logic to use the RLS connection inside a
+    //     single transaction, or
+    //   - rewriting the dashboard logic into a combined query (or small set
+    //     of queries) that can run via the RLS-aware connection.
+    #[allow(deprecated)]
     match state
         .budget_repo
         .get_dashboard(query.organization_id, query.building_id)
         .await
     {
-        Ok(dashboard) => Json(dashboard).into_response(),
+        Ok(dashboard) => {
+            rls.release().await;
+            Json(dashboard).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get dashboard: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -880,16 +1086,26 @@ async fn get_dashboard(
 async fn create_capital_plan(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Json(req): Json<CreateCapitalPlanRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .create_capital_plan(req.organization_id, auth.user_id, req.data)
+        .create_capital_plan_rls(
+            &mut **rls.conn(),
+            req.organization_id,
+            auth.user_id,
+            req.data,
+        )
         .await
     {
-        Ok(plan) => (StatusCode::CREATED, Json(plan)).into_response(),
+        Ok(plan) => {
+            rls.release().await;
+            (StatusCode::CREATED, Json(plan)).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to create capital plan: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -902,16 +1118,25 @@ async fn create_capital_plan(
 async fn list_capital_plans(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<CapitalPlanListQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .list_capital_plans(query.organization_id, CapitalPlanQuery::from(&query))
+        .list_capital_plans_rls(
+            &mut **rls.conn(),
+            query.organization_id,
+            CapitalPlanQuery::from(&query),
+        )
         .await
     {
-        Ok(plans) => Json(plans).into_response(),
+        Ok(plans) => {
+            rls.release().await;
+            Json(plans).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list capital plans: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -924,16 +1149,21 @@ async fn list_capital_plans(
 async fn get_yearly_capital_summary(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .get_yearly_capital_summary(query.organization_id)
+        .get_yearly_capital_summary_rls(&mut **rls.conn(), query.organization_id)
         .await
     {
-        Ok(summary) => Json(summary).into_response(),
+        Ok(summary) => {
+            rls.release().await;
+            Json(summary).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get yearly capital summary: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -946,22 +1176,30 @@ async fn get_yearly_capital_summary(
 async fn get_capital_plan(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .find_capital_plan_by_id(query.organization_id, id)
+        .find_capital_plan_by_id_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(Some(plan)) => Json(plan).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Capital plan not found")),
-        )
-            .into_response(),
+        Ok(Some(plan)) => {
+            rls.release().await;
+            Json(plan).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Capital plan not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get capital plan: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -974,22 +1212,30 @@ async fn get_capital_plan(
 async fn update_capital_plan(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateCapitalPlanRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .update_capital_plan(req.organization_id, id, req.data)
+        .update_capital_plan_rls(&mut **rls.conn(), req.organization_id, id, req.data)
         .await
     {
-        Ok(Some(plan)) => Json(plan).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Capital plan not found")),
-        )
-            .into_response(),
+        Ok(Some(plan)) => {
+            rls.release().await;
+            Json(plan).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Capital plan not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to update capital plan: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1002,25 +1248,33 @@ async fn update_capital_plan(
 async fn delete_capital_plan(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .delete_capital_plan(query.organization_id, id)
+        .delete_capital_plan_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(true) => StatusCode::NO_CONTENT.into_response(),
-        Ok(false) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_STATE",
-                "Only planned capital plans can be deleted",
-            )),
-        )
-            .into_response(),
+        Ok(true) => {
+            rls.release().await;
+            StatusCode::NO_CONTENT.into_response()
+        }
+        Ok(false) => {
+            rls.release().await;
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_STATE",
+                    "Only planned capital plans can be deleted",
+                )),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to delete capital plan: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1033,25 +1287,33 @@ async fn delete_capital_plan(
 async fn start_capital_plan(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .start_capital_plan(query.organization_id, id)
+        .start_capital_plan_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(Some(plan)) => Json(plan).into_response(),
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_STATE",
-                "Capital plan cannot be started",
-            )),
-        )
-            .into_response(),
+        Ok(Some(plan)) => {
+            rls.release().await;
+            Json(plan).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_STATE",
+                    "Capital plan cannot be started",
+                )),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to start capital plan: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1064,25 +1326,33 @@ async fn start_capital_plan(
 async fn complete_capital_plan(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<CompleteCapitalPlanRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .complete_capital_plan(req.organization_id, id, req.actual_cost)
+        .complete_capital_plan_rls(&mut **rls.conn(), req.organization_id, id, req.actual_cost)
         .await
     {
-        Ok(Some(plan)) => Json(plan).into_response(),
-        Ok(None) => (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                "INVALID_STATE",
-                "Capital plan cannot be completed",
-            )),
-        )
-            .into_response(),
+        Ok(Some(plan)) => {
+            rls.release().await;
+            Json(plan).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "INVALID_STATE",
+                    "Capital plan cannot be completed",
+                )),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to complete capital plan: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1099,16 +1369,21 @@ async fn complete_capital_plan(
 async fn create_reserve_fund(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Json(req): Json<CreateReserveFundRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .create_reserve_fund(req.organization_id, req.data)
+        .create_reserve_fund_rls(&mut **rls.conn(), req.organization_id, req.data)
         .await
     {
-        Ok(fund) => (StatusCode::CREATED, Json(fund)).into_response(),
+        Ok(fund) => {
+            rls.release().await;
+            (StatusCode::CREATED, Json(fund)).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to create reserve fund: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1121,16 +1396,21 @@ async fn create_reserve_fund(
 async fn list_reserve_funds(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<BuildingQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .list_reserve_funds(query.organization_id, query.building_id)
+        .list_reserve_funds_rls(&mut **rls.conn(), query.organization_id, query.building_id)
         .await
     {
-        Ok(funds) => Json(funds).into_response(),
+        Ok(funds) => {
+            rls.release().await;
+            Json(funds).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list reserve funds: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1143,22 +1423,30 @@ async fn list_reserve_funds(
 async fn get_reserve_fund(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .find_reserve_fund_by_id(query.organization_id, id)
+        .find_reserve_fund_by_id_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(Some(fund)) => Json(fund).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Reserve fund not found")),
-        )
-            .into_response(),
+        Ok(Some(fund)) => {
+            rls.release().await;
+            Json(fund).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Reserve fund not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get reserve fund: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1171,22 +1459,30 @@ async fn get_reserve_fund(
 async fn update_reserve_fund(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateReserveFundRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .update_reserve_fund(req.organization_id, id, req.data)
+        .update_reserve_fund_rls(&mut **rls.conn(), req.organization_id, id, req.data)
         .await
     {
-        Ok(Some(fund)) => Json(fund).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Reserve fund not found")),
-        )
-            .into_response(),
+        Ok(Some(fund)) => {
+            rls.release().await;
+            Json(fund).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Reserve fund not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to update reserve fund: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1199,17 +1495,34 @@ async fn update_reserve_fund(
 async fn record_reserve_transaction(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(data): Json<RecordReserveTransaction>,
 ) -> impl IntoResponse {
+    // The current implementation of record_reserve_transaction requires the
+    // reserve fund's current balance and therefore issues multiple queries.
+    //
+    // This bypasses the RLS-aware API for now and uses a deprecated method.
+    // TODO(epic-24): Refactor this into a single RLS-compatible operation:
+    //   * either implement record_reserve_transaction as a database stored
+    //     procedure that atomically reads the balance and records the
+    //     transaction under RLS, or
+    //   * introduce a record_reserve_transaction_rls(...) repository method
+    //     that performs the required queries within a transaction using
+    //     RlsConnection so that RLS policies are correctly enforced.
+    #[allow(deprecated)]
     match state
         .budget_repo
         .record_reserve_transaction(id, auth.user_id, data)
         .await
     {
-        Ok(txn) => (StatusCode::CREATED, Json(txn)).into_response(),
+        Ok(txn) => {
+            rls.release().await;
+            (StatusCode::CREATED, Json(txn)).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to record reserve transaction: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1222,12 +1535,21 @@ async fn record_reserve_transaction(
 async fn list_reserve_transactions(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
-    match state.budget_repo.list_reserve_transactions(id).await {
-        Ok(transactions) => Json(transactions).into_response(),
+    match state
+        .budget_repo
+        .list_reserve_transactions_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(transactions) => {
+            rls.release().await;
+            Json(transactions).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list reserve transactions: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1240,18 +1562,26 @@ async fn list_reserve_transactions(
 async fn get_reserve_projection(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<ProjectionQuery>,
 ) -> impl IntoResponse {
     let years = query.years.unwrap_or(5);
+    // The generate_reserve_projection method requires multiple queries
+    // and uses the pool directly. For full RLS support, this would need
+    // to be refactored.
     match state
         .budget_repo
         .generate_reserve_projection(id, years)
         .await
     {
-        Ok(projection) => Json(projection).into_response(),
+        Ok(projection) => {
+            rls.release().await;
+            Json(projection).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get reserve projection: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1268,16 +1598,26 @@ async fn get_reserve_projection(
 async fn create_forecast(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Json(req): Json<CreateForecastRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .create_forecast(req.organization_id, auth.user_id, req.data)
+        .create_forecast_rls(
+            &mut **rls.conn(),
+            req.organization_id,
+            auth.user_id,
+            req.data,
+        )
         .await
     {
-        Ok(forecast) => (StatusCode::CREATED, Json(forecast)).into_response(),
+        Ok(forecast) => {
+            rls.release().await;
+            (StatusCode::CREATED, Json(forecast)).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to create forecast: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1290,16 +1630,25 @@ async fn create_forecast(
 async fn list_forecasts(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Query(query): Query<ForecastListQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .list_forecasts(query.organization_id, ForecastQuery::from(&query))
+        .list_forecasts_rls(
+            &mut **rls.conn(),
+            query.organization_id,
+            ForecastQuery::from(&query),
+        )
         .await
     {
-        Ok(forecasts) => Json(forecasts).into_response(),
+        Ok(forecasts) => {
+            rls.release().await;
+            Json(forecasts).into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to list forecasts: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1312,22 +1661,30 @@ async fn list_forecasts(
 async fn get_forecast(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .find_forecast_by_id(query.organization_id, id)
+        .find_forecast_by_id_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(Some(forecast)) => Json(forecast).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Forecast not found")),
-        )
-            .into_response(),
+        Ok(Some(forecast)) => {
+            rls.release().await;
+            Json(forecast).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Forecast not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to get forecast: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1340,22 +1697,30 @@ async fn get_forecast(
 async fn update_forecast(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateForecastRequest>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .update_forecast(req.organization_id, id, req.data)
+        .update_forecast_rls(&mut **rls.conn(), req.organization_id, id, req.data)
         .await
     {
-        Ok(Some(forecast)) => Json(forecast).into_response(),
-        Ok(None) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Forecast not found")),
-        )
-            .into_response(),
+        Ok(Some(forecast)) => {
+            rls.release().await;
+            Json(forecast).into_response()
+        }
+        Ok(None) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Forecast not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to update forecast: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
@@ -1368,22 +1733,30 @@ async fn update_forecast(
 async fn delete_forecast(
     State(state): State<AppState>,
     _auth: AuthUser,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<OrgQuery>,
 ) -> impl IntoResponse {
     match state
         .budget_repo
-        .delete_forecast(query.organization_id, id)
+        .delete_forecast_rls(&mut **rls.conn(), query.organization_id, id)
         .await
     {
-        Ok(true) => StatusCode::NO_CONTENT.into_response(),
-        Ok(false) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Forecast not found")),
-        )
-            .into_response(),
+        Ok(true) => {
+            rls.release().await;
+            StatusCode::NO_CONTENT.into_response()
+        }
+        Ok(false) => {
+            rls.release().await;
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Forecast not found")),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!("Failed to delete forecast: {:?}", e);
+            rls.release().await;
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),

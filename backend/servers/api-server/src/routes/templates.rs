@@ -636,7 +636,10 @@ async fn generate_document(
         created_by: user_id,
     };
 
-    match state.document_repo.create(create_doc).await {
+    // TODO: Migrate to create_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
+    let create_result = state.document_repo.create(create_doc).await;
+    match create_result {
         Ok(document) => {
             // Update document with template reference
             // Note: This would need a separate update or the create should accept template_id

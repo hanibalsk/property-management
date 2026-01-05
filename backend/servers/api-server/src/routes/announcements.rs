@@ -1,6 +1,7 @@
 //! Announcement routes (Epic 6: Announcements & Communication, Epic 92: Intelligent Document Generation).
 
 use crate::state::AppState;
+use api_core::extractors::RlsConnection;
 use api_core::{AuthUser, TenantExtractor};
 use axum::{
     extract::{Path, Query, State},
@@ -317,11 +318,13 @@ async fn create_announcement(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Json(req): Json<CreateAnnouncementRequest>,
 ) -> Result<(StatusCode, Json<CreateAnnouncementResponse>), (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     let role = tenant.role;
     if !role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -336,6 +339,7 @@ async fn create_announcement(
 
     // Validate content length (H-3: Content validation)
     if req.title.len() > MAX_TITLE_LENGTH {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -348,6 +352,7 @@ async fn create_announcement(
         ));
     }
     if req.content.len() > MAX_CONTENT_LENGTH {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -362,6 +367,7 @@ async fn create_announcement(
 
     // Validate target_type
     if !target_type::ALL_TYPES.contains(&req.target_type.as_str()) {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new("BAD_REQUEST", "Invalid target_type")),
@@ -370,6 +376,7 @@ async fn create_announcement(
 
     // Validate target_ids based on target_type
     if req.target_type != target_type::ALL && req.target_ids.as_ref().is_none_or(|v| v.is_empty()) {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -383,9 +390,10 @@ async fn create_announcement(
     if req.target_type != target_type::ALL {
         if let Some(ref target_ids) = req.target_ids {
             let validation_result =
-                validate_target_ids(&state.db, org_id, &req.target_type, target_ids).await;
+                validate_target_ids(rls.conn(), org_id, &req.target_type, target_ids).await;
 
             if let Err(err_msg) = validation_result {
+                rls.release().await;
                 return Err((
                     StatusCode::BAD_REQUEST,
                     Json(ErrorResponse::new("INVALID_TARGET_IDS", err_msg)),
@@ -409,15 +417,23 @@ async fn create_announcement(
         acknowledgment_required: req.acknowledgment_required,
     };
 
-    match state.announcement_repo.create(data).await {
-        Ok(announcement) => Ok((
-            StatusCode::CREATED,
-            Json(CreateAnnouncementResponse {
-                id: announcement.id,
-                message: "Announcement created successfully".to_string(),
-            }),
-        )),
+    match state
+        .announcement_repo
+        .create_rls(&mut **rls.conn(), data)
+        .await
+    {
+        Ok(announcement) => {
+            rls.release().await;
+            Ok((
+                StatusCode::CREATED,
+                Json(CreateAnnouncementResponse {
+                    id: announcement.id,
+                    message: "Announcement created successfully".to_string(),
+                }),
+            ))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to create announcement: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -449,10 +465,12 @@ async fn list_announcements(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Query(query): Query<ListAnnouncementsQuery>,
 ) -> Result<Json<AnnouncementListResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -490,13 +508,18 @@ async fn list_announcements(
     };
     let total = state
         .announcement_repo
-        .count(org_id, count_query)
+        .count_rls(&mut **rls.conn(), org_id, count_query)
         .await
         .unwrap_or(0);
 
-    match state.announcement_repo.list(org_id, list_query).await {
+    match state
+        .announcement_repo
+        .list_rls(&mut **rls.conn(), org_id, list_query)
+        .await
+    {
         Ok(announcements) => {
             let count = announcements.len();
+            rls.release().await;
             Ok(Json(AnnouncementListResponse {
                 announcements,
                 count,
@@ -504,6 +527,7 @@ async fn list_announcements(
             }))
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to list announcements: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -531,6 +555,7 @@ async fn list_published_announcements(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Query(query): Query<ListAnnouncementsQuery>,
 ) -> Result<Json<AnnouncementListResponse>, (StatusCode, Json<ErrorResponse>)> {
     let org_id = tenant.tenant_id;
@@ -538,17 +563,18 @@ async fn list_published_announcements(
     // Get total count for pagination (H-4)
     let total = state
         .announcement_repo
-        .count_published(org_id)
+        .count_published_rls(&mut **rls.conn(), org_id)
         .await
         .unwrap_or(0);
 
     match state
         .announcement_repo
-        .list_published(org_id, query.limit, query.offset)
+        .list_published_rls(&mut **rls.conn(), org_id, query.limit, query.offset)
         .await
     {
         Ok(announcements) => {
             let count = announcements.len();
+            rls.release().await;
             Ok(Json(AnnouncementListResponse {
                 announcements,
                 count,
@@ -556,6 +582,7 @@ async fn list_published_announcements(
             }))
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to list published announcements: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -586,17 +613,24 @@ async fn get_announcement(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<AnnouncementDetailResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let announcement = match state.announcement_repo.find_by_id_with_details(id).await {
+    let announcement = match state
+        .announcement_repo
+        .find_by_id_with_details_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(a)) => a,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-            ))
+            ));
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to get announcement: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -610,10 +644,11 @@ async fn get_announcement(
 
     let attachments = state
         .announcement_repo
-        .get_attachments(id)
+        .get_attachments_rls(&mut **rls.conn(), id)
         .await
         .unwrap_or_default();
 
+    rls.release().await;
     Ok(Json(AnnouncementDetailResponse {
         announcement,
         attachments,
@@ -643,11 +678,13 @@ async fn update_announcement(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateAnnouncementRequest>,
 ) -> Result<Json<AnnouncementActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -660,6 +697,7 @@ async fn update_announcement(
     // Validate content length if provided (H-3)
     if let Some(ref title) = req.title {
         if title.len() > MAX_TITLE_LENGTH {
+            rls.release().await;
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
@@ -674,6 +712,7 @@ async fn update_announcement(
     }
     if let Some(ref content) = req.content {
         if content.len() > MAX_CONTENT_LENGTH {
+            rls.release().await;
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new(
@@ -687,15 +726,21 @@ async fn update_announcement(
         }
     }
     // Check announcement exists and can be edited
-    let existing = match state.announcement_repo.find_by_id(id).await {
+    let existing = match state
+        .announcement_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(a)) => a,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-            ))
+            ));
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to find announcement: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -708,6 +753,7 @@ async fn update_announcement(
     };
 
     if !existing.can_edit() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -720,6 +766,7 @@ async fn update_announcement(
     // Validate target_type if provided
     if let Some(ref tt) = req.target_type {
         if !target_type::ALL_TYPES.contains(&tt.as_str()) {
+            rls.release().await;
             return Err((
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse::new("BAD_REQUEST", "Invalid target_type")),
@@ -740,12 +787,20 @@ async fn update_announcement(
         acknowledgment_required: req.acknowledgment_required,
     };
 
-    match state.announcement_repo.update(id, data).await {
-        Ok(announcement) => Ok(Json(AnnouncementActionResponse {
-            message: "Announcement updated".to_string(),
-            announcement,
-        })),
+    match state
+        .announcement_repo
+        .update_rls(&mut **rls.conn(), id, data)
+        .await
+    {
+        Ok(announcement) => {
+            rls.release().await;
+            Ok(Json(AnnouncementActionResponse {
+                message: "Announcement updated".to_string(),
+                announcement,
+            }))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to update announcement: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -780,10 +835,12 @@ async fn delete_announcement(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -793,15 +850,21 @@ async fn delete_announcement(
         ));
     }
     // Check if draft
-    let existing = match state.announcement_repo.find_by_id(id).await {
+    let existing = match state
+        .announcement_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(a)) => a,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-            ))
+            ));
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to find announcement: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -814,6 +877,7 @@ async fn delete_announcement(
     };
 
     if !existing.is_draft() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -823,9 +887,17 @@ async fn delete_announcement(
         ));
     }
 
-    match state.announcement_repo.delete(id).await {
-        Ok(_) => Ok(StatusCode::NO_CONTENT),
+    match state
+        .announcement_repo
+        .delete_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(_) => {
+            rls.release().await;
+            Ok(StatusCode::NO_CONTENT)
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to delete announcement: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -860,10 +932,12 @@ async fn publish_announcement(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<AnnouncementActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -873,8 +947,13 @@ async fn publish_announcement(
         ));
     }
 
-    match state.announcement_repo.publish(id).await {
+    match state
+        .announcement_repo
+        .publish_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(announcement) => {
+            rls.release().await;
             // Story 84.4: Trigger notification event for announcement publish
             let target_type = parse_target_type(&announcement.target_type);
 
@@ -917,11 +996,15 @@ async fn publish_announcement(
                 announcement,
             }))
         }
-        Err(SqlxError::RowNotFound) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-        )),
+        Err(SqlxError::RowNotFound) => {
+            rls.release().await;
+            Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
+            ))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to publish announcement: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -957,11 +1040,13 @@ async fn schedule_announcement(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<ScheduleAnnouncementRequest>,
 ) -> Result<Json<AnnouncementActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -972,6 +1057,7 @@ async fn schedule_announcement(
     }
     // Validate scheduled_at is in the future
     if req.scheduled_at <= Utc::now() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -981,16 +1067,27 @@ async fn schedule_announcement(
         ));
     }
 
-    match state.announcement_repo.schedule(id, req.scheduled_at).await {
-        Ok(announcement) => Ok(Json(AnnouncementActionResponse {
-            message: "Announcement scheduled".to_string(),
-            announcement,
-        })),
-        Err(SqlxError::RowNotFound) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-        )),
+    match state
+        .announcement_repo
+        .schedule_rls(&mut **rls.conn(), id, req.scheduled_at)
+        .await
+    {
+        Ok(announcement) => {
+            rls.release().await;
+            Ok(Json(AnnouncementActionResponse {
+                message: "Announcement scheduled".to_string(),
+                announcement,
+            }))
+        }
+        Err(SqlxError::RowNotFound) => {
+            rls.release().await;
+            Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
+            ))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to schedule announcement: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1024,10 +1121,12 @@ async fn archive_announcement(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<AnnouncementActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -1036,16 +1135,27 @@ async fn archive_announcement(
             )),
         ));
     }
-    match state.announcement_repo.archive(id).await {
-        Ok(announcement) => Ok(Json(AnnouncementActionResponse {
-            message: "Announcement archived".to_string(),
-            announcement,
-        })),
-        Err(SqlxError::RowNotFound) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-        )),
+    match state
+        .announcement_repo
+        .archive_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(announcement) => {
+            rls.release().await;
+            Ok(Json(AnnouncementActionResponse {
+                message: "Announcement archived".to_string(),
+                announcement,
+            }))
+        }
+        Err(SqlxError::RowNotFound) => {
+            rls.release().await;
+            Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
+            ))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to archive announcement: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1081,11 +1191,13 @@ async fn pin_announcement(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<PinAnnouncementRequest>,
 ) -> Result<Json<AnnouncementActionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -1098,33 +1210,103 @@ async fn pin_announcement(
     let user_id = auth.user_id;
 
     let result = if req.pinned {
-        state.announcement_repo.pin(id, user_id).await
+        // Get announcement to check org_id and if already pinned
+        let announcement = match state
+            .announcement_repo
+            .find_by_id_rls(&mut **rls.conn(), id)
+            .await
+        {
+            Ok(Some(a)) => a,
+            Ok(None) => {
+                rls.release().await;
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
+                ));
+            }
+            Err(e) => {
+                rls.release().await;
+                tracing::error!("Failed to find announcement: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse::new(
+                        "INTERNAL_ERROR",
+                        "Failed to find announcement",
+                    )),
+                ));
+            }
+        };
+
+        // Check if it's published
+        if announcement.status != "published" {
+            rls.release().await;
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
+            ));
+        }
+
+        // If already pinned, just return it
+        if announcement.pinned {
+            rls.release().await;
+            return Ok(Json(AnnouncementActionResponse {
+                message: "Announcement pinned".to_string(),
+                announcement,
+            }));
+        }
+
+        // Check pinned count (max 3 per org)
+        let pinned_count = state
+            .announcement_repo
+            .count_pinned_rls(&mut **rls.conn(), announcement.organization_id)
+            .await
+            .unwrap_or(0);
+
+        if pinned_count >= 3 {
+            rls.release().await;
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ErrorResponse::new(
+                    "PINNED_LIMIT_REACHED",
+                    "Maximum of 3 pinned announcements reached",
+                )),
+            ));
+        }
+
+        // Pin the announcement
+        state
+            .announcement_repo
+            .pin_rls(&mut **rls.conn(), id, user_id)
+            .await
     } else {
-        state.announcement_repo.unpin(id).await
+        state
+            .announcement_repo
+            .unpin_rls(&mut **rls.conn(), id)
+            .await
     };
 
     match result {
-        Ok(announcement) => Ok(Json(AnnouncementActionResponse {
-            message: if req.pinned {
-                "Announcement pinned"
-            } else {
-                "Announcement unpinned"
-            }
-            .to_string(),
-            announcement,
-        })),
-        Err(SqlxError::RowNotFound) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-        )),
-        Err(SqlxError::Protocol(msg)) if msg.contains("Maximum") => {
-            // Pinned limit reached
+        Ok(announcement) => {
+            rls.release().await;
+            Ok(Json(AnnouncementActionResponse {
+                message: if req.pinned {
+                    "Announcement pinned"
+                } else {
+                    "Announcement unpinned"
+                }
+                .to_string(),
+                announcement,
+            }))
+        }
+        Err(SqlxError::RowNotFound) => {
+            rls.release().await;
             Err((
-                StatusCode::BAD_REQUEST,
-                Json(ErrorResponse::new("PINNED_LIMIT_REACHED", msg)),
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
             ))
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to update pin status: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1154,11 +1336,20 @@ async fn list_attachments(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<Json<AttachmentsResponse>, (StatusCode, Json<ErrorResponse>)> {
-    match state.announcement_repo.get_attachments(id).await {
-        Ok(attachments) => Ok(Json(AttachmentsResponse { attachments })),
+    match state
+        .announcement_repo
+        .get_attachments_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(attachments) => {
+            rls.release().await;
+            Ok(Json(AttachmentsResponse { attachments }))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to list attachments: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1193,11 +1384,13 @@ async fn add_attachment(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<AddAttachmentRequest>,
 ) -> Result<(StatusCode, Json<AnnouncementAttachment>), (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -1214,9 +1407,17 @@ async fn add_attachment(
         file_size: req.file_size,
     };
 
-    match state.announcement_repo.add_attachment(data).await {
-        Ok(attachment) => Ok((StatusCode::CREATED, Json(attachment))),
+    match state
+        .announcement_repo
+        .add_attachment_rls(&mut **rls.conn(), data)
+        .await
+    {
+        Ok(attachment) => {
+            rls.release().await;
+            Ok((StatusCode::CREATED, Json(attachment)))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to add attachment: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1251,10 +1452,12 @@ async fn delete_attachment(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path((_id, attachment_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -1265,11 +1468,15 @@ async fn delete_attachment(
     }
     match state
         .announcement_repo
-        .delete_attachment(attachment_id)
+        .delete_attachment_rls(&mut **rls.conn(), attachment_id)
         .await
     {
-        Ok(_) => Ok(StatusCode::NO_CONTENT),
+        Ok(_) => {
+            rls.release().await;
+            Ok(StatusCode::NO_CONTENT)
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to delete attachment: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1300,13 +1507,22 @@ async fn mark_read(
     State(state): State<AppState>,
     auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     let user_id = auth.user_id;
 
-    match state.announcement_repo.mark_read(id, user_id).await {
-        Ok(_) => Ok(StatusCode::OK),
+    match state
+        .announcement_repo
+        .mark_read_rls(&mut **rls.conn(), id, user_id)
+        .await
+    {
+        Ok(_) => {
+            rls.release().await;
+            Ok(StatusCode::OK)
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to mark as read: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1337,13 +1553,22 @@ async fn acknowledge(
     State(state): State<AppState>,
     auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     let user_id = auth.user_id;
 
-    match state.announcement_repo.acknowledge(id, user_id).await {
-        Ok(_) => Ok(StatusCode::OK),
+    match state
+        .announcement_repo
+        .acknowledge_rls(&mut **rls.conn(), id, user_id)
+        .await
+    {
+        Ok(_) => {
+            rls.release().await;
+            Ok(StatusCode::OK)
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to acknowledge: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1374,9 +1599,11 @@ async fn get_statistics(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
 ) -> Result<Json<StatisticsResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role (Task 3.7)
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -1388,9 +1615,17 @@ async fn get_statistics(
 
     let org_id = tenant.tenant_id;
 
-    match state.announcement_repo.get_statistics(org_id).await {
-        Ok(statistics) => Ok(Json(StatisticsResponse { statistics })),
+    match state
+        .announcement_repo
+        .get_statistics_rls(&mut **rls.conn(), org_id)
+        .await
+    {
+        Ok(statistics) => {
+            rls.release().await;
+            Ok(Json(StatisticsResponse { statistics }))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to get statistics: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1418,13 +1653,22 @@ async fn get_unread_count(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
 ) -> Result<Json<UnreadCountResponse>, (StatusCode, Json<ErrorResponse>)> {
     let org_id = tenant.tenant_id;
     let user_id = auth.user_id;
 
-    match state.announcement_repo.count_unread(org_id, user_id).await {
-        Ok(unread_count) => Ok(Json(UnreadCountResponse { unread_count })),
+    match state
+        .announcement_repo
+        .count_unread_rls(&mut **rls.conn(), org_id, user_id)
+        .await
+    {
+        Ok(unread_count) => {
+            rls.release().await;
+            Ok(Json(UnreadCountResponse { unread_count }))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to get unread count: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1466,11 +1710,13 @@ async fn get_acknowledgments(
     State(state): State<AppState>,
     _auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(_query): Query<AcknowledgmentListQuery>,
 ) -> Result<Json<AcknowledgmentStatsResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Authorization: require manager-level role
     if !tenant.role.is_manager() {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -1481,14 +1727,20 @@ async fn get_acknowledgments(
     }
 
     // Check announcement exists
-    match state.announcement_repo.find_by_id(id).await {
+    match state
+        .announcement_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-            ))
+            ));
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to find announcement: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1501,9 +1753,17 @@ async fn get_acknowledgments(
         Ok(Some(_)) => {}
     }
 
-    match state.announcement_repo.get_acknowledgment_stats(id).await {
-        Ok(stats) => Ok(Json(AcknowledgmentStatsResponse { stats })),
+    match state
+        .announcement_repo
+        .get_acknowledgment_stats_rls(&mut **rls.conn(), id)
+        .await
+    {
+        Ok(stats) => {
+            rls.release().await;
+            Ok(Json(AcknowledgmentStatsResponse { stats }))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to get acknowledgment stats: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1525,7 +1785,7 @@ async fn get_acknowledgments(
 /// Security fix (Critical 1.3): Ensures managers can only target buildings/units
 /// that belong to their organization.
 async fn validate_target_ids(
-    db: &sqlx::PgPool,
+    conn: &mut sqlx::PgConnection,
     org_id: Uuid,
     target_type: &str,
     target_ids: &[Uuid],
@@ -1545,7 +1805,7 @@ async fn validate_target_ids(
             )
             .bind(target_ids)
             .bind(org_id)
-            .fetch_one(db)
+            .fetch_one(&mut *conn)
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
@@ -1568,7 +1828,7 @@ async fn validate_target_ids(
             )
             .bind(target_ids)
             .bind(org_id)
-            .fetch_one(db)
+            .fetch_one(&mut *conn)
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
@@ -1726,18 +1986,25 @@ async fn list_comments(
     State(state): State<AppState>,
     _auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Query(query): Query<ListCommentsQuery>,
 ) -> Result<Json<CommentsResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Check announcement exists
-    match state.announcement_repo.find_by_id(id).await {
+    match state
+        .announcement_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-            ))
+            ));
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to find announcement: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1751,9 +2018,14 @@ async fn list_comments(
     }
 
     // Get total count
-    let total = match state.announcement_repo.get_comment_count(id).await {
+    let total = match state
+        .announcement_repo
+        .get_comment_count_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(count) => count,
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to get comment count: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1764,6 +2036,10 @@ async fn list_comments(
             ));
         }
     };
+
+    // Release RLS connection before calling get_threaded_comments
+    // (it uses pool directly for multiple queries)
+    rls.release().await;
 
     // Get threaded comments
     match state
@@ -1809,11 +2085,13 @@ async fn create_comment(
     State(state): State<AppState>,
     auth: AuthUser,
     _tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path(id): Path<Uuid>,
     Json(req): Json<CreateCommentRequest>,
 ) -> Result<(StatusCode, Json<AnnouncementComment>), (StatusCode, Json<ErrorResponse>)> {
     // Validate content length
     if req.content.is_empty() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -1823,6 +2101,7 @@ async fn create_comment(
         ));
     }
     if req.content.len() > MAX_COMMENT_LENGTH {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -1836,15 +2115,21 @@ async fn create_comment(
     }
 
     // Check announcement exists and has comments enabled
-    let announcement = match state.announcement_repo.find_by_id(id).await {
+    let announcement = match state
+        .announcement_repo
+        .find_by_id_rls(&mut **rls.conn(), id)
+        .await
+    {
         Ok(Some(a)) => a,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Announcement not found")),
-            ))
+            ));
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to find announcement: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1858,6 +2143,7 @@ async fn create_comment(
 
     // Check comments are enabled
     if !announcement.comments_enabled {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -1869,6 +2155,7 @@ async fn create_comment(
 
     // Check announcement is published
     if !announcement.is_published() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -1880,9 +2167,14 @@ async fn create_comment(
 
     // If parent_id is provided, verify it exists and belongs to same announcement
     if let Some(parent_id) = req.parent_id {
-        match state.announcement_repo.get_comment(parent_id).await {
+        match state
+            .announcement_repo
+            .get_comment_rls(&mut **rls.conn(), parent_id)
+            .await
+        {
             Ok(Some(parent)) => {
                 if parent.announcement_id != id {
+                    rls.release().await;
                     return Err((
                         StatusCode::BAD_REQUEST,
                         Json(ErrorResponse::new(
@@ -1893,6 +2185,7 @@ async fn create_comment(
                 }
                 // Only allow one level of nesting
                 if parent.parent_id.is_some() {
+                    rls.release().await;
                     return Err((
                         StatusCode::BAD_REQUEST,
                         Json(ErrorResponse::new(
@@ -1903,12 +2196,14 @@ async fn create_comment(
                 }
             }
             Ok(None) => {
+                rls.release().await;
                 return Err((
                     StatusCode::NOT_FOUND,
                     Json(ErrorResponse::new("NOT_FOUND", "Parent comment not found")),
-                ))
+                ));
             }
             Err(e) => {
+                rls.release().await;
                 tracing::error!("Failed to find parent comment: {}", e);
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -1932,8 +2227,13 @@ async fn create_comment(
         ai_training_consent: req.ai_training_consent,
     };
 
-    match state.announcement_repo.create_comment(data).await {
+    match state
+        .announcement_repo
+        .create_comment_rls(&mut **rls.conn(), data)
+        .await
+    {
         Ok(comment) => {
+            rls.release().await;
             tracing::info!(
                 comment_id = %comment.id,
                 announcement_id = %id,
@@ -1943,6 +2243,7 @@ async fn create_comment(
             Ok((StatusCode::CREATED, Json(comment)))
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to create comment: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1976,19 +2277,26 @@ async fn delete_comment(
     State(state): State<AppState>,
     auth: AuthUser,
     tenant: TenantExtractor,
+    mut rls: RlsConnection,
     Path((id, comment_id)): Path<(Uuid, Uuid)>,
     body: Option<Json<DeleteCommentRequest>>,
 ) -> Result<Json<AnnouncementComment>, (StatusCode, Json<ErrorResponse>)> {
     // Get the comment
-    let comment = match state.announcement_repo.get_comment(comment_id).await {
+    let comment = match state
+        .announcement_repo
+        .get_comment_rls(&mut **rls.conn(), comment_id)
+        .await
+    {
         Ok(Some(c)) => c,
         Ok(None) => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Comment not found")),
-            ))
+            ));
         }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to find comment: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -2002,6 +2310,7 @@ async fn delete_comment(
 
     // Verify comment belongs to the announcement
     if comment.announcement_id != id {
+        rls.release().await;
         return Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new("NOT_FOUND", "Comment not found")),
@@ -2010,6 +2319,7 @@ async fn delete_comment(
 
     // Check if already deleted
     if comment.is_deleted() {
+        rls.release().await;
         return Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::new(
@@ -2024,6 +2334,7 @@ async fn delete_comment(
     let is_manager = tenant.role.is_manager();
 
     if !is_author && !is_manager {
+        rls.release().await;
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
@@ -2046,8 +2357,13 @@ async fn delete_comment(
         deletion_reason,
     };
 
-    match state.announcement_repo.delete_comment(data).await {
+    match state
+        .announcement_repo
+        .delete_comment_rls(&mut **rls.conn(), data)
+        .await
+    {
         Ok(deleted) => {
+            rls.release().await;
             tracing::info!(
                 comment_id = %comment_id,
                 deleted_by = %auth.user_id,
@@ -2056,11 +2372,15 @@ async fn delete_comment(
             );
             Ok(Json(deleted))
         }
-        Err(SqlxError::RowNotFound) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new("NOT_FOUND", "Comment not found")),
-        )),
+        Err(SqlxError::RowNotFound) => {
+            rls.release().await;
+            Err((
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::new("NOT_FOUND", "Comment not found")),
+            ))
+        }
         Err(e) => {
+            rls.release().await;
             tracing::error!("Failed to delete comment: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,

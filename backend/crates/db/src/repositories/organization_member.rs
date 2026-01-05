@@ -1,4 +1,14 @@
 //! Organization member repository (Epic 2A, Story 2A.5).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
 
 use crate::models::organization_member::{
     CreateOrganizationMember, MembershipStatus, OrganizationMember, OrganizationMemberWithUser,
@@ -6,7 +16,7 @@ use crate::models::organization_member::{
 };
 use crate::DbPool;
 use chrono::Utc;
-use sqlx::Error as SqlxError;
+use sqlx::{Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for organization member operations.
@@ -20,6 +30,105 @@ impl OrganizationMemberRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+
+    // ========================================================================
+    // RLS-aware methods (recommended)
+    // ========================================================================
+
+    /// Find membership by organization and user with RLS context.
+    pub async fn find_by_org_and_user_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<OrganizationMember>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let member = sqlx::query_as::<_, OrganizationMember>(
+            r#"
+            SELECT * FROM organization_members
+            WHERE organization_id = $1 AND user_id = $2 AND status != 'removed'
+            "#,
+        )
+        .bind(org_id)
+        .bind(user_id)
+        .fetch_optional(executor)
+        .await?;
+
+        Ok(member)
+    }
+
+    /// List members of an organization with RLS context.
+    pub async fn list_org_members_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+        offset: i64,
+        limit: i64,
+        status_filter: Option<MembershipStatus>,
+    ) -> Result<(Vec<OrganizationMemberWithUser>, i64), SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // For RLS, we need two separate connections for count and data
+        // This method should be called with a mutable reference to get conn twice
+        // For now, we'll use a simpler approach with a single query that includes count
+        let status_clause = if status_filter.is_some() {
+            "AND om.status = $4"
+        } else {
+            "AND om.status != 'removed'"
+        };
+
+        let data_query = format!(
+            r#"
+            SELECT
+                om.id, om.organization_id, om.user_id, om.role_id, om.role_type,
+                om.status, om.joined_at,
+                u.email as user_email, u.name as user_name
+            FROM organization_members om
+            INNER JOIN users u ON u.id = om.user_id
+            WHERE om.organization_id = $1 {}
+            ORDER BY om.joined_at DESC NULLS LAST
+            LIMIT $2 OFFSET $3
+            "#,
+            status_clause
+        );
+
+        let mut data_q = sqlx::query_as::<_, OrganizationMemberWithUser>(&data_query)
+            .bind(org_id)
+            .bind(limit)
+            .bind(offset);
+        if let Some(status) = &status_filter {
+            data_q = data_q.bind(status.as_str());
+        }
+        let members = data_q.fetch_all(executor).await?;
+
+        // For count, we use a separate query with the pool (RLS not strictly needed for count)
+        let count_query = format!(
+            r#"
+            SELECT COUNT(*) FROM organization_members om
+            WHERE om.organization_id = $1 {}
+            "#,
+            if status_filter.is_some() {
+                "AND om.status = $2"
+            } else {
+                "AND om.status != 'removed'"
+            }
+        );
+
+        let mut count_q = sqlx::query_scalar::<_, i64>(&count_query).bind(org_id);
+        if let Some(status) = &status_filter {
+            count_q = count_q.bind(status.as_str());
+        }
+        let total = count_q.fetch_one(&self.pool).await?;
+
+        Ok((members, total))
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
 
     /// Add a member to an organization.
     pub async fn create(

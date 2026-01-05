@@ -1,8 +1,18 @@
 //! Role repository for RBAC (Epic 2A, Story 2A.6).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
 
 use crate::models::role::{CreateRole, Role, UpdateRole};
 use crate::DbPool;
-use sqlx::Error as SqlxError;
+use sqlx::{Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for role operations.
@@ -16,6 +26,58 @@ impl RoleRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+
+    // ========================================================================
+    // RLS-aware methods (recommended)
+    // ========================================================================
+
+    /// Find role by ID with RLS context.
+    pub async fn find_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Role>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let role = sqlx::query_as::<_, Role>(
+            r#"
+            SELECT * FROM roles WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(executor)
+        .await?;
+
+        Ok(role)
+    }
+
+    /// List all roles for an organization with RLS context.
+    pub async fn list_by_org_rls<'e, E>(
+        &self,
+        executor: E,
+        org_id: Uuid,
+    ) -> Result<Vec<Role>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let roles = sqlx::query_as::<_, Role>(
+            r#"
+            SELECT * FROM roles
+            WHERE organization_id = $1
+            ORDER BY is_system DESC, name ASC
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(roles)
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
 
     /// Create a new role.
     pub async fn create(&self, data: CreateRole) -> Result<Role, SqlxError> {

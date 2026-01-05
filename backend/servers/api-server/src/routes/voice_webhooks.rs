@@ -8,6 +8,7 @@
 
 use crate::services::VoiceCommandProcessor;
 use crate::state::AppState;
+use api_core::extractors::RlsConnection;
 use axum::{
     body::Bytes,
     extract::State,
@@ -29,6 +30,7 @@ use hmac::{Hmac, Mac};
 use integrations::{encrypt_if_available, IntegrationCrypto};
 use serde::Deserialize;
 use sha2::Sha256;
+use sqlx::PgConnection;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -77,6 +79,7 @@ pub fn voice_webhook_router() -> Router<AppState> {
 async fn alexa_webhook(
     State(state): State<AppState>,
     headers: HeaderMap,
+    mut rls: RlsConnection,
     body: Bytes,
 ) -> Result<Json<AlexaSkillResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify request signature (Story 93.3)
@@ -105,9 +108,10 @@ async fn alexa_webhook(
 
     // Authenticate user via OAuth token
     let device = if let Some(token) = access_token {
-        authenticate_voice_user(&state, token, voice_platform::ALEXA).await?
+        authenticate_voice_user(rls.conn(), token, voice_platform::ALEXA).await?
     } else {
         // Account linking not complete - return link card
+        rls.release().await;
         return Ok(Json(build_alexa_link_account_response()));
     };
 
@@ -167,6 +171,7 @@ async fn alexa_webhook(
         }
     };
 
+    rls.release().await;
     Ok(Json(response))
 }
 
@@ -196,11 +201,13 @@ async fn alexa_health_check() -> StatusCode {
 async fn google_actions_webhook(
     State(state): State<AppState>,
     headers: HeaderMap,
+    mut rls: RlsConnection,
     Json(request): Json<GoogleActionsRequest>,
 ) -> Result<Json<GoogleActionsResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify request (Google uses Bearer token in Authorization header)
     if let Err(e) = verify_google_request(&headers) {
         tracing::warn!("Google Actions verification failed: {}", e);
+        rls.release().await;
         return Err((
             StatusCode::UNAUTHORIZED,
             Json(ErrorResponse::new("INVALID_REQUEST", &e)),
@@ -217,9 +224,10 @@ async fn google_actions_webhook(
 
     // Authenticate user via OAuth token
     let device = if let Some(token) = access_token {
-        authenticate_voice_user(&state, token, voice_platform::GOOGLE_ASSISTANT).await?
+        authenticate_voice_user(rls.conn(), token, voice_platform::GOOGLE_ASSISTANT).await?
     } else {
         // Account linking not complete
+        rls.release().await;
         return Ok(Json(build_google_link_account_response(
             &request.session.id,
         )));
@@ -248,6 +256,7 @@ async fn google_actions_webhook(
             )
         })?;
 
+    rls.release().await;
     Ok(Json(build_google_response(&request.session.id, &result)))
 }
 
@@ -843,7 +852,7 @@ fn verify_hmac_signature(signature: &str, body: &str) -> Result<bool, String> {
 
 /// Authenticate user via OAuth access token.
 async fn authenticate_voice_user(
-    state: &AppState,
+    conn: &mut PgConnection,
     access_token: &str,
     platform: &str,
 ) -> Result<db::models::VoiceAssistantDevice, (StatusCode, Json<ErrorResponse>)> {
@@ -865,7 +874,7 @@ async fn authenticate_voice_user(
         "#,
     )
     .bind(platform)
-    .fetch_optional(&state.db)
+    .fetch_optional(&mut *conn)
     .await
     .map_err(|e| {
         tracing::error!("Database error: {}", e);

@@ -583,7 +583,10 @@ pub async fn login(
     }
 
     // Check 2FA if enabled (Epic 9, Story 9.1)
-    if let Ok(Some(mfa_record)) = state.two_factor_repo.get_by_user_id(user.id).await {
+    // Note: Login happens before RLS context is established. 2FA is user-level, not tenant-scoped.
+    #[allow(deprecated)]
+    let mfa_check_result = state.two_factor_repo.get_by_user_id(user.id).await;
+    if let Ok(Some(mfa_record)) = mfa_check_result {
         if mfa_record.enabled {
             // 2FA is enabled - check if code was provided
             match &req.two_factor_code {
@@ -638,6 +641,8 @@ pub async fn login(
 
                     // If backup code was used, consume it and log it
                     if let Some(code_index) = backup_result {
+                        // Note: Login happens before RLS context is established.
+                        #[allow(deprecated)]
                         let _ = state
                             .two_factor_repo
                             .use_backup_code(user.id, code_index)

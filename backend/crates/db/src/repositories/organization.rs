@@ -1,10 +1,34 @@
 //! Organization repository (Epic 2A, Story 2A.1).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_organization(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateOrganizationRequest>,
+//! ) -> Result<Json<Organization>> {
+//!     let org = state.org_repo.create_rls(rls.conn(), data).await?;
+//!     rls.release().await;
+//!     Ok(Json(org))
+//! }
+//! ```
 
 use crate::models::organization::{
     CreateOrganization, Organization, OrganizationSummary, UpdateOrganization,
 };
 use crate::DbPool;
-use sqlx::Error as SqlxError;
+use sqlx::{Error as SqlxError, Executor, Postgres};
 use uuid::Uuid;
 
 /// Repository for organization operations.
@@ -19,8 +43,21 @@ impl OrganizationRepository {
         Self { pool }
     }
 
-    /// Create a new organization.
-    pub async fn create(&self, data: CreateOrganization) -> Result<Organization, SqlxError> {
+    // ========================================================================
+    // RLS-aware methods (recommended)
+    // ========================================================================
+
+    /// Create a new organization with RLS context.
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateOrganization,
+    ) -> Result<Organization, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let org = sqlx::query_as::<_, Organization>(
             r#"
             INSERT INTO organizations (name, slug, contact_email, logo_url, primary_color)
@@ -33,42 +70,59 @@ impl OrganizationRepository {
         .bind(&data.contact_email)
         .bind(&data.logo_url)
         .bind(&data.primary_color)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(org)
     }
 
-    /// Find organization by ID.
-    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+    /// Find organization by ID with RLS context.
+    pub async fn find_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Organization>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let org = sqlx::query_as::<_, Organization>(
             r#"
             SELECT * FROM organizations WHERE id = $1 AND status != 'deleted'
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(org)
     }
 
-    /// Find organization by slug.
-    pub async fn find_by_slug(&self, slug: &str) -> Result<Option<Organization>, SqlxError> {
+    /// Find organization by slug with RLS context.
+    pub async fn find_by_slug_rls<'e, E>(
+        &self,
+        executor: E,
+        slug: &str,
+    ) -> Result<Option<Organization>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let org = sqlx::query_as::<_, Organization>(
             r#"
             SELECT * FROM organizations WHERE LOWER(slug) = LOWER($1) AND status != 'deleted'
             "#,
         )
         .bind(slug)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(org)
     }
 
-    /// Check if slug exists.
-    pub async fn slug_exists(&self, slug: &str) -> Result<bool, SqlxError> {
+    /// Check if slug exists with RLS context.
+    pub async fn slug_exists_rls<'e, E>(&self, executor: E, slug: &str) -> Result<bool, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let result = sqlx::query_scalar::<_, i64>(
             r#"
             SELECT COUNT(*) FROM organizations
@@ -76,18 +130,22 @@ impl OrganizationRepository {
             "#,
         )
         .bind(slug)
-        .fetch_one(&self.pool)
+        .fetch_one(executor)
         .await?;
 
         Ok(result > 0)
     }
 
-    /// Update organization.
-    pub async fn update(
+    /// Update organization with RLS context.
+    pub async fn update_rls<'e, E>(
         &self,
+        executor: E,
         id: Uuid,
         data: UpdateOrganization,
-    ) -> Result<Option<Organization>, SqlxError> {
+    ) -> Result<Option<Organization>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         // Build dynamic update query
         let mut updates = vec!["updated_at = NOW()".to_string()];
         let mut param_idx = 1;
@@ -136,12 +194,19 @@ impl OrganizationRepository {
             q = q.bind(settings);
         }
 
-        let org = q.fetch_optional(&self.pool).await?;
+        let org = q.fetch_optional(executor).await?;
         Ok(org)
     }
 
-    /// Suspend organization.
-    pub async fn suspend(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+    /// Suspend organization with RLS context.
+    pub async fn suspend_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Organization>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let org = sqlx::query_as::<_, Organization>(
             r#"
             UPDATE organizations
@@ -151,14 +216,21 @@ impl OrganizationRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(org)
     }
 
-    /// Reactivate suspended organization.
-    pub async fn reactivate(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+    /// Reactivate suspended organization with RLS context.
+    pub async fn reactivate_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Organization>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let org = sqlx::query_as::<_, Organization>(
             r#"
             UPDATE organizations
@@ -168,14 +240,21 @@ impl OrganizationRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(org)
     }
 
-    /// Soft delete organization.
-    pub async fn soft_delete(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+    /// Soft delete organization with RLS context (archive).
+    pub async fn archive_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Organization>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
         let org = sqlx::query_as::<_, Organization>(
             r#"
             UPDATE organizations
@@ -185,10 +264,119 @@ impl OrganizationRepository {
             "#,
         )
         .bind(id)
-        .fetch_optional(&self.pool)
+        .fetch_optional(executor)
         .await?;
 
         Ok(org)
+    }
+
+    /// List organizations for a user (via memberships) with RLS context.
+    pub async fn get_user_organizations_rls<'e, E>(
+        &self,
+        executor: E,
+        user_id: Uuid,
+    ) -> Result<Vec<OrganizationSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let orgs = sqlx::query_as::<_, OrganizationSummary>(
+            r#"
+            SELECT o.id, o.name, o.slug, o.logo_url, o.status
+            FROM organizations o
+            INNER JOIN organization_members om ON om.organization_id = o.id
+            WHERE om.user_id = $1 AND om.status = 'active' AND o.status != 'deleted'
+            ORDER BY o.name
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(orgs)
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
+
+    /// Create a new organization.
+    ///
+    /// **Deprecated**: Use `create_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use create_rls with RlsConnection instead")]
+    pub async fn create(&self, data: CreateOrganization) -> Result<Organization, SqlxError> {
+        self.create_rls(&self.pool, data).await
+    }
+
+    /// Find organization by ID.
+    ///
+    /// **Deprecated**: Use `find_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use find_by_id_rls with RlsConnection instead"
+    )]
+    pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+        self.find_by_id_rls(&self.pool, id).await
+    }
+
+    /// Find organization by slug.
+    ///
+    /// **Deprecated**: Use `find_by_slug_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use find_by_slug_rls with RlsConnection instead"
+    )]
+    pub async fn find_by_slug(&self, slug: &str) -> Result<Option<Organization>, SqlxError> {
+        self.find_by_slug_rls(&self.pool, slug).await
+    }
+
+    /// Check if slug exists.
+    ///
+    /// **Deprecated**: Use `slug_exists_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use slug_exists_rls with RlsConnection instead"
+    )]
+    pub async fn slug_exists(&self, slug: &str) -> Result<bool, SqlxError> {
+        self.slug_exists_rls(&self.pool, slug).await
+    }
+
+    /// Update organization.
+    ///
+    /// **Deprecated**: Use `update_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use update_rls with RlsConnection instead")]
+    pub async fn update(
+        &self,
+        id: Uuid,
+        data: UpdateOrganization,
+    ) -> Result<Option<Organization>, SqlxError> {
+        self.update_rls(&self.pool, id, data).await
+    }
+
+    /// Suspend organization.
+    ///
+    /// **Deprecated**: Use `suspend_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use suspend_rls with RlsConnection instead")]
+    pub async fn suspend(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+        self.suspend_rls(&self.pool, id).await
+    }
+
+    /// Reactivate suspended organization.
+    ///
+    /// **Deprecated**: Use `reactivate_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use reactivate_rls with RlsConnection instead"
+    )]
+    pub async fn reactivate(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+        self.reactivate_rls(&self.pool, id).await
+    }
+
+    /// Soft delete organization.
+    ///
+    /// **Deprecated**: Use `archive_rls` with an RLS-enabled connection instead.
+    #[deprecated(since = "0.2.274", note = "Use archive_rls with RlsConnection instead")]
+    pub async fn soft_delete(&self, id: Uuid) -> Result<Option<Organization>, SqlxError> {
+        self.archive_rls(&self.pool, id).await
     }
 
     /// List all organizations (admin only).
@@ -303,23 +491,16 @@ impl OrganizationRepository {
     }
 
     /// Get organizations for a user (via memberships).
+    ///
+    /// **Deprecated**: Use `get_user_organizations_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use get_user_organizations_rls with RlsConnection instead"
+    )]
     pub async fn get_user_organizations(
         &self,
         user_id: Uuid,
     ) -> Result<Vec<OrganizationSummary>, SqlxError> {
-        let orgs = sqlx::query_as::<_, OrganizationSummary>(
-            r#"
-            SELECT o.id, o.name, o.slug, o.logo_url, o.status
-            FROM organizations o
-            INNER JOIN organization_members om ON om.organization_id = o.id
-            WHERE om.user_id = $1 AND om.status = 'active' AND o.status != 'deleted'
-            ORDER BY o.name
-            "#,
-        )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await?;
-
-        Ok(orgs)
+        self.get_user_organizations_rls(&self.pool, user_id).await
     }
 }

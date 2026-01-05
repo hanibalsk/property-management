@@ -1,6 +1,7 @@
 //! Neighbor routes (Epic 6, Story 6.6: Neighbor Information).
 
 use crate::state::AppState;
+use api_core::extractors::RlsConnection;
 use api_core::{AuthUser, TenantExtractor};
 use axum::{
     extract::{Path, State},
@@ -86,13 +87,14 @@ async fn list_neighbors(
     State(state): State<AppState>,
     tenant: TenantExtractor,
     auth_user: AuthUser,
+    mut rls: RlsConnection,
     Path(building_id): Path<Uuid>,
 ) -> Result<Json<NeighborsResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Security: Verify building belongs to current tenant (Critical 1.4 fix)
     let building_org: Option<(Uuid,)> =
         sqlx::query_as("SELECT organization_id FROM buildings WHERE id = $1")
             .bind(building_id)
-            .fetch_optional(&state.db)
+            .fetch_optional(&mut **rls.conn())
             .await
             .map_err(|e| {
                 tracing::error!("Failed to verify building: {:?}", e);
@@ -104,12 +106,14 @@ async fn list_neighbors(
 
     match building_org {
         None => {
+            rls.release().await;
             return Err((
                 StatusCode::NOT_FOUND,
                 Json(ErrorResponse::new("NOT_FOUND", "Building not found")),
             ));
         }
         Some((org_id,)) if org_id != tenant.tenant_id => {
+            rls.release().await;
             return Err((
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
@@ -145,6 +149,9 @@ async fn list_neighbors(
                 Json(ErrorResponse::new("DB_ERROR", e.to_string())),
             )
         })?;
+
+    // Release RLS context before returning connection to pool
+    rls.release().await;
 
     Ok(Json(NeighborsResponse {
         count: neighbors.len(),

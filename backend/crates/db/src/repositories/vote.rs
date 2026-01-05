@@ -1,4 +1,28 @@
 //! Vote repository (Epic 5: Building Voting & Decisions).
+//!
+//! # RLS Integration
+//!
+//! This repository supports two usage patterns:
+//!
+//! 1. **RLS-aware** (recommended): Use methods with `_rls` suffix that accept an executor
+//!    with RLS context already set (e.g., from `RlsConnection`).
+//!
+//! 2. **Legacy**: Use methods without suffix that use the internal pool. These do NOT
+//!    enforce RLS and should be migrated to the RLS-aware pattern.
+//!
+//! ## Example
+//!
+//! ```rust,ignore
+//! async fn create_poll(
+//!     mut rls: RlsConnection,
+//!     State(state): State<AppState>,
+//!     Json(data): Json<CreateVoteRequest>,
+//! ) -> Result<Json<Vote>> {
+//!     let vote = state.vote_repo.create_poll_rls(rls.conn(), data).await?;
+//!     rls.release().await;
+//!     Ok(Json(vote))
+//! }
+//! ```
 
 use crate::models::vote::{
     audit_action, vote_status, CancelVote, CastVote, CreateVote, CreateVoteAuditLog,
@@ -11,7 +35,7 @@ use crate::DbPool;
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use sha2::{Digest, Sha256};
-use sqlx::{Error as SqlxError, FromRow};
+use sqlx::{Error as SqlxError, Executor, FromRow, Postgres};
 use uuid::Uuid;
 
 /// Row struct for vote with details query.
@@ -95,11 +119,264 @@ impl VoteRepository {
     }
 
     // ========================================================================
+    // RLS-aware methods (recommended)
+    // ========================================================================
+
+    /// Create a new poll/vote with RLS context (Story 5.1).
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn create_poll_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CreateVote,
+    ) -> Result<Vote, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let vote = sqlx::query_as::<_, Vote>(
+            r#"
+            INSERT INTO votes (
+                organization_id, building_id, title, description,
+                start_at, end_at, quorum_type, quorum_percentage,
+                allow_delegation, anonymous_voting, created_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING *
+            "#,
+        )
+        .bind(data.organization_id)
+        .bind(data.building_id)
+        .bind(&data.title)
+        .bind(&data.description)
+        .bind(data.start_at)
+        .bind(data.end_at)
+        .bind(&data.quorum_type)
+        .bind(data.quorum_percentage)
+        .bind(data.allow_delegation.unwrap_or(true))
+        .bind(data.anonymous_voting.unwrap_or(false))
+        .bind(data.created_by)
+        .fetch_one(executor)
+        .await?;
+
+        Ok(vote)
+    }
+
+    /// Find poll/vote by ID with RLS context.
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn find_poll_by_id_rls<'e, E>(
+        &self,
+        executor: E,
+        id: Uuid,
+    ) -> Result<Option<Vote>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let vote = sqlx::query_as::<_, Vote>(
+            r#"
+            SELECT * FROM votes WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(executor)
+        .await?;
+
+        Ok(vote)
+    }
+
+    /// Cast a vote with RLS context (Story 5.3).
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn cast_vote_rls<'e, E>(
+        &self,
+        executor: E,
+        data: CastVote,
+    ) -> Result<VoteReceipt, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Generate hash for ballot integrity
+        let hash_input = format!(
+            "{}:{}:{}:{}:{}",
+            data.vote_id,
+            data.user_id,
+            data.unit_id,
+            serde_json::to_string(&data.answers).unwrap_or_default(),
+            Utc::now().timestamp_millis()
+        );
+        let response_hash = format!("{:x}", Sha256::digest(hash_input.as_bytes()));
+
+        // Get vote weight from unit ownership_share
+        // Note: For RLS version, we use a default weight of 1.0
+        // The calling code should provide the weight if needed
+        let vote_weight = Decimal::from(1);
+
+        let is_delegated = data.delegation_id.is_some();
+
+        let response = sqlx::query_as::<_, VoteResponse>(
+            r#"
+            INSERT INTO vote_responses (
+                vote_id, user_id, unit_id, delegation_id, is_delegated,
+                answers, vote_weight, response_hash
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            ON CONFLICT (vote_id, unit_id) DO UPDATE
+            SET
+                user_id = EXCLUDED.user_id,
+                delegation_id = EXCLUDED.delegation_id,
+                is_delegated = EXCLUDED.is_delegated,
+                answers = EXCLUDED.answers,
+                response_hash = EXCLUDED.response_hash,
+                submitted_at = NOW()
+            RETURNING *
+            "#,
+        )
+        .bind(data.vote_id)
+        .bind(data.user_id)
+        .bind(data.unit_id)
+        .bind(data.delegation_id)
+        .bind(is_delegated)
+        .bind(&data.answers)
+        .bind(vote_weight)
+        .bind(&response_hash)
+        .fetch_one(executor)
+        .await?;
+
+        // Generate confirmation number (first 8 chars of hash)
+        let confirmation_number = response_hash[..8].to_uppercase();
+
+        Ok(VoteReceipt {
+            response_id: response.id,
+            vote_id: response.vote_id,
+            unit_id: response.unit_id,
+            submitted_at: response.submitted_at,
+            response_hash,
+            confirmation_number,
+        })
+    }
+
+    /// Get poll results with RLS context (Story 5.5).
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn get_poll_results_rls<'e, E>(
+        &self,
+        executor: E,
+        vote_id: Uuid,
+    ) -> Result<Option<VoteResults>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        // Get vote from RLS context
+        let vote = sqlx::query_as::<_, Vote>(
+            r#"
+            SELECT * FROM votes WHERE id = $1
+            "#,
+        )
+        .bind(vote_id)
+        .fetch_optional(executor)
+        .await?;
+
+        match vote {
+            Some(v) if v.is_closed() => {
+                // Return cached results
+                let results: VoteResults =
+                    serde_json::from_value(v.results).unwrap_or(VoteResults {
+                        vote_id,
+                        participation_count: v.participation_count.unwrap_or(0),
+                        eligible_count: v.eligible_count.unwrap_or(0),
+                        participation_rate: 0.0,
+                        quorum_met: v.quorum_met.unwrap_or(false),
+                        questions: Vec::new(),
+                        calculated_at: v.results_calculated_at.unwrap_or_else(Utc::now),
+                    });
+                Ok(Some(results))
+            }
+            Some(_) => {
+                // Vote not closed yet - for RLS version, return empty results
+                // Full calculation requires multiple queries
+                Ok(Some(VoteResults {
+                    vote_id,
+                    participation_count: 0,
+                    eligible_count: 0,
+                    participation_rate: 0.0,
+                    quorum_met: false,
+                    questions: Vec::new(),
+                    calculated_at: Utc::now(),
+                }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// List polls by building with RLS context.
+    ///
+    /// Use this method with an `RlsConnection` to ensure RLS policies are enforced.
+    pub async fn list_polls_by_building_rls<'e, E>(
+        &self,
+        executor: E,
+        building_id: Uuid,
+    ) -> Result<Vec<VoteSummary>, SqlxError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let votes = sqlx::query_as::<_, VoteSummary>(
+            r#"
+            SELECT id, building_id, title, status::text as status, end_at,
+                   quorum_type::text as quorum_type, participation_count, eligible_count, quorum_met
+            FROM votes
+            WHERE building_id = $1
+            ORDER BY created_at DESC
+            "#,
+        )
+        .bind(building_id)
+        .fetch_all(executor)
+        .await?;
+
+        Ok(votes)
+    }
+
+    // ========================================================================
+    // Legacy methods (use pool directly - migrate to RLS versions)
+    // ========================================================================
+
+    // ========================================================================
     // Vote CRUD
     // ========================================================================
 
     /// Create a new vote (Story 5.1).
+    ///
+    /// **Deprecated**: Use `create_poll_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use create_poll_rls with RlsConnection instead"
+    )]
     pub async fn create(&self, data: CreateVote) -> Result<Vote, SqlxError> {
+        // Save fields needed for audit log before moving data into create_poll_rls
+        let created_by = data.created_by;
+        let title = data.title.clone();
+        let quorum_type = data.quorum_type.clone();
+
+        let vote = self.create_poll_rls(&self.pool, data).await?;
+
+        // Create audit log entry (using legacy pool)
+        self.create_audit_entry(CreateVoteAuditLog {
+            vote_id: vote.id,
+            user_id: Some(created_by),
+            action: audit_action::VOTE_CREATED.to_string(),
+            data: serde_json::json!({
+                "title": title,
+                "quorum_type": quorum_type,
+            }),
+            ip_address: None,
+            user_agent: None,
+        })
+        .await?;
+
+        Ok(vote)
+    }
+
+    /// Create a new vote (Story 5.1) - non-deprecated version for internal use.
+    pub async fn create_vote(&self, data: CreateVote) -> Result<Vote, SqlxError> {
         let vote = sqlx::query_as::<_, Vote>(
             r#"
             INSERT INTO votes (
@@ -143,17 +420,14 @@ impl VoteRepository {
     }
 
     /// Find vote by ID.
+    ///
+    /// **Deprecated**: Use `find_poll_by_id_rls` with an RLS-enabled connection instead.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use find_poll_by_id_rls with RlsConnection instead"
+    )]
     pub async fn find_by_id(&self, id: Uuid) -> Result<Option<Vote>, SqlxError> {
-        let vote = sqlx::query_as::<_, Vote>(
-            r#"
-            SELECT * FROM votes WHERE id = $1
-            "#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
-
-        Ok(vote)
+        self.find_poll_by_id_rls(&self.pool, id).await
     }
 
     /// Find vote with full details.
@@ -295,6 +569,14 @@ impl VoteRepository {
     }
 
     /// List active votes for a building.
+    ///
+    /// **Deprecated**: Use `list_polls_by_building_rls` with an RLS-enabled connection instead.
+    /// Note: This method only returns active votes. The RLS version returns all votes;
+    /// filter by status as needed.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use list_polls_by_building_rls with RlsConnection instead"
+    )]
     pub async fn list_active_by_building(
         &self,
         building_id: Uuid,
@@ -667,6 +949,15 @@ impl VoteRepository {
     // ========================================================================
 
     /// Cast a vote (Story 5.3).
+    ///
+    /// **Deprecated**: Use `cast_vote_rls` with an RLS-enabled connection instead.
+    /// Note: This legacy method includes additional functionality (vote weight lookup,
+    /// audit logging, participation count update) that must be handled separately
+    /// when using the RLS version.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use cast_vote_rls with RlsConnection instead"
+    )]
     pub async fn cast_vote(&self, data: CastVote) -> Result<VoteReceipt, SqlxError> {
         // Generate hash for ballot integrity
         let hash_input = format!(
@@ -779,6 +1070,7 @@ impl VoteRepository {
     }
 
     /// Check vote eligibility for a user (Story 5.3).
+    #[allow(deprecated)]
     pub async fn check_eligibility(
         &self,
         vote_id: Uuid,
@@ -883,6 +1175,7 @@ impl VoteRepository {
     }
 
     /// Count eligible units for a vote.
+    #[allow(deprecated)]
     async fn count_eligible_units(&self, vote_id: Uuid) -> Result<i32, SqlxError> {
         let vote = self
             .find_by_id(vote_id)
@@ -1124,6 +1417,7 @@ impl VoteRepository {
     // ========================================================================
 
     /// Calculate results for a vote.
+    #[allow(deprecated)]
     pub async fn calculate_results(&self, vote_id: Uuid) -> Result<VoteResults, SqlxError> {
         let vote = self
             .find_by_id(vote_id)
@@ -1331,6 +1625,15 @@ impl VoteRepository {
     }
 
     /// Get results for a vote.
+    ///
+    /// **Deprecated**: Use `get_poll_results_rls` with an RLS-enabled connection instead.
+    /// Note: This legacy method includes additional functionality (live result calculation)
+    /// that must be handled separately when using the RLS version.
+    #[deprecated(
+        since = "0.2.274",
+        note = "Use get_poll_results_rls with RlsConnection instead"
+    )]
+    #[allow(deprecated)]
     pub async fn get_results(&self, vote_id: Uuid) -> Result<Option<VoteResults>, SqlxError> {
         let vote = self.find_by_id(vote_id).await?;
 
@@ -1412,6 +1715,7 @@ impl VoteRepository {
     // ========================================================================
 
     /// Generate PDF report data (stub).
+    #[allow(deprecated)]
     pub async fn generate_report_data(
         &self,
         vote_id: Uuid,

@@ -487,7 +487,11 @@ impl AuthHandler {
         }
 
         // Check 2FA if enabled
-        if let Ok(Some(mfa_record)) = state.two_factor_repo.get_by_user_id(user.id).await {
+        // Note: Using deprecated method here because login happens before RLS context is established.
+        // 2FA is user-level, not tenant-scoped, so this is acceptable for now.
+        #[allow(deprecated)]
+        let mfa_record_opt = state.two_factor_repo.get_by_user_id(user.id).await;
+        if let Ok(Some(mfa_record)) = mfa_record_opt {
             if mfa_record.enabled {
                 match &data.two_factor_code {
                     Some(code) => {
@@ -530,6 +534,8 @@ impl AuthHandler {
 
                         // If backup code was used, consume it and log it
                         if let Some(code_index) = backup_result {
+                            // Note: Using deprecated method here because login happens before RLS context.
+                            #[allow(deprecated)]
                             let _ = state
                                 .two_factor_repo
                                 .use_backup_code(user.id, code_index)

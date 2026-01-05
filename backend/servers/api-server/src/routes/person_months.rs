@@ -4,7 +4,7 @@
 //! Person-months represent the number of residents in a unit for each month,
 //! used for calculating shared utility costs.
 
-use api_core::extractors::AuthUser;
+use api_core::extractors::{AuthUser, RlsConnection};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -229,13 +229,14 @@ pub struct BuildingSummaryResponse {
 pub async fn get_unit_person_months(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
     Query(query): Query<GetPersonMonthsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -353,13 +354,14 @@ pub async fn get_unit_person_months(
 pub async fn upsert_person_month(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<UpsertPersonMonthRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -515,12 +517,13 @@ pub async fn upsert_person_month(
 pub async fn get_person_month(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id, id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -613,13 +616,14 @@ pub async fn get_person_month(
 pub async fn update_person_month(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id, id)): Path<(Uuid, Uuid, Uuid)>,
     Json(req): Json<UpdatePersonMonthRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -774,12 +778,13 @@ pub async fn update_person_month(
 pub async fn delete_person_month(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id, id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -885,13 +890,14 @@ pub async fn delete_person_month(
 pub async fn get_yearly_summary(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
     Query(query): Query<GetPersonMonthsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -988,13 +994,14 @@ pub async fn get_yearly_summary(
 pub async fn calculate_from_residents(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path((building_id, unit_id)): Path<(Uuid, Uuid)>,
     Json(req): Json<GetPersonMonthsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -1094,13 +1101,14 @@ pub async fn calculate_from_residents(
 pub async fn list_building_person_months(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(building_id): Path<Uuid>,
     Query(query): Query<BuildingPersonMonthsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -1174,13 +1182,14 @@ pub async fn list_building_person_months(
 pub async fn bulk_upsert_person_months(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(building_id): Path<Uuid>,
     Json(req): Json<BulkUpsertRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
@@ -1298,13 +1307,14 @@ pub async fn bulk_upsert_person_months(
 pub async fn get_building_summary(
     State(state): State<AppState>,
     auth: AuthUser,
+    mut rls: RlsConnection,
     Path(building_id): Path<Uuid>,
     Query(query): Query<BuildingPersonMonthsQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // Verify building exists and user has access
     let building = state
         .building_repo
-        .find_by_id(building_id)
+        .find_by_id_rls(&mut **rls.conn(), building_id)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Failed to get building");
