@@ -104,6 +104,7 @@ impl TestDb {
 
 /// Core smoke test: Verify tenant A cannot see tenant B's buildings
 #[tokio::test]
+#[ignore] // Requires database with migrations - run with --ignored flag
 async fn smoke_test_cross_tenant_isolation() {
     let db = TestDb::new()
         .await
@@ -220,6 +221,7 @@ async fn smoke_test_cross_tenant_isolation() {
 
 /// Smoke test: Verify no context means no data access
 #[tokio::test]
+#[ignore] // Requires database with migrations - run with --ignored flag
 async fn smoke_test_null_context_blocks_access() {
     let db = TestDb::new()
         .await
@@ -267,6 +269,7 @@ async fn smoke_test_null_context_blocks_access() {
 
 /// Smoke test: Verify context clearing works
 #[tokio::test]
+#[ignore] // Requires database with migrations - run with --ignored flag
 async fn smoke_test_context_clearing() {
     let db = TestDb::new()
         .await
