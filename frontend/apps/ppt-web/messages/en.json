@@ -247,15 +247,34 @@
   },
   "financial": {
     "title": "Financial",
-    "invoices": "Invoices",
-    "payments": "Payments",
-    "budget": "Budget",
     "amount": "Amount",
     "dueDate": "Due Date",
     "paidDate": "Paid Date",
     "statusPaid": "Paid",
     "statusPending": "Pending",
-    "statusOverdue": "Overdue"
+    "statusOverdue": "Overdue",
+    "invoices": {
+      "title": "Invoice Management",
+      "subtitle": "Create, send, and track invoices",
+      "createNew": "Create Invoice"
+    },
+    "payments": {
+      "title": "Payment Management",
+      "subtitle": "Record and reconcile payments",
+      "recordPayment": "Record Payment",
+      "totalReceived": "Total Received",
+      "pendingReconciliation": "Pending Reconciliation",
+      "pendingReconciliationTitle": "Pending Reconciliation",
+      "recentPayments": "Recent Payments"
+    },
+    "budgets": {
+      "title": "Budget Management",
+      "subtitle": "Plan and track budgets",
+      "createNew": "Create Budget",
+      "budgetsList": "Budgets",
+      "noBudgets": "No budgets found",
+      "createFirst": "Create Your First Budget"
+    }
   },
   "announcements": {
     "form": {
