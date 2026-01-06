@@ -125,3 +125,6 @@ pub mod feature_packages;
 
 // Epic 109: User Type Feature Experience
 pub mod features;
+
+// UC-12: Utility Outages
+pub mod outages;

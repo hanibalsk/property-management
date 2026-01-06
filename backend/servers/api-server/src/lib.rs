@@ -215,6 +215,8 @@ pub fn create_router(state: AppState) -> Router {
         )
         // Features routes (Epic 109)
         .nest("/api/v1/features", routes::features::router())
+        // Outages routes (UC-12)
+        .nest("/api/v1/outages", routes::outages::router())
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

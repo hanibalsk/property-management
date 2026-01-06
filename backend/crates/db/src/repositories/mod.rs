@@ -263,3 +263,8 @@ pub use feature_package::FeaturePackageRepository;
 pub mod feature_analytics;
 
 pub use feature_analytics::FeatureAnalyticsRepository;
+
+// UC-12: Utility Outages
+pub mod outage;
+
+pub use outage::OutageRepository;

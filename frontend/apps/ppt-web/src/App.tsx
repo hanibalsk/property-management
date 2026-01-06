@@ -26,6 +26,14 @@ import type {
 import { DocumentDetailPage, DocumentUploadPage, DocumentsPage } from './features/documents';
 import { EmergencyContactDirectoryPage } from './features/emergency';
 import { ArticleDetailPage, NewsListPage } from './features/news';
+import { CreateOutagePage, EditOutagePage, OutagesPage, ViewOutagePage } from './features/outages';
+import type {
+  ListOutagesParams,
+  OutageCommodity,
+  OutageDetail,
+  OutageSeverity,
+  OutageSummary,
+} from './features/outages';
 import { PrivacySettingsPage } from './features/privacy';
 import { AccessibilitySettingsPage } from './features/settings';
 import { LoginPage } from './pages/LoginPage';
@@ -138,6 +146,7 @@ function AppNavigation() {
       <Link to="/news">{t('nav.news')}</Link>
       <Link to="/emergency">{t('nav.emergency')}</Link>
       <Link to="/disputes">{t('nav.disputes')}</Link>
+      <Link to="/outages">{t('nav.outages')}</Link>
       <Link to="/settings/accessibility">{t('nav.accessibility')}</Link>
       <Link to="/settings/privacy">{t('nav.privacy')}</Link>
       <ConnectionStatus />
@@ -178,6 +187,11 @@ function App() {
                     <Route path="/disputes" element={<DisputesPageRoute />} />
                     <Route path="/disputes/new" element={<FileDisputePageRoute />} />
                     <Route path="/disputes/:disputeId" element={<DisputeDetailRoute />} />
+                    {/* Outages routes (UC-12) */}
+                    <Route path="/outages" element={<OutagesPageRoute />} />
+                    <Route path="/outages/new" element={<CreateOutagePageRoute />} />
+                    <Route path="/outages/:outageId" element={<ViewOutagePageRoute />} />
+                    <Route path="/outages/:outageId/edit" element={<EditOutagePageRoute />} />
                   </Routes>
                 </main>
               </div>
@@ -531,6 +545,247 @@ function DisputeDetailRoute() {
       </div>
       <Link to="/disputes">{t('common.backToDisputes')}</Link>
     </div>
+  );
+}
+
+/**
+ * Route wrapper for outages list page (UC-12).
+ * Manages filter state and navigation callbacks.
+ */
+function OutagesPageRoute() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  if (!user?.organizationId) {
+    return (
+      <div className="error-page">
+        <h1>{t('errors.authenticationRequired')}</h1>
+        <p>{t('errors.missingOrgContext')}</p>
+        <Link to="/login">{t('auth.signIn')}</Link>
+      </div>
+    );
+  }
+
+  // TODO: Replace with real API hooks when available
+  const [outages] = useState<OutageSummary[]>([]);
+  const [total] = useState(0);
+  const [isLoading] = useState(false);
+
+  const handleNavigateToCreate = () => navigate('/outages/new');
+  const handleNavigateToView = (id: string) => navigate(`/outages/${id}`);
+  const handleNavigateToEdit = (id: string) => navigate(`/outages/${id}/edit`);
+  const handleFilterChange = (_params: ListOutagesParams) => {
+    // TODO: Implement API call with filters
+  };
+
+  return (
+    <OutagesPage
+      outages={outages}
+      total={total}
+      isLoading={isLoading}
+      onNavigateToCreate={handleNavigateToCreate}
+      onNavigateToView={handleNavigateToView}
+      onNavigateToEdit={handleNavigateToEdit}
+      onFilterChange={handleFilterChange}
+    />
+  );
+}
+
+/**
+ * Route wrapper for create outage page (UC-12).
+ */
+function CreateOutagePageRoute() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { showToast } = useToast();
+
+  if (!user?.organizationId) {
+    return (
+      <div className="error-page">
+        <h1>{t('errors.authenticationRequired')}</h1>
+        <p>{t('errors.missingOrgContext')}</p>
+        <Link to="/login">{t('auth.signIn')}</Link>
+      </div>
+    );
+  }
+
+  // TODO: Replace with real API hooks when available
+  const [buildings] = useState<{ id: string; name: string; address: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (_data: {
+    title: string;
+    description: string;
+    commodity: OutageCommodity;
+    severity: OutageSeverity;
+    buildingIds: string[];
+    scheduledStart: string;
+    scheduledEnd: string;
+  }) => {
+    setIsLoading(true);
+    try {
+      // TODO: Call API to create outage
+      showToast({
+        type: 'success',
+        title: t('outages.createdSuccessfully'),
+        message: t('outages.outageCreatedMsg'),
+      });
+      navigate('/outages');
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: t('outages.failedToCreate'),
+        message: error instanceof Error ? error.message : t('auth.unexpectedError'),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => navigate('/outages');
+
+  return (
+    <CreateOutagePage
+      buildings={buildings}
+      isLoading={isLoading}
+      onSubmit={handleSubmit}
+      onCancel={handleCancel}
+    />
+  );
+}
+
+/**
+ * Route wrapper for view outage page (UC-12).
+ */
+function ViewOutagePageRoute() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { outageId } = useParams<{ outageId: string }>();
+  const { showToast } = useToast();
+
+  if (!outageId) {
+    return (
+      <div className="error-page">
+        <h1>{t('errors.outageNotFound')}</h1>
+        <p>{t('errors.outageNotFoundDesc')}</p>
+        <Link to="/outages">{t('common.backToOutages')}</Link>
+      </div>
+    );
+  }
+
+  // TODO: Replace with real API hooks when available
+  const [outage] = useState<OutageDetail | null>(null);
+  const [isLoading] = useState(true);
+
+  const handleEdit = () => navigate(`/outages/${outageId}/edit`);
+  const handleStart = () => {
+    // TODO: Call API to start outage
+    showToast({ type: 'success', title: t('outages.started'), message: '' });
+  };
+  const handleResolve = (_notes: string) => {
+    // TODO: Call API to resolve outage
+    showToast({ type: 'success', title: t('outages.resolved'), message: '' });
+  };
+  const handleCancel = (_reason: string) => {
+    // TODO: Call API to cancel outage
+    showToast({ type: 'success', title: t('outages.cancelled'), message: '' });
+  };
+  const handleBack = () => navigate('/outages');
+
+  if (isLoading || !outage) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <ViewOutagePage
+      outage={outage}
+      isLoading={isLoading}
+      onEdit={handleEdit}
+      onStart={handleStart}
+      onResolve={handleResolve}
+      onCancel={handleCancel}
+      onBack={handleBack}
+    />
+  );
+}
+
+/**
+ * Route wrapper for edit outage page (UC-12).
+ */
+function EditOutagePageRoute() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { outageId } = useParams<{ outageId: string }>();
+  const { showToast } = useToast();
+
+  if (!outageId) {
+    return (
+      <div className="error-page">
+        <h1>{t('errors.outageNotFound')}</h1>
+        <p>{t('errors.outageNotFoundDesc')}</p>
+        <Link to="/outages">{t('common.backToOutages')}</Link>
+      </div>
+    );
+  }
+
+  // TODO: Replace with real API hooks when available
+  const [outage] = useState<OutageDetail | null>(null);
+  const [buildings] = useState<{ id: string; name: string; address: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const handleSubmit = async (_data: {
+    title: string;
+    description: string;
+    commodity: OutageCommodity;
+    severity: OutageSeverity;
+    buildingIds: string[];
+    scheduledStart: string;
+    scheduledEnd: string;
+  }) => {
+    setIsLoading(true);
+    try {
+      // TODO: Call API to update outage
+      showToast({
+        type: 'success',
+        title: t('outages.updatedSuccessfully'),
+        message: t('outages.outageUpdatedMsg'),
+      });
+      navigate(`/outages/${outageId}`);
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: t('outages.failedToUpdate'),
+        message: error instanceof Error ? error.message : t('auth.unexpectedError'),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => navigate(`/outages/${outageId}`);
+
+  if (!outage) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  return (
+    <EditOutagePage
+      outage={outage}
+      buildings={buildings}
+      isLoading={isLoading}
+      onSubmit={handleSubmit}
+      onCancel={handleCancel}
+    />
   );
 }
 

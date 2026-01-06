@@ -18,12 +18,13 @@ use db::{
         LegalRepository, ListingRepository, LlmDocumentRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
-        OwnerAnalyticsRepository, PackageVisitorRepository, PasswordResetRepository,
-        PersonMonthRepository, PlatformAdminRepository, RegistryRepository, RentalRepository,
-        RoleRepository, SensorRepository, SentimentRepository, SessionRepository,
-        SignatureRequestRepository, SubscriptionRepository, SystemAnnouncementRepository,
-        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
-        VendorRepository, VoteRepository, WorkOrderRepository, WorkflowRepository,
+        OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
+        PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
+        RegistryRepository, RentalRepository, RoleRepository, SensorRepository,
+        SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
+        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
+        UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
+        WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -129,6 +130,8 @@ pub struct AppState {
     pub feature_package_repo: FeaturePackageRepository,
     // Epic 109: User Type Feature Experience
     pub feature_analytics_repo: FeatureAnalyticsRepository,
+    // UC-12: Utility Outages
+    pub outage_repo: OutageRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -241,6 +244,8 @@ impl AppState {
         let feature_package_repo = FeaturePackageRepository::new(db.clone());
         // Epic 109: User Type Feature Experience
         let feature_analytics_repo = FeatureAnalyticsRepository::new(db.clone());
+        // UC-12: Utility Outages
+        let outage_repo = OutageRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -315,6 +320,7 @@ impl AppState {
             infrastructure_repo,
             feature_package_repo,
             feature_analytics_repo,
+            outage_repo,
             llm_client,
             auth_service,
             email_service,

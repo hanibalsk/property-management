@@ -6,6 +6,24 @@
  */
 
 import { useState } from 'react';
+import {
+  useApiKeys,
+  useCreateApiKey,
+  useCreateWebhook,
+  useDeleteWebhook,
+  useDeveloperAccount,
+  useDeveloperUsage,
+  useDownloadSdk,
+  useRateLimitStatus,
+  useRateLimitTiers,
+  useRevokeApiKey,
+  useRotateApiKey,
+  useRotateWebhookSecret,
+  useSdkLanguages,
+  useTestWebhook,
+  useUpdateWebhook,
+  useWebhooks,
+} from '../api';
 import { ApiChangelogList, ApiDocumentation } from '../components/ApiDocumentation';
 import { ApiKeyCreateDialog } from '../components/ApiKeyCreateDialog';
 import { ApiKeySecretDialog } from '../components/ApiKeySecretDialog';
@@ -17,17 +35,11 @@ import { WebhookCreateDialog } from '../components/WebhookCreateDialog';
 import { WebhookSecretDialog } from '../components/WebhookSecretDialog';
 import { WebhooksList } from '../components/WebhooksList';
 import type {
-  ApiKey,
   CreateApiKey,
   CreateApiKeyResponse,
   CreateWebhookResponse,
   CreateWebhookSubscription,
-  DeveloperAccount,
-  DeveloperUsageSummary,
-  RateLimitConfig,
-  RateLimitStatus as RateLimitStatusType,
-  SdkLanguageInfo,
-  WebhookSubscription,
+  SdkLanguage,
 } from '../types';
 
 interface DeveloperPortalPageProps {
@@ -55,210 +67,167 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
   const [showCreateWebhookDialog, setShowCreateWebhookDialog] = useState(false);
   const [showWebhookSecretDialog, setShowWebhookSecretDialog] = useState(false);
   const [createdWebhook, setCreatedWebhook] = useState<CreateWebhookResponse | null>(null);
+  const [showSdkVersionsDialog, setShowSdkVersionsDialog] = useState(false);
+  const [selectedSdkLanguage, setSelectedSdkLanguage] = useState<SdkLanguage | null>(null);
 
-  // Mock data - in production, these would come from API calls
-  const account: DeveloperAccount = {
-    id: 'dev-123',
-    userId: 'user-456',
-    organizationId,
-    companyName: 'Acme Corp',
-    website: 'https://acme.example.com',
-    description: 'Property management integration',
-    contactEmail: 'developer@acme.example.com',
-    contactName: 'John Developer',
-    tier: 'professional',
-    isVerified: true,
-    isActive: true,
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-12-01T15:30:00Z',
-    verifiedAt: '2024-01-20T09:00:00Z',
-  };
+  // API Hooks
+  const { data: account } = useDeveloperAccount();
+  const { data: usage } = useDeveloperUsage();
+  const { data: rateLimitStatus } = useRateLimitStatus();
+  const { data: apiKeys = [] } = useApiKeys();
+  const { data: webhooks = [] } = useWebhooks();
+  const { data: sdkLanguages = [] } = useSdkLanguages();
+  const { data: rateLimitTiers = [] } = useRateLimitTiers();
 
-  const usage: DeveloperUsageSummary = {
-    developerAccountId: account.id,
-    companyName: account.companyName,
-    tier: account.tier,
-    apiKeysCount: 3,
-    webhooksCount: 2,
-    totalRequestsToday: 4520,
-    totalRequestsMonth: 125000,
-    rateLimitHits: 12,
-    lastApiCall: '2024-12-27T14:30:00Z',
-  };
-
-  const rateLimitStatus: RateLimitStatusType = {
-    tier: 'professional',
-    requestsPerMinute: {
-      limit: 300,
-      remaining: 285,
-      resetAt: new Date(Date.now() + 45000).toISOString(),
-    },
-    requestsPerHour: {
-      limit: 20000,
-      remaining: 19200,
-      resetAt: new Date(Date.now() + 2400000).toISOString(),
-    },
-    requestsPerDay: {
-      limit: 200000,
-      remaining: 175000,
-      resetAt: new Date(Date.now() + 43200000).toISOString(),
-    },
-  };
-
-  const apiKeys: ApiKey[] = [
-    {
-      id: 'key-1',
-      developerAccountId: account.id,
-      name: 'Production API Key',
-      keyPrefix: 'ppt_prod_abc12',
-      scopes: ['read', 'write', 'buildings:read', 'faults:write'],
-      rateLimitPerMinute: 300,
-      lastUsedAt: '2024-12-27T14:30:00Z',
-      totalRequests: 125000,
-      status: 'active',
-      createdAt: '2024-06-01T10:00:00Z',
-    },
-    {
-      id: 'key-2',
-      developerAccountId: account.id,
-      name: 'Development Key',
-      keyPrefix: 'ppt_dev_xyz89',
-      scopes: ['read'],
-      lastUsedAt: '2024-12-26T10:00:00Z',
-      totalRequests: 8500,
-      status: 'active',
-      createdAt: '2024-08-15T14:00:00Z',
-    },
-  ];
-
-  const webhooks: WebhookSubscription[] = [
-    {
-      id: 'wh-1',
-      developerAccountId: account.id,
-      name: 'Fault Notifications',
-      endpointUrl: 'https://api.acme.example.com/webhooks/faults',
-      eventTypes: ['fault.created', 'fault.updated', 'fault.resolved'],
-      isActive: true,
-      retryCount: 3,
-      timeoutSeconds: 30,
-      totalDeliveries: 1250,
-      successfulDeliveries: 1240,
-      failedDeliveries: 10,
-      lastTriggeredAt: '2024-12-27T13:45:00Z',
-      lastSuccessAt: '2024-12-27T13:45:00Z',
-      createdAt: '2024-06-15T10:00:00Z',
-      updatedAt: '2024-12-01T09:00:00Z',
-    },
-  ];
-
-  const sdkLanguages: SdkLanguageInfo[] = [
-    {
-      language: 'typescript',
-      displayName: 'TypeScript / JavaScript',
-      packageManager: 'npm',
-      latestVersion: '1.2.0',
-      installationCommand: 'npm install @ppt/api-client',
-      documentationUrl: 'https://docs.ppt.example.com/sdks/typescript',
-    },
-    {
-      language: 'python',
-      displayName: 'Python',
-      packageManager: 'pip',
-      latestVersion: '1.2.0',
-      installationCommand: 'pip install ppt-api-client',
-      documentationUrl: 'https://docs.ppt.example.com/sdks/python',
-    },
-    {
-      language: 'go',
-      displayName: 'Go',
-      packageManager: 'go modules',
-      latestVersion: '1.2.0',
-      installationCommand: 'go get github.com/ppt/api-client-go',
-      documentationUrl: 'https://docs.ppt.example.com/sdks/go',
-    },
-  ];
-
-  const rateLimitTiers: RateLimitConfig[] = [
-    {
-      id: 'tier-1',
-      tier: 'free',
-      requestsPerMinute: 60,
-      requestsPerHour: 1000,
-      requestsPerDay: 10000,
-      burstLimit: 10,
-      description: 'Free tier for development',
-      isActive: true,
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: 'tier-2',
-      tier: 'basic',
-      requestsPerMinute: 120,
-      requestsPerHour: 5000,
-      requestsPerDay: 50000,
-      burstLimit: 20,
-      description: 'For small businesses',
-      isActive: true,
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: 'tier-3',
-      tier: 'professional',
-      requestsPerMinute: 300,
-      requestsPerHour: 20000,
-      requestsPerDay: 200000,
-      burstLimit: 50,
-      description: 'For growing businesses',
-      isActive: true,
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    },
-    {
-      id: 'tier-4',
-      tier: 'enterprise',
-      requestsPerMinute: 1000,
-      requestsPerHour: 100000,
-      requestsPerDay: 1000000,
-      burstLimit: 100,
-      description: 'Custom enterprise limits',
-      isActive: true,
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-    },
-  ];
+  // Mutations
+  const createApiKeyMutation = useCreateApiKey();
+  const rotateApiKeyMutation = useRotateApiKey();
+  const revokeApiKeyMutation = useRevokeApiKey();
+  const createWebhookMutation = useCreateWebhook();
+  const updateWebhookMutation = useUpdateWebhook();
+  const deleteWebhookMutation = useDeleteWebhook();
+  const testWebhookMutation = useTestWebhook();
+  const rotateWebhookSecretMutation = useRotateWebhookSecret();
+  const downloadSdkMutation = useDownloadSdk();
 
   // Handlers
   const handleCreateApiKey = async (data: CreateApiKey) => {
-    // In production, this would be an API call
-    const newKey: CreateApiKeyResponse = {
-      id: `key-${Date.now()}`,
-      name: data.name,
-      keyPrefix: `ppt_${Math.random().toString(36).substring(2, 10)}`,
-      secret: `ppt_${Math.random().toString(36).substring(2, 10)}_${Math.random().toString(36).substring(2, 32)}`,
-      scopes: data.scopes,
-      expiresAt: data.expiresAt,
-      createdAt: new Date().toISOString(),
-    };
-    setCreatedKey(newKey);
-    setShowCreateKeyDialog(false);
-    setShowKeySecretDialog(true);
+    try {
+      const newKey = await createApiKeyMutation.mutateAsync(data);
+      setCreatedKey(newKey);
+      setShowCreateKeyDialog(false);
+      setShowKeySecretDialog(true);
+    } catch (error) {
+      console.error('Failed to create API key:', error);
+    }
+  };
+
+  const handleRotateApiKey = async (id: string) => {
+    try {
+      const result = await rotateApiKeyMutation.mutateAsync(id);
+      setCreatedKey(result.newKey);
+      setShowKeySecretDialog(true);
+    } catch (error) {
+      console.error('Failed to rotate API key:', error);
+    }
+  };
+
+  const handleRevokeApiKey = async (id: string) => {
+    if (
+      window.confirm('Are you sure you want to revoke this API key? This action cannot be undone.')
+    ) {
+      try {
+        await revokeApiKeyMutation.mutateAsync(id);
+      } catch (error) {
+        console.error('Failed to revoke API key:', error);
+      }
+    }
   };
 
   const handleCreateWebhook = async (data: CreateWebhookSubscription) => {
-    // In production, this would be an API call
-    const newWebhook: CreateWebhookResponse = {
-      id: `wh-${Date.now()}`,
-      name: data.name,
-      endpointUrl: data.endpointUrl,
-      secret: `whsec_${Math.random().toString(36).substring(2, 32)}`,
-      eventTypes: data.eventTypes,
-      createdAt: new Date().toISOString(),
-    };
-    setCreatedWebhook(newWebhook);
-    setShowCreateWebhookDialog(false);
-    setShowWebhookSecretDialog(true);
+    try {
+      const newWebhook = await createWebhookMutation.mutateAsync(data);
+      setCreatedWebhook(newWebhook);
+      setShowCreateWebhookDialog(false);
+      setShowWebhookSecretDialog(true);
+    } catch (error) {
+      console.error('Failed to create webhook:', error);
+    }
+  };
+
+  const handleDeleteWebhook = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this webhook?')) {
+      try {
+        await deleteWebhookMutation.mutateAsync(id);
+      } catch (error) {
+        console.error('Failed to delete webhook:', error);
+      }
+    }
+  };
+
+  const handleTestWebhook = async (id: string) => {
+    try {
+      const result = await testWebhookMutation.mutateAsync({
+        id,
+        request: { eventType: 'fault.created', payload: { test: true } },
+      });
+      if (result.success) {
+        alert(`Webhook test successful! Response: ${result.responseStatusCode}`);
+      } else {
+        alert(`Webhook test failed: ${result.errorMessage}`);
+      }
+    } catch (error) {
+      console.error('Failed to test webhook:', error);
+    }
+  };
+
+  const handleRotateWebhookSecret = async (id: string) => {
+    if (
+      window.confirm(
+        'Are you sure you want to rotate this webhook secret? You will need to update your endpoint.'
+      )
+    ) {
+      try {
+        const result = await rotateWebhookSecretMutation.mutateAsync(id);
+        setCreatedWebhook({
+          id: result.webhookId,
+          name: 'Webhook',
+          endpointUrl: '',
+          secret: result.newSecret,
+          eventTypes: [],
+          createdAt: result.rotatedAt,
+        });
+        setShowWebhookSecretDialog(true);
+      } catch (error) {
+        console.error('Failed to rotate webhook secret:', error);
+      }
+    }
+  };
+
+  const handleToggleWebhookActive = async (id: string, isActive: boolean) => {
+    try {
+      await updateWebhookMutation.mutateAsync({ id, data: { isActive } });
+    } catch (error) {
+      console.error('Failed to toggle webhook active state:', error);
+    }
+  };
+
+  const handleDownloadSdk = (language: string) => {
+    downloadSdkMutation.mutate(language as SdkLanguage);
+  };
+
+  const handleViewSdkVersions = (language: string) => {
+    setSelectedSdkLanguage(language as SdkLanguage);
+    setShowSdkVersionsDialog(true);
+  };
+
+  // Default values for when data is loading
+  const defaultAccount = {
+    id: '',
+    userId: '',
+    contactEmail: '',
+    tier: 'free' as const,
+    isVerified: false,
+    isActive: false,
+    createdAt: '',
+    updatedAt: '',
+  };
+
+  const defaultUsage = {
+    developerAccountId: '',
+    tier: 'free' as const,
+    apiKeysCount: 0,
+    webhooksCount: 0,
+    totalRequestsToday: 0,
+    totalRequestsMonth: 0,
+    rateLimitHits: 0,
+  };
+
+  const defaultRateLimitStatus = {
+    tier: 'free' as const,
+    requestsPerMinute: { limit: 60, remaining: 60, resetAt: new Date().toISOString() },
+    requestsPerHour: { limit: 1000, remaining: 1000, resetAt: new Date().toISOString() },
+    requestsPerDay: { limit: 10000, remaining: 10000, resetAt: new Date().toISOString() },
   };
 
   return (
@@ -284,21 +253,22 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
       {/* Tab Content */}
       <div>
         {activeTab === 'dashboard' && (
-          <DeveloperDashboard account={account} usage={usage} rateLimitStatus={rateLimitStatus} />
+          <DeveloperDashboard
+            account={account ?? defaultAccount}
+            usage={usage ?? defaultUsage}
+            rateLimitStatus={rateLimitStatus ?? defaultRateLimitStatus}
+          />
         )}
 
         {activeTab === 'keys' && (
           <ApiKeysList
             apiKeys={apiKeys}
             onCreateKey={() => setShowCreateKeyDialog(true)}
-            onRotateKey={(_id) => {
-              // TODO: API call to rotate key
-            }}
-            onRevokeKey={(_id) => {
-              // TODO: API call to revoke key
-            }}
-            onViewUsage={(_id) => {
-              // TODO: Navigate to usage analytics
+            onRotateKey={handleRotateApiKey}
+            onRevokeKey={handleRevokeApiKey}
+            onViewUsage={(id) => {
+              // Navigate to usage analytics page
+              window.location.href = `/developer/keys/${id}/usage`;
             }}
           />
         )}
@@ -307,24 +277,18 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
           <WebhooksList
             webhooks={webhooks}
             onCreateWebhook={() => setShowCreateWebhookDialog(true)}
-            onEditWebhook={(_id) => {
-              // TODO: Navigate to webhook edit
+            onEditWebhook={(id) => {
+              // Navigate to webhook edit page
+              window.location.href = `/developer/webhooks/${id}/edit`;
             }}
-            onDeleteWebhook={(_id) => {
-              // TODO: API call to delete webhook
+            onDeleteWebhook={handleDeleteWebhook}
+            onTestWebhook={handleTestWebhook}
+            onViewDeliveries={(id) => {
+              // Navigate to delivery logs page
+              window.location.href = `/developer/webhooks/${id}/deliveries`;
             }}
-            onTestWebhook={(_id) => {
-              // TODO: API call to test webhook
-            }}
-            onViewDeliveries={(_id) => {
-              // TODO: Navigate to delivery logs
-            }}
-            onRotateSecret={(_id) => {
-              // TODO: API call to rotate secret
-            }}
-            onToggleActive={(_id, _active) => {
-              // TODO: API call to toggle active state
-            }}
+            onRotateSecret={handleRotateWebhookSecret}
+            onToggleActive={handleToggleWebhookActive}
           />
         )}
 
@@ -333,8 +297,12 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
             <ApiDocumentation
               endpoints={[]}
               changelog={[]}
-              onTestEndpoint={(_endpoint) => {
-                // TODO: Open API tester modal
+              onTestEndpoint={(endpoint) => {
+                // Open API tester in new window with the endpoint
+                window.open(
+                  `/developer/sandbox?endpoint=${encodeURIComponent(endpoint.path)}&method=${endpoint.method}`,
+                  '_blank'
+                );
               }}
             />
             <ApiChangelogList changelog={[]} />
@@ -343,12 +311,13 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
 
         {activeTab === 'rate-limits' && (
           <div className="space-y-8">
-            <RateLimitStatus status={rateLimitStatus} />
+            <RateLimitStatus status={rateLimitStatus ?? defaultRateLimitStatus} />
             <RateLimitTierComparison
               tiers={rateLimitTiers}
-              currentTier={account.tier}
-              onSelectTier={(_tier) => {
-                // TODO: Navigate to tier upgrade flow
+              currentTier={account?.tier ?? 'free'}
+              onSelectTier={(tier) => {
+                // Navigate to tier upgrade flow
+                window.location.href = `/developer/upgrade?tier=${tier}`;
               }}
             />
           </div>
@@ -357,12 +326,8 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
         {activeTab === 'sdks' && (
           <SdkDownloadList
             languages={sdkLanguages}
-            onDownload={(_lang) => {
-              // TODO: Trigger SDK download
-            }}
-            onViewVersions={(_lang) => {
-              // TODO: Navigate to version history
-            }}
+            onDownload={handleDownloadSdk}
+            onViewVersions={handleViewSdkVersions}
           />
         )}
       </div>
@@ -397,6 +362,29 @@ export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps
         }}
         webhook={createdWebhook}
       />
+
+      {/* SDK Versions Dialog */}
+      {showSdkVersionsDialog && selectedSdkLanguage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">SDK Versions - {selectedSdkLanguage}</h3>
+            <p className="text-gray-600 mb-4">Organization: {organizationId}</p>
+            <p className="text-sm text-gray-500">
+              Version history will be available in a future update.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSdkVersionsDialog(false);
+                setSelectedSdkLanguage(null);
+              }}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

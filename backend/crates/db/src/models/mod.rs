@@ -579,6 +579,9 @@ pub use llm_document::{
     WebhookVerificationResult,
 };
 
+// UC-12: Utility Outages
+pub mod outage;
+
 // Epic 72: Regional Legal Compliance (SK/CZ)
 pub mod regional_compliance;
 
@@ -803,4 +806,12 @@ pub use feature_analytics::{
     SetFeaturePreference, SetUserTypeAccess, SubscribeToPackage, UpdateFeaturePackage,
     UpgradeOptionsResponse, UpsertFeatureDescriptor,
     UserFeaturePreference as UserFeaturePreference109, UserTypeFeatureAccess,
+};
+
+// UC-12: Utility Outages
+pub use outage::{
+    outage_commodity, outage_severity, outage_status, CancelOutage, CommodityCount, CreateOutage,
+    CreateOutageNotification, MarkOutageRead, Outage, OutageDashboard, OutageListQuery,
+    OutageNotification, OutageStatistics, OutageSummary, OutageWithDetails, ResolveOutage,
+    StartOutage, UpdateOutage,
 };
