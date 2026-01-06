@@ -46,7 +46,10 @@
     "copied": "Copied",
     "copyErrorMessage": "Copy error message",
     "dismissNotification": "Dismiss notification",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "saving": "Saving...",
+    "dismiss": "Dismiss",
+    "selectOrganization": "Please select an organization"
   },
   "nav": {
     "home": "Home",
@@ -359,6 +362,31 @@
       "failedToCreate": "Failed to create emergency contact",
       "failedToUpdate": "Failed to update emergency contact",
       "failedToDelete": "Failed to delete emergency contact"
+    }
+  },
+  "news": {
+    "title": "News",
+    "createArticle": "Create Article",
+    "editArticle": "Edit Article",
+    "titlePlaceholder": "Enter article title",
+    "excerpt": "Excerpt",
+    "excerptPlaceholder": "Brief summary of the article",
+    "content": "Content",
+    "contentPlaceholder": "Write your article content here...",
+    "coverImage": "Cover Image URL",
+    "coverImagePlaceholder": "https://example.com/image.jpg",
+    "status": "Status",
+    "statusDraft": "Draft",
+    "statusPublished": "Published",
+    "statusArchived": "Archived",
+    "commentsEnabled": "Enable comments",
+    "reactionsEnabled": "Enable reactions",
+    "errors": {
+      "titleRequired": "Title is required",
+      "contentRequired": "Content is required",
+      "createFailed": "Failed to create article",
+      "updateFailed": "Failed to update article",
+      "loadFailed": "Failed to load article"
     }
   },
   "errors": {
