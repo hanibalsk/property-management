@@ -457,5 +457,31 @@
       "outageNotFound": "Outage not found",
       "outageNotFoundDesc": "The outage you're looking for does not exist."
     }
+  },
+  "criticalNotifications": {
+    "title": "Critical Notifications",
+    "subtitle": "Important announcements requiring acknowledgment",
+    "createNew": "Create Critical Notification",
+    "createDescription": "Send an important notification to all organization members",
+    "backToList": "Back to notifications",
+    "noResults": "No notifications found",
+    "requiresAction": "Requires Action",
+    "acknowledged": "Acknowledged",
+    "acknowledgedAt": "Acknowledged at",
+    "createdAt": "Created",
+    "message": "Message",
+    "acknowledgmentInfo": "Acknowledgment Details",
+    "acknowledge": "Acknowledge Notification",
+    "acknowledmentStats": "Acknowledgment Statistics",
+    "stats": {
+      "total": "Total Notifications",
+      "acknowledged": "Acknowledged",
+      "pending": "Pending"
+    },
+    "filter": {
+      "all": "All",
+      "pending": "Pending",
+      "acknowledged": "Acknowledged"
+    }
   }
 }
