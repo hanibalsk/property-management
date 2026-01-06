@@ -57,7 +57,7 @@ const tabs: { value: TabValue; label: string }[] = [
   { value: 'sdks', label: 'SDKs' },
 ];
 
-export function DeveloperPortalPage({ organizationId: _organizationId }: DeveloperPortalPageProps) {
+export function DeveloperPortalPage({ organizationId }: DeveloperPortalPageProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('dashboard');
 
   // Dialog states
@@ -67,9 +67,8 @@ export function DeveloperPortalPage({ organizationId: _organizationId }: Develop
   const [showCreateWebhookDialog, setShowCreateWebhookDialog] = useState(false);
   const [showWebhookSecretDialog, setShowWebhookSecretDialog] = useState(false);
   const [createdWebhook, setCreatedWebhook] = useState<CreateWebhookResponse | null>(null);
-  const [selectedSdkVersionLanguage, setSelectedSdkVersionLanguage] = useState<SdkLanguage | null>(
-    null
-  );
+  const [showSdkVersionsDialog, setShowSdkVersionsDialog] = useState(false);
+  const [selectedSdkLanguage, setSelectedSdkLanguage] = useState<SdkLanguage | null>(null);
 
   // API Hooks
   const { data: account } = useDeveloperAccount();
@@ -198,9 +197,8 @@ export function DeveloperPortalPage({ organizationId: _organizationId }: Develop
   };
 
   const handleViewSdkVersions = (language: string) => {
-    setSelectedSdkVersionLanguage(language as SdkLanguage);
-    // In a real implementation, this would open a modal or navigate to a versions page
-    console.log(`View versions for ${language}`, selectedSdkVersionLanguage);
+    setSelectedSdkLanguage(language as SdkLanguage);
+    setShowSdkVersionsDialog(true);
   };
 
   // Default values for when data is loading
@@ -364,6 +362,29 @@ export function DeveloperPortalPage({ organizationId: _organizationId }: Develop
         }}
         webhook={createdWebhook}
       />
+
+      {/* SDK Versions Dialog */}
+      {showSdkVersionsDialog && selectedSdkLanguage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">SDK Versions - {selectedSdkLanguage}</h3>
+            <p className="text-gray-600 mb-4">Organization: {organizationId}</p>
+            <p className="text-sm text-gray-500">
+              Version history will be available in a future update.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSdkVersionsDialog(false);
+                setSelectedSdkLanguage(null);
+              }}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

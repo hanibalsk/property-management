@@ -4,8 +4,8 @@
  */
 
 import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../../hooks';
 import type { ArticleStatus, CreateArticleRequest } from '../types';
 
@@ -99,7 +99,7 @@ export function CreateArticlePage() {
       </header>
 
       {error && (
-        <div className="article-form-error\" role="alert">
+        <div className="article-form-error" role="alert">
           {error}
           <button type="button" onClick={() => setError(null)}>
             {t('common.dismiss')}

@@ -4,8 +4,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useOrganization } from '../../../hooks';
 import type { ArticleStatus, NewsArticle, UpdateArticleRequest } from '../types';
 
@@ -129,7 +129,19 @@ export function EditArticlePage() {
         setIsSubmitting(false);
       }
     },
-    [organizationId, id, title, content, excerpt, coverImageUrl, status, commentsEnabled, reactionsEnabled, navigate, t]
+    [
+      organizationId,
+      id,
+      title,
+      content,
+      excerpt,
+      coverImageUrl,
+      status,
+      commentsEnabled,
+      reactionsEnabled,
+      navigate,
+      t,
+    ]
   );
 
   const handleCancel = () => {
