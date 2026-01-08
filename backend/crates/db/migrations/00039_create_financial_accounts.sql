@@ -379,9 +379,9 @@ BEGIN
         b.organization_id,
         NEW.building_id,
         NEW.id,
-        'Unit ' || NEW.unit_number || ' Ledger',
+        'Unit ' || NEW.designation || ' Ledger',
         'unit_ledger',
-        'Automatically created ledger for unit ' || NEW.unit_number,
+        'Automatically created ledger for unit ' || NEW.designation,
         'EUR'
     FROM buildings b
     WHERE b.id = NEW.building_id
