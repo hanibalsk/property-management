@@ -15,6 +15,10 @@ path = "src/main.rs"
 name = "ppt-features"
 path = "src/bin/features.rs"
 
+[[bin]]
+name = "ppt-seed"
+path = "src/bin/seed.rs"
+
 [dependencies]
 clap = { workspace = true }
 common = { workspace = true }
@@ -40,6 +44,7 @@ utoipa-swagger-ui = { workspace = true }
 jsonwebtoken = { workspace = true }
 argon2 = { workspace = true }
 dotenvy = { workspace = true }
+dialoguer = { workspace = true }
 config = { workspace = true }
 anyhow = { workspace = true }
 validator = { workspace = true }

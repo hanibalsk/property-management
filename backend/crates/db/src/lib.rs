@@ -32,6 +32,7 @@
 pub mod models;
 pub mod repositories;
 pub mod rls_pool;
+pub mod seed;
 pub mod tenant_context;
 
 use sqlx::postgres::PgPoolOptions;

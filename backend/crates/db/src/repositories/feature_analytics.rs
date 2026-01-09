@@ -670,8 +670,6 @@ impl FeatureAnalyticsRepository {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_repository_creation() {
         // This test just verifies the repository pattern is correct
