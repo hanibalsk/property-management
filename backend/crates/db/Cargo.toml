@@ -16,7 +16,6 @@ serde_json = { workspace = true }
 utoipa = { workspace = true }
 rust_decimal = { workspace = true }
 rand = { workspace = true }
-rand_core = "0.6"
 hex = { workspace = true }
 sha2 = "0.10"
 argon2 = "0.5"

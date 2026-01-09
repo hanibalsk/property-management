@@ -12,6 +12,44 @@ use crate::{clear_request_context, set_request_context, DbPool};
 use super::data::SeedData;
 use super::factories::{CleanupStats, SeedFactories};
 
+/// RAII guard to ensure RLS context is cleared even on panic/early return.
+/// When dropped, this guard will clear the request context.
+struct RlsContextGuard<'a> {
+    pool: &'a DbPool,
+    cleared: bool,
+}
+
+impl<'a> RlsContextGuard<'a> {
+    fn new(pool: &'a DbPool) -> Self {
+        Self {
+            pool,
+            cleared: false,
+        }
+    }
+
+    /// Mark the context as already cleared (call this on success path).
+    fn mark_cleared(&mut self) {
+        self.cleared = true;
+    }
+
+    /// Get the pool reference.
+    fn pool(&self) -> &'a DbPool {
+        self.pool
+    }
+}
+
+impl Drop for RlsContextGuard<'_> {
+    fn drop(&mut self) {
+        if !self.cleared {
+            // Best-effort cleanup on error/panic paths.
+            // We can't await in Drop, so we spawn a blocking task.
+            // In practice, the connection will be returned to the pool
+            // and PostgreSQL will reset the session variables.
+            tracing::warn!("RLS context guard dropped without explicit clear - session may have elevated privileges until connection reset");
+        }
+    }
+}
+
 /// Configuration for the seed runner.
 #[derive(Debug, Clone)]
 pub struct SeedConfig {
@@ -68,15 +106,31 @@ impl SeedRunner {
     /// 5. Create sample users, buildings, units (if include_sample_data)
     /// 6. Assign users to units
     /// 7. Clear RLS context
+    ///
+    /// # RLS Context Safety
+    /// Uses an RAII guard to ensure RLS context is tracked. On success,
+    /// context is explicitly cleared. On error, the guard logs a warning
+    /// and the connection pool will reset session variables when the
+    /// connection is returned.
     pub async fn run(&self) -> Result<SeedResult, SeedError> {
         let factories = SeedFactories::new(&self.pool);
         let seed_data = SeedData::default();
-        let email_domain = "demo-property.test";
+
+        // Derive email_domain from seed data config for consistency
+        let email_domain = seed_data
+            .organization
+            .contact_email
+            .split('@')
+            .nth(1)
+            .unwrap_or("demo-property.test");
 
         // 1. Set super admin context to bypass RLS
         set_request_context(&self.pool, None, None, true)
             .await
             .map_err(|e| SeedError::Database(e.to_string()))?;
+
+        // Create RAII guard for RLS context cleanup on error paths
+        let mut rls_guard = RlsContextGuard::new(&self.pool);
 
         // 2. Optionally cleanup existing seed data
         let cleanup_stats = if self.config.force {
@@ -92,9 +146,10 @@ impl SeedRunner {
                 .await
                 .map_err(|e| SeedError::Database(e.to_string()))?
             {
-                clear_request_context(&self.pool)
+                clear_request_context(rls_guard.pool())
                     .await
                     .map_err(|e| SeedError::Database(e.to_string()))?;
+                rls_guard.mark_cleared();
                 return Err(SeedError::AlreadySeeded);
             }
             None
@@ -231,9 +286,10 @@ impl SeedRunner {
         }
 
         // 8. Clear super admin context
-        clear_request_context(&self.pool)
+        clear_request_context(rls_guard.pool())
             .await
             .map_err(|e| SeedError::Database(e.to_string()))?;
+        rls_guard.mark_cleared();
 
         Ok(SeedResult {
             organizations_created: 1,

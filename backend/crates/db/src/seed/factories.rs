@@ -6,7 +6,7 @@
 use crate::DbPool;
 use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use chrono::{Datelike, NaiveDate, Utc};
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use rust_decimal::Decimal;
 use sqlx::Row;
 use uuid::Uuid;
@@ -214,7 +214,9 @@ impl<'a> SeedFactories<'a> {
         is_primary: bool,
     ) -> Result<Uuid, sqlx::Error> {
         let today = Utc::now().date_naive();
-        let start_date = NaiveDate::from_ymd_opt(today.year(), 1, 1).unwrap_or(today);
+        // from_ymd_opt should never return None for the current year; if it does, fail loudly
+        let start_date = NaiveDate::from_ymd_opt(today.year(), 1, 1)
+            .expect("current year must be a valid NaiveDate");
 
         let row = sqlx::query(
             r#"
@@ -260,8 +262,29 @@ impl<'a> SeedFactories<'a> {
     /// Delete seed data by email domain pattern.
     ///
     /// This is used for cleanup before re-seeding.
+    /// All operations run within a single transaction for atomicity.
+    ///
+    /// # Security
+    /// The email_domain is validated to prevent SQL pattern injection.
+    /// Only alphanumeric characters, dots, and hyphens are allowed.
     pub async fn cleanup_seed_data(&self, email_domain: &str) -> Result<CleanupStats, sqlx::Error> {
+        // Validate email_domain to prevent SQL pattern injection
+        // Only allow alphanumeric, dots, and hyphens (valid domain characters)
+        if !email_domain
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '.' || c == '-')
+        {
+            return Err(sqlx::Error::Protocol(
+                "Invalid email domain: only alphanumeric characters, dots, and hyphens allowed"
+                    .to_string(),
+            ));
+        }
+
         let pattern = format!("%@{}", email_domain);
+
+        // Use a transaction for atomicity - if any operation fails,
+        // all changes are rolled back to maintain consistency
+        let mut tx = self.pool.begin().await?;
 
         // Delete in dependency order to avoid foreign key violations
 
@@ -273,7 +296,7 @@ impl<'a> SeedFactories<'a> {
             "#,
         )
         .bind(&pattern)
-        .execute(self.pool)
+        .execute(&mut *tx)
         .await?;
 
         // 2. Delete organization_members for seed users
@@ -284,7 +307,7 @@ impl<'a> SeedFactories<'a> {
             "#,
         )
         .bind(&pattern)
-        .execute(self.pool)
+        .execute(&mut *tx)
         .await?;
 
         // 3. Find organizations created by seed (by contact email pattern)
@@ -294,50 +317,47 @@ impl<'a> SeedFactories<'a> {
             "#,
         )
         .bind(&pattern)
-        .fetch_all(self.pool)
+        .fetch_all(&mut *tx)
         .await?
         .into_iter()
         .map(|r| r.get("id"))
         .collect();
 
-        // 4. Delete units in seed buildings
+        // 4-6. Delete units, buildings, and roles for each organization
         let mut units_deleted = 0u64;
+        let mut buildings_deleted = 0u64;
         for org_id in &org_ids {
-            let result = sqlx::query(
+            // Delete units in this org's buildings
+            let units_result = sqlx::query(
                 r#"
                 DELETE FROM units
                 WHERE building_id IN (SELECT id FROM buildings WHERE organization_id = $1)
                 "#,
             )
             .bind(org_id)
-            .execute(self.pool)
+            .execute(&mut *tx)
             .await?;
-            units_deleted += result.rows_affected();
-        }
+            units_deleted += units_result.rows_affected();
 
-        // 5. Delete buildings in seed organizations
-        let mut buildings_deleted = 0u64;
-        for org_id in &org_ids {
-            let result = sqlx::query(
+            // Delete buildings in this org
+            let buildings_result = sqlx::query(
                 r#"
                 DELETE FROM buildings WHERE organization_id = $1
                 "#,
             )
             .bind(org_id)
-            .execute(self.pool)
+            .execute(&mut *tx)
             .await?;
-            buildings_deleted += result.rows_affected();
-        }
+            buildings_deleted += buildings_result.rows_affected();
 
-        // 6. Delete roles in seed organizations
-        for org_id in &org_ids {
+            // Delete roles in this org
             sqlx::query(
                 r#"
                 DELETE FROM roles WHERE organization_id = $1
                 "#,
             )
             .bind(org_id)
-            .execute(self.pool)
+            .execute(&mut *tx)
             .await?;
         }
 
@@ -348,7 +368,7 @@ impl<'a> SeedFactories<'a> {
             "#,
         )
         .bind(&pattern)
-        .execute(self.pool)
+        .execute(&mut *tx)
         .await?;
 
         // 8. Delete seed users
@@ -358,8 +378,11 @@ impl<'a> SeedFactories<'a> {
             "#,
         )
         .bind(&pattern)
-        .execute(self.pool)
+        .execute(&mut *tx)
         .await?;
+
+        // Commit the transaction - all deletions succeed or none do
+        tx.commit().await?;
 
         Ok(CleanupStats {
             users_deleted: users_result.rows_affected(),
