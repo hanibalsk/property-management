@@ -11,7 +11,8 @@
     "lint": "eslint . --ext ts,tsx",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:a11y": "vitest run src/**/*.a11y.test.tsx"
   },
   "dependencies": {
     "@ppt/api-client": "workspace:*",
@@ -29,9 +30,12 @@
     "react-router-dom": "^6.21.0"
   },
   "devDependencies": {
+    "@axe-core/react": "^4.10.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
+    "axe-core": "^4.10.0",
+    "vitest-axe": "^0.1.0",
     "@types/dompurify": "^3.2.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -42,5 +46,5 @@
     "vite": "^5.0.0",
     "vitest": "^2.1.8"
   },
-  "version": "0.2.298"
+  "version": "0.2.299"
 }
