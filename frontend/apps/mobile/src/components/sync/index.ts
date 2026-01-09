@@ -8,3 +8,4 @@ export {
   type SyncStatus,
 } from './PendingSyncIndicator';
 export { SyncStatusBadge, type SyncStatusBadgeProps } from './SyncStatusBadge';
+export { SyncProgressToast, type SyncProgressToastProps } from './SyncProgressToast';

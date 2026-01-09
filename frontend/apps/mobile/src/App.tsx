@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { OfflineBanner, SyncStatusBadge } from './components/sync';
+import { OfflineBanner, SyncProgressToast, SyncStatusBadge } from './components/sync';
 import { AuthProvider, useAuth } from './contexts';
 import { useOfflineSupport } from './hooks';
 import './i18n'; // Initialize i18n
@@ -43,7 +43,17 @@ type Screen =
 function MainApp() {
   const { t } = useTranslation();
   const { isAuthenticated, isLoading } = useAuth();
-  const { isConnected, queuedActionsCount, isSyncing } = useOfflineSupport();
+  const { isConnected, queuedActionsCount, isSyncing, syncProgress, processQueue } =
+    useOfflineSupport();
+  const [showSyncToast, setShowSyncToast] = useState(false);
+
+  // Show sync toast when sync progress starts
+  const handleRetrySync = useCallback(() => {
+    processQueue();
+  }, [processQueue]);
+
+  // Show toast when sync is in progress
+  const isSyncingWithProgress = isSyncing && syncProgress !== null;
   const [currentScreen, setCurrentScreen] = useState<Screen>('Dashboard');
 
   const handleNavigate = useCallback((screen: string) => {
@@ -136,6 +146,18 @@ function MainApp() {
           onPress={() => handleNavigate('Documents')}
         />
       </View>
+
+      {/* Sync progress toast */}
+      <SyncProgressToast
+        visible={isSyncingWithProgress || showSyncToast}
+        progress={syncProgress?.total ? Math.round(((syncProgress?.current || 0) / syncProgress.total) * 100) : 0}
+        total={syncProgress?.total || 0}
+        current={syncProgress?.current || 0}
+        failed={syncProgress?.failed || 0}
+        isComplete={syncProgress?.isComplete || false}
+        onDismiss={() => setShowSyncToast(false)}
+        onRetry={handleRetrySync}
+      />
 
       <StatusBar style="auto" />
     </View>
