@@ -17,6 +17,7 @@ import {
   useToast,
 } from './components';
 import './styles/accessibility.css';
+import './features/settings/styles/accessibility.css';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
 import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
