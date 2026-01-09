@@ -244,5 +244,24 @@
     "denied": "Berechtigung verweigert",
     "cameraRequired": "Kameraberechtigung ist erforderlich",
     "locationRequired": "Standortberechtigung ist erforderlich"
+  },
+  "meters": {
+    "title": "Zahlerstand",
+    "selectType": "Zahlertyp auswahlen",
+    "water": "Wasser",
+    "electricity": "Strom",
+    "gas": "Gas",
+    "heating": "Heizung",
+    "enterReading": "Stand eingeben",
+    "readingPlaceholder": "0,00",
+    "readingRequired": "Bitte geben Sie einen Stand ein",
+    "photo": "Foto (optional)",
+    "submit": "Stand absenden",
+    "submitSuccess": "Zahlerstand erfolgreich gesendet",
+    "submitFailed": "Zahlerstand konnte nicht gesendet werden",
+    "savedOffline": "Offline gespeichert",
+    "willSyncWhenOnline": "Ihr Stand wird gesendet wenn Sie wieder online sind",
+    "offlineMode": "Sie sind offline. Stande werden lokal gespeichert.",
+    "pendingReadings": "Ausstehende Stande"
   }
 }

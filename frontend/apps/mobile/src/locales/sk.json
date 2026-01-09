@@ -244,5 +244,24 @@
     "denied": "Povolenie zamietnutne",
     "cameraRequired": "Je potrebne povolenie fotoaparatu",
     "locationRequired": "Je potrebne povolenie polohy"
+  },
+  "meters": {
+    "title": "Odpocet meraca",
+    "selectType": "Vyberte typ meraca",
+    "water": "Voda",
+    "electricity": "Elektrina",
+    "gas": "Plyn",
+    "heating": "Kurenie",
+    "enterReading": "Zadajte odpocet",
+    "readingPlaceholder": "0,00",
+    "readingRequired": "Prosim zadajte odpocet",
+    "photo": "Fotografia (volitelne)",
+    "submit": "Odoslat odpocet",
+    "submitSuccess": "Odpocet meraca bol uspesne odoslany",
+    "submitFailed": "Nepodarilo sa odoslat odpocet meraca",
+    "savedOffline": "Ulozene offline",
+    "willSyncWhenOnline": "Vas odpocet bude odoslany po pripojeni na internet",
+    "offlineMode": "Ste offline. Odpocty budu ulozene lokalne.",
+    "pendingReadings": "Cakajuce odpocty"
   }
 }

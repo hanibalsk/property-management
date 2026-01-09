@@ -244,5 +244,24 @@
     "denied": "Opravneni zamitnuto",
     "cameraRequired": "Je potreba opravneni fotoaparatu",
     "locationRequired": "Je potreba opravneni polohy"
+  },
+  "meters": {
+    "title": "Odecet merice",
+    "selectType": "Vyberte typ merice",
+    "water": "Voda",
+    "electricity": "Elektrina",
+    "gas": "Plyn",
+    "heating": "Topeni",
+    "enterReading": "Zadejte odecet",
+    "readingPlaceholder": "0,00",
+    "readingRequired": "Prosim zadejte odecet",
+    "photo": "Fotografie (volitelne)",
+    "submit": "Odeslat odecet",
+    "submitSuccess": "Odecet merice byl uspesne odeslan",
+    "submitFailed": "Nepodarilo se odeslat odecet merice",
+    "savedOffline": "Ulozeno offline",
+    "willSyncWhenOnline": "Vas odecet bude odeslan po pripojeni k internetu",
+    "offlineMode": "Jste offline. Odecty budou ulozeny lokalne.",
+    "pendingReadings": "Cekajici odecty"
   }
 }

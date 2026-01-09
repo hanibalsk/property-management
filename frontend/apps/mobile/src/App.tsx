@@ -14,6 +14,7 @@ import {
   DocumentsScreen,
   FaultsListScreen,
   LoginScreen,
+  MeterReadingScreen,
   ReportFaultScreen,
   VotingScreen,
 } from './screens';
@@ -38,7 +39,8 @@ type Screen =
   | 'Voting'
   | 'Documents'
   | 'Messages'
-  | 'Settings';
+  | 'Settings'
+  | 'MeterReading';
 
 function MainApp() {
   const { t } = useTranslation();
@@ -91,6 +93,13 @@ function MainApp() {
         return <VotingScreen onNavigate={handleNavigate} />;
       case 'Documents':
         return <DocumentsScreen onNavigate={handleNavigate} />;
+      case 'MeterReading':
+        return (
+          <MeterReadingScreen
+            onSuccess={() => handleNavigate('Dashboard')}
+            onCancel={() => handleNavigate('Dashboard')}
+          />
+        );
       default:
         return <DashboardScreen onNavigate={handleNavigate} />;
     }

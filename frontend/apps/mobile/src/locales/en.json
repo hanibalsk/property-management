@@ -244,5 +244,24 @@
     "denied": "Permission Denied",
     "cameraRequired": "Camera permission is required",
     "locationRequired": "Location permission is required"
+  },
+  "meters": {
+    "title": "Meter Reading",
+    "selectType": "Select Meter Type",
+    "water": "Water",
+    "electricity": "Electricity",
+    "gas": "Gas",
+    "heating": "Heating",
+    "enterReading": "Enter Reading",
+    "readingPlaceholder": "0.00",
+    "readingRequired": "Please enter a reading",
+    "photo": "Photo (optional)",
+    "submit": "Submit Reading",
+    "submitSuccess": "Meter reading submitted successfully",
+    "submitFailed": "Failed to submit meter reading",
+    "savedOffline": "Saved Offline",
+    "willSyncWhenOnline": "Your reading will be submitted when you're back online",
+    "offlineMode": "You're offline. Readings will be saved locally.",
+    "pendingReadings": "Pending Readings"
   }
 }
