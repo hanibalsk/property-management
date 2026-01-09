@@ -369,5 +369,78 @@
     "fontSize": "Schriftgröße",
     "reducedMotion": "Reduzierte Bewegung",
     "screenReader": "Für Screenreader optimiert"
+  },
+  "dashboard": {
+    "managerActionQueue": "Aufgabenwarteschlange",
+    "residentActionQueue": "Ihre Aufgaben",
+    "managerDashboard": "Verwalter-Dashboard",
+    "residentDashboard": "Mein Dashboard",
+    "managerWelcome": "Hier ist, was heute Ihre Aufmerksamkeit erfordert.",
+    "residentWelcome": "Erledigen Sie diese Aufgaben, um auf dem neuesten Stand zu bleiben.",
+    "itemsNeedingAttention_one": "{{count}} Element erfordert Aufmerksamkeit",
+    "itemsNeedingAttention_other": "{{count}} Elemente erfordern Aufmerksamkeit",
+    "filters": "Filter",
+    "searchActions": "Aktionen suchen",
+    "searchPlaceholder": "Nach Titel oder Beschreibung suchen...",
+    "filterByPriority": "Nach Priorität filtern",
+    "filterByType": "Nach Typ filtern",
+    "clearFilters": "Alle Filter löschen",
+    "priority": {
+      "urgent": "Dringend",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig"
+    },
+    "actionType": {
+      "fault_pending": "Ausstehende Störungen",
+      "fault_escalated": "Eskalierte Störungen",
+      "approval_pending": "Ausstehende Genehmigungen",
+      "vote_active": "Aktive Abstimmungen",
+      "message_unread": "Ungelesene Nachrichten",
+      "meter_due": "Zählerablese fällig",
+      "person_months_due": "Personenmonate fällig",
+      "announcement_unread": "Ungelesene Ankündigungen"
+    },
+    "action": {
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "view": "Ansehen",
+      "dismiss": "Verwerfen",
+      "complete": "Abschließen",
+      "escalate": "Eskalieren"
+    },
+    "confirmAction": "Sind Sie sicher, dass Sie {{action}} möchten?",
+    "allCaughtUp": "Alles erledigt!",
+    "noItemsNeedingAttention": "Sie haben derzeit keine Elemente, die Aufmerksamkeit erfordern.",
+    "errorLoadingQueue": "Fehler beim Laden der Warteschlange",
+    "actionQueue": "Aktionswarteschlange",
+    "keyboardHint": "Tastenkürzel:",
+    "toNavigate": "zum Navigieren",
+    "toOpen": "zum Öffnen",
+    "forHelp": "für Hilfe",
+    "minutesAgo_one": "vor {{count}} Minute",
+    "minutesAgo_other": "vor {{count}} Minuten",
+    "hoursAgo_one": "vor {{count}} Stunde",
+    "hoursAgo_other": "vor {{count}} Stunden",
+    "daysAgo_one": "vor {{count}} Tag",
+    "daysAgo_other": "vor {{count}} Tagen",
+    "overdue": "{{days}} Tage überfällig",
+    "dueToday": "Heute fällig",
+    "dueTomorrow": "Morgen fällig",
+    "dueInDays": "In {{days}} Tagen fällig",
+    "quickTasks": "Schnelle Aufgaben",
+    "completeIn60Seconds": "Die meisten Aufgaben in unter 60 Sekunden erledigen",
+    "recentActivity": "Letzte Aktivität",
+    "activity": {
+      "meterReadingSubmitted": "Zählerstand übermittelt",
+      "voteSubmitted": "Abstimmung abgegeben",
+      "faultReported": "Störung gemeldet"
+    },
+    "stats": {
+      "pendingFaults": "Ausstehende Störungen",
+      "pendingApprovals": "Ausstehende Genehmigungen",
+      "activeVotes": "Aktive Abstimmungen",
+      "unreadMessages": "Ungelesene Nachrichten"
+    }
   }
 }

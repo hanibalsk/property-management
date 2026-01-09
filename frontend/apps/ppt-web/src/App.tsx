@@ -16,6 +16,7 @@ import {
   useToast,
 } from './components';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
+import { ManagerDashboardPage, ResidentDashboardPage } from './features/dashboard';
 import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
   DisputeCategory,
@@ -170,6 +171,9 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/login" element={<LoginPage />} />
+                    {/* Dashboard routes (Epic 124) */}
+                    <Route path="/dashboard/manager" element={<ManagerDashboardPage />} />
+                    <Route path="/dashboard/resident" element={<ResidentDashboardPage />} />
                     {/* Document Intelligence routes (Epic 39) */}
                     <Route path="/documents" element={<DocumentsPageRoute />} />
                     <Route path="/documents/upload" element={<DocumentUploadPage />} />

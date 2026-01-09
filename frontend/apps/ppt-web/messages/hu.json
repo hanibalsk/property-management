@@ -369,5 +369,78 @@
     "fontSize": "Betűméret",
     "reducedMotion": "Csökkentett mozgás",
     "screenReader": "Képernyőolvasóra optimalizálva"
+  },
+  "dashboard": {
+    "managerActionQueue": "Feladatsor",
+    "residentActionQueue": "Feladatai",
+    "managerDashboard": "Kezelői irányítópult",
+    "residentDashboard": "Irányítópultom",
+    "managerWelcome": "Íme, ami ma figyelmet igényel.",
+    "residentWelcome": "Végezze el ezeket a feladatokat a naprakészségért.",
+    "itemsNeedingAttention_one": "{{count}} elem igényel figyelmet",
+    "itemsNeedingAttention_other": "{{count}} elem igényel figyelmet",
+    "filters": "Szűrők",
+    "searchActions": "Műveletek keresése",
+    "searchPlaceholder": "Keresés cím vagy leírás alapján...",
+    "filterByPriority": "Szűrés prioritás szerint",
+    "filterByType": "Szűrés típus szerint",
+    "clearFilters": "Összes szűrő törlése",
+    "priority": {
+      "urgent": "Sürgős",
+      "high": "Magas",
+      "medium": "Közepes",
+      "low": "Alacsony"
+    },
+    "actionType": {
+      "fault_pending": "Függő hibák",
+      "fault_escalated": "Eszkalált hibák",
+      "approval_pending": "Függő jóváhagyások",
+      "vote_active": "Aktív szavazások",
+      "message_unread": "Olvasatlan üzenetek",
+      "meter_due": "Esedékes mérőóra leolvasás",
+      "person_months_due": "Esedékes személyhónapok",
+      "announcement_unread": "Olvasatlan közlemények"
+    },
+    "action": {
+      "approve": "Jóváhagyás",
+      "reject": "Elutasítás",
+      "view": "Megtekintés",
+      "dismiss": "Elvetés",
+      "complete": "Befejezés",
+      "escalate": "Eszkalálás"
+    },
+    "confirmAction": "Biztosan szeretné: {{action}}?",
+    "allCaughtUp": "Minden kész!",
+    "noItemsNeedingAttention": "Jelenleg nincs figyelmet igénylő eleme.",
+    "errorLoadingQueue": "Hiba a sor betöltésekor",
+    "actionQueue": "Műveletsor",
+    "keyboardHint": "Billentyűparancsok:",
+    "toNavigate": "navigáláshoz",
+    "toOpen": "megnyitáshoz",
+    "forHelp": "segítségért",
+    "minutesAgo_one": "{{count}} perce",
+    "minutesAgo_other": "{{count}} perce",
+    "hoursAgo_one": "{{count}} órája",
+    "hoursAgo_other": "{{count}} órája",
+    "daysAgo_one": "{{count}} napja",
+    "daysAgo_other": "{{count}} napja",
+    "overdue": "{{days}} napja késik",
+    "dueToday": "Ma esedékes",
+    "dueTomorrow": "Holnap esedékes",
+    "dueInDays": "{{days}} nap múlva esedékes",
+    "quickTasks": "Gyors feladatok",
+    "completeIn60Seconds": "A legtöbb feladat 60 másodperc alatt elvégezhető",
+    "recentActivity": "Legutóbbi tevékenység",
+    "activity": {
+      "meterReadingSubmitted": "Mérőóra leolvasás beküldve",
+      "voteSubmitted": "Szavazat beküldve",
+      "faultReported": "Hiba jelentve"
+    },
+    "stats": {
+      "pendingFaults": "Függő hibák",
+      "pendingApprovals": "Függő jóváhagyások",
+      "activeVotes": "Aktív szavazások",
+      "unreadMessages": "Olvasatlan üzenetek"
+    }
   }
 }
