@@ -5,12 +5,14 @@
  * @module features/dashboard/components/ActionItem
  */
 
+import { forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActionButton, ActionItem as ActionItemType } from '../hooks/useActionQueue';
 
 interface ActionItemProps {
   item: ActionItemType;
   isSelected?: boolean;
+  isHighlighted?: boolean;
   isExecuting?: boolean;
   onAction: (itemId: string, action: ActionButton['action']) => void;
   onSelect?: (itemId: string) => void;
@@ -47,13 +49,10 @@ const buttonVariants: Record<ActionButton['variant'], string> = {
   danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
 };
 
-export function ActionItem({
-  item,
-  isSelected = false,
-  isExecuting = false,
-  onAction,
-  onSelect,
-}: ActionItemProps) {
+export const ActionItem = forwardRef<HTMLDivElement, ActionItemProps>(function ActionItem(
+  { item, isSelected = false, isHighlighted = false, isExecuting = false, onAction, onSelect },
+  ref
+) {
   const { t } = useTranslation();
 
   const formatTimeAgo = (dateString: string) => {
@@ -93,10 +92,12 @@ export function ActionItem({
 
   return (
     <div
+      ref={ref}
       className={`
         rounded-lg border p-4 transition-all duration-200
         ${priorityColors[item.priority]}
         ${isSelected ? 'ring-2 ring-blue-500 shadow-lg' : 'shadow-sm hover:shadow-md'}
+        ${isHighlighted ? 'animate-pulse ring-4 ring-yellow-400' : ''}
         ${isExecuting ? 'opacity-50 pointer-events-none' : ''}
       `}
       onClick={() => onSelect?.(item.id)}
@@ -175,4 +176,4 @@ export function ActionItem({
       </div>
     </div>
   );
-}
+});

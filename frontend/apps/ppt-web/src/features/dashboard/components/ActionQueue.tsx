@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type {
   ActionButton,
   ActionItem as ActionItemType,
@@ -25,13 +25,45 @@ interface ActionQueueProps {
 export function ActionQueue({ userRole, onItemAction }: ActionQueueProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<ActionQueueFilters>({});
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const { items, stats, isLoading, isError, error, handleAction, isExecuting, refetch } =
     useActionQueue(userRole, filters);
+
+  // Handle deep link from notification - select and highlight the specified item
+  useEffect(() => {
+    const itemId = searchParams.get('itemId');
+    if (itemId && items.length > 0) {
+      const index = items.findIndex((item) => item.id === itemId);
+      if (index !== -1) {
+        setSelectedIndex(index);
+        setHighlightedItemId(itemId);
+
+        // Scroll the item into view
+        const itemElement = itemRefs.current.get(itemId);
+        if (itemElement) {
+          itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          itemElement.focus();
+        }
+
+        // Clear the query param after handling (prevents re-highlighting on refetch)
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('itemId');
+        setSearchParams(newParams, { replace: true });
+
+        // Clear highlight after animation
+        setTimeout(() => {
+          setHighlightedItemId(null);
+        }, 2000);
+      }
+    }
+  }, [searchParams, items, setSearchParams]);
 
   // Handle action execution with navigation
   const handleItemAction = useCallback(
@@ -244,8 +276,16 @@ export function ActionQueue({ userRole, onItemAction }: ActionQueueProps) {
           {items.map((item, index) => (
             <ActionItem
               key={item.id}
+              ref={(el) => {
+                if (el) {
+                  itemRefs.current.set(item.id, el);
+                } else {
+                  itemRefs.current.delete(item.id);
+                }
+              }}
               item={item}
               isSelected={index === selectedIndex}
+              isHighlighted={item.id === highlightedItemId}
               isExecuting={isExecuting}
               onAction={handleItemAction}
               onSelect={() => setSelectedIndex(index)}
