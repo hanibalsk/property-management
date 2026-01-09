@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "Sie sind offline",
-    "message": "Einige Funktionen sind moglicherweise nicht verfugbar."
+    "message": "Einige Funktionen sind moglicherweise nicht verfugbar.",
+    "syncing": "Synchronisiere {{count}} Elemente...",
+    "offlineWithPending": "Offline - {{count}} Elemente warten auf Synchronisation",
+    "pending": "{{count}} Elemente warten auf Synchronisation"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Wird synchronisiert wenn online",
+    "syncing": "Synchronisiere...",
+    "synced": "Synchronisiert",
+    "failed": "Synchronisation fehlgeschlagen",
+    "retry": "Erneut versuchen",
+    "savedLocally": "Lokal gespeichert {{time}}",
+    "syncComplete": "Synchronisation abgeschlossen",
+    "syncFailed": "Einige Elemente konnten nicht synchronisiert werden",
+    "syncProgress": "Synchronisiere {{current}} von {{total}}",
+    "itemSynced": "{{item}} erfolgreich synchronisiert",
+    "itemFailed": "{{item}} konnte nicht synchronisiert werden"
   },
   "help": {
     "title": "Hilfecenter",

@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "Ste offline",
-    "message": "Niektore funkcie nemusia byt dostupne."
+    "message": "Niektore funkcie nemusia byt dostupne.",
+    "syncing": "Synchronizujem {{count}} poloziek...",
+    "offlineWithPending": "Offline - {{count}} poloziek caka na synchronizaciu",
+    "pending": "{{count}} poloziek caka na synchronizaciu"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Synchronizuje sa po pripojeni",
+    "syncing": "Synchronizujem...",
+    "synced": "Synchronizovane",
+    "failed": "Synchronizacia zlyhala",
+    "retry": "Skusit znova",
+    "savedLocally": "Ulozene lokalne {{time}}",
+    "syncComplete": "Synchronizacia dokoncena",
+    "syncFailed": "Niektore polozky sa nepodarilo synchronizovat",
+    "syncProgress": "Synchronizujem {{current}} z {{total}}",
+    "itemSynced": "{{item}} uspesne synchronizovane",
+    "itemFailed": "Nepodarilo sa synchronizovat {{item}}"
   },
   "help": {
     "title": "Centrum pomoci",

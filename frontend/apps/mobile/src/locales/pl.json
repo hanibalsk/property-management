@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "Jestes offline",
-    "message": "Niektore funkcje moga byc niedostepne."
+    "message": "Niektore funkcje moga byc niedostepne.",
+    "syncing": "Synchronizowanie {{count}} elementow...",
+    "offlineWithPending": "Offline - {{count}} elementow czeka na synchronizacje",
+    "pending": "{{count}} elementow czeka na synchronizacje"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Synchronizacja po polaczeniu",
+    "syncing": "Synchronizowanie...",
+    "synced": "Zsynchronizowano",
+    "failed": "Synchronizacja nie powiodla sie",
+    "retry": "Ponow",
+    "savedLocally": "Zapisano lokalnie {{time}}",
+    "syncComplete": "Synchronizacja zakonczona",
+    "syncFailed": "Niektore elementy nie zostaly zsynchronizowane",
+    "syncProgress": "Synchronizowanie {{current}} z {{total}}",
+    "itemSynced": "{{item}} zsynchronizowano pomyslnie",
+    "itemFailed": "Nie udalo sie zsynchronizowac {{item}}"
   },
   "help": {
     "title": "Centrum pomocy",

@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "You are offline",
-    "message": "Some features may not be available."
+    "message": "Some features may not be available.",
+    "syncing": "Syncing {{count}} items...",
+    "offlineWithPending": "Offline - {{count}} items pending sync",
+    "pending": "{{count}} items pending sync"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Will sync when online",
+    "syncing": "Syncing...",
+    "synced": "Synced",
+    "failed": "Sync failed",
+    "retry": "Retry",
+    "savedLocally": "Saved locally {{time}}",
+    "syncComplete": "Sync complete",
+    "syncFailed": "Some items failed to sync",
+    "syncProgress": "Syncing {{current}} of {{total}}",
+    "itemSynced": "{{item}} synced successfully",
+    "itemFailed": "Failed to sync {{item}}"
   },
   "help": {
     "title": "Help Center",

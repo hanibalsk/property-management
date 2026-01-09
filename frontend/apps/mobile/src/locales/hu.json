@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "Offline",
-    "message": "Egyes funkciok nem erhetok el."
+    "message": "Egyes funkciok nem erhetok el.",
+    "syncing": "{{count}} elem szinkronizalasa...",
+    "offlineWithPending": "Offline - {{count}} elem var szinkronizalasra",
+    "pending": "{{count}} elem var szinkronizalasra"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Szinkronizalas online allapotban",
+    "syncing": "Szinkronizalas...",
+    "synced": "Szinkronizalva",
+    "failed": "Szinkronizalas sikertelen",
+    "retry": "Ujra",
+    "savedLocally": "Helyben mentve {{time}}",
+    "syncComplete": "Szinkronizalas befejezodott",
+    "syncFailed": "Nehany elem szinkronizalasa sikertelen",
+    "syncProgress": "Szinkronizalas {{current}}/{{total}}",
+    "itemSynced": "{{item}} sikeresen szinkronizalva",
+    "itemFailed": "{{item}} szinkronizalasa sikertelen"
   },
   "help": {
     "title": "Sugocentrum",

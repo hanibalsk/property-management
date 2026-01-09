@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "Jste offline",
-    "message": "Nektere funkce nemusi byt dostupne."
+    "message": "Nektere funkce nemusi byt dostupne.",
+    "syncing": "Synchronizuji {{count}} polozek...",
+    "offlineWithPending": "Offline - {{count}} polozek ceka na synchronizaci",
+    "pending": "{{count}} polozek ceka na synchronizaci"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Synchronizuje se po pripojeni",
+    "syncing": "Synchronizuji...",
+    "synced": "Synchronizovano",
+    "failed": "Synchronizace selhala",
+    "retry": "Zkusit znovu",
+    "savedLocally": "Ulozeno lokalne {{time}}",
+    "syncComplete": "Synchronizace dokoncena",
+    "syncFailed": "Nektere polozky se nepodarilo synchronizovat",
+    "syncProgress": "Synchronizuji {{current}} z {{total}}",
+    "itemSynced": "{{item}} uspesne synchronizovano",
+    "itemFailed": "Nepodarilo se synchronizovat {{item}}"
   },
   "help": {
     "title": "Centrum napovedy",
