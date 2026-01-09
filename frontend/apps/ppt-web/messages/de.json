@@ -441,6 +441,17 @@
       "pendingApprovals": "Ausstehende Genehmigungen",
       "activeVotes": "Aktive Abstimmungen",
       "unreadMessages": "Ungelesene Nachrichten"
+    },
+    "shortcuts": {
+      "title": "Tastenkombinationen",
+      "nextItem": "Nächster Eintrag",
+      "prevItem": "Vorheriger Eintrag",
+      "openItem": "Ausgewählten Eintrag öffnen",
+      "approve": "Aktion genehmigen",
+      "reject": "Aktion ablehnen",
+      "closeFilters": "Filter schließen",
+      "showHelp": "Diese Hilfe anzeigen",
+      "hint": "Fokussieren Sie die Aufgabenliste, um diese Tastenkombinationen zu verwenden"
     }
   }
 }

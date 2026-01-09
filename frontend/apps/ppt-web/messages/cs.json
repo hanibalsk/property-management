@@ -445,6 +445,17 @@
       "pendingApprovals": "Čekající schválení",
       "activeVotes": "Aktivní hlasování",
       "unreadMessages": "Nepřečtené zprávy"
+    },
+    "shortcuts": {
+      "title": "Klávesové zkratky",
+      "nextItem": "Další položka",
+      "prevItem": "Předchozí položka",
+      "openItem": "Otevřít vybranou položku",
+      "approve": "Schválit akci",
+      "reject": "Zamítnout akci",
+      "closeFilters": "Zavřít filtry",
+      "showHelp": "Zobrazit tuto nápovědu",
+      "hint": "Zaměřte se na seznam úkolů pro použití těchto zkratek"
     }
   }
 }

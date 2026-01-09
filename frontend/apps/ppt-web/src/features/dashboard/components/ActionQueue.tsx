@@ -16,6 +16,7 @@ import type {
 import { useActionQueue } from '../hooks/useActionQueue';
 import { ActionFilters } from './ActionFilters';
 import { ActionItem } from './ActionItem';
+import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 
 interface ActionQueueProps {
   userRole: 'manager' | 'resident';
@@ -29,6 +30,7 @@ export function ActionQueue({ userRole, onItemAction }: ActionQueueProps) {
   const [filters, setFilters] = useState<ActionQueueFilters>({});
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -143,7 +145,7 @@ export function ActionQueue({ userRole, onItemAction }: ActionQueueProps) {
           break;
         case '?':
           e.preventDefault();
-          // TODO: Show keyboard shortcuts help modal
+          setShowShortcutsHelp(true);
           break;
       }
     };
@@ -316,6 +318,12 @@ export function ActionQueue({ userRole, onItemAction }: ActionQueueProps) {
           {t('dashboard.forHelp')}
         </span>
       </div>
+
+      {/* Keyboard shortcuts help modal */}
+      <KeyboardShortcutsHelp
+        isOpen={showShortcutsHelp}
+        onClose={() => setShowShortcutsHelp(false)}
+      />
     </div>
   );
 }

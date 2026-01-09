@@ -2509,6 +2509,17 @@
         "pendingApprovals": "Pending Approvals",
         "activeVotes": "Active Votes",
         "unreadMessages": "Unread Messages"
+      },
+      "shortcuts": {
+        "title": "Keyboard Shortcuts",
+        "nextItem": "Next item",
+        "prevItem": "Previous item",
+        "openItem": "Open selected item",
+        "approve": "Approve action",
+        "reject": "Reject action",
+        "closeFilters": "Close filters",
+        "showHelp": "Show this help",
+        "hint": "Focus on the action queue to use these shortcuts"
       }
     }
   }

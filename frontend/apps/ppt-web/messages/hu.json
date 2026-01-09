@@ -441,6 +441,17 @@
       "pendingApprovals": "Függő jóváhagyások",
       "activeVotes": "Aktív szavazások",
       "unreadMessages": "Olvasatlan üzenetek"
+    },
+    "shortcuts": {
+      "title": "Billentyűparancsok",
+      "nextItem": "Következő elem",
+      "prevItem": "Előző elem",
+      "openItem": "Kiválasztott elem megnyitása",
+      "approve": "Művelet jóváhagyása",
+      "reject": "Művelet elutasítása",
+      "closeFilters": "Szűrők bezárása",
+      "showHelp": "Súgó megjelenítése",
+      "hint": "Fókuszáljon a feladatlistára a billentyűparancsok használatához"
     }
   }
 }

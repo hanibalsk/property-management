@@ -445,6 +445,17 @@
       "pendingApprovals": "Oczekujące zatwierdzenia",
       "activeVotes": "Aktywne głosowania",
       "unreadMessages": "Nieprzeczytane wiadomości"
+    },
+    "shortcuts": {
+      "title": "Skróty klawiaturowe",
+      "nextItem": "Następny element",
+      "prevItem": "Poprzedni element",
+      "openItem": "Otwórz wybrany element",
+      "approve": "Zatwierdź akcję",
+      "reject": "Odrzuć akcję",
+      "closeFilters": "Zamknij filtry",
+      "showHelp": "Pokaż tę pomoc",
+      "hint": "Skup się na liście zadań, aby używać tych skrótów"
     }
   }
 }
