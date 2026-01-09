@@ -33,6 +33,10 @@ const DEEP_LINK_ROUTES: DeepLinkRoute[] = [
   { screen: 'Voting', pattern: 'voting/:id', params: ['id'], requiresAuth: true },
   { screen: 'Documents', pattern: 'documents', requiresAuth: true },
   { screen: 'Documents', pattern: 'documents/:id', params: ['id'], requiresAuth: true },
+  { screen: 'Outages', pattern: 'outages', requiresAuth: true },
+  { screen: 'Outages', pattern: 'outages/:id', params: ['id'], requiresAuth: true },
+  { screen: 'Messages', pattern: 'messages', requiresAuth: true },
+  { screen: 'Messages', pattern: 'messages/:id', params: ['id'], requiresAuth: true },
   { screen: 'Settings', pattern: 'settings', requiresAuth: true },
   { screen: 'WidgetSettings', pattern: 'settings/widgets', requiresAuth: true },
 ];
