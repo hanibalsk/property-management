@@ -3,8 +3,8 @@
  * UC-12: Utility Outages
  */
 
+import type { OutageCommodity, OutageSeverity, OutageStatus } from '@ppt/api-client';
 import { useTranslation } from 'react-i18next';
-import type { OutageCommodity, OutageSeverity, OutageStatus } from '../components';
 
 export interface OutageDetail {
   id: string;
@@ -47,9 +47,9 @@ const statusColors: Record<OutageStatus, string> = {
 };
 
 const severityColors: Record<OutageSeverity, string> = {
-  low: 'bg-gray-100 text-gray-800',
-  medium: 'bg-blue-100 text-blue-800',
-  high: 'bg-orange-100 text-orange-800',
+  informational: 'bg-gray-100 text-gray-800',
+  minor: 'bg-blue-100 text-blue-800',
+  major: 'bg-orange-100 text-orange-800',
   critical: 'bg-red-100 text-red-800',
 };
 

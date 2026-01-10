@@ -1,8 +1,24 @@
-import { useCreateDispute, useDispute, useDisputes } from '@ppt/api-client';
+import {
+  useCancelOutage,
+  useCreateDispute,
+  useCreateOutage,
+  useDispute,
+  useDisputes,
+  useOutage,
+  useOutages,
+  useResolveOutage,
+  useStartOutage,
+  useUpdateOutage,
+} from '@ppt/api-client';
 import type {
   Dispute as ApiDispute,
   DisputeStatus as ApiDisputeStatus,
   DisputeType as ApiDisputeType,
+  OutageCommodity as ApiOutageCommodity,
+  OutageSeverity as ApiOutageSeverity,
+  OutageStatus as ApiOutageStatus,
+  OutageSummary as ApiOutageSummary,
+  OutageListQuery,
 } from '@ppt/api-client';
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -27,13 +43,7 @@ import type {
   DisputeSummary,
   DisputeStatus as UiDisputeStatus,
 } from './features/disputes/components/DisputeCard';
-import type {
-  ListOutagesParams,
-  OutageCommodity,
-  OutageDetail,
-  OutageSeverity,
-  OutageSummary,
-} from './features/outages';
+import type { ListOutagesParams, OutageDetail } from './features/outages';
 // Lazy-loaded route components for code splitting (Epic 130)
 import {
   AccessibilitySettingsPage,
@@ -595,6 +605,9 @@ function OutagesPageRoute() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [queryParams, setQueryParams] = useState<OutageListQuery>({ limit: 10, offset: 0 });
+
+  const { data, isLoading } = useOutages(queryParams);
 
   if (!user?.organizationId) {
     return (
@@ -606,16 +619,20 @@ function OutagesPageRoute() {
     );
   }
 
-  // TODO: Replace with real API hooks when available
-  const [outages] = useState<OutageSummary[]>([]);
-  const [total] = useState(0);
-  const [isLoading] = useState(false);
+  const outages: ApiOutageSummary[] = data?.outages ?? [];
+  const total = data?.total ?? 0;
 
   const handleNavigateToCreate = () => navigate('/outages/new');
   const handleNavigateToView = (id: string) => navigate(`/outages/${id}`);
   const handleNavigateToEdit = (id: string) => navigate(`/outages/${id}/edit`);
-  const handleFilterChange = (_params: ListOutagesParams) => {
-    // TODO: Implement API call with filters
+  const handleFilterChange = (params: ListOutagesParams) => {
+    setQueryParams({
+      status: params.status as ApiOutageStatus | undefined,
+      commodity: params.commodity as ApiOutageCommodity | undefined,
+      severity: params.severity as ApiOutageSeverity | undefined,
+      limit: params.pageSize,
+      offset: (params.page - 1) * params.pageSize,
+    });
   };
 
   return (
@@ -639,6 +656,7 @@ function CreateOutagePageRoute() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const createOutage = useCreateOutage();
 
   if (!user?.organizationId) {
     return (
@@ -650,22 +668,28 @@ function CreateOutagePageRoute() {
     );
   }
 
-  // TODO: Replace with real API hooks when available
+  // TODO: Fetch buildings from API when available
   const [buildings] = useState<{ id: string; name: string; address: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (_data: {
+  const handleSubmit = async (data: {
     title: string;
     description: string;
-    commodity: OutageCommodity;
-    severity: OutageSeverity;
+    commodity: ApiOutageCommodity;
+    severity: ApiOutageSeverity;
     buildingIds: string[];
     scheduledStart: string;
     scheduledEnd: string;
   }) => {
-    setIsLoading(true);
     try {
-      // TODO: Call API to create outage
+      await createOutage.mutateAsync({
+        title: data.title,
+        description: data.description,
+        commodity: data.commodity,
+        severity: data.severity,
+        buildingIds: data.buildingIds,
+        scheduledStart: data.scheduledStart,
+        scheduledEnd: data.scheduledEnd || undefined,
+      });
       showToast({
         type: 'success',
         title: t('outages.createdSuccessfully'),
@@ -678,8 +702,6 @@ function CreateOutagePageRoute() {
         title: t('outages.failedToCreate'),
         message: error instanceof Error ? error.message : t('auth.unexpectedError'),
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -688,7 +710,7 @@ function CreateOutagePageRoute() {
   return (
     <CreateOutagePage
       buildings={buildings}
-      isLoading={isLoading}
+      isLoading={createOutage.isPending}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
     />
@@ -704,6 +726,11 @@ function ViewOutagePageRoute() {
   const { outageId } = useParams<{ outageId: string }>();
   const { showToast } = useToast();
 
+  const { data: outageData, isLoading } = useOutage(outageId ?? '');
+  const startOutage = useStartOutage();
+  const resolveOutage = useResolveOutage();
+  const cancelOutage = useCancelOutage();
+
   if (!outageId) {
     return (
       <div className="error-page">
@@ -714,32 +741,79 @@ function ViewOutagePageRoute() {
     );
   }
 
-  // TODO: Replace with real API hooks when available
-  const [outage] = useState<OutageDetail | null>(null);
-  const [isLoading] = useState(true);
-
   const handleEdit = () => navigate(`/outages/${outageId}/edit`);
-  const handleStart = () => {
-    // TODO: Call API to start outage
-    showToast({ type: 'success', title: t('outages.started'), message: '' });
+
+  const handleStart = async () => {
+    try {
+      await startOutage.mutateAsync({ id: outageId });
+      showToast({ type: 'success', title: t('outages.started'), message: '' });
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: t('outages.failedToStart'),
+        message: error instanceof Error ? error.message : t('auth.unexpectedError'),
+      });
+    }
   };
-  const handleResolve = (_notes: string) => {
-    // TODO: Call API to resolve outage
-    showToast({ type: 'success', title: t('outages.resolved'), message: '' });
+
+  const handleResolve = async (notes: string) => {
+    try {
+      await resolveOutage.mutateAsync({ id: outageId, data: { resolutionNotes: notes } });
+      showToast({ type: 'success', title: t('outages.resolved'), message: '' });
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: t('outages.failedToResolve'),
+        message: error instanceof Error ? error.message : t('auth.unexpectedError'),
+      });
+    }
   };
-  const handleCancel = (_reason: string) => {
-    // TODO: Call API to cancel outage
-    showToast({ type: 'success', title: t('outages.cancelled'), message: '' });
+
+  const handleCancel = async (reason: string) => {
+    try {
+      await cancelOutage.mutateAsync({ id: outageId, data: { reason } });
+      showToast({ type: 'success', title: t('outages.cancelled'), message: '' });
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: t('outages.failedToCancel'),
+        message: error instanceof Error ? error.message : t('auth.unexpectedError'),
+      });
+    }
   };
+
   const handleBack = () => navigate('/outages');
 
-  if (isLoading || !outage) {
+  if (isLoading || !outageData) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
       </div>
     );
   }
+
+  // Map API outage to UI OutageDetail format
+  const outage: OutageDetail = {
+    id: outageData.id,
+    organizationId: outageData.organizationId,
+    createdBy: outageData.createdBy,
+    title: outageData.title,
+    description: outageData.description ?? '',
+    commodity: outageData.commodity,
+    severity: outageData.severity,
+    status: outageData.status,
+    buildingIds: outageData.buildingIds,
+    scheduledStart: outageData.scheduledStart,
+    scheduledEnd: outageData.scheduledEnd,
+    actualStart: outageData.actualStart,
+    actualEnd: outageData.actualEnd,
+    resolutionNotes: outageData.resolutionNotes,
+    cancelReason: outageData.cancelReason,
+    createdAt: outageData.createdAt,
+    updatedAt: outageData.updatedAt,
+    createdByName: outageData.createdBy, // TODO: Fetch user name
+    buildingNames: outageData.buildings?.map((b) => b.name) ?? [],
+  };
 
   return (
     <ViewOutagePage
@@ -763,6 +837,9 @@ function EditOutagePageRoute() {
   const { outageId } = useParams<{ outageId: string }>();
   const { showToast } = useToast();
 
+  const { data: outageData, isLoading: isLoadingOutage } = useOutage(outageId ?? '');
+  const updateOutage = useUpdateOutage();
+
   if (!outageId) {
     return (
       <div className="error-page">
@@ -773,23 +850,31 @@ function EditOutagePageRoute() {
     );
   }
 
-  // TODO: Replace with real API hooks when available
-  const [outage] = useState<OutageDetail | null>(null);
+  // TODO: Fetch buildings from API when available
   const [buildings] = useState<{ id: string; name: string; address: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const handleSubmit = async (_data: {
+  const handleSubmit = async (data: {
     title: string;
     description: string;
-    commodity: OutageCommodity;
-    severity: OutageSeverity;
+    commodity: ApiOutageCommodity;
+    severity: ApiOutageSeverity;
     buildingIds: string[];
     scheduledStart: string;
     scheduledEnd: string;
   }) => {
-    setIsLoading(true);
     try {
-      // TODO: Call API to update outage
+      await updateOutage.mutateAsync({
+        id: outageId,
+        data: {
+          title: data.title,
+          description: data.description,
+          commodity: data.commodity,
+          severity: data.severity,
+          buildingIds: data.buildingIds,
+          scheduledStart: data.scheduledStart,
+          scheduledEnd: data.scheduledEnd || undefined,
+        },
+      });
       showToast({
         type: 'success',
         title: t('outages.updatedSuccessfully'),
@@ -802,14 +887,12 @@ function EditOutagePageRoute() {
         title: t('outages.failedToUpdate'),
         message: error instanceof Error ? error.message : t('auth.unexpectedError'),
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleCancel = () => navigate(`/outages/${outageId}`);
 
-  if (!outage) {
+  if (isLoadingOutage || !outageData) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -817,11 +900,34 @@ function EditOutagePageRoute() {
     );
   }
 
+  // Map API outage to UI OutageDetail format
+  const outage: OutageDetail = {
+    id: outageData.id,
+    organizationId: outageData.organizationId,
+    createdBy: outageData.createdBy,
+    title: outageData.title,
+    description: outageData.description ?? '',
+    commodity: outageData.commodity,
+    severity: outageData.severity,
+    status: outageData.status,
+    buildingIds: outageData.buildingIds,
+    scheduledStart: outageData.scheduledStart,
+    scheduledEnd: outageData.scheduledEnd,
+    actualStart: outageData.actualStart,
+    actualEnd: outageData.actualEnd,
+    resolutionNotes: outageData.resolutionNotes,
+    cancelReason: outageData.cancelReason,
+    createdAt: outageData.createdAt,
+    updatedAt: outageData.updatedAt,
+    createdByName: outageData.createdBy, // TODO: Fetch user name
+    buildingNames: outageData.buildings?.map((b) => b.name) ?? [],
+  };
+
   return (
     <EditOutagePage
       outage={outage}
       buildings={buildings}
-      isLoading={isLoading}
+      isLoading={updateOutage.isPending}
       onSubmit={handleSubmit}
       onCancel={handleCancel}
     />

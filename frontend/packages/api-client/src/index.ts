@@ -37,6 +37,7 @@ export * from './disputes';
 export * from './faults';
 export * from './migration';
 export * from './compliance';
+export * from './outages';
 
 // API client configuration
 export interface ApiConfig {

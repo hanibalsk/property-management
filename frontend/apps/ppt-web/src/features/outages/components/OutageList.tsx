@@ -37,7 +37,7 @@ const commodityOptions: OutageCommodity[] = [
   'internet',
   'other',
 ];
-const severityOptions: OutageSeverity[] = ['low', 'medium', 'high', 'critical'];
+const severityOptions: OutageSeverity[] = ['informational', 'minor', 'major', 'critical'];
 
 export function OutageList({
   outages,
