@@ -19,6 +19,7 @@ import {
 import './styles/accessibility.css';
 import './features/settings/styles/accessibility.css';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
+import { CommandPaletteDialog, useNavigationCommands } from './features/command-palette';
 import { ManagerDashboardPage, ResidentDashboardPage } from './features/dashboard';
 import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
@@ -40,10 +41,6 @@ import type {
 } from './features/outages';
 import { PrivacySettingsPage } from './features/privacy';
 import { AccessibilitySettingsPage } from './features/settings';
-import {
-  CommandPaletteDialog,
-  useNavigationCommands,
-} from './features/command-palette';
 import { LoginPage } from './pages/LoginPage';
 
 // ============================================
