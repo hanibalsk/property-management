@@ -3,8 +3,8 @@
  * Epic 129: Command Palette
  */
 
+/// <reference types="vitest/globals" />
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommandPaletteProvider, useRegisterCommands } from '../hooks';
 import type { Command } from '../types';
 import { CommandPaletteDialog } from './CommandPaletteDialog';
