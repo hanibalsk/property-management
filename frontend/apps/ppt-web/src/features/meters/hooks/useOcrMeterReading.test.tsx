@@ -3,10 +3,10 @@
  * Epic 128: OCR Meter Preview
  */
 
+/// <reference types="vitest/globals" />
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useOcrCorrection, useOcrMeterReading, useOcrProcessImage } from './useOcrMeterReading';
 
 // Mock fetch
