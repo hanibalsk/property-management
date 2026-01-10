@@ -16,6 +16,11 @@ import {
   useToast,
 } from './components';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
+import {
+  CommandPaletteDialog,
+  CommandPaletteProvider,
+  useNavigationCommands,
+} from './features/command-palette';
 import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
   DisputeCategory,
@@ -155,47 +160,68 @@ function AppNavigation() {
   );
 }
 
+/**
+ * Command Palette wrapper that registers navigation commands.
+ * Must be rendered inside BrowserRouter for useNavigate to work.
+ */
+function CommandPaletteWrapper({ children }: { children: ReactNode }) {
+  useNavigationCommands();
+  return (
+    <>
+      <CommandPaletteDialog />
+      {children}
+    </>
+  );
+}
+
 function App() {
   return (
     <AccessibilityProvider>
       <AuthProvider>
         <ToastProvider>
           <WebSocketWrapper>
-            <BrowserRouter>
-              <SkipNavigation mainContentId="main-content" />
-              <OfflineIndicator />
-              <div className="app">
-                <AppNavigation />
-                <main id="main-content">
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    {/* Document Intelligence routes (Epic 39) */}
-                    <Route path="/documents" element={<DocumentsPageRoute />} />
-                    <Route path="/documents/upload" element={<DocumentUploadPage />} />
-                    <Route path="/documents/:documentId" element={<DocumentDetailRoute />} />
-                    {/* News routes (Epic 59) */}
-                    <Route path="/news" element={<NewsListPage />} />
-                    <Route path="/news/:articleId" element={<ArticleDetailRoute />} />
-                    {/* Emergency contacts route (Epic 62) */}
-                    <Route path="/emergency" element={<EmergencyContactDirectoryPage />} />
-                    {/* Accessibility settings route (Epic 60) */}
-                    <Route path="/settings/accessibility" element={<AccessibilitySettingsPage />} />
-                    {/* Privacy settings route (Epic 63) */}
-                    <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
-                    {/* Dispute Resolution routes (Epic 77) */}
-                    <Route path="/disputes" element={<DisputesPageRoute />} />
-                    <Route path="/disputes/new" element={<FileDisputePageRoute />} />
-                    <Route path="/disputes/:disputeId" element={<DisputeDetailRoute />} />
-                    {/* Outages routes (UC-12) */}
-                    <Route path="/outages" element={<OutagesPageRoute />} />
-                    <Route path="/outages/new" element={<CreateOutagePageRoute />} />
-                    <Route path="/outages/:outageId" element={<ViewOutagePageRoute />} />
-                    <Route path="/outages/:outageId/edit" element={<EditOutagePageRoute />} />
-                  </Routes>
-                </main>
-              </div>
-            </BrowserRouter>
+            <CommandPaletteProvider>
+              <BrowserRouter>
+                <CommandPaletteWrapper>
+                  <SkipNavigation mainContentId="main-content" />
+                  <OfflineIndicator />
+                  <div className="app">
+                    <AppNavigation />
+                    <main id="main-content">
+                      <Routes>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        {/* Document Intelligence routes (Epic 39) */}
+                        <Route path="/documents" element={<DocumentsPageRoute />} />
+                        <Route path="/documents/upload" element={<DocumentUploadPage />} />
+                        <Route path="/documents/:documentId" element={<DocumentDetailRoute />} />
+                        {/* News routes (Epic 59) */}
+                        <Route path="/news" element={<NewsListPage />} />
+                        <Route path="/news/:articleId" element={<ArticleDetailRoute />} />
+                        {/* Emergency contacts route (Epic 62) */}
+                        <Route path="/emergency" element={<EmergencyContactDirectoryPage />} />
+                        {/* Accessibility settings route (Epic 60) */}
+                        <Route
+                          path="/settings/accessibility"
+                          element={<AccessibilitySettingsPage />}
+                        />
+                        {/* Privacy settings route (Epic 63) */}
+                        <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
+                        {/* Dispute Resolution routes (Epic 77) */}
+                        <Route path="/disputes" element={<DisputesPageRoute />} />
+                        <Route path="/disputes/new" element={<FileDisputePageRoute />} />
+                        <Route path="/disputes/:disputeId" element={<DisputeDetailRoute />} />
+                        {/* Outages routes (UC-12) */}
+                        <Route path="/outages" element={<OutagesPageRoute />} />
+                        <Route path="/outages/new" element={<CreateOutagePageRoute />} />
+                        <Route path="/outages/:outageId" element={<ViewOutagePageRoute />} />
+                        <Route path="/outages/:outageId/edit" element={<EditOutagePageRoute />} />
+                      </Routes>
+                    </main>
+                  </div>
+                </CommandPaletteWrapper>
+              </BrowserRouter>
+            </CommandPaletteProvider>
           </WebSocketWrapper>
         </ToastProvider>
       </AuthProvider>

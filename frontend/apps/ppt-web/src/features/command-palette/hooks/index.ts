@@ -4,3 +4,4 @@ export {
   useRegisterCommand,
   useRegisterCommands,
 } from './useCommandPalette';
+export { useNavigationCommands } from './useNavigationCommands';
