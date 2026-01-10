@@ -2438,5 +2438,63 @@
       "noResults": "No tutorials found",
       "noResultsDescription": "Try adjusting your search or filter criteria."
     }
+  },
+  "commandPalette": {
+    "title": "Command Palette",
+    "placeholder": "Type a command or search...",
+    "searchLabel": "Search commands",
+    "resultsLabel": "Command results",
+    "noResults": "No commands found",
+    "navigate": "to navigate",
+    "select": "to select",
+    "shortcutHint": "Press {{shortcut}} to open",
+    "categories": {
+      "recent": "Recent",
+      "navigation": "Navigation",
+      "create": "Create",
+      "action": "Actions",
+      "search": "Search",
+      "settings": "Settings"
+    },
+    "commands": {
+      "goToDashboard": "Go to Dashboard",
+      "goToBuildings": "Go to Buildings",
+      "goToFaults": "Go to Faults",
+      "goToDocuments": "Go to Documents",
+      "goToMeters": "Go to Meters",
+      "goToVoting": "Go to Voting",
+      "goToAnnouncements": "Go to Announcements",
+      "goToMessages": "Go to Messages",
+      "goToSettings": "Go to Settings",
+      "createFault": "Create Fault Report",
+      "createAnnouncement": "Create Announcement",
+      "uploadDocument": "Upload Document",
+      "submitReading": "Submit Meter Reading",
+      "searchDocuments": "Search Documents",
+      "searchBuildings": "Search Buildings",
+      "toggleDarkMode": "Toggle Dark Mode",
+      "openHelp": "Open Help",
+      "signOut": "Sign Out"
+    },
+    "descriptions": {
+      "goToDashboard": "Navigate to main dashboard",
+      "goToBuildings": "View and manage buildings",
+      "goToFaults": "View fault reports",
+      "goToDocuments": "Browse documents",
+      "goToMeters": "View meter readings",
+      "goToVoting": "View polls and voting",
+      "goToAnnouncements": "View announcements",
+      "goToMessages": "Open messaging",
+      "goToSettings": "Manage your settings",
+      "createFault": "Report a new issue",
+      "createAnnouncement": "Post a new announcement",
+      "uploadDocument": "Upload a new document",
+      "submitReading": "Submit a new meter reading",
+      "searchDocuments": "Find documents by name or content",
+      "searchBuildings": "Search for buildings",
+      "toggleDarkMode": "Switch between light and dark theme",
+      "openHelp": "Get help and support",
+      "signOut": "Log out of your account"
+    }
   }
 }

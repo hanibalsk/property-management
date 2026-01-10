@@ -1,0 +1,1 @@
+export { CommandPaletteDialog } from './CommandPaletteDialog';
