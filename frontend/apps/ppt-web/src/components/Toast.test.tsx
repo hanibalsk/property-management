@@ -8,9 +8,9 @@
  * - User interactions
  */
 
+/// <reference types="vitest/globals" />
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
 import { ToastProvider, useToast } from './Toast';
 
 // Test component that uses the toast hook
