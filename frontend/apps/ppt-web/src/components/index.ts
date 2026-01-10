@@ -18,4 +18,4 @@ export type { ConnectionStatusProps } from './ConnectionStatus';
 
 export { LanguageSwitcher } from './LanguageSwitcher';
 
-export { PageLoading } from './PageLoading';
+export { AnnouncerProvider, useAnnouncer } from './Announcer';

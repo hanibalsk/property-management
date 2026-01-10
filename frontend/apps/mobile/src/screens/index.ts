@@ -7,6 +7,7 @@ export { FaultsListScreen, ReportFaultScreen } from './faults';
 export { AnnouncementsScreen } from './announcements';
 export { VotingScreen } from './voting';
 export { DocumentsScreen } from './documents';
+export { MeterReadingScreen } from './meters';
 
 // Settings screens (Epic 49)
 export { WidgetSettingsScreen } from './settings';

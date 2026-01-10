@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "You are offline",
-    "message": "Some features may not be available."
+    "message": "Some features may not be available.",
+    "syncing": "Syncing {{count}} items...",
+    "offlineWithPending": "Offline - {{count}} items pending sync",
+    "pending": "{{count}} items pending sync"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Will sync when online",
+    "syncing": "Syncing...",
+    "synced": "Synced",
+    "failed": "Sync failed",
+    "retry": "Retry",
+    "savedLocally": "Saved locally {{time}}",
+    "syncComplete": "Sync complete",
+    "syncFailed": "Some items failed to sync",
+    "syncProgress": "Syncing {{current}} of {{total}}",
+    "itemSynced": "{{item}} synced successfully",
+    "itemFailed": "Failed to sync {{item}}"
   },
   "help": {
     "title": "Help Center",
@@ -228,5 +244,24 @@
     "denied": "Permission Denied",
     "cameraRequired": "Camera permission is required",
     "locationRequired": "Location permission is required"
+  },
+  "meters": {
+    "title": "Meter Reading",
+    "selectType": "Select Meter Type",
+    "water": "Water",
+    "electricity": "Electricity",
+    "gas": "Gas",
+    "heating": "Heating",
+    "enterReading": "Enter Reading",
+    "readingPlaceholder": "0.00",
+    "readingRequired": "Please enter a reading",
+    "photo": "Photo (optional)",
+    "submit": "Submit Reading",
+    "submitSuccess": "Meter reading submitted successfully",
+    "submitFailed": "Failed to submit meter reading",
+    "savedOffline": "Saved Offline",
+    "willSyncWhenOnline": "Your reading will be submitted when you're back online",
+    "offlineMode": "You're offline. Readings will be saved locally.",
+    "pendingReadings": "Pending Readings"
   }
 }

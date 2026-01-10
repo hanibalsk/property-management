@@ -9,6 +9,7 @@ import { type ReactNode, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
+  AnnouncerProvider,
   ConnectionStatus,
   LanguageSwitcher,
   OfflineIndicator,
@@ -16,7 +17,11 @@ import {
   ToastProvider,
   useToast,
 } from './components';
+import './styles/accessibility.css';
+import './features/settings/styles/accessibility.css';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
+import { ManagerDashboardPage, ResidentDashboardPage } from './features/dashboard';
+import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
   DisputeCategory,
   DisputePriority,
@@ -171,17 +176,20 @@ function App() {
     <AccessibilityProvider>
       <AuthProvider>
         <ToastProvider>
-          <WebSocketWrapper>
-            <BrowserRouter>
-              <SkipNavigation mainContentId="main-content" />
-              <OfflineIndicator />
-              <div className="app">
-                <AppNavigation />
-                <main id="main-content">
-                  <Suspense fallback={<PageLoading />}>
+          <AnnouncerProvider>
+            <WebSocketWrapper>
+              <BrowserRouter>
+                <SkipNavigation mainContentId="main-content" />
+                <OfflineIndicator />
+                <div className="app">
+                  <AppNavigation />
+                  <main id="main-content">
                     <Routes>
                       <Route path="/" element={<Home />} />
                       <Route path="/login" element={<LoginPage />} />
+                      {/* Dashboard routes (Epic 124) */}
+                      <Route path="/dashboard/manager" element={<ManagerDashboardPage />} />
+                      <Route path="/dashboard/resident" element={<ResidentDashboardPage />} />
                       {/* Document Intelligence routes (Epic 39) */}
                       <Route path="/documents" element={<DocumentsPageRoute />} />
                       <Route path="/documents/upload" element={<DocumentUploadPage />} />
@@ -208,11 +216,11 @@ function App() {
                       <Route path="/outages/:outageId" element={<ViewOutagePageRoute />} />
                       <Route path="/outages/:outageId/edit" element={<EditOutagePageRoute />} />
                     </Routes>
-                  </Suspense>
-                </main>
-              </div>
-            </BrowserRouter>
-          </WebSocketWrapper>
+                  </main>
+                </div>
+              </BrowserRouter>
+            </WebSocketWrapper>
+          </AnnouncerProvider>
         </ToastProvider>
       </AuthProvider>
     </AccessibilityProvider>

@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "Jste offline",
-    "message": "Nektere funkce nemusi byt dostupne."
+    "message": "Nektere funkce nemusi byt dostupne.",
+    "syncing": "Synchronizuji {{count}} polozek...",
+    "offlineWithPending": "Offline - {{count}} polozek ceka na synchronizaci",
+    "pending": "{{count}} polozek ceka na synchronizaci"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Synchronizuje se po pripojeni",
+    "syncing": "Synchronizuji...",
+    "synced": "Synchronizovano",
+    "failed": "Synchronizace selhala",
+    "retry": "Zkusit znovu",
+    "savedLocally": "Ulozeno lokalne {{time}}",
+    "syncComplete": "Synchronizace dokoncena",
+    "syncFailed": "Nektere polozky se nepodarilo synchronizovat",
+    "syncProgress": "Synchronizuji {{current}} z {{total}}",
+    "itemSynced": "{{item}} uspesne synchronizovano",
+    "itemFailed": "Nepodarilo se synchronizovat {{item}}"
   },
   "help": {
     "title": "Centrum napovedy",
@@ -228,5 +244,24 @@
     "denied": "Opravneni zamitnuto",
     "cameraRequired": "Je potreba opravneni fotoaparatu",
     "locationRequired": "Je potreba opravneni polohy"
+  },
+  "meters": {
+    "title": "Odecet merice",
+    "selectType": "Vyberte typ merice",
+    "water": "Voda",
+    "electricity": "Elektrina",
+    "gas": "Plyn",
+    "heating": "Topeni",
+    "enterReading": "Zadejte odecet",
+    "readingPlaceholder": "0,00",
+    "readingRequired": "Prosim zadejte odecet",
+    "photo": "Fotografie (volitelne)",
+    "submit": "Odeslat odecet",
+    "submitSuccess": "Odecet merice byl uspesne odeslan",
+    "submitFailed": "Nepodarilo se odeslat odecet merice",
+    "savedOffline": "Ulozeno offline",
+    "willSyncWhenOnline": "Vas odecet bude odeslan po pripojeni k internetu",
+    "offlineMode": "Jste offline. Odecty budou ulozeny lokalne.",
+    "pendingReadings": "Cekajici odecty"
   }
 }

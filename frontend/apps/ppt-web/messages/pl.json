@@ -369,5 +369,93 @@
     "fontSize": "Rozmiar czcionki",
     "reducedMotion": "Zmniejszony ruch",
     "screenReader": "Zoptymalizowane dla czytników ekranu"
+  },
+  "dashboard": {
+    "managerActionQueue": "Kolejka zadań",
+    "residentActionQueue": "Twoje zadania",
+    "managerDashboard": "Panel zarządcy",
+    "residentDashboard": "Mój panel",
+    "managerWelcome": "Oto co dziś wymaga Twojej uwagi.",
+    "residentWelcome": "Wykonaj te zadania, aby być na bieżąco.",
+    "itemsNeedingAttention_one": "{{count}} element wymaga uwagi",
+    "itemsNeedingAttention_few": "{{count}} elementy wymagają uwagi",
+    "itemsNeedingAttention_other": "{{count}} elementów wymaga uwagi",
+    "filters": "Filtry",
+    "searchActions": "Szukaj działań",
+    "searchPlaceholder": "Szukaj po tytule lub opisie...",
+    "filterByPriority": "Filtruj według priorytetu",
+    "filterByType": "Filtruj według typu",
+    "clearFilters": "Wyczyść wszystkie filtry",
+    "priority": {
+      "urgent": "Pilne",
+      "high": "Wysoki",
+      "medium": "Średni",
+      "low": "Niski"
+    },
+    "actionType": {
+      "fault_pending": "Oczekujące usterki",
+      "fault_escalated": "Eskalowane usterki",
+      "approval_pending": "Oczekujące zatwierdzenia",
+      "vote_active": "Aktywne głosowania",
+      "message_unread": "Nieprzeczytane wiadomości",
+      "meter_due": "Terminy odczytów",
+      "person_months_due": "Terminy osobomiesięcy",
+      "announcement_unread": "Nieprzeczytane ogłoszenia"
+    },
+    "action": {
+      "approve": "Zatwierdź",
+      "reject": "Odrzuć",
+      "view": "Zobacz",
+      "dismiss": "Odrzuć",
+      "complete": "Zakończ",
+      "escalate": "Eskaluj"
+    },
+    "confirmAction": "Czy na pewno chcesz {{action}}?",
+    "allCaughtUp": "Wszystko załatwione!",
+    "noItemsNeedingAttention": "Obecnie nie masz żadnych elementów wymagających uwagi.",
+    "errorLoadingQueue": "Błąd ładowania kolejki",
+    "actionQueue": "Kolejka działań",
+    "keyboardHint": "Skróty klawiaturowe:",
+    "toNavigate": "do nawigacji",
+    "toOpen": "do otwarcia",
+    "forHelp": "dla pomocy",
+    "minutesAgo_one": "{{count}} minutę temu",
+    "minutesAgo_few": "{{count}} minuty temu",
+    "minutesAgo_other": "{{count}} minut temu",
+    "hoursAgo_one": "{{count}} godzinę temu",
+    "hoursAgo_few": "{{count}} godziny temu",
+    "hoursAgo_other": "{{count}} godzin temu",
+    "daysAgo_one": "{{count}} dzień temu",
+    "daysAgo_few": "{{count}} dni temu",
+    "daysAgo_other": "{{count}} dni temu",
+    "overdue": "{{days}} dni po terminie",
+    "dueToday": "Termin dzisiaj",
+    "dueTomorrow": "Termin jutro",
+    "dueInDays": "Termin za {{days}} dni",
+    "quickTasks": "Szybkie zadania",
+    "completeIn60Seconds": "Większość zadań można wykonać w mniej niż 60 sekund",
+    "recentActivity": "Ostatnia aktywność",
+    "activity": {
+      "meterReadingSubmitted": "Odczyt licznika wysłany",
+      "voteSubmitted": "Głos oddany",
+      "faultReported": "Usterka zgłoszona"
+    },
+    "stats": {
+      "pendingFaults": "Oczekujące usterki",
+      "pendingApprovals": "Oczekujące zatwierdzenia",
+      "activeVotes": "Aktywne głosowania",
+      "unreadMessages": "Nieprzeczytane wiadomości"
+    },
+    "shortcuts": {
+      "title": "Skróty klawiaturowe",
+      "nextItem": "Następny element",
+      "prevItem": "Poprzedni element",
+      "openItem": "Otwórz wybrany element",
+      "approve": "Zatwierdź akcję",
+      "reject": "Odrzuć akcję",
+      "closeFilters": "Zamknij filtry",
+      "showHelp": "Pokaż tę pomoc",
+      "hint": "Skup się na liście zadań, aby używać tych skrótów"
+    }
   }
 }
