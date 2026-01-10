@@ -5,28 +5,24 @@ import type {
   DisputeType as ApiDisputeType,
 } from '@ppt/api-client';
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
   ConnectionStatus,
   LanguageSwitcher,
   OfflineIndicator,
+  PageLoading,
   ToastProvider,
   useToast,
 } from './components';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
-import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
   DisputeCategory,
   DisputePriority,
   DisputeSummary,
   DisputeStatus as UiDisputeStatus,
 } from './features/disputes/components/DisputeCard';
-import { DocumentDetailPage, DocumentUploadPage, DocumentsPage } from './features/documents';
-import { EmergencyContactDirectoryPage } from './features/emergency';
-import { ArticleDetailPage, NewsListPage } from './features/news';
-import { CreateOutagePage, EditOutagePage, OutagesPage, ViewOutagePage } from './features/outages';
 import type {
   ListOutagesParams,
   OutageCommodity,
@@ -34,9 +30,24 @@ import type {
   OutageSeverity,
   OutageSummary,
 } from './features/outages';
-import { PrivacySettingsPage } from './features/privacy';
-import { AccessibilitySettingsPage } from './features/settings';
-import { LoginPage } from './pages/LoginPage';
+// Lazy-loaded route components for code splitting (Epic 130)
+import {
+  AccessibilitySettingsPage,
+  ArticleDetailPage,
+  CreateOutagePage,
+  DisputesPage,
+  DocumentDetailPage,
+  DocumentUploadPage,
+  DocumentsPage,
+  EditOutagePage,
+  EmergencyContactDirectoryPage,
+  FileDisputePage,
+  LoginPage,
+  NewsListPage,
+  OutagesPage,
+  PrivacySettingsPage,
+  ViewOutagePage,
+} from './routes';
 
 // ============================================
 // Type Mapping Utilities (API <-> UI)
@@ -167,32 +178,37 @@ function App() {
               <div className="app">
                 <AppNavigation />
                 <main id="main-content">
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    {/* Document Intelligence routes (Epic 39) */}
-                    <Route path="/documents" element={<DocumentsPageRoute />} />
-                    <Route path="/documents/upload" element={<DocumentUploadPage />} />
-                    <Route path="/documents/:documentId" element={<DocumentDetailRoute />} />
-                    {/* News routes (Epic 59) */}
-                    <Route path="/news" element={<NewsListPage />} />
-                    <Route path="/news/:articleId" element={<ArticleDetailRoute />} />
-                    {/* Emergency contacts route (Epic 62) */}
-                    <Route path="/emergency" element={<EmergencyContactDirectoryPage />} />
-                    {/* Accessibility settings route (Epic 60) */}
-                    <Route path="/settings/accessibility" element={<AccessibilitySettingsPage />} />
-                    {/* Privacy settings route (Epic 63) */}
-                    <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
-                    {/* Dispute Resolution routes (Epic 77) */}
-                    <Route path="/disputes" element={<DisputesPageRoute />} />
-                    <Route path="/disputes/new" element={<FileDisputePageRoute />} />
-                    <Route path="/disputes/:disputeId" element={<DisputeDetailRoute />} />
-                    {/* Outages routes (UC-12) */}
-                    <Route path="/outages" element={<OutagesPageRoute />} />
-                    <Route path="/outages/new" element={<CreateOutagePageRoute />} />
-                    <Route path="/outages/:outageId" element={<ViewOutagePageRoute />} />
-                    <Route path="/outages/:outageId/edit" element={<EditOutagePageRoute />} />
-                  </Routes>
+                  <Suspense fallback={<PageLoading />}>
+                    <Routes>
+                      <Route path="/" element={<Home />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      {/* Document Intelligence routes (Epic 39) */}
+                      <Route path="/documents" element={<DocumentsPageRoute />} />
+                      <Route path="/documents/upload" element={<DocumentUploadPage />} />
+                      <Route path="/documents/:documentId" element={<DocumentDetailRoute />} />
+                      {/* News routes (Epic 59) */}
+                      <Route path="/news" element={<NewsListPage />} />
+                      <Route path="/news/:articleId" element={<ArticleDetailRoute />} />
+                      {/* Emergency contacts route (Epic 62) */}
+                      <Route path="/emergency" element={<EmergencyContactDirectoryPage />} />
+                      {/* Accessibility settings route (Epic 60) */}
+                      <Route
+                        path="/settings/accessibility"
+                        element={<AccessibilitySettingsPage />}
+                      />
+                      {/* Privacy settings route (Epic 63) */}
+                      <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
+                      {/* Dispute Resolution routes (Epic 77) */}
+                      <Route path="/disputes" element={<DisputesPageRoute />} />
+                      <Route path="/disputes/new" element={<FileDisputePageRoute />} />
+                      <Route path="/disputes/:disputeId" element={<DisputeDetailRoute />} />
+                      {/* Outages routes (UC-12) */}
+                      <Route path="/outages" element={<OutagesPageRoute />} />
+                      <Route path="/outages/new" element={<CreateOutagePageRoute />} />
+                      <Route path="/outages/:outageId" element={<ViewOutagePageRoute />} />
+                      <Route path="/outages/:outageId/edit" element={<EditOutagePageRoute />} />
+                    </Routes>
+                  </Suspense>
                 </main>
               </div>
             </BrowserRouter>

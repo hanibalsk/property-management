@@ -8,5 +8,20 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    // Target modern browsers for smaller bundles
+    target: 'es2020',
+    // Enable source maps for debugging
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Manual chunks for better code splitting
+        manualChunks: {
+          // Vendor chunks - libraries that rarely change
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-tanstack': ['@tanstack/react-query'],
+          'vendor-i18n': ['react-i18next', 'i18next'],
+        },
+      },
+    },
   },
 });
