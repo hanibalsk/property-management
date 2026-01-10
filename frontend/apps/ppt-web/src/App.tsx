@@ -20,17 +20,12 @@ import './styles/accessibility.css';
 import './features/settings/styles/accessibility.css';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
 import { ManagerDashboardPage, ResidentDashboardPage } from './features/dashboard';
-import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
   DisputeCategory,
   DisputePriority,
   DisputeSummary,
   DisputeStatus as UiDisputeStatus,
 } from './features/disputes/components/DisputeCard';
-import { DocumentDetailPage, DocumentUploadPage, DocumentsPage } from './features/documents';
-import { EmergencyContactDirectoryPage } from './features/emergency';
-import { ArticleDetailPage, NewsListPage } from './features/news';
-import { CreateOutagePage, EditOutagePage, OutagesPage, ViewOutagePage } from './features/outages';
 import type {
   ListOutagesParams,
   OutageCommodity,
@@ -38,9 +33,24 @@ import type {
   OutageSeverity,
   OutageSummary,
 } from './features/outages';
-import { PrivacySettingsPage } from './features/privacy';
-import { AccessibilitySettingsPage } from './features/settings';
-import { LoginPage } from './pages/LoginPage';
+// Lazy-loaded route components for code splitting (Epic 130)
+import {
+  AccessibilitySettingsPage,
+  ArticleDetailPage,
+  CreateOutagePage,
+  DisputesPage,
+  DocumentDetailPage,
+  DocumentUploadPage,
+  DocumentsPage,
+  EditOutagePage,
+  EmergencyContactDirectoryPage,
+  FileDisputePage,
+  LoginPage,
+  NewsListPage,
+  OutagesPage,
+  PrivacySettingsPage,
+  ViewOutagePage,
+} from './routes';
 
 // ============================================
 // Type Mapping Utilities (API <-> UI)
