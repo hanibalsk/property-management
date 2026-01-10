@@ -5,7 +5,7 @@ import type {
   DisputeType as ApiDisputeType,
 } from '@ppt/api-client';
 import { AccessibilityProvider, SkipNavigation } from '@ppt/ui-kit';
-import { type ReactNode, Suspense, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -13,7 +13,6 @@ import {
   ConnectionStatus,
   LanguageSwitcher,
   OfflineIndicator,
-  PageLoading,
   ToastProvider,
   useToast,
 } from './components';
@@ -21,7 +20,6 @@ import './styles/accessibility.css';
 import './features/settings/styles/accessibility.css';
 import { AuthProvider, WebSocketProvider, useAuth } from './contexts';
 import { ManagerDashboardPage, ResidentDashboardPage } from './features/dashboard';
-import { DisputesPage, FileDisputePage } from './features/disputes';
 import type {
   DisputeCategory,
   DisputePriority,
