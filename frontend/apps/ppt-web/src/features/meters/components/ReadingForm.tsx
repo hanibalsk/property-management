@@ -1,20 +1,30 @@
 /**
  * ReadingForm component - form to submit a new meter reading.
  * Meters feature: Self-readings and consumption tracking.
+ * Epic 128: OCR Meter Preview integration.
  */
 
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useOcrMeterReading } from '../hooks';
 import type { Meter, ReadingFormData } from '../types';
+import { type OcrCorrection, OcrPreviewCard, type OcrResult } from './OcrPreviewCard';
 
 interface ReadingFormProps {
   meter: Meter;
   isSubmitting?: boolean;
+  enableOcr?: boolean;
   onSubmit: (data: ReadingFormData) => void;
   onCancel: () => void;
 }
 
-export function ReadingForm({ meter, isSubmitting, onSubmit, onCancel }: ReadingFormProps) {
+export function ReadingForm({
+  meter,
+  isSubmitting,
+  enableOcr = false,
+  onSubmit,
+  onCancel,
+}: ReadingFormProps) {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -26,6 +36,19 @@ export function ReadingForm({ meter, isSubmitting, onSubmit, onCancel }: Reading
   });
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof ReadingFormData, string>>>({});
+
+  // OCR state
+  const [ocrResult, setOcrResult] = useState<OcrResult | null>(null);
+  const [ocrImageUrl, setOcrImageUrl] = useState<string | null>(null);
+  const [showOcrPreview, setShowOcrPreview] = useState(false);
+
+  const {
+    process: processOcr,
+    correctAndSubmit: submitOcrCorrection,
+    isProcessing: isOcrProcessing,
+    processingError: ocrError,
+    reset: resetOcr,
+  } = useOcrMeterReading(meter.id);
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof ReadingFormData, string>> = {};
@@ -70,7 +93,7 @@ export function ReadingForm({ meter, isSubmitting, onSubmit, onCancel }: Reading
     }
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setFormData((prev) => ({ ...prev, photo: file }));
@@ -79,14 +102,53 @@ export function ReadingForm({ meter, isSubmitting, onSubmit, onCancel }: Reading
         setPhotoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+
+      // If OCR is enabled, process the image
+      if (enableOcr) {
+        try {
+          const result = await processOcr(file);
+          setOcrResult(result.result);
+          setOcrImageUrl(result.imageUrl);
+          setShowOcrPreview(true);
+        } catch {
+          // OCR failed, user can still enter value manually
+          console.error('OCR processing failed');
+        }
+      }
     }
   };
 
   const handleRemovePhoto = () => {
     setFormData((prev) => ({ ...prev, photo: undefined }));
     setPhotoPreview(null);
+    setOcrResult(null);
+    setOcrImageUrl(null);
+    setShowOcrPreview(false);
+    resetOcr();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleOcrAccept = (value: number) => {
+    setFormData((prev) => ({ ...prev, value }));
+    setShowOcrPreview(false);
+  };
+
+  const handleOcrCorrect = (correction: OcrCorrection) => {
+    submitOcrCorrection(correction);
+  };
+
+  const handleOcrRetake = () => {
+    setOcrResult(null);
+    setOcrImageUrl(null);
+    setShowOcrPreview(false);
+    setPhotoPreview(null);
+    setFormData((prev) => ({ ...prev, photo: undefined }));
+    resetOcr();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
     }
   };
 
@@ -158,11 +220,50 @@ export function ReadingForm({ meter, isSubmitting, onSubmit, onCancel }: Reading
         {errors.readingDate && <p className="mt-1 text-sm text-red-500">{errors.readingDate}</p>}
       </div>
 
+      {/* OCR Preview Modal */}
+      {showOcrPreview && ocrResult && ocrImageUrl && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-md w-full">
+            <OcrPreviewCard
+              imageUrl={ocrImageUrl}
+              ocrResult={ocrResult}
+              meterUnit={meter.unit}
+              lastReadingValue={meter.lastReadingValue}
+              onAccept={handleOcrAccept}
+              onCorrect={handleOcrCorrect}
+              onRetake={handleOcrRetake}
+              isLoading={isOcrProcessing}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Photo Upload */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           {t('meters.form.photo')} ({t('common.optional')})
+          {enableOcr && (
+            <span className="ml-2 text-xs text-blue-600 font-normal">
+              {t('meters.ocr.ocrEnabled')}
+            </span>
+          )}
         </label>
+
+        {/* OCR Processing Indicator */}
+        {isOcrProcessing && (
+          <div className="flex items-center gap-2 p-3 mb-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-blue-700">{t('meters.ocr.processing')}</span>
+          </div>
+        )}
+
+        {/* OCR Error */}
+        {ocrError && (
+          <div className="p-3 mb-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {t('meters.ocr.processingFailed')}
+          </div>
+        )}
+
         {photoPreview ? (
           <div className="relative inline-block">
             <img
@@ -208,7 +309,9 @@ export function ReadingForm({ meter, isSubmitting, onSubmit, onCancel }: Reading
                   d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
                 />
               </svg>
-              <p className="text-sm text-gray-500">{t('meters.form.uploadPhoto')}</p>
+              <p className="text-sm text-gray-500">
+                {enableOcr ? t('meters.ocr.uploadForOcr') : t('meters.form.uploadPhoto')}
+              </p>
             </div>
             <input
               ref={fileInputRef}
