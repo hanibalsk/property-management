@@ -2,8 +2,8 @@
  * AiSuggestionBadge component tests (Epic 126, Story 126.2).
  */
 
+/// <reference types="vitest/globals" />
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiSuggestionBadge } from './AiSuggestionBadge';
 
 // Mock translations

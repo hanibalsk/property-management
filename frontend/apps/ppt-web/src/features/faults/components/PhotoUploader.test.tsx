@@ -2,8 +2,8 @@
  * PhotoUploader component tests (Epic 126, Story 126.1).
  */
 
+/// <reference types="vitest/globals" />
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PhotoUploader, type UploadedPhoto } from './PhotoUploader';
 
 // Mock URL.createObjectURL and revokeObjectURL for jsdom
