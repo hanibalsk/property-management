@@ -369,5 +369,93 @@
     "fontSize": "Velikost písma",
     "reducedMotion": "Snížený pohyb",
     "screenReader": "Optimalizováno pro čtečky"
+  },
+  "dashboard": {
+    "managerActionQueue": "Fronta úkolů",
+    "residentActionQueue": "Vaše úkoly",
+    "managerDashboard": "Přehled správce",
+    "residentDashboard": "Můj přehled",
+    "managerWelcome": "Zde je to, co dnes vyžaduje vaši pozornost.",
+    "residentWelcome": "Dokončete tyto úkoly, abyste byli aktuální.",
+    "itemsNeedingAttention_one": "{{count}} položka vyžaduje pozornost",
+    "itemsNeedingAttention_few": "{{count}} položky vyžadují pozornost",
+    "itemsNeedingAttention_other": "{{count}} položek vyžaduje pozornost",
+    "filters": "Filtry",
+    "searchActions": "Hledat akce",
+    "searchPlaceholder": "Hledat podle názvu nebo popisu...",
+    "filterByPriority": "Filtrovat podle priority",
+    "filterByType": "Filtrovat podle typu",
+    "clearFilters": "Vymazat všechny filtry",
+    "priority": {
+      "urgent": "Urgentní",
+      "high": "Vysoká",
+      "medium": "Střední",
+      "low": "Nízká"
+    },
+    "actionType": {
+      "fault_pending": "Čekající poruchy",
+      "fault_escalated": "Eskalované poruchy",
+      "approval_pending": "Čekající schválení",
+      "vote_active": "Aktivní hlasování",
+      "message_unread": "Nepřečtené zprávy",
+      "meter_due": "Odpočty měřičů",
+      "person_months_due": "Osoboměsíce",
+      "announcement_unread": "Nepřečtená oznámení"
+    },
+    "action": {
+      "approve": "Schválit",
+      "reject": "Zamítnout",
+      "view": "Zobrazit",
+      "dismiss": "Odmítnout",
+      "complete": "Dokončit",
+      "escalate": "Eskalovat"
+    },
+    "confirmAction": "Jste si jisti, že chcete {{action}}?",
+    "allCaughtUp": "Vše vyřízeno!",
+    "noItemsNeedingAttention": "Právě teď nemáte žádné položky vyžadující pozornost.",
+    "errorLoadingQueue": "Chyba při načítání fronty",
+    "actionQueue": "Fronta akcí",
+    "keyboardHint": "Klávesové zkratky:",
+    "toNavigate": "na navigaci",
+    "toOpen": "na otevření",
+    "forHelp": "pro pomoc",
+    "minutesAgo_one": "před {{count}} minutou",
+    "minutesAgo_few": "před {{count}} minutami",
+    "minutesAgo_other": "před {{count}} minutami",
+    "hoursAgo_one": "před {{count}} hodinou",
+    "hoursAgo_few": "před {{count}} hodinami",
+    "hoursAgo_other": "před {{count}} hodinami",
+    "daysAgo_one": "před {{count}} dnem",
+    "daysAgo_few": "před {{count}} dny",
+    "daysAgo_other": "před {{count}} dny",
+    "overdue": "{{days}} dní po termínu",
+    "dueToday": "Dnes",
+    "dueTomorrow": "Zítra",
+    "dueInDays": "Za {{days}} dní",
+    "quickTasks": "Rychlé úkoly",
+    "completeIn60Seconds": "Většinu úkolů dokončíte za méně než 60 sekund",
+    "recentActivity": "Poslední aktivita",
+    "activity": {
+      "meterReadingSubmitted": "Odpočet měřičů odeslán",
+      "voteSubmitted": "Hlas odeslán",
+      "faultReported": "Porucha nahlášena"
+    },
+    "stats": {
+      "pendingFaults": "Čekající poruchy",
+      "pendingApprovals": "Čekající schválení",
+      "activeVotes": "Aktivní hlasování",
+      "unreadMessages": "Nepřečtené zprávy"
+    },
+    "shortcuts": {
+      "title": "Klávesové zkratky",
+      "nextItem": "Další položka",
+      "prevItem": "Předchozí položka",
+      "openItem": "Otevřít vybranou položku",
+      "approve": "Schválit akci",
+      "reject": "Zamítnout akci",
+      "closeFilters": "Zavřít filtry",
+      "showHelp": "Zobrazit tuto nápovědu",
+      "hint": "Zaměřte se na seznam úkolů pro použití těchto zkratek"
+    }
   }
 }

@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "Offline",
-    "message": "Egyes funkciok nem erhetok el."
+    "message": "Egyes funkciok nem erhetok el.",
+    "syncing": "{{count}} elem szinkronizalasa...",
+    "offlineWithPending": "Offline - {{count}} elem var szinkronizalasra",
+    "pending": "{{count}} elem var szinkronizalasra"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Szinkronizalas online allapotban",
+    "syncing": "Szinkronizalas...",
+    "synced": "Szinkronizalva",
+    "failed": "Szinkronizalas sikertelen",
+    "retry": "Ujra",
+    "savedLocally": "Helyben mentve {{time}}",
+    "syncComplete": "Szinkronizalas befejezodott",
+    "syncFailed": "Nehany elem szinkronizalasa sikertelen",
+    "syncProgress": "Szinkronizalas {{current}}/{{total}}",
+    "itemSynced": "{{item}} sikeresen szinkronizalva",
+    "itemFailed": "{{item}} szinkronizalasa sikertelen"
   },
   "help": {
     "title": "Sugocentrum",
@@ -228,5 +244,24 @@
     "denied": "Engedly megtagadva",
     "cameraRequired": "Kamera engedely szukseges",
     "locationRequired": "Helymeghatrozas engedely szukseges"
+  },
+  "meters": {
+    "title": "Meroora leolvasas",
+    "selectType": "Valasszon merotipust",
+    "water": "Viz",
+    "electricity": "Aram",
+    "gas": "Gaz",
+    "heating": "Futes",
+    "enterReading": "Adja meg az allast",
+    "readingPlaceholder": "0,00",
+    "readingRequired": "Kerem adja meg az allast",
+    "photo": "Foto (opcionalis)",
+    "submit": "Allas elkuldese",
+    "submitSuccess": "Meroora allas sikeresen elkuldve",
+    "submitFailed": "Nem sikerult elkuldeni a meroora allast",
+    "savedOffline": "Offline mentve",
+    "willSyncWhenOnline": "Az allasa elkuldesre kerul amikor ujra online lesz",
+    "offlineMode": "Offline. Az allasok helyben lesznek mentve.",
+    "pendingReadings": "Fuggo leolvasasok"
   }
 }
