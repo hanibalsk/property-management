@@ -42,13 +42,7 @@ import type {
   DisputeSummary,
   DisputeStatus as UiDisputeStatus,
 } from './features/disputes/components/DisputeCard';
-import type {
-  ListOutagesParams,
-  OutageCommodity,
-  OutageDetail,
-  OutageSeverity,
-  OutageSummary,
-} from './features/outages';
+import type { ListOutagesParams, OutageDetail } from './features/outages';
 // Lazy-loaded route components for code splitting (Epic 130)
 import {
   AccessibilitySettingsPage,
