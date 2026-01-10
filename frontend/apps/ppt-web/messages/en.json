@@ -72,7 +72,8 @@
     "profile": "Profile",
     "accessibility": "Accessibility",
     "privacy": "Privacy",
-    "neighbors": "Neighbors"
+    "neighbors": "Neighbors",
+    "aiChat": "AI Assistant"
   },
   "auth": {
     "signIn": "Sign In",
@@ -2438,5 +2439,42 @@
       "noResults": "No tutorials found",
       "noResultsDescription": "Try adjusting your search or filter criteria."
     }
+  },
+  "aiChat": {
+    "title": "AI Assistant",
+    "subtitle": "Ask me anything about your building",
+    "welcomeTitle": "How can I help you today?",
+    "welcomeDescription": "I can answer questions about your building, help with fault reporting, voting, and more.",
+    "suggestedQuestions": "Try asking about",
+    "inputPlaceholder": "Type your message...",
+    "messageInput": "Message input",
+    "pressEnter": "Press Enter to send",
+    "send": "Send message",
+    "loading": "Loading...",
+    "messageLog": "Chat messages",
+    "messageFrom": "Message from {{role}}",
+    "newConversation": "New Conversation",
+    "noConversations": "No conversations yet",
+    "startConversationHint": "Start a new conversation to get help",
+    "untitledConversation": "New chat",
+    "messageCount": "{{count}} messages",
+    "messageCount_one": "{{count}} message",
+    "deleteConversation": "Delete conversation",
+    "confirmDelete": "Are you sure you want to delete this conversation?",
+    "closeSidebar": "Close sidebar",
+    "openSidebar": "Open sidebar",
+    "sendError": "Failed to send message. Please try again.",
+    "confidence": {
+      "low": "Low confidence",
+      "medium": "Medium confidence",
+      "high": "High confidence"
+    },
+    "escalated": "This question may need human assistance",
+    "sources": "{{count}} sources",
+    "sources_one": "{{count}} source",
+    "wasHelpful": "Was this helpful?",
+    "helpful": "Mark as helpful",
+    "notHelpful": "Mark as not helpful",
+    "responseTime": "Response time: {{ms}}ms"
   }
 }
