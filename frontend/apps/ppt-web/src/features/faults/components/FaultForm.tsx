@@ -10,6 +10,18 @@ import { AiSuggestionBadge } from './AiSuggestionBadge';
 import type { FaultCategory, FaultPriority } from './FaultCard';
 import { PhotoUploader, type UploadedPhoto } from './PhotoUploader';
 
+/** AI suggestion feedback for analytics (Epic 126, Story 126.3) */
+export interface AiSuggestionFeedback {
+  /** The original suggestion from AI */
+  suggestion: AiSuggestion;
+  /** Whether the user accepted the suggestion as-is */
+  accepted: boolean;
+  /** The final category selected (may differ from suggestion) */
+  finalCategory: FaultCategory;
+  /** The final priority selected (may differ from suggestion) */
+  finalPriority?: FaultPriority;
+}
+
 export interface FaultFormData {
   buildingId: string;
   unitId?: string;
@@ -20,6 +32,8 @@ export interface FaultFormData {
   priority?: FaultPriority;
   /** Photos to upload with the fault (Epic 126) */
   photos?: File[];
+  /** AI suggestion feedback for analytics (Epic 126, Story 126.3) */
+  aiSuggestionFeedback?: AiSuggestionFeedback;
 }
 
 /** AI suggestion data for category/priority */
@@ -115,7 +129,19 @@ export function FaultForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit(formData);
+      // Include AI suggestion feedback if a suggestion was provided (Epic 126, Story 126.3)
+      const submitData: FaultFormData = {
+        ...formData,
+        aiSuggestionFeedback: aiSuggestion
+          ? {
+              suggestion: aiSuggestion,
+              accepted: aiSuggestionAccepted,
+              finalCategory: formData.category,
+              finalPriority: formData.priority,
+            }
+          : undefined,
+      };
+      onSubmit(submitData);
     }
   };
 
