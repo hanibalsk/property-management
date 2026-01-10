@@ -1,11 +1,14 @@
 /**
  * FaultForm component - form for creating/editing faults.
  * Epic 4: Fault Reporting & Resolution (UC-03.1)
+ * Epic 126: AI-Enhanced Fault Reporting (Story 126.1 - Photo-First)
  */
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AiSuggestionBadge } from './AiSuggestionBadge';
 import type { FaultCategory, FaultPriority } from './FaultCard';
+import { PhotoUploader, type UploadedPhoto } from './PhotoUploader';
 
 export interface FaultFormData {
   buildingId: string;
@@ -14,6 +17,15 @@ export interface FaultFormData {
   description: string;
   locationDescription?: string;
   category: FaultCategory;
+  priority?: FaultPriority;
+  /** Photos to upload with the fault (Epic 126) */
+  photos?: File[];
+}
+
+/** AI suggestion data for category/priority */
+export interface AiSuggestion {
+  category: FaultCategory;
+  confidence: number;
   priority?: FaultPriority;
 }
 
@@ -24,6 +36,14 @@ interface FaultFormProps {
   isSubmitting?: boolean;
   onSubmit: (data: FaultFormData) => void;
   onCancel: () => void;
+  /** Enable photo-first mode (Epic 126) */
+  enablePhotoFirst?: boolean;
+  /** AI suggestion from backend (Epic 126) */
+  aiSuggestion?: AiSuggestion | null;
+  /** Whether AI suggestion is loading */
+  aiSuggestionLoading?: boolean;
+  /** Callback when photos change (for triggering AI analysis) */
+  onPhotosChange?: (photos: UploadedPhoto[]) => void;
 }
 
 export function FaultForm({
@@ -33,8 +53,14 @@ export function FaultForm({
   isSubmitting,
   onSubmit,
   onCancel,
+  enablePhotoFirst = false,
+  aiSuggestion,
+  aiSuggestionLoading = false,
+  onPhotosChange,
 }: FaultFormProps) {
   const { t } = useTranslation();
+  const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+  const [aiSuggestionAccepted, setAiSuggestionAccepted] = useState(false);
 
   const categoryOptions: { value: FaultCategory; label: string }[] = [
     { value: 'plumbing', label: t('faults.categoryPlumbing') },
@@ -107,8 +133,73 @@ export function FaultForm({
     }
   };
 
+  // Photo handling for photo-first mode (Epic 126)
+  const handlePhotosChange = useCallback(
+    (newPhotos: UploadedPhoto[]) => {
+      setPhotos(newPhotos);
+      onPhotosChange?.(newPhotos);
+    },
+    [onPhotosChange]
+  );
+
+  // Handle AI suggestion acceptance (Epic 126)
+  const handleAcceptAiSuggestion = useCallback(
+    (category: FaultCategory, priority?: FaultPriority) => {
+      setFormData((prev) => ({
+        ...prev,
+        category,
+        priority: priority || prev.priority,
+      }));
+      setAiSuggestionAccepted(true);
+    },
+    []
+  );
+
+  // Handle AI suggestion modification - just scroll to category field
+  const handleModifyAiSuggestion = useCallback(() => {
+    const categoryField = document.getElementById('category');
+    categoryField?.focus();
+    categoryField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+
+  // Sync photos to form data when submitting
+  useEffect(() => {
+    const validPhotos = photos.filter((p) => p.status !== 'error').map((p) => p.file);
+    setFormData((prev) => ({ ...prev, photos: validPhotos.length > 0 ? validPhotos : undefined }));
+  }, [photos]);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Photo-First Section (Epic 126, Story 126.1) */}
+      {enablePhotoFirst && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {t('faults.photo.sectionTitle')}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">{t('faults.photo.sectionDescription')}</p>
+            <PhotoUploader
+              photos={photos}
+              onPhotosChange={handlePhotosChange}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          {/* AI Suggestion Badge (Epic 126, Story 126.2) */}
+          {(aiSuggestion || aiSuggestionLoading) && photos.length > 0 && (
+            <AiSuggestionBadge
+              category={aiSuggestion?.category || 'other'}
+              confidence={aiSuggestion?.confidence || 0}
+              priority={aiSuggestion?.priority}
+              isLoading={aiSuggestionLoading}
+              onAccept={handleAcceptAiSuggestion}
+              onModify={handleModifyAiSuggestion}
+              isAccepted={aiSuggestionAccepted}
+            />
+          )}
+        </div>
+      )}
+
       {/* Building */}
       <div>
         <label htmlFor="buildingId" className="block text-sm font-medium text-gray-700">
