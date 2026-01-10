@@ -34,6 +34,7 @@ export * from './emergency';
 export * from './news';
 export * from './integrations';
 export * from './disputes';
+export * from './faults';
 export * from './migration';
 export * from './compliance';
 
