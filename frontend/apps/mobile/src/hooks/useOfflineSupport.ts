@@ -12,6 +12,8 @@ export interface CacheOptions {
   key: string;
 }
 
+export type SyncItemStatus = 'pending' | 'syncing' | 'synced' | 'failed';
+
 export interface QueuedAction {
   id: string;
   type: 'CREATE' | 'UPDATE' | 'DELETE';
@@ -20,7 +22,17 @@ export interface QueuedAction {
   body?: unknown;
   timestamp: number;
   retries: number;
+  syncStatus?: SyncItemStatus;
 }
+
+export interface SyncProgress {
+  total: number;
+  current: number;
+  failed: number;
+  isComplete: boolean;
+}
+
+export type SyncProgressCallback = (progress: SyncProgress) => void;
 
 export interface OfflineState {
   isConnected: boolean;
@@ -38,11 +50,13 @@ export interface UseOfflineSupportReturn extends OfflineState {
   // Offline queue
   addToQueue: (action: Omit<QueuedAction, 'id' | 'timestamp' | 'retries'>) => Promise<void>;
   getQueuedActions: () => Promise<QueuedAction[]>;
-  processQueue: () => Promise<{ success: number; failed: number }>;
+  processQueue: (onProgress?: SyncProgressCallback) => Promise<{ success: number; failed: number }>;
   clearQueue: () => Promise<void>;
   // Sync
-  syncData: () => Promise<void>;
+  syncData: (onProgress?: SyncProgressCallback) => Promise<void>;
   isSyncing: boolean;
+  // Sync progress (for UI binding)
+  syncProgress: SyncProgress | null;
 }
 
 export function useOfflineSupport(): UseOfflineSupportReturn {
@@ -52,6 +66,7 @@ export function useOfflineSupport(): UseOfflineSupportReturn {
   const [queuedActionsCount, setQueuedActionsCount] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
 
   // Monitor network status
   useEffect(() => {
@@ -191,56 +206,86 @@ export function useOfflineSupport(): UseOfflineSupportReturn {
   }, []);
 
   // Process offline queue when back online
-  const processQueue = useCallback(async (): Promise<{ success: number; failed: number }> => {
-    if (!isConnected || !isInternetReachable) {
-      return { success: 0, failed: 0 };
-    }
-
-    setIsSyncing(true);
-    let success = 0;
-    let failed = 0;
-
-    try {
-      const queue = await getQueuedActions();
-      const remainingActions: QueuedAction[] = [];
-
-      for (const action of queue) {
-        try {
-          // Execute the queued action
-          // In a real app, this would make the actual API call
-          await executeQueuedAction(action);
-          success++;
-        } catch (_error) {
-          // Increment retry count
-          action.retries++;
-
-          // Keep in queue if under max retries
-          if (action.retries < 3) {
-            remainingActions.push(action);
-          } else {
-            failed++;
-            console.error('Action failed after max retries:', action);
-          }
-        }
+  const processQueue = useCallback(
+    async (onProgress?: SyncProgressCallback): Promise<{ success: number; failed: number }> => {
+      if (!isConnected || !isInternetReachable) {
+        return { success: 0, failed: 0 };
       }
 
-      // Update queue with remaining actions
-      await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(remainingActions));
-      setQueuedActionsCount(remainingActions.length);
+      setIsSyncing(true);
+      let success = 0;
+      let failed = 0;
 
-      // Update last sync time
-      const now = Date.now();
-      await AsyncStorage.setItem(LAST_SYNC_KEY, now.toString());
-      setLastSyncTime(new Date(now));
+      try {
+        const queue = await getQueuedActions();
+        const total = queue.length;
 
-      return { success, failed };
-    } catch (error) {
-      console.error('Failed to process queue:', error);
-      return { success, failed };
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [isConnected, isInternetReachable, getQueuedActions]);
+        if (total === 0) {
+          return { success: 0, failed: 0 };
+        }
+
+        // Initialize progress
+        const initialProgress: SyncProgress = { total, current: 0, failed: 0, isComplete: false };
+        setSyncProgress(initialProgress);
+        onProgress?.(initialProgress);
+
+        const remainingActions: QueuedAction[] = [];
+
+        for (let i = 0; i < queue.length; i++) {
+          const action = queue[i];
+          try {
+            // Execute the queued action
+            // In a real app, this would make the actual API call
+            await executeQueuedAction(action);
+            success++;
+          } catch (_error) {
+            // Increment retry count
+            action.retries++;
+
+            // Keep in queue if under max retries
+            if (action.retries < 3) {
+              remainingActions.push(action);
+            } else {
+              failed++;
+              console.error('Action failed after max retries:', action);
+            }
+          }
+
+          // Update progress after each item
+          const currentProgress: SyncProgress = {
+            total,
+            current: i + 1,
+            failed,
+            isComplete: false,
+          };
+          setSyncProgress(currentProgress);
+          onProgress?.(currentProgress);
+        }
+
+        // Update queue with remaining actions
+        await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(remainingActions));
+        setQueuedActionsCount(remainingActions.length);
+
+        // Update last sync time
+        const now = Date.now();
+        await AsyncStorage.setItem(LAST_SYNC_KEY, now.toString());
+        setLastSyncTime(new Date(now));
+
+        // Final progress update
+        const finalProgress: SyncProgress = { total, current: total, failed, isComplete: true };
+        setSyncProgress(finalProgress);
+        onProgress?.(finalProgress);
+
+        return { success, failed };
+      } catch (error) {
+        console.error('Failed to process queue:', error);
+        return { success, failed };
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [isConnected, isInternetReachable, getQueuedActions]
+  );
 
   // Execute a single queued action
   const executeQueuedAction = async (action: QueuedAction): Promise<void> => {
@@ -261,30 +306,33 @@ export function useOfflineSupport(): UseOfflineSupportReturn {
   }, []);
 
   // Sync all data
-  const syncData = useCallback(async (): Promise<void> => {
-    if (!isConnected || !isInternetReachable) {
-      return;
-    }
+  const syncData = useCallback(
+    async (onProgress?: SyncProgressCallback): Promise<void> => {
+      if (!isConnected || !isInternetReachable) {
+        return;
+      }
 
-    setIsSyncing(true);
+      setIsSyncing(true);
 
-    try {
-      // Process offline queue first
-      await processQueue();
+      try {
+        // Process offline queue first
+        await processQueue(onProgress);
 
-      // Then fetch fresh data and cache it
-      // This would call your API endpoints and cache the responses
-      // await cacheData('announcements', await api.getAnnouncements(), 5 * 60 * 1000);
-      // await cacheData('faults', await api.getFaults(), 5 * 60 * 1000);
-      // await cacheData('votes', await api.getVotes(), 5 * 60 * 1000);
+        // Then fetch fresh data and cache it
+        // This would call your API endpoints and cache the responses
+        // await cacheData('announcements', await api.getAnnouncements(), 5 * 60 * 1000);
+        // await cacheData('faults', await api.getFaults(), 5 * 60 * 1000);
+        // await cacheData('votes', await api.getVotes(), 5 * 60 * 1000);
 
-      console.log('Data sync completed');
-    } catch (error) {
-      console.error('Failed to sync data:', error);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [isConnected, isInternetReachable, processQueue]);
+        console.log('Data sync completed');
+      } catch (error) {
+        console.error('Failed to sync data:', error);
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [isConnected, isInternetReachable, processQueue]
+  );
 
   return {
     isConnected,
@@ -301,5 +349,6 @@ export function useOfflineSupport(): UseOfflineSupportReturn {
     clearQueue,
     syncData,
     isSyncing,
+    syncProgress,
   };
 }

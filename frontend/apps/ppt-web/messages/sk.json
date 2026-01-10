@@ -369,5 +369,93 @@
     "fontSize": "Veľkosť písma",
     "reducedMotion": "Znížený pohyb",
     "screenReader": "Optimalizované pre čítačky"
+  },
+  "dashboard": {
+    "managerActionQueue": "Fronta úloh",
+    "residentActionQueue": "Vaše úlohy",
+    "managerDashboard": "Prehľad správcu",
+    "residentDashboard": "Môj prehľad",
+    "managerWelcome": "Tu je to, čo dnes vyžaduje vašu pozornosť.",
+    "residentWelcome": "Dokončite tieto úlohy, aby ste boli aktuálni.",
+    "itemsNeedingAttention_one": "{{count}} položka vyžaduje pozornosť",
+    "itemsNeedingAttention_few": "{{count}} položky vyžadujú pozornosť",
+    "itemsNeedingAttention_other": "{{count}} položiek vyžaduje pozornosť",
+    "filters": "Filtre",
+    "searchActions": "Hľadať akcie",
+    "searchPlaceholder": "Hľadať podľa názvu alebo popisu...",
+    "filterByPriority": "Filtrovať podľa priority",
+    "filterByType": "Filtrovať podľa typu",
+    "clearFilters": "Vymazať všetky filtre",
+    "priority": {
+      "urgent": "Urgentné",
+      "high": "Vysoká",
+      "medium": "Stredná",
+      "low": "Nízka"
+    },
+    "actionType": {
+      "fault_pending": "Čakajúce poruchy",
+      "fault_escalated": "Eskalované poruchy",
+      "approval_pending": "Čakajúce schválenia",
+      "vote_active": "Aktívne hlasovania",
+      "message_unread": "Neprečítané správy",
+      "meter_due": "Odpočty meračov",
+      "person_months_due": "Osobomesiace",
+      "announcement_unread": "Neprečítané oznámenia"
+    },
+    "action": {
+      "approve": "Schváliť",
+      "reject": "Zamietnuť",
+      "view": "Zobraziť",
+      "dismiss": "Odmietnuť",
+      "complete": "Dokončiť",
+      "escalate": "Eskalovať"
+    },
+    "confirmAction": "Ste si istí, že chcete {{action}}?",
+    "allCaughtUp": "Všetko vybavené!",
+    "noItemsNeedingAttention": "Práve teraz nemáte žiadne položky vyžadujúce pozornosť.",
+    "errorLoadingQueue": "Chyba pri načítaní fronty",
+    "actionQueue": "Fronta akcií",
+    "keyboardHint": "Klávesové skratky:",
+    "toNavigate": "na navigáciu",
+    "toOpen": "na otvorenie",
+    "forHelp": "pre pomoc",
+    "minutesAgo_one": "pred {{count}} minútou",
+    "minutesAgo_few": "pred {{count}} minútami",
+    "minutesAgo_other": "pred {{count}} minútami",
+    "hoursAgo_one": "pred {{count}} hodinou",
+    "hoursAgo_few": "pred {{count}} hodinami",
+    "hoursAgo_other": "pred {{count}} hodinami",
+    "daysAgo_one": "pred {{count}} dňom",
+    "daysAgo_few": "pred {{count}} dňami",
+    "daysAgo_other": "pred {{count}} dňami",
+    "overdue": "{{days}} dní po termíne",
+    "dueToday": "Dnes",
+    "dueTomorrow": "Zajtra",
+    "dueInDays": "Za {{days}} dní",
+    "quickTasks": "Rýchle úlohy",
+    "completeIn60Seconds": "Väčšinu úloh dokončíte za menej ako 60 sekúnd",
+    "recentActivity": "Posledná aktivita",
+    "activity": {
+      "meterReadingSubmitted": "Odpočet meračov odoslaný",
+      "voteSubmitted": "Hlas odoslaný",
+      "faultReported": "Porucha nahlásená"
+    },
+    "stats": {
+      "pendingFaults": "Čakajúce poruchy",
+      "pendingApprovals": "Čakajúce schválenia",
+      "activeVotes": "Aktívne hlasovania",
+      "unreadMessages": "Neprečítané správy"
+    },
+    "shortcuts": {
+      "title": "Klávesové skratky",
+      "nextItem": "Ďalšia položka",
+      "prevItem": "Predchádzajúca položka",
+      "openItem": "Otvoriť vybranú položku",
+      "approve": "Schváliť akciu",
+      "reject": "Zamietnuť akciu",
+      "closeFilters": "Zavrieť filtre",
+      "showHelp": "Zobraziť túto pomoc",
+      "hint": "Zamerajte sa na zoznam úloh pre použitie týchto skratiek"
+    }
   }
 }

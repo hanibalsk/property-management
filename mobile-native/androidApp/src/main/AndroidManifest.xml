@@ -27,6 +27,44 @@
                     android:scheme="reality"
                     android:host="sso" />
             </intent-filter>
+            <!-- Deep-links for push notification navigation (Epic 122) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Listing detail: reality://listing/{id} -->
+                <data
+                    android:scheme="reality"
+                    android:host="listing"
+                    android:pathPattern="/..*" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Search results: reality://search -->
+                <data
+                    android:scheme="reality"
+                    android:host="search" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Favorites: reality://favorites -->
+                <data
+                    android:scheme="reality"
+                    android:host="favorites" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Inquiries: reality://inquiries -->
+                <data
+                    android:scheme="reality"
+                    android:host="inquiries" />
+            </intent-filter>
         </activity>
     </application>
 
