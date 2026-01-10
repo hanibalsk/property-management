@@ -32,15 +32,17 @@ export const test = base.extend<{
     // Navigate to login page
     await page.goto('/login');
 
-    // Fill in credentials
-    await page.getByLabel(/email/i).fill(testUsers.manager.email);
-    await page.getByLabel(/password/i).fill(testUsers.manager.password);
+    // Fill in credentials using ID selectors (more reliable)
+    await page.locator('#email').fill(testUsers.manager.email);
+    await page.locator('#password').fill(testUsers.manager.password);
 
     // Submit login form
     await page.getByRole('button', { name: /sign in/i }).click();
 
     // Wait for navigation to complete (home page or dashboard)
-    await page.waitForURL(/^\/$|\/dashboard/);
+    // This will throw if backend is unavailable - tests using this fixture
+    // should handle the error appropriately
+    await page.waitForURL(/^\/$|\/dashboard/, { timeout: 10000 });
 
     // Use the authenticated page
     await use(page);
