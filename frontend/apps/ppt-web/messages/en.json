@@ -1002,7 +1002,11 @@
       "unusuallyHighChange": "Consumption seems unusually high",
       "lastReading": "Last reading",
       "consumption": "Consumption",
-      "processingTime": "Processed in {{ms}}ms"
+      "processingTime": "Processed in {{ms}}ms",
+      "ocrEnabled": "OCR enabled",
+      "processing": "Processing image with OCR...",
+      "processingFailed": "OCR processing failed. Please enter the value manually.",
+      "uploadForOcr": "Upload photo for automatic reading"
     }
   },
   "personMonths": {
