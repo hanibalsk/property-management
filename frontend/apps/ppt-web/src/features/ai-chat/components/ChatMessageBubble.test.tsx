@@ -3,9 +3,9 @@
  * Epic 127: AI Chatbot Interface
  */
 
+/// <reference types="vitest/globals" />
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
 import type { ChatMessage } from '../types';
 import { ChatMessageBubble } from './ChatMessageBubble';
 
