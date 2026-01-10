@@ -8,10 +8,10 @@
  * - User interactions (view, edit)
  */
 
+/// <reference types="vitest/globals" />
 import type { OutageSummary } from '@ppt/api-client';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
 import { OutageCard } from './OutageCard';
 
 // Mock react-i18next

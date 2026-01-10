@@ -8,10 +8,10 @@
  * - Pagination
  */
 
+/// <reference types="vitest/globals" />
 import type { OutageSummary } from '@ppt/api-client';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
 import { OutageList } from './OutageList';
 
 // Mock react-i18next
