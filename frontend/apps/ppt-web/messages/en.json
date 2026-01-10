@@ -983,6 +983,26 @@
       "failedToLoad": "Failed to load meters",
       "failedToSubmit": "Failed to submit reading",
       "failedToValidate": "Failed to validate reading"
+    },
+    "ocr": {
+      "previewTitle": "OCR Reading Preview",
+      "confidenceHigh": "High confidence",
+      "confidenceMedium": "Medium confidence",
+      "confidenceLow": "Low confidence",
+      "extractedValue": "Extracted Value",
+      "detectedArea": "Detected",
+      "meterPhoto": "Meter photo",
+      "acceptValue": "Accept Value",
+      "acceptCorrected": "Accept Corrected Value",
+      "correctValue": "Correct Value",
+      "correctedValue": "Corrected value",
+      "retakePhoto": "Retake Photo",
+      "unusualChange": "Unusual Reading",
+      "valueLowerThanLast": "Value is lower than last reading",
+      "unusuallyHighChange": "Consumption seems unusually high",
+      "lastReading": "Last reading",
+      "consumption": "Consumption",
+      "processingTime": "Processed in {{ms}}ms"
     }
   },
   "personMonths": {

@@ -8,3 +8,4 @@ export * from './ReadingForm';
 export * from './ConsumptionChart';
 export * from './ReadingValidationCard';
 export * from './ReadingLineChart';
+export * from './OcrPreviewCard';
