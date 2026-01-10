@@ -1,9 +1,11 @@
+/// <reference types="vitest/globals" />
 /**
  * Sitemap Route Tests (Epic 101)
  *
  * Tests route accessibility and API mapping using @ppt/sitemap
  */
 
+import type { FrontendRoute } from '@ppt/sitemap';
 import {
   SitemapTestHelper,
   buildUrl,
@@ -12,7 +14,6 @@ import {
   getRoute,
   sitemap,
 } from '@ppt/sitemap';
-import { describe, expect, it } from 'vitest';
 
 describe('PPT-Web Route Definitions', () => {
   const app = 'ppt-web' as const;
@@ -65,7 +66,7 @@ describe('PPT-Web Route Definitions', () => {
 
     it.each(publicRoutes.map((r) => [r.name, r]))(
       '%s should not require authentication',
-      (_, route) => {
+      (_: string, route: FrontendRoute) => {
         expect(route.auth.required).toBe(false);
       }
     );
@@ -90,7 +91,7 @@ describe('PPT-Web Route Definitions', () => {
 
     it.each(protectedRoutes.map((r) => [r.name, r]))(
       '%s should require authentication',
-      (_, route) => {
+      (_: string, route: FrontendRoute) => {
         expect(route.auth.required).toBe(true);
       }
     );

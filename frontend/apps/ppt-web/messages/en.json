@@ -2438,6 +2438,90 @@
       "videoPlaceholder": "Video thumbnail",
       "noResults": "No tutorials found",
       "noResultsDescription": "Try adjusting your search or filter criteria."
+    },
+    "dashboard": {
+      "managerActionQueue": "Action Queue",
+      "residentActionQueue": "Your Tasks",
+      "managerDashboard": "Manager Dashboard",
+      "residentDashboard": "My Dashboard",
+      "managerWelcome": "Here's what needs your attention today.",
+      "residentWelcome": "Complete these tasks to stay up to date.",
+      "itemsNeedingAttention_one": "{{count}} item needs attention",
+      "itemsNeedingAttention_other": "{{count}} items need attention",
+      "filters": "Filters",
+      "searchActions": "Search actions",
+      "searchPlaceholder": "Search by title or description...",
+      "filterByPriority": "Filter by priority",
+      "filterByType": "Filter by type",
+      "clearFilters": "Clear all filters",
+      "priority": {
+        "urgent": "Urgent",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "actionType": {
+        "fault_pending": "Pending Faults",
+        "fault_escalated": "Escalated Faults",
+        "approval_pending": "Pending Approvals",
+        "vote_active": "Active Votes",
+        "message_unread": "Unread Messages",
+        "meter_due": "Meter Readings Due",
+        "person_months_due": "Person-Months Due",
+        "announcement_unread": "Unread Announcements"
+      },
+      "action": {
+        "approve": "Approve",
+        "reject": "Reject",
+        "view": "View",
+        "dismiss": "Dismiss",
+        "complete": "Complete",
+        "escalate": "Escalate"
+      },
+      "confirmAction": "Are you sure you want to {{action}}?",
+      "allCaughtUp": "All Caught Up!",
+      "noItemsNeedingAttention": "You have no items needing attention right now.",
+      "errorLoadingQueue": "Error Loading Queue",
+      "actionQueue": "Action queue",
+      "keyboardHint": "Keyboard shortcuts:",
+      "toNavigate": "to navigate",
+      "toOpen": "to open",
+      "forHelp": "for help",
+      "minutesAgo_one": "{{count}} minute ago",
+      "minutesAgo_other": "{{count}} minutes ago",
+      "hoursAgo_one": "{{count}} hour ago",
+      "hoursAgo_other": "{{count}} hours ago",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago",
+      "overdue": "{{days}} days overdue",
+      "dueToday": "Due today",
+      "dueTomorrow": "Due tomorrow",
+      "dueInDays": "Due in {{days}} days",
+      "quickTasks": "Quick Tasks",
+      "completeIn60Seconds": "Complete most tasks in under 60 seconds",
+      "recentActivity": "Recent Activity",
+      "activity": {
+        "meterReadingSubmitted": "Meter reading submitted",
+        "voteSubmitted": "Vote submitted",
+        "faultReported": "Fault reported"
+      },
+      "stats": {
+        "pendingFaults": "Pending Faults",
+        "pendingApprovals": "Pending Approvals",
+        "activeVotes": "Active Votes",
+        "unreadMessages": "Unread Messages"
+      },
+      "shortcuts": {
+        "title": "Keyboard Shortcuts",
+        "nextItem": "Next item",
+        "prevItem": "Previous item",
+        "openItem": "Open selected item",
+        "approve": "Approve action",
+        "reject": "Reject action",
+        "closeFilters": "Close filters",
+        "showHelp": "Show this help",
+        "hint": "Focus on the action queue to use these shortcuts"
+      }
     }
   },
   "aiChat": {
