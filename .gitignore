@@ -86,6 +86,11 @@ yarn-error.log*
 coverage/
 *.lcov
 
+# === Playwright ===
+frontend/**/playwright-report/
+frontend/**/test-results/
+frontend/**/playwright/.cache/
+
 # === Temporary ===
 *.tmp
 *.temp
