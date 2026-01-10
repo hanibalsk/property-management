@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 /**
  * SyncProgressToast - Toast notification for sync progress (Epic 123 - Story 123.2)
  *
@@ -5,7 +6,6 @@
  * Automatically dismisses after completion.
  */
 import { useTranslation } from 'react-i18next';
-import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export interface SyncProgressToastProps {

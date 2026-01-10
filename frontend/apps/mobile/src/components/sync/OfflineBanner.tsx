@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 /**
  * OfflineBanner - Connectivity status banner (Epic 123 - Story 123.1)
  *
@@ -6,7 +7,6 @@
  */
 import { useTranslation } from 'react-i18next';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { useEffect, useRef } from 'react';
 
 export interface OfflineBannerProps {
   /** Whether the device is currently online */

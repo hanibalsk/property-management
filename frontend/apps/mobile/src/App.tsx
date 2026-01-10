@@ -159,7 +159,11 @@ function MainApp() {
       {/* Sync progress toast */}
       <SyncProgressToast
         visible={isSyncingWithProgress || showSyncToast}
-        progress={syncProgress?.total ? Math.round(((syncProgress?.current || 0) / syncProgress.total) * 100) : 0}
+        progress={
+          syncProgress?.total
+            ? Math.round(((syncProgress?.current || 0) / syncProgress.total) * 100)
+            : 0
+        }
         total={syncProgress?.total || 0}
         current={syncProgress?.current || 0}
         failed={syncProgress?.failed || 0}

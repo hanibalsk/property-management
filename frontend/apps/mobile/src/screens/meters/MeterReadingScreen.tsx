@@ -150,7 +150,16 @@ export function MeterReadingScreen({ onSuccess, onCancel }: MeterReadingScreenPr
     } finally {
       setIsSubmitting(false);
     }
-  }, [reading, selectedMeter, selectedMeterConfig, photoUri, isConnected, addToQueue, t, onSuccess]);
+  }, [
+    reading,
+    selectedMeter,
+    selectedMeterConfig,
+    photoUri,
+    isConnected,
+    addToQueue,
+    t,
+    onSuccess,
+  ]);
 
   return (
     <KeyboardAvoidingView
@@ -183,7 +192,10 @@ export function MeterReadingScreen({ onSuccess, onCancel }: MeterReadingScreenPr
             {METER_TYPES.map((meter) => (
               <Pressable
                 key={meter.type}
-                style={[styles.meterTypeButton, selectedMeter === meter.type && styles.meterTypeSelected]}
+                style={[
+                  styles.meterTypeButton,
+                  selectedMeter === meter.type && styles.meterTypeSelected,
+                ]}
                 onPress={() => setSelectedMeter(meter.type)}
               >
                 <Text style={styles.meterTypeIcon}>{meter.icon}</Text>

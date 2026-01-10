@@ -15,7 +15,11 @@ export interface SyncStatusBadgeProps {
   isSyncing?: boolean;
 }
 
-export function SyncStatusBadge({ count, size = 'medium', isSyncing = false }: SyncStatusBadgeProps) {
+export function SyncStatusBadge({
+  count,
+  size = 'medium',
+  isSyncing = false,
+}: SyncStatusBadgeProps) {
   if (count === 0 && !isSyncing) {
     return null;
   }
