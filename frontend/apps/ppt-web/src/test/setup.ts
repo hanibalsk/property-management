@@ -1,8 +1,10 @@
+/// <reference types="vitest/globals" />
 /**
  * Vitest test setup file (Epic 80, Story 80.3)
  *
  * Configures testing environment:
  * - Jest DOM matchers for DOM assertions
+ * - Axe accessibility matchers for a11y testing
  * - Cleanup after each test
  * - Mock implementations for browser APIs
  * - i18n mock for translation testing
@@ -12,7 +14,13 @@ import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { afterEach } from 'vitest';
+import * as matchers from 'vitest-axe/matchers';
+
+// Import type declarations for vitest-axe matchers
+import './vitest-axe.d';
+
+// Extend Vitest expect with axe accessibility matchers
+expect.extend(matchers);
 
 // Initialize i18n for tests with English translations
 i18n.use(initReactI18next).init({

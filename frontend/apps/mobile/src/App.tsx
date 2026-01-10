@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { OfflineBanner, SyncProgressToast, SyncStatusBadge } from './components/sync';
 import { AuthProvider, useAuth } from './contexts';
 import { useOfflineSupport } from './hooks';
 import './i18n'; // Initialize i18n
@@ -13,6 +14,7 @@ import {
   DocumentsScreen,
   FaultsListScreen,
   LoginScreen,
+  MeterReadingScreen,
   ReportFaultScreen,
   VotingScreen,
 } from './screens';
@@ -37,12 +39,23 @@ type Screen =
   | 'Voting'
   | 'Documents'
   | 'Messages'
-  | 'Settings';
+  | 'Settings'
+  | 'MeterReading';
 
 function MainApp() {
   const { t } = useTranslation();
   const { isAuthenticated, isLoading } = useAuth();
-  const { isConnected, queuedActionsCount } = useOfflineSupport();
+  const { isConnected, queuedActionsCount, isSyncing, syncProgress, processQueue } =
+    useOfflineSupport();
+  const [showSyncToast, setShowSyncToast] = useState(false);
+
+  // Show sync toast when sync progress starts
+  const handleRetrySync = useCallback(() => {
+    processQueue();
+  }, [processQueue]);
+
+  // Show toast when sync is in progress
+  const isSyncingWithProgress = isSyncing && syncProgress !== null;
   const [currentScreen, setCurrentScreen] = useState<Screen>('Dashboard');
 
   const handleNavigate = useCallback((screen: string) => {
@@ -80,6 +93,13 @@ function MainApp() {
         return <VotingScreen onNavigate={handleNavigate} />;
       case 'Documents':
         return <DocumentsScreen onNavigate={handleNavigate} />;
+      case 'MeterReading':
+        return (
+          <MeterReadingScreen
+            onSuccess={() => handleNavigate('Dashboard')}
+            onCancel={() => handleNavigate('Dashboard')}
+          />
+        );
       default:
         return <DashboardScreen onNavigate={handleNavigate} />;
     }
@@ -87,14 +107,12 @@ function MainApp() {
 
   return (
     <View style={styles.container}>
-      {/* Offline indicator */}
-      {!isConnected && (
-        <View style={styles.offlineBar}>
-          <Text style={styles.offlineText}>
-            {t('offline.title')} {queuedActionsCount > 0 && `(${queuedActionsCount} pending)`}
-          </Text>
-        </View>
-      )}
+      {/* Offline banner with sync status */}
+      <OfflineBanner
+        isConnected={isConnected}
+        queuedActionsCount={queuedActionsCount}
+        isSyncing={isSyncing}
+      />
 
       {/* Main content */}
       <View style={styles.content}>{renderScreen()}</View>
@@ -106,6 +124,11 @@ function MainApp() {
           label={t('tabs.home')}
           isActive={currentScreen === 'Dashboard'}
           onPress={() => handleNavigate('Dashboard')}
+          syncBadge={
+            queuedActionsCount > 0 ? (
+              <SyncStatusBadge count={queuedActionsCount} size="small" isSyncing={isSyncing} />
+            ) : undefined
+          }
         />
         <NavButton
           icon="🔧"
@@ -133,6 +156,22 @@ function MainApp() {
         />
       </View>
 
+      {/* Sync progress toast */}
+      <SyncProgressToast
+        visible={isSyncingWithProgress || showSyncToast}
+        progress={
+          syncProgress?.total
+            ? Math.round(((syncProgress?.current || 0) / syncProgress.total) * 100)
+            : 0
+        }
+        total={syncProgress?.total || 0}
+        current={syncProgress?.current || 0}
+        failed={syncProgress?.failed || 0}
+        isComplete={syncProgress?.isComplete || false}
+        onDismiss={() => setShowSyncToast(false)}
+        onRetry={handleRetrySync}
+      />
+
       <StatusBar style="auto" />
     </View>
   );
@@ -144,9 +183,10 @@ interface NavButtonProps {
   isActive: boolean;
   onPress: () => void;
   badge?: number;
+  syncBadge?: React.ReactNode;
 }
 
-function NavButton({ icon, label, isActive, onPress, badge }: NavButtonProps) {
+function NavButton({ icon, label, isActive, onPress, badge, syncBadge }: NavButtonProps) {
   return (
     <Pressable style={styles.navButton} onPress={onPress}>
       <View style={styles.navIconContainer}>
@@ -156,6 +196,7 @@ function NavButton({ icon, label, isActive, onPress, badge }: NavButtonProps) {
             <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
           </View>
         )}
+        {syncBadge && <View style={styles.syncBadgeContainer}>{syncBadge}</View>}
       </View>
       <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>{label}</Text>
     </Pressable>
@@ -186,18 +227,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#6b7280',
-  },
-  offlineBar: {
-    backgroundColor: '#fef2f2',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    paddingTop: 50,
-  },
-  offlineText: {
-    color: '#dc2626',
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
   },
   content: {
     flex: 1,
@@ -247,5 +276,10 @@ const styles = StyleSheet.create({
   navLabelActive: {
     color: '#2563eb',
     fontWeight: '600',
+  },
+  syncBadgeContainer: {
+    position: 'absolute',
+    top: -4,
+    right: -12,
   },
 });
