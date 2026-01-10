@@ -50,7 +50,9 @@
     "saving": "Saving...",
     "dismiss": "Dismiss",
     "selectOrganization": "Please select an organization",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "nav": {
     "home": "Home",
@@ -184,6 +186,49 @@
         "titleTooLong": "Title must be 255 characters or less",
         "descriptionRequired": "Description is required"
       }
+    },
+    "photo": {
+      "sectionTitle": "Add Photos",
+      "sectionDescription": "Start by uploading photos of the issue. This helps us understand the problem better and may enable AI-assisted categorization.",
+      "addPhotos": "Add Photos",
+      "dragOrClick": "Drag photos here or click to browse",
+      "maxPhotos": "{{max}} more photo(s) allowed",
+      "selectPhotos": "Select photos to upload",
+      "dropZoneLabel": "Photo upload area - drag and drop or click to select",
+      "uploadedPhotos": "Uploaded photos",
+      "photoAlt": "Uploaded photo: {{name}}",
+      "removePhoto": "Remove photo {{name}}",
+      "invalidType": "Only image files are allowed",
+      "tooLarge": "File size must be less than {{maxSize}}MB",
+      "acceptedFormats": "JPEG, PNG, WebP, HEIC",
+      "maxSize": "Max {{size}}MB per file"
+    },
+    "ai": {
+      "suggestion": "AI Suggestion",
+      "accepted": "Suggestion Accepted",
+      "suggestionRegion": "AI-suggested category and priority",
+      "confidenceLabel": "Confidence",
+      "confidenceProgress": "AI confidence level",
+      "confidence": {
+        "high": "High confidence",
+        "medium": "Medium confidence",
+        "low": "Low confidence"
+      },
+      "acceptSuggestion": "Accept Suggestion",
+      "modifySuggestion": "Modify",
+      "lowConfidenceNote": "The AI is less certain about this suggestion. Please review and adjust if needed."
+    },
+    "category": {
+      "plumbing": "Plumbing",
+      "electrical": "Electrical",
+      "heating": "Heating",
+      "structural": "Structural",
+      "exterior": "Exterior",
+      "elevator": "Elevator",
+      "common_area": "Common Area",
+      "security": "Security",
+      "cleaning": "Cleaning",
+      "other": "Other"
     }
   },
   "buildings": {
