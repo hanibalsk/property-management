@@ -3,23 +3,11 @@
  * UC-12: Utility Outages
  */
 
+import type { OutageCommodity, OutageSeverity, OutageStatus, OutageSummary } from '@ppt/api-client';
 import { useTranslation } from 'react-i18next';
 
-export type OutageStatus = 'planned' | 'ongoing' | 'resolved' | 'cancelled';
-export type OutageCommodity = 'electricity' | 'gas' | 'water' | 'heating' | 'internet' | 'other';
-export type OutageSeverity = 'low' | 'medium' | 'high' | 'critical';
-
-export interface OutageSummary {
-  id: string;
-  title: string;
-  commodity: OutageCommodity;
-  severity: OutageSeverity;
-  status: OutageStatus;
-  buildingCount: number;
-  scheduledStart: string;
-  scheduledEnd?: string;
-  createdAt: string;
-}
+// Re-export types for convenience
+export type { OutageCommodity, OutageSeverity, OutageStatus, OutageSummary };
 
 interface OutageCardProps {
   outage: OutageSummary;
@@ -35,9 +23,9 @@ const statusColors: Record<OutageStatus, string> = {
 };
 
 const severityColors: Record<OutageSeverity, string> = {
-  low: 'text-gray-500',
-  medium: 'text-blue-500',
-  high: 'text-orange-500',
+  informational: 'text-gray-500',
+  minor: 'text-blue-500',
+  major: 'text-orange-500',
   critical: 'text-red-600 font-bold',
 };
 
@@ -69,8 +57,10 @@ export function OutageCard({ outage, onView, onEdit }: OutageCardProps) {
               </span>
               <span>•</span>
               <span>
-                {outage.buildingCount}{' '}
-                {outage.buildingCount === 1 ? t('outages.building') : t('outages.buildings')}
+                {outage.affectedBuildingsCount}{' '}
+                {outage.affectedBuildingsCount === 1
+                  ? t('outages.building')
+                  : t('outages.buildings')}
               </span>
             </div>
           </div>

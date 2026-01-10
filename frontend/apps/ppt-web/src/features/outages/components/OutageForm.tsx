@@ -3,9 +3,9 @@
  * UC-12: Utility Outages
  */
 
+import type { OutageCommodity, OutageSeverity } from '@ppt/api-client';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { OutageCommodity, OutageSeverity } from './OutageCard';
 
 export interface OutageFormData {
   title: string;
@@ -39,7 +39,7 @@ const commodityOptions: OutageCommodity[] = [
   'internet',
   'other',
 ];
-const severityOptions: OutageSeverity[] = ['low', 'medium', 'high', 'critical'];
+const severityOptions: OutageSeverity[] = ['informational', 'minor', 'major', 'critical'];
 
 export function OutageForm({
   initialData,
@@ -53,7 +53,7 @@ export function OutageForm({
     title: initialData?.title ?? '',
     description: initialData?.description ?? '',
     commodity: initialData?.commodity ?? 'electricity',
-    severity: initialData?.severity ?? 'medium',
+    severity: initialData?.severity ?? 'minor',
     buildingIds: initialData?.buildingIds ?? [],
     scheduledStart: initialData?.scheduledStart ?? '',
     scheduledEnd: initialData?.scheduledEnd ?? '',
