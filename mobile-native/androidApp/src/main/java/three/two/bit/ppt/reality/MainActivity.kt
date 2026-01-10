@@ -9,23 +9,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import three.two.bit.ppt.reality.api.ApiConfig
 import three.two.bit.ppt.reality.auth.SsoService
 import three.two.bit.ppt.reality.listing.ListingRepository
 import three.two.bit.ppt.reality.navigation.RealityNavHost
+import three.two.bit.ppt.reality.navigation.Screen
 
 /**
  * Main activity for Reality Portal mobile app.
  *
- * Epic 48: Reality Portal Mobile (KMP)
+ * Epic 48: Reality Portal Mobile (KMP) Epic 122: Push Notification Deep Links
  */
 class MainActivity : ComponentActivity() {
     private val ssoService = SsoService()
+
+    /** Pending deep link to navigate to after NavHost is ready */
+    private var pendingDeepLink = mutableStateOf<DeepLinkTarget?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,7 +54,11 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    RealityPortalApp(ssoService = ssoService)
+                    RealityPortalApp(
+                        ssoService = ssoService,
+                        pendingDeepLink = pendingDeepLink.value,
+                        onDeepLinkHandled = { pendingDeepLink.value = null }
+                    )
                 }
             }
         }
@@ -62,29 +73,92 @@ class MainActivity : ComponentActivity() {
     private fun handleDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
 
-        // Handle SSO deep-link: reality://sso?token=xxx
-        if (uri.scheme == "reality" && uri.host == "sso") {
-            val token = uri.getQueryParameter("token")
-            if (token != null) {
-                // Validate token and login using lifecycleScope to prevent leaks
-                lifecycleScope.launch { ssoService.validateAndLogin(token) }
+        if (uri.scheme != "reality") return
+
+        when (uri.host) {
+            "sso" -> {
+                // Handle SSO deep-link: reality://sso?token=xxx
+                val token = uri.getQueryParameter("token")
+                if (token != null) {
+                    lifecycleScope.launch { ssoService.validateAndLogin(token) }
+                }
+            }
+            "listing" -> {
+                // Handle listing deep-link: reality://listing/{id}
+                val listingId = uri.pathSegments.firstOrNull()
+                if (listingId != null) {
+                    pendingDeepLink.value = DeepLinkTarget.Listing(listingId)
+                }
+            }
+            "search" -> {
+                // Handle search deep-link: reality://search
+                pendingDeepLink.value = DeepLinkTarget.Search
+            }
+            "favorites" -> {
+                // Handle favorites deep-link: reality://favorites
+                pendingDeepLink.value = DeepLinkTarget.Favorites
+            }
+            "inquiries" -> {
+                // Handle inquiries deep-link: reality://inquiries
+                pendingDeepLink.value = DeepLinkTarget.Inquiries
             }
         }
     }
 }
 
+/** Deep link navigation target (Epic 122) */
+sealed class DeepLinkTarget {
+    data class Listing(val id: String) : DeepLinkTarget()
+
+    data object Search : DeepLinkTarget()
+
+    data object Favorites : DeepLinkTarget()
+
+    data object Inquiries : DeepLinkTarget()
+}
+
 @Composable
-fun RealityPortalApp(ssoService: SsoService) {
+fun RealityPortalApp(
+    ssoService: SsoService,
+    pendingDeepLink: DeepLinkTarget? = null,
+    onDeepLinkHandled: () -> Unit = {}
+) {
     val navController = rememberNavController()
 
     // Create listing repository - in production this would be injected via DI
     val listingRepository = remember { ListingRepository(baseUrl = ApiConfig.requireBaseUrl()) }
+
+    // Handle pending deep link navigation (Epic 122)
+    LaunchedEffect(pendingDeepLink) {
+        pendingDeepLink?.let { target ->
+            navigateToDeepLink(navController, target)
+            onDeepLinkHandled()
+        }
+    }
 
     RealityNavHost(
         navController = navController,
         ssoService = ssoService,
         listingRepository = listingRepository
     )
+}
+
+/** Navigate to a deep link target (Epic 122) */
+private fun navigateToDeepLink(navController: NavHostController, target: DeepLinkTarget) {
+    when (target) {
+        is DeepLinkTarget.Listing -> {
+            navController.navigate(Screen.ListingDetail.createRoute(target.id))
+        }
+        is DeepLinkTarget.Search -> {
+            navController.navigate(Screen.Search.route)
+        }
+        is DeepLinkTarget.Favorites -> {
+            navController.navigate(Screen.Favorites.route)
+        }
+        is DeepLinkTarget.Inquiries -> {
+            navController.navigate(Screen.Inquiries.route)
+        }
+    }
 }
 
 @Composable

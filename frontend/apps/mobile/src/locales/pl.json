@@ -169,7 +169,23 @@
   },
   "offline": {
     "title": "Jestes offline",
-    "message": "Niektore funkcje moga byc niedostepne."
+    "message": "Niektore funkcje moga byc niedostepne.",
+    "syncing": "Synchronizowanie {{count}} elementow...",
+    "offlineWithPending": "Offline - {{count}} elementow czeka na synchronizacje",
+    "pending": "{{count}} elementow czeka na synchronizacje"
+  },
+  "sync": {
+    "willSyncWhenOnline": "Synchronizacja po polaczeniu",
+    "syncing": "Synchronizowanie...",
+    "synced": "Zsynchronizowano",
+    "failed": "Synchronizacja nie powiodla sie",
+    "retry": "Ponow",
+    "savedLocally": "Zapisano lokalnie {{time}}",
+    "syncComplete": "Synchronizacja zakonczona",
+    "syncFailed": "Niektore elementy nie zostaly zsynchronizowane",
+    "syncProgress": "Synchronizowanie {{current}} z {{total}}",
+    "itemSynced": "{{item}} zsynchronizowano pomyslnie",
+    "itemFailed": "Nie udalo sie zsynchronizowac {{item}}"
   },
   "help": {
     "title": "Centrum pomocy",
@@ -228,5 +244,24 @@
     "denied": "Odmowa uprawnien",
     "cameraRequired": "Wymagane jest uprawnienie do aparatu",
     "locationRequired": "Wymagane jest uprawnienie do lokalizacji"
+  },
+  "meters": {
+    "title": "Odczyt licznika",
+    "selectType": "Wybierz typ licznika",
+    "water": "Woda",
+    "electricity": "Prad",
+    "gas": "Gaz",
+    "heating": "Ogrzewanie",
+    "enterReading": "Wprowadz odczyt",
+    "readingPlaceholder": "0,00",
+    "readingRequired": "Prosze wprowadzic odczyt",
+    "photo": "Zdjecie (opcjonalnie)",
+    "submit": "Wyslij odczyt",
+    "submitSuccess": "Odczyt licznika wyslany pomyslnie",
+    "submitFailed": "Nie udalo sie wyslac odczytu licznika",
+    "savedOffline": "Zapisano offline",
+    "willSyncWhenOnline": "Twoj odczyt zostanie wyslany gdy bedziesz online",
+    "offlineMode": "Jestes offline. Odczyty zostana zapisane lokalnie.",
+    "pendingReadings": "Oczekujace odczyty"
   }
 }

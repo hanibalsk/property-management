@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
+import { createDeepLink } from '../qrcode/DeepLinkHandler';
 
 // Configure notification handling
 Notifications.setNotificationHandler({
@@ -78,30 +79,47 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
   const handleNotificationNavigation = (data: Record<string, unknown>) => {
     // Handle deep linking based on notification data
-    // This would integrate with your navigation system
     const { type, id } = data;
+    const idString = id ? String(id) : undefined;
+
+    // Map notification types to screen names and create deep links
+    let deepLinkUrl: string;
 
     switch (type) {
       case 'announcement':
-        // Navigate to announcement detail
-        console.log('Navigate to announcement:', id);
+        deepLinkUrl = idString
+          ? createDeepLink('Announcements', { id: idString })
+          : createDeepLink('Announcements');
         break;
       case 'fault':
-        // Navigate to fault detail
-        console.log('Navigate to fault:', id);
+        deepLinkUrl = idString
+          ? createDeepLink('Faults', { id: idString })
+          : createDeepLink('Faults');
         break;
       case 'vote':
-        // Navigate to vote
-        console.log('Navigate to vote:', id);
+        deepLinkUrl = idString
+          ? createDeepLink('Voting', { id: idString })
+          : createDeepLink('Voting');
         break;
       case 'message':
-        // Navigate to messages
-        console.log('Navigate to message:', id);
+        deepLinkUrl = idString
+          ? createDeepLink('Messages', { id: idString })
+          : createDeepLink('Messages');
+        break;
+      case 'outage':
+        deepLinkUrl = idString
+          ? createDeepLink('Outages', { id: idString })
+          : createDeepLink('Outages');
         break;
       default:
-        // Navigate to home
-        console.log('Navigate to home');
+        deepLinkUrl = createDeepLink('Dashboard');
     }
+
+    // Use the deep link manager to navigate (handles auth state)
+    // The deep link will be processed by DeepLinkManager which
+    // dispatches to registered handlers
+    const { Linking } = require('react-native');
+    Linking.openURL(deepLinkUrl);
   };
 
   const registerForPushNotifications = async (): Promise<string | null> => {
