@@ -591,6 +591,7 @@ impl PortfolioAnalyticsRepository {
     // =========================================================================
 
     /// Create an alert.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_alert(
         &self,
         org_id: Uuid,
