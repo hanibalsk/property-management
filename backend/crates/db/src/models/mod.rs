@@ -872,6 +872,6 @@ pub use portfolio_analytics::{
     CreateAlertRule, CreatePortfolioBenchmark, CreatePropertyMetrics, MetricsComparison,
     PortfolioAggregatedMetrics, PortfolioAlert, PortfolioAlertRule, PortfolioBenchmark,
     PortfolioOverview, PortfolioTrend, PropertyComparison as PortfolioPropertyComparison,
-    PropertyMetricValue, PropertyPerformanceMetrics, PropertyRanking, TrendAnalysis, TrendDataPoint,
-    TrendQuery, UpdateAlertRule, UpdatePortfolioBenchmark,
+    PropertyMetricValue, PropertyPerformanceMetrics, PropertyRanking, TrendAnalysis,
+    TrendDataPoint, TrendQuery, UpdateAlertRule, UpdatePortfolioBenchmark,
 };
