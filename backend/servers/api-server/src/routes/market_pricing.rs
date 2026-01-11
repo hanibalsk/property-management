@@ -63,8 +63,14 @@ pub fn router() -> Router<AppState> {
         .route("/cma/{id}", get(get_cma))
         .route("/cma/{id}", put(update_cma))
         .route("/cma/{id}", delete(delete_cma))
+        .route("/cma/{id}/details", get(get_cma_details))
         .route("/cma/{id}/properties", get(get_cma_properties))
         .route("/cma/{id}/properties", post(add_cma_property))
+        .route(
+            "/cma/{cma_id}/properties/{property_id}",
+            delete(remove_cma_property),
+        )
+        .route("/cma/{id}/recalculate", post(recalculate_cma))
         // Comparables lookup
         .route("/comparables", get(get_comparables))
         // Dashboard (Story 132.3)
@@ -1264,6 +1270,82 @@ async fn add_cma_property(
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
+}
+
+// =============================================================================
+// CMA WITH DETAILS (Story 132.4)
+// =============================================================================
+
+/// Get CMA with full analysis details.
+///
+/// Story 132.4: Returns the CMA with all properties and computed analysis summary
+/// including average rent, price per sqm, price ranges, and rental yield ranges.
+async fn get_cma_details(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s.market_pricing_repo.get_cma_with_details(id, org_id).await {
+        Ok(Some(cma_details)) => Ok(Json(serde_json::to_value(cma_details).unwrap())),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("CMA not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+/// Remove a property from a CMA.
+///
+/// Story 132.4: Allows removing individual properties from a comparative analysis.
+async fn remove_cma_property(
+    State(s): State<AppState>,
+    _user: AuthUser,
+    Path((cma_id, property_id)): Path<(Uuid, Uuid)>,
+) -> ApiResult<Json<serde_json::Value>> {
+    match s
+        .market_pricing_repo
+        .remove_property_from_cma(cma_id, property_id)
+        .await
+    {
+        Ok(true) => Ok(Json(json!({ "deleted": true }))),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Property not found in CMA")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+/// Recalculate CMA aggregate metrics.
+///
+/// Story 132.4: Recalculates the average price per sqm and rental yield
+/// based on current properties and updates the CMA record.
+async fn recalculate_cma(
+    State(s): State<AppState>,
+    _user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    match s.market_pricing_repo.recalculate_cma_metrics(id).await {
+        Ok(()) => Ok(Json(json!({ "recalculated": true }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
 }

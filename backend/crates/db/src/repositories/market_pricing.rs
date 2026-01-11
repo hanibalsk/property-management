@@ -831,6 +831,154 @@ impl MarketPricingRepository {
         Ok(result.rows_affected() > 0)
     }
 
+    // ======================== CMA With Details (Story 132.4) ========================
+
+    /// Get a full CMA with all properties and computed analysis summary.
+    /// Story 132.4: Comparative Market Analysis Tool with aggregated metrics.
+    pub async fn get_cma_with_details(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+    ) -> Result<Option<CmaWithProperties>, AppError> {
+        // Get the CMA
+        let cma = match self.get_cma(id, org_id).await? {
+            Some(c) => c,
+            None => return Ok(None),
+        };
+
+        // Get all properties
+        let properties = self.get_cma_properties(id).await?;
+
+        // Compute analysis summary
+        let summary = self.compute_cma_summary(&properties);
+
+        Ok(Some(CmaWithProperties {
+            analysis: cma,
+            properties,
+            summary,
+        }))
+    }
+
+    /// Compute analysis summary from CMA properties.
+    fn compute_cma_summary(&self, properties: &[CmaPropertyComparison]) -> CmaAnalysisSummary {
+        if properties.is_empty() {
+            return CmaAnalysisSummary {
+                total_properties: 0,
+                avg_size_sqm: Decimal::ZERO,
+                avg_rent: None,
+                avg_price_per_sqm: None,
+                price_range: None,
+                rental_yield_range: None,
+            };
+        }
+
+        let total = properties.len() as i32;
+
+        // Calculate average size
+        let total_size: Decimal = properties.iter().map(|p| p.size_sqm).sum();
+        let avg_size_sqm = total_size / Decimal::from(total);
+
+        // Calculate average rent (only from properties with rent)
+        let rents: Vec<Decimal> = properties.iter().filter_map(|p| p.monthly_rent).collect();
+        let avg_rent = if !rents.is_empty() {
+            let sum: Decimal = rents.iter().sum();
+            Some(sum / Decimal::from(rents.len() as i32))
+        } else {
+            None
+        };
+
+        // Calculate average price per sqm
+        let prices_per_sqm: Vec<Decimal> =
+            properties.iter().filter_map(|p| p.price_per_sqm).collect();
+        let avg_price_per_sqm = if !prices_per_sqm.is_empty() {
+            let sum: Decimal = prices_per_sqm.iter().sum();
+            Some(sum / Decimal::from(prices_per_sqm.len() as i32))
+        } else {
+            None
+        };
+
+        // Calculate price range
+        let price_range = if !prices_per_sqm.is_empty() {
+            let min = prices_per_sqm
+                .iter()
+                .min()
+                .cloned()
+                .unwrap_or(Decimal::ZERO);
+            let max = prices_per_sqm
+                .iter()
+                .max()
+                .cloned()
+                .unwrap_or(Decimal::ZERO);
+            Some(PriceRange { min, max })
+        } else {
+            None
+        };
+
+        // Calculate rental yield range
+        let yields: Vec<Decimal> = properties.iter().filter_map(|p| p.rental_yield).collect();
+        let rental_yield_range = if !yields.is_empty() {
+            let min = yields.iter().min().cloned().unwrap_or(Decimal::ZERO);
+            let max = yields.iter().max().cloned().unwrap_or(Decimal::ZERO);
+            Some(YieldRange { min, max })
+        } else {
+            None
+        };
+
+        CmaAnalysisSummary {
+            total_properties: total,
+            avg_size_sqm,
+            avg_rent,
+            avg_price_per_sqm,
+            price_range,
+            rental_yield_range,
+        }
+    }
+
+    /// Remove a property from a CMA.
+    pub async fn remove_property_from_cma(
+        &self,
+        cma_id: Uuid,
+        property_id: Uuid,
+    ) -> Result<bool, AppError> {
+        let result =
+            sqlx::query("DELETE FROM cma_property_comparisons WHERE id = $1 AND cma_id = $2")
+                .bind(property_id)
+                .bind(cma_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Recalculate and update CMA aggregate metrics based on properties.
+    pub async fn recalculate_cma_metrics(&self, cma_id: Uuid) -> Result<(), AppError> {
+        let properties = self.get_cma_properties(cma_id).await?;
+        let summary = self.compute_cma_summary(&properties);
+
+        sqlx::query(
+            r#"
+            UPDATE comparative_market_analyses
+            SET avg_price_per_sqm = $2,
+                avg_rental_yield = $3,
+                updated_at = NOW()
+            WHERE id = $1
+            "#,
+        )
+        .bind(cma_id)
+        .bind(summary.avg_price_per_sqm)
+        .bind(
+            summary
+                .rental_yield_range
+                .map(|r| (r.min + r.max) / Decimal::new(2, 0)),
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(())
+    }
+
     // ======================== Dashboard (Story 132.3) ========================
 
     pub async fn get_market_comparables(
