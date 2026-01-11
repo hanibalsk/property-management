@@ -128,3 +128,6 @@ pub mod features;
 
 // UC-12: Utility Outages
 pub mod outages;
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;

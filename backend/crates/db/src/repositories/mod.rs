@@ -268,3 +268,8 @@ pub use feature_analytics::FeatureAnalyticsRepository;
 pub mod outage;
 
 pub use outage::OutageRepository;
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;
+
+pub use esg_reporting::EsgReportingRepository;

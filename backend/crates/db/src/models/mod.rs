@@ -815,3 +815,17 @@ pub use outage::{
     OutageNotification, OutageStatistics, OutageSummary, OutageWithDetails, ResolveOutage,
     StartOutage, UpdateOutage,
 };
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;
+
+pub use esg_reporting::{
+    CarbonFootprint, CarbonFootprintQuery, CarbonFootprintSummary, CreateCarbonFootprint,
+    CreateEsgBenchmark, CreateEsgConfiguration, CreateEsgImportJob, CreateEsgMetric,
+    CreateEsgReport, CreateEsgTarget, CreateEuTaxonomyAssessment, EsgBenchmark,
+    EsgBenchmarkCategory, EsgBenchmarkComparison, EsgComplianceFramework, EsgConfiguration,
+    EsgDashboardMetrics, EsgDataEntryMethod, EsgEmissionScope, EsgImportJob, EsgMetric,
+    EsgMetricCategory, EsgMetricsQuery, EsgReport, EsgReportStatus, EsgStatistics,
+    EsgSummaryScores, EsgTarget, EuTaxonomyAssessment, UpdateEsgConfiguration, UpdateEsgMetric,
+    UpdateEsgReport, UpdateEsgTarget, UpdateEuTaxonomyAssessment,
+};
