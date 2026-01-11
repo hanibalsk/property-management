@@ -332,7 +332,7 @@ impl BuildingCertificationRepository {
         .bind(&input.status)
         .bind(&input.documentation_status)
         .bind(
-            serde_json::to_value(&input.evidence_urls.unwrap_or_default())
+            serde_json::to_value(input.evidence_urls.unwrap_or_default())
                 .unwrap_or(serde_json::Value::Array(vec![])),
         )
         .bind(&input.notes)
@@ -796,11 +796,11 @@ impl BuildingCertificationRepository {
         .bind(input.days_before)
         .bind(&input.message)
         .bind(
-            serde_json::to_value(&input.notify_users.unwrap_or_default())
+            serde_json::to_value(input.notify_users.unwrap_or_default())
                 .unwrap_or(serde_json::Value::Array(vec![])),
         )
         .bind(
-            serde_json::to_value(&input.notify_roles.unwrap_or_default())
+            serde_json::to_value(input.notify_roles.unwrap_or_default())
                 .unwrap_or(serde_json::Value::Array(vec![])),
         )
         .fetch_one(&self.pool)
@@ -829,6 +829,7 @@ impl BuildingCertificationRepository {
     // ==================== Audit Logs ====================
 
     /// Create an audit log entry.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_audit_log(
         &self,
         org_id: Uuid,
