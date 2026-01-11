@@ -86,7 +86,7 @@ impl EsgReportingRepository {
         .bind(input.reporting_currency.unwrap_or_else(|| "EUR".to_string()))
         .bind(input.default_unit_system.unwrap_or_else(|| "metric".to_string()))
         .bind(input.fiscal_year_start_month.unwrap_or(1))
-        .bind(serde_json::to_value(&input.enabled_frameworks.unwrap_or_default()).unwrap_or(serde_json::Value::Array(vec![])))
+        .bind(serde_json::to_value(input.enabled_frameworks.unwrap_or_default()).unwrap_or(serde_json::Value::Array(vec![])))
         .bind(input.grid_emission_factor)
         .bind(input.natural_gas_emission_factor)
         .bind(input.carbon_reduction_target_pct)
@@ -274,16 +274,16 @@ impl EsgReportingRepository {
         input: CreateCarbonFootprint,
     ) -> Result<CarbonFootprint, sqlx::Error> {
         // Calculate CO2 equivalent
-        let co2_equivalent_kg = &input.consumption_value * &input.emission_factor;
+        let co2_equivalent_kg = input.consumption_value * input.emission_factor;
         let co2_per_sqm = input
             .area_sqm
             .as_ref()
             .filter(|a| *a > &Decimal::ZERO)
-            .map(|a| &co2_equivalent_kg / a);
+            .map(|a| co2_equivalent_kg / *a);
         let co2_per_unit = input
             .num_units
             .filter(|n| *n > 0)
-            .map(|n| &co2_equivalent_kg / Decimal::from(n));
+            .map(|n| co2_equivalent_kg / Decimal::from(n));
 
         sqlx::query_as::<_, CarbonFootprint>(
             r#"
@@ -979,7 +979,7 @@ impl EsgReportingRepository {
 
         let yoy_change = match (&carbon, &prev_carbon) {
             (Some(c), Some(p)) if p.total_co2_kg > Decimal::ZERO => {
-                Some(((&c.total_co2_kg - &p.total_co2_kg) / &p.total_co2_kg) * Decimal::from(100))
+                Some(((c.total_co2_kg - p.total_co2_kg) / p.total_co2_kg) * Decimal::from(100))
             }
             _ => None,
         };
