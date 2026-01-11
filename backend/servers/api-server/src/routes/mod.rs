@@ -128,3 +128,6 @@ pub mod features;
 
 // UC-12: Utility Outages
 pub mod outages;
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;

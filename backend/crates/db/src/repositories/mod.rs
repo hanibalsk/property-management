@@ -268,3 +268,8 @@ pub use feature_analytics::FeatureAnalyticsRepository;
 pub mod outage;
 
 pub use outage::OutageRepository;
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;
+
+pub use enhanced_tenant_screening::EnhancedTenantScreeningRepository;

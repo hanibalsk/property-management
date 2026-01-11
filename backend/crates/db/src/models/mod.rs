@@ -815,3 +815,6 @@ pub use outage::{
     OutageNotification, OutageStatistics, OutageSummary, OutageWithDetails, ResolveOutage,
     StartOutage, UpdateOutage,
 };
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;

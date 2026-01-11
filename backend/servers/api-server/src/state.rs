@@ -10,13 +10,13 @@ use db::{
         AutomationRepository, BackgroundJobRepository, BudgetRepository, BuildingRepository,
         CommunityRepository, CriticalNotificationRepository, DataExportRepository,
         DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
-        EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
-        FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository,
-        FeaturePackageRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
-        GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        InfrastructureRepository, InsuranceRepository, IntegrationRepository, LeaseRepository,
-        LegalRepository, ListingRepository, LlmDocumentRepository, MeterRepository,
-        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        EmergencyRepository, EnergyRepository, EnhancedTenantScreeningRepository,
+        EquipmentRepository, FacilityRepository, FaultRepository, FeatureAnalyticsRepository,
+        FeatureFlagRepository, FeaturePackageRepository, FinancialRepository, FormRepository,
+        GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
+        HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
+        LeaseRepository, LegalRepository, ListingRepository, LlmDocumentRepository,
+        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
         PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
@@ -132,6 +132,8 @@ pub struct AppState {
     pub feature_analytics_repo: FeatureAnalyticsRepository,
     // UC-12: Utility Outages
     pub outage_repo: OutageRepository,
+    // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+    pub enhanced_screening_repo: EnhancedTenantScreeningRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -246,6 +248,8 @@ impl AppState {
         let feature_analytics_repo = FeatureAnalyticsRepository::new(db.clone());
         // UC-12: Utility Outages
         let outage_repo = OutageRepository::new(db.clone());
+        // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+        let enhanced_screening_repo = EnhancedTenantScreeningRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -321,6 +325,7 @@ impl AppState {
             feature_package_repo,
             feature_analytics_repo,
             outage_repo,
+            enhanced_screening_repo,
             llm_client,
             auth_service,
             email_service,
