@@ -131,3 +131,6 @@ pub mod outages;
 
 // Epic 132: Dynamic Rent Pricing & Market Analytics
 pub mod market_pricing;
+
+// Epic 141: Reserve Fund Management
+pub mod reserve_funds;

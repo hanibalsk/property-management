@@ -273,3 +273,8 @@ pub use outage::OutageRepository;
 pub mod market_pricing;
 
 pub use market_pricing::MarketPricingRepository;
+
+// Epic 141: Reserve Fund Management
+pub mod reserve_funds;
+
+pub use reserve_funds::ReserveFundRepository;
