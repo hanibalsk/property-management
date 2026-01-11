@@ -128,3 +128,6 @@ pub mod features;
 
 // UC-12: Utility Outages
 pub mod outages;
+
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub mod market_pricing;

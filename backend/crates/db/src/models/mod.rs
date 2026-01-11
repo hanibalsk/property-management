@@ -582,6 +582,9 @@ pub use llm_document::{
 // UC-12: Utility Outages
 pub mod outage;
 
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub mod market_pricing;
+
 // Epic 72: Regional Legal Compliance (SK/CZ)
 pub mod regional_compliance;
 
@@ -814,4 +817,20 @@ pub use outage::{
     CreateOutageNotification, MarkOutageRead, Outage, OutageDashboard, OutageListQuery,
     OutageNotification, OutageStatistics, OutageSummary, OutageWithDetails, ResolveOutage,
     StartOutage, UpdateOutage,
+};
+
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub use market_pricing::{
+    pricing_recommendation_status, pricing_source, AcceptPricingRecommendation, AddCmaProperty,
+    CmaAnalysisSummary, CmaPropertyComparison, CmaSummary, CmaWithProperties,
+    ComparativeMarketAnalysis, CreateComparativeMarketAnalysis, CreateMarketDataPoint,
+    CreateMarketRegion, ExportPricingDataRequest, GenerateStatisticsRequest, MarketComparable,
+    MarketDataPoint, MarketDataQuery, MarketRegion, MarketRegionSummary, MarketStatistics,
+    MarketStatisticsSummary, MarketTrendPoint, PortfolioPricingSummary,
+    PriceRange as MarketPriceRange, PricingDashboard, PricingDashboardQuery,
+    PricingFactor as MarketPricingFactor, PricingHistoryEntry, PricingRecommendation,
+    PricingRecommendationSummary, PricingRecommendationWithDetails, RecordPriceChange,
+    RejectPricingRecommendation, RequestPricingRecommendation, UnitPricingHistory,
+    UnitRecommendationSummary, UpdateComparativeMarketAnalysis, UpdateMarketRegion,
+    VacancyTrendPoint, YieldRange,
 };
