@@ -582,6 +582,9 @@ pub use llm_document::{
 // UC-12: Utility Outages
 pub mod outage;
 
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub mod market_pricing;
+
 // Epic 72: Regional Legal Compliance (SK/CZ)
 pub mod regional_compliance;
 
@@ -815,3 +818,34 @@ pub use outage::{
     OutageNotification, OutageStatistics, OutageSummary, OutageWithDetails, ResolveOutage,
     StartOutage, UpdateOutage,
 };
+
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub use market_pricing::{
+    pricing_recommendation_status, pricing_source, AcceptPricingRecommendation, AddCmaProperty,
+    CmaAnalysisSummary, CmaPropertyComparison, CmaSummary, CmaWithProperties,
+    ComparativeMarketAnalysis, CreateComparativeMarketAnalysis, CreateMarketDataPoint,
+    CreateMarketRegion, ExportPricingDataRequest, GenerateStatisticsRequest, MarketComparable,
+    MarketDataPoint, MarketDataQuery, MarketRegion, MarketRegionSummary, MarketStatistics,
+    MarketStatisticsSummary, MarketTrendPoint, PortfolioPricingSummary,
+    PriceRange as MarketPriceRange, PricingDashboard, PricingDashboardQuery,
+    PricingFactor as MarketPricingFactor, PricingHistoryEntry, PricingRecommendation,
+    PricingRecommendationSummary, PricingRecommendationWithDetails, RecordPriceChange,
+    RejectPricingRecommendation, RequestPricingRecommendation, UnitPricingHistory,
+    UnitRecommendationSummary, UpdateComparativeMarketAnalysis, UpdateMarketRegion,
+    VacancyTrendPoint, YieldRange,
+};
+
+// Epic 133: AI Lease Abstraction & Document Intelligence
+pub mod lease_abstraction;
+pub use lease_abstraction::{
+    document_status as lease_document_status, import_status as lease_import_status,
+    review_status as extraction_review_status, ApproveExtraction, CreateExtractionCorrection,
+    CreateLeaseDocument, CreateLeaseExtraction, ExtractedField, ExtractionCorrection,
+    ExtractionSummary, ExtractionWithFields, ImportExtractionRequest,
+    ImportResult as LeaseImportResult, ImportValidationResult, LeaseDocument, LeaseDocumentQuery,
+    LeaseDocumentSummary, LeaseExtraction, LeaseImport, ProcessDocumentRequest, ProcessingStatus,
+    RejectExtraction, ValidationIssue as ExtractionValidationIssue,
+};
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;
