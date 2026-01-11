@@ -24,8 +24,8 @@ use db::{
         RegistryRepository, RentalRepository, RoleRepository, SensorRepository,
         SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
         SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
-        UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
-        WorkOrderRepository, WorkflowRepository,
+        UnitResidentRepository, UserRepository, VendorRepository, ViolationRepository,
+        VoteRepository, WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -137,6 +137,8 @@ pub struct AppState {
     pub market_pricing_repo: MarketPricingRepository,
     // Epic 133: AI Lease Abstraction & Document Intelligence
     pub lease_abstraction_repo: LeaseAbstractionRepository,
+    // Epic 142: Violation Tracking & Enforcement
+    pub violation_repo: ViolationRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -255,6 +257,8 @@ impl AppState {
         let market_pricing_repo = MarketPricingRepository::new(db.clone());
         // Epic 133: AI Lease Abstraction & Document Intelligence
         let lease_abstraction_repo = LeaseAbstractionRepository::new(db.clone());
+        // Epic 142: Violation Tracking & Enforcement
+        let violation_repo = ViolationRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -332,6 +336,7 @@ impl AppState {
             outage_repo,
             market_pricing_repo,
             lease_abstraction_repo,
+            violation_repo,
             llm_client,
             auth_service,
             email_service,

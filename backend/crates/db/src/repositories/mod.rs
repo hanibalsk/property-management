@@ -278,3 +278,8 @@ pub use market_pricing::MarketPricingRepository;
 pub mod lease_abstraction;
 
 pub use lease_abstraction::LeaseAbstractionRepository;
+
+// Epic 142: Violation Tracking & Enforcement
+pub mod violations;
+
+pub use violations::ViolationRepository;

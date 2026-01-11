@@ -134,3 +134,6 @@ pub mod market_pricing;
 
 // Epic 133: AI Lease Abstraction & Document Intelligence
 pub mod lease_abstraction;
+
+// Epic 142: Violation Tracking & Enforcement
+pub mod violations;

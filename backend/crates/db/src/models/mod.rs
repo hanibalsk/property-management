@@ -846,3 +846,17 @@ pub use lease_abstraction::{
     LeaseDocumentSummary, LeaseExtraction, LeaseImport, ProcessDocumentRequest, ProcessingStatus,
     RejectExtraction, ValidationIssue as ExtractionValidationIssue,
 };
+
+// Epic 142: Violation Tracking & Enforcement
+pub mod violations;
+pub use violations::{
+    AppealQuery, AppealStatus, CategoryCount as ViolationCategoryCount, CommunityRule,
+    CreateCommunityRule, CreateEnforcementAction, CreateViolation, CreateViolationAppeal,
+    CreateViolationComment, CreateViolationEvidence, EnforcementAction, EnforcementActionType,
+    EnforcementQuery, EnforcementStatus, FinePayment, RecordFinePayment, RuleComplianceSummary,
+    StatusCount as ViolationStatusCount, UpdateCommunityRule, UpdateEnforcementAction,
+    UpdateViolation, UpdateViolationAppeal, Violation, ViolationAppeal, ViolationCategory,
+    ViolationComment, ViolationDashboard, ViolationDetail, ViolationEvidence,
+    ViolationNotification, ViolationQuery, ViolationSeverity, ViolationStatistics, ViolationStatus,
+    ViolationSummary, ViolatorHistory,
+};
