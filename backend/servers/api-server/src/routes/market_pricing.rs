@@ -695,7 +695,7 @@ Provide your pricing recommendation in the specified JSON format."#,
                     let confidence = pricing["confidence"]
                         .as_f64()
                         .map(|v| {
-                            Decimal::from_str(&format!("{:.0}", v.min(100.0).max(0.0)))
+                            Decimal::from_str(&format!("{:.0}", v.clamp(0.0, 100.0)))
                                 .unwrap_or(Decimal::new(75, 0))
                         })
                         .unwrap_or(Decimal::new(75, 0));

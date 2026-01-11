@@ -71,6 +71,7 @@ async fn list_documents(
 }
 
 /// Upload a lease document for processing.
+#[allow(deprecated)]
 async fn upload_document(
     State(s): State<AppState>,
     user: AuthUser,
@@ -701,6 +702,7 @@ async fn add_correction(
 // =============================================================================
 
 /// Validate extraction before import.
+#[allow(deprecated)]
 async fn validate_import(
     State(s): State<AppState>,
     user: AuthUser,
@@ -782,6 +784,7 @@ async fn validate_import(
 }
 
 /// Import extraction to create a lease.
+#[allow(deprecated)]
 async fn import_to_lease(
     State(s): State<AppState>,
     user: AuthUser,
