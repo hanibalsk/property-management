@@ -14,9 +14,10 @@ use db::{
         FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository,
         FeaturePackageRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        InfrastructureRepository, InsuranceRepository, IntegrationRepository, LeaseRepository,
-        LegalRepository, ListingRepository, LlmDocumentRepository, MarketPricingRepository,
-        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        InfrastructureRepository, InsuranceRepository, IntegrationRepository,
+        InvestorPortalRepository, LeaseRepository, LegalRepository, ListingRepository,
+        LlmDocumentRepository, MarketPricingRepository, MeterRepository,
+        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
         PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
@@ -134,6 +135,8 @@ pub struct AppState {
     pub outage_repo: OutageRepository,
     // Epic 132: Dynamic Rent Pricing & Market Analytics
     pub market_pricing_repo: MarketPricingRepository,
+    // Epic 139: Investor Portal & ROI Reporting
+    pub investor_portal_repo: InvestorPortalRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -250,6 +253,8 @@ impl AppState {
         let outage_repo = OutageRepository::new(db.clone());
         // Epic 132: Dynamic Rent Pricing & Market Analytics
         let market_pricing_repo = MarketPricingRepository::new(db.clone());
+        // Epic 139: Investor Portal & ROI Reporting
+        let investor_portal_repo = InvestorPortalRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -326,6 +331,7 @@ impl AppState {
             feature_analytics_repo,
             outage_repo,
             market_pricing_repo,
+            investor_portal_repo,
             llm_client,
             auth_service,
             email_service,

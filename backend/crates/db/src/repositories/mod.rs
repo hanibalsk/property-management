@@ -273,3 +273,8 @@ pub use outage::OutageRepository;
 pub mod market_pricing;
 
 pub use market_pricing::MarketPricingRepository;
+
+// Epic 139: Investor Portal & ROI Reporting
+pub mod investor_portal;
+
+pub use investor_portal::InvestorPortalRepository;

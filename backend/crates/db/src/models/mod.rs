@@ -834,3 +834,17 @@ pub use market_pricing::{
     UnitRecommendationSummary, UpdateComparativeMarketAnalysis, UpdateMarketRegion,
     VacancyTrendPoint, YieldRange,
 };
+
+// Epic 139: Investor Portal & ROI Reporting
+pub mod investor_portal;
+
+pub use investor_portal::{
+    CapitalCall, CreateCapitalCall, CreateDashboardMetrics, CreateDistribution,
+    CreateInvestmentPortfolio, CreateInvestorPortfolioProperty, CreateInvestorProfile,
+    CreateInvestorReport, CreateRoiCalculation, DistributionType, InvestmentPortfolio,
+    InvestmentStatus, InvestorDashboardMetrics, InvestorDistribution, InvestorPortalDashboard,
+    InvestorPortfolioProperty, InvestorPortfolioSummary, InvestorProfile, InvestorReport,
+    InvestorReportType, InvestorSummary, InvestorType, PortfolioWithDetails, RoiCalculation,
+    RoiCalculationQuery, RoiPeriod, RoiSummary, UpdateCapitalCall, UpdateDistribution,
+    UpdateInvestmentPortfolio, UpdateInvestorPortfolioProperty, UpdateInvestorProfile,
+};
