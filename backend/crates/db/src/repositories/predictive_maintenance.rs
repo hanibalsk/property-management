@@ -1,6 +1,6 @@
 //! Repository for Epic 134: Predictive Maintenance & Equipment Intelligence.
 
-use chrono::{NaiveDate, Utc};
+use chrono::Utc;
 use common::AppError;
 use rust_decimal::Decimal;
 use uuid::Uuid;
@@ -426,6 +426,7 @@ impl PredictiveMaintenanceRepository {
     }
 
     /// Add photo to maintenance log.
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_maintenance_photo(
         &self,
         log_id: Uuid,
@@ -671,6 +672,7 @@ impl PredictiveMaintenanceRepository {
     // ========================================================================
 
     /// Create maintenance alert.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_alert(
         &self,
         equipment_id: Uuid,

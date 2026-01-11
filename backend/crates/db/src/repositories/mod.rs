@@ -283,3 +283,8 @@ pub use lease_abstraction::LeaseAbstractionRepository;
 pub mod predictive_maintenance;
 
 pub use predictive_maintenance::PredictiveMaintenanceRepository;
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+pub use portfolio_analytics::PortfolioAnalyticsRepository;
