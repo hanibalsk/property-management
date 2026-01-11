@@ -131,3 +131,6 @@ pub mod outages;
 
 // Epic 132: Dynamic Rent Pricing & Market Analytics
 pub mod market_pricing;
+
+// Epic 138: Automated Property Valuation Model (AVM)
+pub mod property_valuation;

@@ -20,10 +20,10 @@ use db::{
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
         PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
-        RegistryRepository, RentalRepository, RoleRepository, SensorRepository,
-        SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
-        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
-        UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
+        PropertyValuationRepository, RegistryRepository, RentalRepository, RoleRepository,
+        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
+        SubscriptionRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
+        UnitRepository, UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
         WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
@@ -134,6 +134,8 @@ pub struct AppState {
     pub outage_repo: OutageRepository,
     // Epic 132: Dynamic Rent Pricing & Market Analytics
     pub market_pricing_repo: MarketPricingRepository,
+    // Epic 138: Automated Property Valuation Model (AVM)
+    pub property_valuation_repo: PropertyValuationRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -250,6 +252,8 @@ impl AppState {
         let outage_repo = OutageRepository::new(db.clone());
         // Epic 132: Dynamic Rent Pricing & Market Analytics
         let market_pricing_repo = MarketPricingRepository::new(db.clone());
+        // Epic 138: Automated Property Valuation Model (AVM)
+        let property_valuation_repo = PropertyValuationRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -326,6 +330,7 @@ impl AppState {
             feature_analytics_repo,
             outage_repo,
             market_pricing_repo,
+            property_valuation_repo,
             llm_client,
             auth_service,
             email_service,

@@ -834,3 +834,48 @@ pub use market_pricing::{
     UnitRecommendationSummary, UpdateComparativeMarketAnalysis, UpdateMarketRegion,
     VacancyTrendPoint, YieldRange,
 };
+
+// Epic 138: Automated Property Valuation Model (AVM)
+pub mod property_valuation;
+
+pub use property_valuation::{
+    AdjustmentType,
+    ComparableAdjustment,
+    CreateAdjustment,
+    CreateComparable,
+    CreateMarketData,
+    CreatePropertyFeatures,
+    // Aliased to avoid conflicts with owner_analytics
+    CreatePropertyValuation as CreateAvmValuation,
+    CreateValuationAuditLog,
+    CreateValuationModel,
+    CreateValuationReport,
+    CreateValuationRequest,
+    CreateValueHistory,
+    MarketAnalysisSummary,
+    MarketTrend as AvmMarketTrend,
+    PropertyCondition,
+    PropertyValuation as AvmValuation,
+    PropertyValuationFeatures,
+    PropertyValuationModel,
+    PropertyValueHistory as AvmValueHistory,
+    PropertyValueTrend as AvmValueTrend,
+    UpdateComparable,
+    UpdateMarketData,
+    UpdatePropertyFeatures,
+    UpdatePropertyValuation as UpdateAvmValuation,
+    UpdateValuationModel,
+    UpdateValuationReport,
+    UpdateValuationRequest,
+    ValuationAuditLog,
+    ValuationComparable,
+    ValuationConfidence,
+    ValuationDashboard,
+    ValuationMarketData,
+    ValuationModelType,
+    ValuationReport,
+    ValuationRequest,
+    ValuationStatus,
+    ValuationWithDetails,
+    ValueHistoryPoint,
+};

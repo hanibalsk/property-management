@@ -273,3 +273,8 @@ pub use outage::OutageRepository;
 pub mod market_pricing;
 
 pub use market_pricing::MarketPricingRepository;
+
+// Epic 138: Automated Property Valuation Model (AVM)
+pub mod property_valuation;
+
+pub use property_valuation::PropertyValuationRepository;
