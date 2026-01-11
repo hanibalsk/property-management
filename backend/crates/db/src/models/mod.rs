@@ -815,3 +815,17 @@ pub use outage::{
     OutageNotification, OutageStatistics, OutageSummary, OutageWithDetails, ResolveOutage,
     StartOutage, UpdateOutage,
 };
+
+// Epic 137: Smart Building Certification
+pub mod building_certification;
+
+pub use building_certification::{
+    BuildingCertification, CertificationAuditLog, CertificationBenchmark, CertificationCost,
+    CertificationCredit, CertificationDashboard, CertificationDocument, CertificationFilters,
+    CertificationLevel, CertificationLevelCount, CertificationMilestone, CertificationProgram,
+    CertificationProgramCount, CertificationReminder, CertificationStatus,
+    CertificationWithCredits, CreateBuildingCertification, CreateCertificationBenchmark,
+    CreateCertificationCost, CreateCertificationCredit, CreateCertificationDocument,
+    CreateCertificationMilestone, CreateCertificationReminder, CreditCategoryType,
+    UpdateBuildingCertification, UpdateCertificationCredit, UpdateCertificationMilestone,
+};

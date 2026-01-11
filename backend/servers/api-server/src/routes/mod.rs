@@ -128,3 +128,6 @@ pub mod features;
 
 // UC-12: Utility Outages
 pub mod outages;
+
+// Epic 137: Smart Building Certification
+pub mod building_certifications;

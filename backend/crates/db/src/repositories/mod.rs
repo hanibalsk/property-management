@@ -268,3 +268,8 @@ pub use feature_analytics::FeatureAnalyticsRepository;
 pub mod outage;
 
 pub use outage::OutageRepository;
+
+// Epic 137: Smart Building Certification
+pub mod building_certification;
+
+pub use building_certification::BuildingCertificationRepository;

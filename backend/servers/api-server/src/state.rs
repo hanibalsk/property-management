@@ -7,12 +7,13 @@ use api_core::TenantMembershipProvider;
 use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
-        AutomationRepository, BackgroundJobRepository, BudgetRepository, BuildingRepository,
-        CommunityRepository, CriticalNotificationRepository, DataExportRepository,
-        DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
-        EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
-        FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository,
-        FeaturePackageRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
+        AutomationRepository, BackgroundJobRepository, BudgetRepository,
+        BuildingCertificationRepository, BuildingRepository, CommunityRepository,
+        CriticalNotificationRepository, DataExportRepository, DelegationRepository,
+        DisputeRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
+        EnergyRepository, EquipmentRepository, FacilityRepository, FaultRepository,
+        FeatureAnalyticsRepository, FeatureFlagRepository, FeaturePackageRepository,
+        FinancialRepository, FormRepository, GovernmentPortalRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         InfrastructureRepository, InsuranceRepository, IntegrationRepository, LeaseRepository,
         LegalRepository, ListingRepository, LlmDocumentRepository, MeterRepository,
@@ -132,6 +133,8 @@ pub struct AppState {
     pub feature_analytics_repo: FeatureAnalyticsRepository,
     // UC-12: Utility Outages
     pub outage_repo: OutageRepository,
+    // Epic 137: Smart Building Certification
+    pub building_certification_repo: BuildingCertificationRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -246,6 +249,8 @@ impl AppState {
         let feature_analytics_repo = FeatureAnalyticsRepository::new(db.clone());
         // UC-12: Utility Outages
         let outage_repo = OutageRepository::new(db.clone());
+        // Epic 137: Smart Building Certification
+        let building_certification_repo = BuildingCertificationRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -321,6 +326,7 @@ impl AppState {
             feature_package_repo,
             feature_analytics_repo,
             outage_repo,
+            building_certification_repo,
             llm_client,
             auth_service,
             email_service,
