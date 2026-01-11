@@ -268,3 +268,8 @@ pub use feature_analytics::FeatureAnalyticsRepository;
 pub mod outage;
 
 pub use outage::OutageRepository;
+
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub mod market_pricing;
+
+pub use market_pricing::MarketPricingRepository;
