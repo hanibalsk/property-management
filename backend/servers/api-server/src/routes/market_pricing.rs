@@ -226,9 +226,31 @@ async fn list_data_points(
 
 async fn add_data_point(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Json(req): Json<CreateMarketDataPoint>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate region belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify region ownership before adding data point
+    let region = s
+        .market_pricing_repo
+        .get_region(req.region_id, org_id)
+        .await;
+    if matches!(region, Ok(None) | Err(_)) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found(
+                "Region not found or not accessible",
+            )),
+        ));
+    }
+
     match s.market_pricing_repo.add_data_point(req).await {
         Ok(data_point) => Ok(Json(serde_json::to_value(data_point).unwrap())),
         Err(e) => Err((
@@ -249,10 +271,29 @@ pub struct StatisticsParams {
 
 async fn get_statistics(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Path(region_id): Path<Uuid>,
     Query(params): Query<StatisticsParams>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate region belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify region ownership
+    let region = s.market_pricing_repo.get_region(region_id, org_id).await;
+    if matches!(region, Ok(None) | Err(_)) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found(
+                "Region not found or not accessible",
+            )),
+        ));
+    }
+
     match s
         .market_pricing_repo
         .get_market_statistics(region_id, params.property_type)
@@ -272,9 +313,31 @@ async fn get_statistics(
 
 async fn generate_statistics(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Json(req): Json<GenerateStatisticsRequest>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate region belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify region ownership
+    let region = s
+        .market_pricing_repo
+        .get_region(req.region_id, org_id)
+        .await;
+    if matches!(region, Ok(None) | Err(_)) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found(
+                "Region not found or not accessible",
+            )),
+        ));
+    }
+
     match s.market_pricing_repo.generate_statistics(req).await {
         Ok(stats) => Ok(Json(serde_json::to_value(stats).unwrap())),
         Err(e) => Err((
@@ -1089,7 +1152,53 @@ async fn record_price_change(
     Path(unit_id): Path<Uuid>,
     Json(mut req): Json<RecordPriceChange>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate unit belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
     let user_id = user.user_id;
+
+    // Verify unit belongs to org via building
+    let unit = s.unit_repo.find_by_id(unit_id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )
+    })?;
+    let unit = unit.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Unit not found")),
+        )
+    })?;
+    let building = s
+        .building_repo
+        .find_by_id(unit.building_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::internal_error(&e.to_string())),
+            )
+        })?;
+    let building = building.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Building not found")),
+        )
+    })?;
+    if building.organization_id != org_id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::forbidden(
+                "Unit does not belong to your organization",
+            )),
+        ));
+    }
+
     req.unit_id = unit_id;
 
     match s
@@ -1107,9 +1216,55 @@ async fn record_price_change(
 
 async fn get_current_rent(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Path(unit_id): Path<Uuid>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate unit belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify unit belongs to org via building
+    let unit = s.unit_repo.find_by_id(unit_id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )
+    })?;
+    let unit = unit.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Unit not found")),
+        )
+    })?;
+    let building = s
+        .building_repo
+        .find_by_id(unit.building_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::internal_error(&e.to_string())),
+            )
+        })?;
+    let building = building.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Building not found")),
+        )
+    })?;
+    if building.organization_id != org_id {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::forbidden(
+                "Unit does not belong to your organization",
+            )),
+        ));
+    }
+
     match s.market_pricing_repo.get_current_rent(unit_id).await {
         Ok(Some(rent)) => Ok(Json(json!({ "current_rent": rent }))),
         Ok(None) => Err((
@@ -1247,9 +1402,26 @@ async fn delete_cma(
 
 async fn get_cma_properties(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate CMA belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify CMA ownership
+    let cma = s.market_pricing_repo.get_cma(id, org_id).await;
+    if matches!(cma, Ok(None) | Err(_)) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("CMA not found or not accessible")),
+        ));
+    }
+
     match s.market_pricing_repo.get_cma_properties(id).await {
         Ok(props) => Ok(Json(json!({ "properties": props }))),
         Err(e) => Err((
@@ -1261,10 +1433,27 @@ async fn get_cma_properties(
 
 async fn add_cma_property(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Path(id): Path<Uuid>,
     Json(req): Json<AddCmaProperty>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate CMA belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify CMA ownership
+    let cma = s.market_pricing_repo.get_cma(id, org_id).await;
+    if matches!(cma, Ok(None) | Err(_)) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("CMA not found or not accessible")),
+        ));
+    }
+
     match s.market_pricing_repo.add_property_to_cma(id, req).await {
         Ok(prop) => Ok(Json(serde_json::to_value(prop).unwrap())),
         Err(e) => Err((
@@ -1312,9 +1501,26 @@ async fn get_cma_details(
 /// Story 132.4: Allows removing individual properties from a comparative analysis.
 async fn remove_cma_property(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Path((cma_id, property_id)): Path<(Uuid, Uuid)>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate CMA belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify CMA ownership
+    let cma = s.market_pricing_repo.get_cma(cma_id, org_id).await;
+    if matches!(cma, Ok(None) | Err(_)) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("CMA not found or not accessible")),
+        ));
+    }
+
     match s
         .market_pricing_repo
         .remove_property_from_cma(cma_id, property_id)
@@ -1338,9 +1544,26 @@ async fn remove_cma_property(
 /// based on current properties and updates the CMA record.
 async fn recalculate_cma(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate CMA belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify CMA ownership
+    let cma = s.market_pricing_repo.get_cma(id, org_id).await;
+    if matches!(cma, Ok(None) | Err(_)) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("CMA not found or not accessible")),
+        ));
+    }
+
     match s.market_pricing_repo.recalculate_cma_metrics(id).await {
         Ok(()) => Ok(Json(json!({ "recalculated": true }))),
         Err(e) => Err((
@@ -1364,9 +1587,31 @@ pub struct ComparablesParams {
 
 async fn get_comparables(
     State(s): State<AppState>,
-    _user: AuthUser,
+    user: AuthUser,
     Query(params): Query<ComparablesParams>,
 ) -> ApiResult<Json<serde_json::Value>> {
+    // Validate region belongs to user's organization
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Verify region ownership
+    let region = s
+        .market_pricing_repo
+        .get_region(params.region_id, org_id)
+        .await;
+    if matches!(region, Ok(None) | Err(_)) {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found(
+                "Region not found or not accessible",
+            )),
+        ));
+    }
+
     let limit = params.limit.unwrap_or(10).min(50);
 
     match s
