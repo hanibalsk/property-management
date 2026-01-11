@@ -1,5 +1,6 @@
 //! Market Pricing & Analytics routes (Epic 132).
 //! Dynamic Rent Pricing, Market Data Collection, and Comparative Market Analysis.
+//! Story 132.2: AI Pricing Model Integration using LLM for intelligent pricing.
 
 use crate::state::AppState;
 use api_core::extractors::AuthUser;
@@ -16,9 +17,12 @@ use db::models::market_pricing::{
     RecordPriceChange, RejectPricingRecommendation, RequestPricingRecommendation,
     UpdateComparativeMarketAnalysis, UpdateMarketRegion,
 };
+use integrations::{ChatCompletionRequest, ChatMessage};
 use rust_decimal::Decimal;
 use serde::Deserialize;
 use serde_json::json;
+use std::str::FromStr;
+use tracing::{info, warn};
 use utoipa::IntoParams;
 use uuid::Uuid;
 
@@ -42,6 +46,10 @@ pub fn router() -> Router<AppState> {
         .route("/recommendations", get(list_recommendations))
         .route("/recommendations/request", post(request_recommendation))
         .route("/recommendations/{id}", get(get_recommendation))
+        .route(
+            "/recommendations/{id}/details",
+            get(get_recommendation_details),
+        )
         .route("/recommendations/{id}/accept", post(accept_recommendation))
         .route("/recommendations/{id}/reject", post(reject_recommendation))
         // Unit Pricing History
@@ -294,29 +302,105 @@ async fn list_recommendations(
     }
 }
 
+/// Request AI-powered pricing recommendation for a unit.
+///
+/// Story 132.2: AI Pricing Model Integration
+/// This endpoint analyzes unit characteristics, market data, and comparable properties
+/// to generate an optimal price recommendation with confidence scoring.
 async fn request_recommendation(
     State(s): State<AppState>,
     user: AuthUser,
     Json(req): Json<RequestPricingRecommendation>,
 ) -> ApiResult<Json<serde_json::Value>> {
-    let _org_id = user.tenant_id.ok_or_else(|| {
+    let org_id = user.tenant_id.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request("Tenant context required")),
         )
     })?;
 
-    // For now, generate a simple recommendation based on market data
-    // In Story 132.2, this will be enhanced with AI model integration
-    let min_price = Decimal::new(800, 0);
-    let optimal_price = Decimal::new(950, 0);
-    let max_price = Decimal::new(1100, 0);
-    let confidence = Decimal::new(75, 0);
-    let factors = json!({
-        "market_avg": 920,
-        "location_premium": 3,
-        "size_adjustment": 2
-    });
+    // Check if AI pricing is enabled via feature flag
+    let ai_pricing_enabled =
+        std::env::var("LLM_PRICING_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true";
+
+    // Fetch unit details to analyze characteristics
+    let unit = s.unit_repo.find_by_id(req.unit_id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )
+    })?;
+
+    let unit = unit.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Unit not found")),
+        )
+    })?;
+
+    // Fetch building details for location context
+    let building = s
+        .building_repo
+        .find_by_id(unit.building_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::internal_error(&e.to_string())),
+            )
+        })?;
+
+    let building = building.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Building not found")),
+        )
+    })?;
+
+    // Try to find a market region for this location
+    let regions = s
+        .market_pricing_repo
+        .list_regions(org_id)
+        .await
+        .unwrap_or_default();
+
+    let matching_region = regions
+        .iter()
+        .find(|r| r.city.to_lowercase() == building.city.to_lowercase() && r.is_active);
+
+    // Get market comparables if we have a matching region
+    let comparables = if let Some(region) = matching_region {
+        let size = unit.size_sqm.unwrap_or(Decimal::new(50, 0));
+        s.market_pricing_repo
+            .get_market_comparables(region.id, &unit.unit_type, size, 10)
+            .await
+            .unwrap_or_default()
+    } else {
+        vec![]
+    };
+
+    // Calculate comparables count for recommendation
+    let comparables_count = comparables.len() as i32;
+
+    // Get market statistics if available
+    let market_stats_id = if let Some(region) = matching_region {
+        s.market_pricing_repo
+            .get_market_statistics(region.id, Some(unit.unit_type.clone()))
+            .await
+            .ok()
+            .flatten()
+            .map(|stats| stats.id)
+    } else {
+        None
+    };
+
+    // Use AI pricing if enabled and we have sufficient data
+    let (min_price, optimal_price, max_price, confidence, factors) = if ai_pricing_enabled {
+        generate_ai_pricing_recommendation(&s, &unit, &building, &comparables, &req.currency).await
+    } else {
+        // Fallback to basic statistical pricing
+        generate_statistical_pricing(&comparables, &unit)
+    };
 
     match s
         .market_pricing_repo
@@ -328,8 +412,8 @@ async fn request_recommendation(
             &req.currency,
             confidence,
             factors,
-            5,
-            None,
+            comparables_count,
+            market_stats_id,
         )
         .await
     {
@@ -339,6 +423,317 @@ async fn request_recommendation(
             Json(ErrorResponse::bad_request(&e.to_string())),
         )),
     }
+}
+
+/// Generate AI-powered pricing recommendation using LLM.
+///
+/// Story 132.2: This function constructs a prompt with unit characteristics,
+/// market data, and comparable properties for the LLM to analyze and suggest
+/// optimal pricing with confidence scoring.
+async fn generate_ai_pricing_recommendation(
+    state: &AppState,
+    unit: &db::models::Unit,
+    building: &db::models::Building,
+    comparables: &[db::models::market_pricing::MarketComparable],
+    currency: &str,
+) -> (Decimal, Decimal, Decimal, Decimal, serde_json::Value) {
+    // Select LLM provider and model
+    let provider = std::env::var("LLM_PROVIDER").unwrap_or_else(|_| "anthropic".to_string());
+    let model = std::env::var("LLM_MODEL").unwrap_or_else(|_| match provider.as_str() {
+        "openai" => "gpt-4o-mini".to_string(),
+        "azure_openai" => "gpt-4o-mini".to_string(),
+        _ => "claude-3-5-haiku-20241022".to_string(),
+    });
+
+    // Build the pricing analysis prompt
+    let system_prompt = r#"You are an expert real estate pricing analyst. Your task is to analyze property characteristics and market data to recommend optimal rental pricing.
+
+You must respond with ONLY a valid JSON object in this exact format, with no additional text:
+{
+  "min_price": <number>,
+  "optimal_price": <number>,
+  "max_price": <number>,
+  "confidence": <number between 0 and 100>,
+  "factors": {
+    "location_score": <number -10 to +10>,
+    "size_adjustment": <number -10 to +10>,
+    "amenities_premium": <number -10 to +10>,
+    "market_positioning": <number -10 to +10>,
+    "building_quality": <number -10 to +10>
+  },
+  "reasoning": "<brief explanation of key pricing factors>"
+}
+
+Guidelines:
+- Prices should be realistic monthly rental amounts
+- Confidence reflects data quality (more comparables = higher confidence)
+- Factor scores indicate impact direction (+/- from base market rate)
+- Consider location, size, floor, amenities, building age
+- min_price = competitive rate to ensure occupancy
+- optimal_price = balanced rate for best revenue/occupancy
+- max_price = premium rate if demand is high"#;
+
+    // Build user prompt with property data
+    let size_str = unit
+        .size_sqm
+        .map(|s| format!("{} sqm", s))
+        .unwrap_or_else(|| "Unknown".to_string());
+
+    let rooms_str = unit
+        .rooms
+        .map(|r| format!("{} rooms", r))
+        .unwrap_or_else(|| "Unknown".to_string());
+
+    let comparables_summary = if comparables.is_empty() {
+        "No market comparables available. Use general market knowledge.".to_string()
+    } else {
+        let avg_rent: Decimal = comparables.iter().map(|c| c.monthly_rent).sum::<Decimal>()
+            / Decimal::from(comparables.len() as u32);
+        let min_rent = comparables
+            .iter()
+            .map(|c| c.monthly_rent)
+            .min()
+            .unwrap_or(avg_rent);
+        let max_rent = comparables
+            .iter()
+            .map(|c| c.monthly_rent)
+            .max()
+            .unwrap_or(avg_rent);
+
+        format!(
+            "Market comparables ({} properties):\n- Average rent: {} {}\n- Range: {} - {} {}\n- Comparable details:\n{}",
+            comparables.len(),
+            avg_rent,
+            currency,
+            min_rent,
+            max_rent,
+            currency,
+            comparables
+                .iter()
+                .take(5)
+                .map(|c| format!(
+                    "  * {} sqm, {}: {} {} (similarity: {}%)",
+                    c.size_sqm, c.property_type, c.monthly_rent, currency, c.similarity_score
+                ))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    };
+
+    let user_prompt = format!(
+        r#"Analyze this property and recommend rental pricing in {}:
+
+**Property Details:**
+- Type: {}
+- Size: {}
+- Rooms: {}
+- Floor: {}
+- Description: {}
+
+**Building Information:**
+- Location: {}, {}, {}
+- Year Built: {}
+- Total Floors: {}
+- Amenities: {}
+
+**Market Data:**
+{}
+
+Provide your pricing recommendation in the specified JSON format."#,
+        currency,
+        unit.unit_type,
+        size_str,
+        rooms_str,
+        unit.floor,
+        unit.description.as_deref().unwrap_or("N/A"),
+        building.street,
+        building.city,
+        building.country,
+        building
+            .year_built
+            .map(|y| y.to_string())
+            .unwrap_or_else(|| "Unknown".to_string()),
+        building.total_floors,
+        building.amenities,
+        comparables_summary
+    );
+
+    // Make LLM request
+    let messages = vec![
+        ChatMessage {
+            role: "system".to_string(),
+            content: system_prompt.to_string(),
+        },
+        ChatMessage {
+            role: "user".to_string(),
+            content: user_prompt,
+        },
+    ];
+
+    let request = ChatCompletionRequest {
+        model,
+        messages,
+        temperature: Some(0.3), // Lower temperature for more consistent pricing
+        max_tokens: Some(500),
+    };
+
+    match state.llm_client.chat(&provider, &request).await {
+        Ok(response) => {
+            if let Some(choice) = response.choices.first() {
+                // Parse the LLM response
+                if let Ok(pricing) =
+                    serde_json::from_str::<serde_json::Value>(&choice.message.content)
+                {
+                    let min_price = pricing["min_price"]
+                        .as_f64()
+                        .map(|v| {
+                            Decimal::from_str(&format!("{:.2}", v)).unwrap_or(Decimal::new(800, 0))
+                        })
+                        .unwrap_or(Decimal::new(800, 0));
+                    let optimal_price = pricing["optimal_price"]
+                        .as_f64()
+                        .map(|v| {
+                            Decimal::from_str(&format!("{:.2}", v)).unwrap_or(Decimal::new(950, 0))
+                        })
+                        .unwrap_or(Decimal::new(950, 0));
+                    let max_price = pricing["max_price"]
+                        .as_f64()
+                        .map(|v| {
+                            Decimal::from_str(&format!("{:.2}", v)).unwrap_or(Decimal::new(1100, 0))
+                        })
+                        .unwrap_or(Decimal::new(1100, 0));
+                    let confidence = pricing["confidence"]
+                        .as_f64()
+                        .map(|v| {
+                            Decimal::from_str(&format!("{:.0}", v.min(100.0).max(0.0)))
+                                .unwrap_or(Decimal::new(75, 0))
+                        })
+                        .unwrap_or(Decimal::new(75, 0));
+
+                    let factors = json!({
+                        "ai_generated": true,
+                        "provider": provider,
+                        "factors": pricing.get("factors").cloned().unwrap_or(json!({})),
+                        "reasoning": pricing.get("reasoning").cloned().unwrap_or(json!("AI analysis complete")),
+                        "comparables_used": comparables.len()
+                    });
+
+                    info!(
+                        "AI pricing recommendation generated: optimal={}, confidence={}%",
+                        optimal_price, confidence
+                    );
+
+                    return (min_price, optimal_price, max_price, confidence, factors);
+                }
+            }
+            warn!("Failed to parse LLM pricing response, falling back to statistical method");
+        }
+        Err(e) => {
+            warn!(
+                "LLM pricing request failed: {}, falling back to statistical method",
+                e
+            );
+        }
+    }
+
+    // Fallback to statistical pricing if AI fails
+    generate_statistical_pricing(comparables, unit)
+}
+
+/// Generate statistical pricing based on market comparables.
+///
+/// Fallback method when AI pricing is disabled or fails.
+fn generate_statistical_pricing(
+    comparables: &[db::models::market_pricing::MarketComparable],
+    unit: &db::models::Unit,
+) -> (Decimal, Decimal, Decimal, Decimal, serde_json::Value) {
+    if comparables.is_empty() {
+        // No comparables - use basic estimation based on size
+        let base_price_per_sqm = Decimal::new(15, 0); // €15/sqm default
+        let size = unit.size_sqm.unwrap_or(Decimal::new(50, 0));
+        let base_price = base_price_per_sqm * size;
+
+        let min_price = base_price * Decimal::new(85, 2); // 85%
+        let optimal_price = base_price;
+        let max_price = base_price * Decimal::new(115, 2); // 115%
+        let confidence = Decimal::new(40, 0); // Low confidence without comparables
+
+        let factors = json!({
+            "ai_generated": false,
+            "method": "size_based_estimation",
+            "base_price_per_sqm": 15,
+            "comparables_used": 0,
+            "note": "No market comparables available, using size-based estimation"
+        });
+
+        return (min_price, optimal_price, max_price, confidence, factors);
+    }
+
+    // Calculate statistics from comparables
+    let total_rent: Decimal = comparables.iter().map(|c| c.monthly_rent).sum();
+    let avg_rent = total_rent / Decimal::from(comparables.len() as u32);
+    let min_rent = comparables
+        .iter()
+        .map(|c| c.monthly_rent)
+        .min()
+        .unwrap_or(avg_rent);
+    let max_rent = comparables
+        .iter()
+        .map(|c| c.monthly_rent)
+        .max()
+        .unwrap_or(avg_rent);
+
+    // Weight by similarity score
+    let weighted_sum: Decimal = comparables
+        .iter()
+        .map(|c| c.monthly_rent * c.similarity_score / Decimal::new(100, 0))
+        .sum();
+    let weight_total: Decimal = comparables
+        .iter()
+        .map(|c| c.similarity_score / Decimal::new(100, 0))
+        .sum();
+
+    let weighted_avg = if weight_total > Decimal::ZERO {
+        weighted_sum / weight_total
+    } else {
+        avg_rent
+    };
+
+    // Calculate confidence based on comparables count and similarity
+    let avg_similarity: Decimal = comparables
+        .iter()
+        .map(|c| c.similarity_score)
+        .sum::<Decimal>()
+        / Decimal::from(comparables.len() as u32);
+
+    let base_confidence = match comparables.len() {
+        0 => Decimal::new(30, 0),
+        1..=2 => Decimal::new(50, 0),
+        3..=5 => Decimal::new(65, 0),
+        6..=10 => Decimal::new(80, 0),
+        _ => Decimal::new(90, 0),
+    };
+    let confidence = base_confidence * avg_similarity / Decimal::new(100, 0);
+
+    let factors = json!({
+        "ai_generated": false,
+        "method": "statistical_analysis",
+        "comparables_used": comparables.len(),
+        "average_rent": avg_rent.to_string(),
+        "weighted_average": weighted_avg.to_string(),
+        "average_similarity": avg_similarity.to_string(),
+        "rent_range": {
+            "min": min_rent.to_string(),
+            "max": max_rent.to_string()
+        }
+    });
+
+    // Set pricing bands around weighted average
+    let min_price = weighted_avg * Decimal::new(90, 2); // 90%
+    let optimal_price = weighted_avg;
+    let max_price = weighted_avg * Decimal::new(110, 2); // 110%
+
+    (min_price, optimal_price, max_price, confidence, factors)
 }
 
 async fn get_recommendation(
@@ -363,6 +758,228 @@ async fn get_recommendation(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::internal_error(&e.to_string())),
         )),
+    }
+}
+
+/// Get detailed recommendation with factor explanations.
+///
+/// Story 132.2: Returns the recommendation with detailed factor breakdown,
+/// market comparables, and human-readable explanations of pricing influences.
+async fn get_recommendation_details(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Get the base recommendation
+    let rec = s
+        .market_pricing_repo
+        .get_recommendation(id, org_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::internal_error(&e.to_string())),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                Json(ErrorResponse::not_found("Recommendation not found")),
+            )
+        })?;
+
+    // Parse the factors JSON and create human-readable explanations
+    let factors_explanation = parse_pricing_factors(&rec.factors);
+
+    // Get comparables if we have market stats reference
+    let comparables = if let Some(stats_id) = rec.market_stats_id {
+        // Try to get stats to find the region
+        if let Ok(Some(stats)) = s
+            .market_pricing_repo
+            .get_market_statistics_by_id(stats_id)
+            .await
+        {
+            // Get unit to determine property type
+            #[allow(deprecated)]
+            if let Ok(Some(unit)) = s.unit_repo.find_by_id(rec.unit_id).await {
+                let size = unit.size_sqm.unwrap_or(Decimal::new(50, 0));
+                s.market_pricing_repo
+                    .get_market_comparables(stats.region_id, &unit.unit_type, size, 5)
+                    .await
+                    .unwrap_or_default()
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        }
+    } else {
+        vec![]
+    };
+
+    // Build the detailed response
+    let response = json!({
+        "recommendation": rec,
+        "factors_explanation": factors_explanation,
+        "comparables": comparables,
+        "market_stats": null // Can be enhanced to include full stats
+    });
+
+    Ok(Json(response))
+}
+
+/// Parse pricing factors JSON and generate human-readable explanations.
+fn parse_pricing_factors(factors: &serde_json::Value) -> Vec<serde_json::Value> {
+    let mut explanations = vec![];
+
+    let is_ai_generated = factors
+        .get("ai_generated")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    if is_ai_generated {
+        // AI-generated factors
+        if let Some(ai_factors) = factors.get("factors") {
+            if let Some(location) = ai_factors.get("location_score").and_then(|v| v.as_f64()) {
+                explanations.push(json!({
+                    "name": "Location",
+                    "impact": location,
+                    "description": format_factor_description("location", location)
+                }));
+            }
+            if let Some(size) = ai_factors.get("size_adjustment").and_then(|v| v.as_f64()) {
+                explanations.push(json!({
+                    "name": "Property Size",
+                    "impact": size,
+                    "description": format_factor_description("size", size)
+                }));
+            }
+            if let Some(amenities) = ai_factors.get("amenities_premium").and_then(|v| v.as_f64()) {
+                explanations.push(json!({
+                    "name": "Amenities",
+                    "impact": amenities,
+                    "description": format_factor_description("amenities", amenities)
+                }));
+            }
+            if let Some(market) = ai_factors
+                .get("market_positioning")
+                .and_then(|v| v.as_f64())
+            {
+                explanations.push(json!({
+                    "name": "Market Position",
+                    "impact": market,
+                    "description": format_factor_description("market", market)
+                }));
+            }
+            if let Some(building) = ai_factors.get("building_quality").and_then(|v| v.as_f64()) {
+                explanations.push(json!({
+                    "name": "Building Quality",
+                    "impact": building,
+                    "description": format_factor_description("building", building)
+                }));
+            }
+        }
+
+        // Add AI reasoning if available
+        if let Some(reasoning) = factors.get("reasoning") {
+            explanations.push(json!({
+                "name": "AI Analysis",
+                "impact": 0,
+                "description": reasoning.as_str().unwrap_or("AI analysis complete")
+            }));
+        }
+    } else {
+        // Statistical method explanations
+        let method = factors
+            .get("method")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+
+        match method {
+            "size_based_estimation" => {
+                explanations.push(json!({
+                    "name": "Estimation Method",
+                    "impact": 0,
+                    "description": "Price estimated based on property size (no market comparables available)"
+                }));
+            }
+            "statistical_analysis" => {
+                let comparables_used = factors
+                    .get("comparables_used")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(0);
+
+                explanations.push(json!({
+                    "name": "Statistical Analysis",
+                    "impact": 0,
+                    "description": format!("Price based on {} comparable properties with similarity-weighted averaging", comparables_used)
+                }));
+
+                if let Some(avg_rent) = factors.get("average_rent").and_then(|v| v.as_str()) {
+                    explanations.push(json!({
+                        "name": "Market Average",
+                        "impact": 0,
+                        "description": format!("Average comparable rent: {}", avg_rent)
+                    }));
+                }
+            }
+            _ => {
+                explanations.push(json!({
+                    "name": "Analysis Method",
+                    "impact": 0,
+                    "description": "Pricing recommendation generated using available data"
+                }));
+            }
+        }
+    }
+
+    explanations
+}
+
+/// Generate human-readable description for a pricing factor.
+fn format_factor_description(factor_type: &str, impact: f64) -> String {
+    let direction = if impact > 0.0 {
+        "increases"
+    } else if impact < 0.0 {
+        "decreases"
+    } else {
+        "has neutral effect on"
+    };
+
+    let magnitude = if impact.abs() > 7.0 {
+        "significantly"
+    } else if impact.abs() > 3.0 {
+        "moderately"
+    } else {
+        "slightly"
+    };
+
+    match factor_type {
+        "location" => format!("Location {} {} the recommended price", magnitude, direction),
+        "size" => format!(
+            "Property size {} {} the recommended price relative to market average",
+            magnitude, direction
+        ),
+        "amenities" => format!(
+            "Available amenities {} {} the price premium",
+            magnitude, direction
+        ),
+        "market" => format!(
+            "Current market conditions {} {} competitive pricing",
+            magnitude, direction
+        ),
+        "building" => format!(
+            "Building quality and age {} {} property value",
+            magnitude, direction
+        ),
+        _ => format!("{} {} the price", factor_type, direction),
     }
 }
 

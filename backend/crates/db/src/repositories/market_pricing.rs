@@ -268,6 +268,29 @@ impl MarketPricingRepository {
         Ok(stats)
     }
 
+    pub async fn get_market_statistics_by_id(
+        &self,
+        id: Uuid,
+    ) -> Result<Option<MarketStatistics>, AppError> {
+        let stats = sqlx::query_as::<_, MarketStatistics>(
+            r#"
+            SELECT id, region_id, property_type, period_start, period_end,
+                   avg_rent, median_rent, min_rent, max_rent,
+                   avg_price_per_sqm, median_price_per_sqm,
+                   vacancy_rate, avg_days_on_market, sample_size,
+                   rent_change_pct, rent_change_vs_last_year, currency, created_at
+            FROM market_statistics
+            WHERE id = $1
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(stats)
+    }
+
     pub async fn generate_statistics(
         &self,
         req: GenerateStatisticsRequest,
