@@ -15,8 +15,8 @@ use db::{
         FeaturePackageRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         InfrastructureRepository, InsuranceRepository, IntegrationRepository, LeaseRepository,
-        LegalRepository, ListingRepository, LlmDocumentRepository, MeterRepository,
-        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
+        LegalRepository, ListingRepository, LlmDocumentRepository, MarketPricingRepository,
+        MeterRepository, NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
         PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
@@ -132,6 +132,8 @@ pub struct AppState {
     pub feature_analytics_repo: FeatureAnalyticsRepository,
     // UC-12: Utility Outages
     pub outage_repo: OutageRepository,
+    // Epic 132: Dynamic Rent Pricing & Market Analytics
+    pub market_pricing_repo: MarketPricingRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -246,6 +248,8 @@ impl AppState {
         let feature_analytics_repo = FeatureAnalyticsRepository::new(db.clone());
         // UC-12: Utility Outages
         let outage_repo = OutageRepository::new(db.clone());
+        // Epic 132: Dynamic Rent Pricing & Market Analytics
+        let market_pricing_repo = MarketPricingRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -321,6 +325,7 @@ impl AppState {
             feature_package_repo,
             feature_analytics_repo,
             outage_repo,
+            market_pricing_repo,
             llm_client,
             auth_service,
             email_service,
