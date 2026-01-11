@@ -846,3 +846,6 @@ pub use lease_abstraction::{
     LeaseDocumentSummary, LeaseExtraction, LeaseImport, ProcessDocumentRequest, ProcessingStatus,
     RejectExtraction, ValidationIssue as ExtractionValidationIssue,
 };
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;

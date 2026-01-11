@@ -224,6 +224,11 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/lease-abstraction",
             routes::lease_abstraction::router(),
         )
+        // Predictive Maintenance routes (Epic 134)
+        .nest(
+            "/api/v1/predictive-maintenance",
+            routes::predictive_maintenance::router(),
+        )
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration
