@@ -834,3 +834,17 @@ pub use market_pricing::{
     UnitRecommendationSummary, UpdateComparativeMarketAnalysis, UpdateMarketRegion,
     VacancyTrendPoint, YieldRange,
 };
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+pub use portfolio_analytics::{
+    AcknowledgeAlert as AcknowledgePortfolioAlert, AggregationPeriod, AlertStats,
+    BenchmarkCategory, BenchmarkPerformance, ComparisonScope, CreateAlertRule,
+    CreatePortfolioBenchmark, CreatePropertyComparison, CreatePropertyMetrics,
+    PortfolioAggregatedMetrics, PortfolioAlert, PortfolioAlertRule, PortfolioAnalyticsDashboard,
+    PortfolioAnalyticsQuery, PortfolioBenchmark, PortfolioPropertyComparison,
+    PortfolioSummary as PortfolioAnalyticsSummary, PortfolioTrend, PropertyPerformanceMetrics,
+    PropertyRanking, RecordTrend, ResolveAlert as ResolvePortfolioAlert, TrendAnalysis,
+    TrendDataPoint, UpdateAlertRule, UpdatePortfolioBenchmark,
+};

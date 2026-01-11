@@ -219,6 +219,11 @@ pub fn create_router(state: AppState) -> Router {
         .nest("/api/v1/outages", routes::outages::router())
         // Market Pricing routes (Epic 132)
         .nest("/api/v1/pricing", routes::market_pricing::router())
+        // Portfolio Analytics routes (Epic 140)
+        .nest(
+            "/api/v1/portfolio-analytics",
+            routes::portfolio_analytics::router(),
+        )
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

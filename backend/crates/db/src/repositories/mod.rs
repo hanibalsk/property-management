@@ -273,3 +273,8 @@ pub use outage::OutageRepository;
 pub mod market_pricing;
 
 pub use market_pricing::MarketPricingRepository;
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+pub use portfolio_analytics::PortfolioAnalyticsRepository;

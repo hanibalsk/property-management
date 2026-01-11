@@ -131,3 +131,6 @@ pub mod outages;
 
 // Epic 132: Dynamic Rent Pricing & Market Analytics
 pub mod market_pricing;
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
