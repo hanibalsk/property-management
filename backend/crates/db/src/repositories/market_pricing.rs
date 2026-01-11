@@ -1193,9 +1193,8 @@ impl MarketPricingRepository {
         .unwrap_or(avg_rent);
 
         // Calculate units below/above market based on pricing recommendations
-        let (units_below_market, units_above_market): (i64, i64) =
-            sqlx::query_as::<_, (i64, i64)>(
-                r#"
+        let (units_below_market, units_above_market): (i64, i64) = sqlx::query_as::<_, (i64, i64)>(
+            r#"
                 SELECT
                     COALESCE(SUM(CASE
                         WHEN pr.optimal_price > u.current_rent THEN 1 ELSE 0
@@ -1219,12 +1218,12 @@ impl MarketPricingRepository {
                   AND ($2::uuid IS NULL OR b.id = $2)
                   AND pr.optimal_price IS NOT NULL
                 "#,
-            )
-            .bind(org_id)
-            .bind(building_id)
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or((0, 0));
+        )
+        .bind(org_id)
+        .bind(building_id)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or((0, 0));
 
         let units_below_market = units_below_market as i32;
         let units_above_market = units_above_market as i32;
@@ -1287,12 +1286,9 @@ impl MarketPricingRepository {
         let trends: Vec<VacancyTrendPoint> = (0..months)
             .rev()
             .map(|n| {
-                let date = chrono::Utc::now().date_naive()
-                    - chrono::Duration::days(i64::from(n) * 30);
-                VacancyTrendPoint {
-                    date,
-                    vacancy_rate,
-                }
+                let date =
+                    chrono::Utc::now().date_naive() - chrono::Duration::days(i64::from(n) * 30);
+                VacancyTrendPoint { date, vacancy_rate }
             })
             .collect();
 
