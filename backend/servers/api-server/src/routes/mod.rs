@@ -131,3 +131,6 @@ pub mod outages;
 
 // Epic 132: Dynamic Rent Pricing & Market Analytics
 pub mod market_pricing;
+
+// Epic 133: AI Lease Abstraction & Document Intelligence
+pub mod lease_abstraction;

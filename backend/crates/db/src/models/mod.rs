@@ -834,3 +834,15 @@ pub use market_pricing::{
     UnitRecommendationSummary, UpdateComparativeMarketAnalysis, UpdateMarketRegion,
     VacancyTrendPoint, YieldRange,
 };
+
+// Epic 133: AI Lease Abstraction & Document Intelligence
+pub mod lease_abstraction;
+pub use lease_abstraction::{
+    document_status as lease_document_status, import_status as lease_import_status,
+    review_status as extraction_review_status, ApproveExtraction, CreateExtractionCorrection,
+    CreateLeaseDocument, CreateLeaseExtraction, ExtractedField, ExtractionCorrection,
+    ExtractionSummary, ExtractionWithFields, ImportExtractionRequest,
+    ImportResult as LeaseImportResult, ImportValidationResult, LeaseDocument, LeaseDocumentQuery,
+    LeaseDocumentSummary, LeaseExtraction, LeaseImport, ProcessDocumentRequest, ProcessingStatus,
+    RejectExtraction, ValidationIssue as ExtractionValidationIssue,
+};

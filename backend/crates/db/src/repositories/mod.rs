@@ -273,3 +273,8 @@ pub use outage::OutageRepository;
 pub mod market_pricing;
 
 pub use market_pricing::MarketPricingRepository;
+
+// Epic 133: AI Lease Abstraction & Document Intelligence
+pub mod lease_abstraction;
+
+pub use lease_abstraction::LeaseAbstractionRepository;
