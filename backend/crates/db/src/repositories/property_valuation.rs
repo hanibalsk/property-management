@@ -51,7 +51,7 @@ impl PropertyValuationRepository {
         .bind(org_id)
         .bind(&data.name)
         .bind(&data.description)
-        .bind(&data.model_type)
+        .bind(data.model_type)
         .bind(&data.model_config)
         .bind(&data.feature_weights)
         .bind(data.is_default)
@@ -223,7 +223,7 @@ impl PropertyValuationRepository {
                 .map(Decimal::try_from)
                 .and_then(Result::ok),
         )
-        .bind(&data.confidence_level)
+        .bind(data.confidence_level)
         .bind(
             data.confidence_score
                 .map(Decimal::try_from)
@@ -234,9 +234,9 @@ impl PropertyValuationRepository {
                 .map(Decimal::try_from)
                 .and_then(Result::ok),
         )
-        .bind(&data.property_condition)
+        .bind(data.property_condition)
         .bind(data.effective_age)
-        .bind(&data.market_trend)
+        .bind(data.market_trend)
         .bind(&data.methodology_notes)
         .bind(&data.assumptions)
         .bind(created_by)
@@ -470,7 +470,7 @@ impl PropertyValuationRepository {
         .bind(data.year_built)
         .bind(data.bedrooms)
         .bind(data.bathrooms.map(Decimal::try_from).and_then(Result::ok))
-        .bind(&data.condition)
+        .bind(data.condition)
         .bind(data.distance_km.map(Decimal::try_from).and_then(Result::ok))
         .bind(&data.data_source)
         .fetch_one(&self.pool)
@@ -595,7 +595,7 @@ impl PropertyValuationRepository {
             "#,
         )
         .bind(data.comparable_id)
-        .bind(&data.adjustment_type)
+        .bind(data.adjustment_type)
         .bind(&data.adjustment_name)
         .bind(&data.subject_value)
         .bind(&data.comparable_value)
@@ -698,7 +698,7 @@ impl PropertyValuationRepository {
                 .map(Decimal::try_from)
                 .and_then(Result::ok),
         )
-        .bind(&data.market_trend)
+        .bind(data.market_trend)
         .bind(&data.data_source)
         .fetch_one(&self.pool)
         .await
@@ -845,7 +845,7 @@ impl PropertyValuationRepository {
                 .map(Decimal::try_from)
                 .and_then(Result::ok),
         )
-        .bind(&data.confidence_level)
+        .bind(data.confidence_level)
         .bind(
             data.previous_value
                 .map(Decimal::try_from)
@@ -1056,7 +1056,7 @@ impl PropertyValuationRepository {
         .bind(data.garage_spaces)
         .bind(data.has_pool)
         .bind(data.has_basement)
-        .bind(&data.condition)
+        .bind(data.condition)
         .bind(data.condition_score)
         .bind(assessed_by)
         .fetch_one(&self.pool)

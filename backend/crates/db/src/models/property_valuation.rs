@@ -15,13 +15,16 @@ use uuid::Uuid;
 // ============================================================================
 
 /// Type of valuation model/algorithm
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema,
+)]
 #[sqlx(type_name = "valuation_model_type", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum ValuationModelType {
     /// Hedonic pricing model
     Hedonic,
     /// Comparable sales approach
+    #[default]
     ComparableSales,
     /// Income capitalization approach
     IncomeApproach,
@@ -35,17 +38,14 @@ pub enum ValuationModelType {
     NeuralNetwork,
 }
 
-impl Default for ValuationModelType {
-    fn default() -> Self {
-        Self::ComparableSales
-    }
-}
-
 /// Status of a valuation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema,
+)]
 #[sqlx(type_name = "valuation_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum ValuationStatus {
+    #[default]
     Draft,
     PendingReview,
     InProgress,
@@ -55,66 +55,51 @@ pub enum ValuationStatus {
     Expired,
 }
 
-impl Default for ValuationStatus {
-    fn default() -> Self {
-        Self::Draft
-    }
-}
-
 /// Confidence level for valuations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema,
+)]
 #[sqlx(type_name = "valuation_confidence", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum ValuationConfidence {
     VeryLow,
     Low,
+    #[default]
     Medium,
     High,
     VeryHigh,
 }
 
-impl Default for ValuationConfidence {
-    fn default() -> Self {
-        Self::Medium
-    }
-}
-
 /// Property condition rating
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema,
+)]
 #[sqlx(type_name = "property_condition", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum PropertyCondition {
     Excellent,
     VeryGood,
     Good,
+    #[default]
     Average,
     Fair,
     Poor,
     VeryPoor,
 }
 
-impl Default for PropertyCondition {
-    fn default() -> Self {
-        Self::Average
-    }
-}
-
 /// Market trend direction
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, ToSchema,
+)]
 #[sqlx(type_name = "market_trend", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum MarketTrend {
     StrongGrowth,
     ModerateGrowth,
+    #[default]
     Stable,
     ModerateDecline,
     StrongDecline,
-}
-
-impl Default for MarketTrend {
-    fn default() -> Self {
-        Self::Stable
-    }
 }
 
 /// Adjustment type for comparable analysis
