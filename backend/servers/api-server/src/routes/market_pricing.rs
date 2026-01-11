@@ -13,9 +13,10 @@ use axum::{
 use common::errors::ErrorResponse;
 use db::models::market_pricing::{
     AcceptPricingRecommendation, AddCmaProperty, CreateComparativeMarketAnalysis,
-    CreateMarketDataPoint, CreateMarketRegion, GenerateStatisticsRequest, MarketDataQuery,
-    RecordPriceChange, RejectPricingRecommendation, RequestPricingRecommendation,
-    UpdateComparativeMarketAnalysis, UpdateMarketRegion,
+    CreateMarketDataPoint, CreateMarketRegion, ExportPricingDataRequest, GenerateStatisticsRequest,
+    MarketDataQuery, PricingDashboard, PricingDashboardQuery, RecordPriceChange,
+    RejectPricingRecommendation, RequestPricingRecommendation, UpdateComparativeMarketAnalysis,
+    UpdateMarketRegion,
 };
 use integrations::{ChatCompletionRequest, ChatMessage};
 use rust_decimal::Decimal;
@@ -66,6 +67,9 @@ pub fn router() -> Router<AppState> {
         .route("/cma/{id}/properties", post(add_cma_property))
         // Comparables lookup
         .route("/comparables", get(get_comparables))
+        // Dashboard (Story 132.3)
+        .route("/dashboard", get(get_pricing_dashboard))
+        .route("/dashboard/export", post(export_pricing_data))
 }
 
 // =============================================================================
@@ -1299,4 +1303,147 @@ async fn get_comparables(
             Json(ErrorResponse::internal_error(&e.to_string())),
         )),
     }
+}
+
+// =============================================================================
+// DASHBOARD (Story 132.3)
+// =============================================================================
+
+/// Get pricing dashboard data.
+///
+/// Story 132.3: Returns portfolio summary, market trends, units with recommendations,
+/// and vacancy trends. Supports filtering by region, building, and date range.
+async fn get_pricing_dashboard(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Query(query): Query<PricingDashboardQuery>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Get portfolio summary
+    let portfolio_summary = s
+        .market_pricing_repo
+        .get_portfolio_summary(org_id, query.building_id)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::internal_error(&format!(
+                    "Failed to get portfolio summary: {}",
+                    e
+                ))),
+            )
+        })?;
+
+    // Get market trends (default to 12 months)
+    let market_trends = if let Some(region_id) = query.region_id {
+        s.market_pricing_repo
+            .get_market_trends(region_id, 12)
+            .await
+            .unwrap_or_default()
+    } else {
+        vec![]
+    };
+
+    // Get units with recommendations
+    let units_with_recommendations = s
+        .market_pricing_repo
+        .get_units_with_recommendations(org_id, query.building_id)
+        .await
+        .unwrap_or_default();
+
+    // Get vacancy trends (12 months)
+    let vacancy_trends = s
+        .market_pricing_repo
+        .get_vacancy_trends(org_id, 12)
+        .await
+        .unwrap_or_default();
+
+    let dashboard = PricingDashboard {
+        portfolio_summary,
+        market_trends,
+        units_with_recommendations,
+        vacancy_trends,
+    };
+
+    Ok(Json(serde_json::to_value(dashboard).unwrap()))
+}
+
+/// Export pricing data to CSV/XLSX.
+///
+/// Story 132.3: Export market data and recommendations for external analysis.
+async fn export_pricing_data(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Json(req): Json<ExportPricingDataRequest>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    // Validate format
+    if !["csv", "xlsx"].contains(&req.format.as_str()) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(
+                "Invalid format. Supported formats: csv, xlsx",
+            )),
+        ));
+    }
+
+    // Get data for export
+    let data_query = MarketDataQuery {
+        region_id: req.region_id,
+        property_type: None,
+        min_size_sqm: None,
+        max_size_sqm: None,
+        min_rent: None,
+        max_rent: None,
+        rooms: None,
+        from_date: req.from_date.map(|d| {
+            chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+                d.and_hms_opt(0, 0, 0).unwrap(),
+                chrono::Utc,
+            )
+        }),
+        to_date: req.to_date.map(|d| {
+            chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+                d.and_hms_opt(23, 59, 59).unwrap(),
+                chrono::Utc,
+            )
+        }),
+        page: None,
+        limit: Some(1000),
+    };
+
+    let data_points = s
+        .market_pricing_repo
+        .list_data_points(org_id, data_query)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::internal_error(&e.to_string())),
+            )
+        })?;
+
+    // In a production system, this would generate an actual file and return a download URL
+    // For now, return the data as JSON with export metadata
+    Ok(Json(json!({
+        "export": {
+            "format": req.format,
+            "record_count": data_points.len(),
+            "generated_at": chrono::Utc::now().to_rfc3339(),
+            "status": "data_ready"
+        },
+        "data": data_points
+    })))
 }

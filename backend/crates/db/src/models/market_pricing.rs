@@ -510,14 +510,14 @@ pub struct PortfolioPricingSummary {
     pub potential_revenue_increase: Decimal,
 }
 
-#[derive(Debug, Clone, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, FromRow, ToSchema)]
 pub struct MarketTrendPoint {
     pub date: NaiveDate,
     pub avg_rent: Decimal,
     pub avg_price_per_sqm: Decimal,
 }
 
-#[derive(Debug, Clone, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, FromRow, ToSchema)]
 pub struct UnitRecommendationSummary {
     pub unit_id: Uuid,
     pub unit_name: String,
@@ -527,7 +527,7 @@ pub struct UnitRecommendationSummary {
     pub confidence_score: Decimal,
 }
 
-#[derive(Debug, Clone, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, FromRow, ToSchema)]
 pub struct VacancyTrendPoint {
     pub date: NaiveDate,
     pub vacancy_rate: Decimal,
