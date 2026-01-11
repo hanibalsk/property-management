@@ -846,3 +846,32 @@ pub use lease_abstraction::{
     LeaseDocumentSummary, LeaseExtraction, LeaseImport, ProcessDocumentRequest, ProcessingStatus,
     RejectExtraction, ValidationIssue as ExtractionValidationIssue,
 };
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;
+
+pub use predictive_maintenance::{
+    AcknowledgeAlertRequest, AlertSeverity as PredictiveAlertSeverity,
+    AlertStatus as PredictiveAlertStatus, AlertType as PredictiveAlertType, AlertWithEquipment,
+    AlertsBySeverity, CreateEquipment as CreatePredictiveEquipment, CreateEquipmentDocument,
+    CreateMaintenanceLog, Equipment as PredictiveEquipment, EquipmentByStatus, EquipmentDocument,
+    EquipmentPrediction, EquipmentQuery as PredictiveEquipmentQuery,
+    EquipmentStatus as PredictiveEquipmentStatus, EquipmentSummary as PredictiveEquipmentSummary,
+    EquipmentType, HealthDistribution, HealthThreshold, MaintenanceAlert, MaintenanceDashboard,
+    MaintenanceLog, MaintenanceLogPhoto, MaintenanceOutcome, MaintenanceTrend,
+    MaintenanceType as PredictiveMaintenanceType, PredictionFactor, PredictionResult,
+    RecommendedAction, ResolveAlertRequest, RunPredictionRequest, SetHealthThreshold,
+    UpdateEquipment as UpdatePredictiveEquipment, UpdateMaintenanceLog,
+};
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+pub use portfolio_analytics::{
+    AggregationPeriod, AlertQuery as PortfolioAlertQuery, BenchmarkCategory, ComparisonScope,
+    CreateAlertRule, CreatePortfolioBenchmark, CreatePropertyMetrics, MetricsComparison,
+    PortfolioAggregatedMetrics, PortfolioAlert, PortfolioAlertRule, PortfolioBenchmark,
+    PortfolioOverview, PortfolioTrend, PropertyComparison as PortfolioPropertyComparison,
+    PropertyMetricValue, PropertyPerformanceMetrics, PropertyRanking, TrendAnalysis,
+    TrendDataPoint, TrendQuery, UpdateAlertRule, UpdatePortfolioBenchmark,
+};

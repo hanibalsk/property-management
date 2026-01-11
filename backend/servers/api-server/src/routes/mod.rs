@@ -134,3 +134,9 @@ pub mod market_pricing;
 
 // Epic 133: AI Lease Abstraction & Document Intelligence
 pub mod lease_abstraction;
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;

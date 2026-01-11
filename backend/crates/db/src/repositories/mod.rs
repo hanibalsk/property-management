@@ -278,3 +278,13 @@ pub use market_pricing::MarketPricingRepository;
 pub mod lease_abstraction;
 
 pub use lease_abstraction::LeaseAbstractionRepository;
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;
+
+pub use predictive_maintenance::PredictiveMaintenanceRepository;
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+pub use portfolio_analytics::PortfolioAnalyticsRepository;
