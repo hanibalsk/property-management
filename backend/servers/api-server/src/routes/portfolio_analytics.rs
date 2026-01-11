@@ -6,7 +6,7 @@ use api_core::extractors::AuthUser;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, post, put},
+    routing::{get, post, put},
     Json, Router,
 };
 use chrono::NaiveDate;

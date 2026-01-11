@@ -853,13 +853,15 @@ pub mod predictive_maintenance;
 pub use predictive_maintenance::{
     AcknowledgeAlertRequest, AlertSeverity as PredictiveAlertSeverity,
     AlertStatus as PredictiveAlertStatus, AlertType as PredictiveAlertType, AlertWithEquipment,
-    AlertsBySeverity, CreateEquipment, CreateEquipmentDocument, CreateMaintenanceLog, Equipment,
-    EquipmentByStatus, EquipmentDocument, EquipmentPrediction, EquipmentQuery, EquipmentStatus,
-    EquipmentSummary, EquipmentType, HealthDistribution, HealthThreshold, MaintenanceAlert,
-    MaintenanceDashboard, MaintenanceLog, MaintenanceLogPhoto, MaintenanceOutcome,
-    MaintenanceTrend, MaintenanceType, PredictionFactor, PredictionResult, RecommendedAction,
-    ResolveAlertRequest, RunPredictionRequest, SetHealthThreshold, UpdateEquipment,
-    UpdateMaintenanceLog,
+    AlertsBySeverity, CreateEquipment as CreatePredictiveEquipment, CreateEquipmentDocument,
+    CreateMaintenanceLog, Equipment as PredictiveEquipment, EquipmentByStatus, EquipmentDocument,
+    EquipmentPrediction, EquipmentQuery as PredictiveEquipmentQuery,
+    EquipmentStatus as PredictiveEquipmentStatus, EquipmentSummary as PredictiveEquipmentSummary,
+    EquipmentType, HealthDistribution, HealthThreshold, MaintenanceAlert, MaintenanceDashboard,
+    MaintenanceLog, MaintenanceLogPhoto, MaintenanceOutcome, MaintenanceTrend,
+    MaintenanceType as PredictiveMaintenanceType, PredictionFactor, PredictionResult,
+    RecommendedAction, ResolveAlertRequest, RunPredictionRequest, SetHealthThreshold,
+    UpdateEquipment as UpdatePredictiveEquipment, UpdateMaintenanceLog,
 };
 
 // Epic 140: Multi-Property Portfolio Analytics
@@ -869,7 +871,7 @@ pub use portfolio_analytics::{
     AggregationPeriod, AlertQuery as PortfolioAlertQuery, BenchmarkCategory, ComparisonScope,
     CreateAlertRule, CreatePortfolioBenchmark, CreatePropertyMetrics, MetricsComparison,
     PortfolioAggregatedMetrics, PortfolioAlert, PortfolioAlertRule, PortfolioBenchmark,
-    PortfolioOverview, PortfolioTrend, PropertyComparison, PropertyMetricValue,
-    PropertyPerformanceMetrics, PropertyRanking, TrendAnalysis, TrendDataPoint, TrendQuery,
-    UpdateAlertRule, UpdatePortfolioBenchmark,
+    PortfolioOverview, PortfolioTrend, PropertyComparison as PortfolioPropertyComparison,
+    PropertyMetricValue, PropertyPerformanceMetrics, PropertyRanking, TrendAnalysis, TrendDataPoint,
+    TrendQuery, UpdateAlertRule, UpdatePortfolioBenchmark,
 };
