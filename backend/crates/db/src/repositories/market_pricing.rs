@@ -981,13 +981,23 @@ impl MarketPricingRepository {
 
     // ======================== Dashboard (Story 132.3) ========================
 
+    /// Get market comparables for pricing analysis.
+    ///
+    /// # Arguments
+    /// * `region_id` - The market region to search in
+    /// * `property_type` - Type of property (apartment, house, etc.)
+    /// * `size_sqm` - Size in square meters for similarity matching
+    /// * `limit` - Maximum number of comparables to return
+    /// * `max_age_days` - Maximum age of market data to consider (default: 90 days)
     pub async fn get_market_comparables(
         &self,
         region_id: Uuid,
         property_type: &str,
         size_sqm: Decimal,
         limit: i32,
+        max_age_days: Option<i32>,
     ) -> Result<Vec<MarketComparable>, AppError> {
+        let age_days = max_age_days.unwrap_or(90);
         let comparables = sqlx::query_as::<_, MarketComparable>(
             r#"
             SELECT
@@ -997,14 +1007,11 @@ impl MarketPricingRepository {
                 monthly_rent,
                 price_per_sqm,
                 0.0::numeric as distance_km,
-                CASE
-                    WHEN ABS(size_sqm - $3) < 10 THEN 90
-                    WHEN ABS(size_sqm - $3) < 20 THEN 75
-                    ELSE 50
-                END::numeric as similarity_score
+                -- Continuous similarity score based on size difference with exponential decay
+                (100 * EXP(-ABS(size_sqm - $3) / GREATEST($3 * 0.2, 10)))::numeric as similarity_score
             FROM market_data_points
             WHERE region_id = $1 AND property_type = $2
-              AND collected_at > NOW() - INTERVAL '90 days'
+              AND collected_at > NOW() - ($5 || ' days')::interval
             ORDER BY ABS(size_sqm - $3)
             LIMIT $4
             "#,
@@ -1013,6 +1020,7 @@ impl MarketPricingRepository {
         .bind(property_type)
         .bind(size_sqm)
         .bind(limit)
+        .bind(age_days)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -1184,17 +1192,42 @@ impl MarketPricingRepository {
         .map_err(|e| AppError::Database(e.to_string()))?
         .unwrap_or(avg_rent);
 
-        // Calculate units below/above market (simplified)
-        let units_below_market = if market_avg_rent > avg_rent {
-            (total_units as f64 * 0.4) as i32 // estimate 40% below market
-        } else {
-            0
-        };
-        let units_above_market = if avg_rent > market_avg_rent {
-            (total_units as f64 * 0.3) as i32 // estimate 30% above market
-        } else {
-            0
-        };
+        // Calculate units below/above market based on pricing recommendations
+        let (units_below_market, units_above_market): (i64, i64) =
+            sqlx::query_as::<_, (i64, i64)>(
+                r#"
+                SELECT
+                    COALESCE(SUM(CASE
+                        WHEN pr.optimal_price > u.current_rent THEN 1 ELSE 0
+                    END), 0)::bigint AS units_below_market,
+                    COALESCE(SUM(CASE
+                        WHEN pr.optimal_price < u.current_rent THEN 1 ELSE 0
+                    END), 0)::bigint AS units_above_market
+                FROM units u
+                JOIN buildings b ON b.id = u.building_id
+                LEFT JOIN LATERAL (
+                    SELECT optimal_price
+                    FROM pricing_recommendations
+                    WHERE unit_id = u.id
+                      AND status = 'pending'
+                      AND expires_at > NOW()
+                    ORDER BY generated_at DESC
+                    LIMIT 1
+                ) pr ON true
+                WHERE b.organization_id = $1
+                  AND u.status = 'active'
+                  AND ($2::uuid IS NULL OR b.id = $2)
+                  AND pr.optimal_price IS NOT NULL
+                "#,
+            )
+            .bind(org_id)
+            .bind(building_id)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or((0, 0));
+
+        let units_below_market = units_below_market as i32;
+        let units_above_market = units_above_market as i32;
 
         // Calculate portfolio vs market percentage
         let portfolio_vs_market_pct = if market_avg_rent > Decimal::ZERO {
@@ -1222,34 +1255,46 @@ impl MarketPricingRepository {
     }
 
     /// Get vacancy trend data.
+    ///
+    /// Note: Currently returns the current vacancy rate for all months as historical
+    /// occupancy tracking is not yet implemented. Future versions should track
+    /// occupancy_status changes over time to provide actual historical trends.
     pub async fn get_vacancy_trends(
         &self,
         org_id: Uuid,
         months: i32,
     ) -> Result<Vec<VacancyTrendPoint>, AppError> {
-        // Estimate vacancy trends from unit occupancy history
-        let trends = sqlx::query_as::<_, VacancyTrendPoint>(
+        // Get current vacancy rate - future: query historical occupancy_status changes
+        let current_vacancy: Option<Decimal> = sqlx::query_scalar(
             r#"
-            SELECT
-                date_trunc('month', NOW() - (n || ' months')::interval)::date as date,
-                COALESCE(
-                    (SELECT (COUNT(CASE WHEN u.occupancy_status = 'vacant' THEN 1 END)::numeric /
-                            NULLIF(COUNT(*)::numeric, 0)) * 100
-                     FROM units u
-                     JOIN buildings b ON b.id = u.building_id
-                     WHERE b.organization_id = $1
-                       AND u.status = 'active'),
-                    0
-                )::numeric as vacancy_rate
-            FROM generate_series(0, $2 - 1) n
-            ORDER BY date ASC
+            SELECT (COUNT(CASE WHEN u.occupancy_status = 'vacant' THEN 1 END)::numeric /
+                    NULLIF(COUNT(*)::numeric, 0)) * 100
+            FROM units u
+            JOIN buildings b ON b.id = u.building_id
+            WHERE b.organization_id = $1
+              AND u.status = 'active'
             "#,
         )
         .bind(org_id)
-        .bind(months)
-        .fetch_all(&self.pool)
+        .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let vacancy_rate = current_vacancy.unwrap_or(Decimal::ZERO);
+
+        // Generate date series with current vacancy rate
+        // TODO: Once historical occupancy tracking is implemented, query actual historical data
+        let trends: Vec<VacancyTrendPoint> = (0..months)
+            .rev()
+            .map(|n| {
+                let date = chrono::Utc::now().date_naive()
+                    - chrono::Duration::days(i64::from(n) * 30);
+                VacancyTrendPoint {
+                    date,
+                    vacancy_rate,
+                }
+            })
+            .collect();
 
         Ok(trends)
     }

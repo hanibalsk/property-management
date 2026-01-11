@@ -315,15 +315,19 @@ ALTER TABLE unit_pricing_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comparative_market_analyses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cma_property_comparisons ENABLE ROW LEVEL SECURITY;
 
--- Market regions policy
+-- Market regions policy (with write constraint)
 CREATE POLICY market_regions_tenant_isolation ON market_regions
     FOR ALL
     USING (
         is_super_admin()
         OR organization_id = get_current_org_id()
+    )
+    WITH CHECK (
+        is_super_admin()
+        OR organization_id = get_current_org_id()
     );
 
--- Market data points policy (via region)
+-- Market data points policy (via region, with write constraint)
 CREATE POLICY market_data_points_tenant_isolation ON market_data_points
     FOR ALL
     USING (
@@ -333,9 +337,17 @@ CREATE POLICY market_data_points_tenant_isolation ON market_data_points
             WHERE mr.id = market_data_points.region_id
             AND mr.organization_id = get_current_org_id()
         )
+    )
+    WITH CHECK (
+        is_super_admin()
+        OR EXISTS (
+            SELECT 1 FROM market_regions mr
+            WHERE mr.id = market_data_points.region_id
+            AND mr.organization_id = get_current_org_id()
+        )
     );
 
--- Market statistics policy (via region)
+-- Market statistics policy (via region, with write constraint)
 CREATE POLICY market_statistics_tenant_isolation ON market_statistics
     FOR ALL
     USING (
@@ -345,9 +357,17 @@ CREATE POLICY market_statistics_tenant_isolation ON market_statistics
             WHERE mr.id = market_statistics.region_id
             AND mr.organization_id = get_current_org_id()
         )
+    )
+    WITH CHECK (
+        is_super_admin()
+        OR EXISTS (
+            SELECT 1 FROM market_regions mr
+            WHERE mr.id = market_statistics.region_id
+            AND mr.organization_id = get_current_org_id()
+        )
     );
 
--- Pricing recommendations policy (via unit)
+-- Pricing recommendations policy (via unit, with write constraint)
 CREATE POLICY pricing_recommendations_tenant_isolation ON pricing_recommendations
     FOR ALL
     USING (
@@ -358,9 +378,18 @@ CREATE POLICY pricing_recommendations_tenant_isolation ON pricing_recommendation
             WHERE u.id = pricing_recommendations.unit_id
             AND b.organization_id = get_current_org_id()
         )
+    )
+    WITH CHECK (
+        is_super_admin()
+        OR EXISTS (
+            SELECT 1 FROM units u
+            JOIN buildings b ON b.id = u.building_id
+            WHERE u.id = pricing_recommendations.unit_id
+            AND b.organization_id = get_current_org_id()
+        )
     );
 
--- Unit pricing history policy (via unit)
+-- Unit pricing history policy (via unit, with write constraint)
 CREATE POLICY unit_pricing_history_tenant_isolation ON unit_pricing_history
     FOR ALL
     USING (
@@ -371,20 +400,41 @@ CREATE POLICY unit_pricing_history_tenant_isolation ON unit_pricing_history
             WHERE u.id = unit_pricing_history.unit_id
             AND b.organization_id = get_current_org_id()
         )
+    )
+    WITH CHECK (
+        is_super_admin()
+        OR EXISTS (
+            SELECT 1 FROM units u
+            JOIN buildings b ON b.id = u.building_id
+            WHERE u.id = unit_pricing_history.unit_id
+            AND b.organization_id = get_current_org_id()
+        )
     );
 
--- CMA policy
+-- CMA policy (with write constraint)
 CREATE POLICY cma_tenant_isolation ON comparative_market_analyses
     FOR ALL
     USING (
         is_super_admin()
         OR organization_id = get_current_org_id()
+    )
+    WITH CHECK (
+        is_super_admin()
+        OR organization_id = get_current_org_id()
     );
 
--- CMA comparisons policy (via CMA)
+-- CMA comparisons policy (via CMA, with write constraint)
 CREATE POLICY cma_comparisons_tenant_isolation ON cma_property_comparisons
     FOR ALL
     USING (
+        is_super_admin()
+        OR EXISTS (
+            SELECT 1 FROM comparative_market_analyses cma
+            WHERE cma.id = cma_property_comparisons.cma_id
+            AND cma.organization_id = get_current_org_id()
+        )
+    )
+    WITH CHECK (
         is_super_admin()
         OR EXISTS (
             SELECT 1 FROM comparative_market_analyses cma

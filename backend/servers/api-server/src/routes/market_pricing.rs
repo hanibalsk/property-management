@@ -29,6 +29,19 @@ use uuid::Uuid;
 
 type ApiResult<T> = Result<T, (StatusCode, Json<ErrorResponse>)>;
 
+/// Helper to serialize a value to JSON, returning a 500 error on failure.
+fn to_json_value<T: serde::Serialize>(value: T) -> ApiResult<serde_json::Value> {
+    serde_json::to_value(value).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&format!(
+                "Failed to serialize response: {}",
+                e
+            ))),
+        )
+    })
+}
+
 pub fn router() -> Router<AppState> {
     Router::new()
         // Market Regions
@@ -115,7 +128,7 @@ async fn create_region(
     })?;
 
     match s.market_pricing_repo.create_region(org_id, req).await {
-        Ok(region) => Ok(Json(serde_json::to_value(region).unwrap())),
+        Ok(region) => Ok(Json(to_json_value(region)?)),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request(&e.to_string())),
@@ -136,7 +149,7 @@ async fn get_region(
     })?;
 
     match s.market_pricing_repo.get_region(id, org_id).await {
-        Ok(Some(region)) => Ok(Json(serde_json::to_value(region).unwrap())),
+        Ok(Some(region)) => Ok(Json(to_json_value(region)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Region not found")),
@@ -162,7 +175,7 @@ async fn update_region(
     })?;
 
     match s.market_pricing_repo.update_region(id, org_id, req).await {
-        Ok(Some(region)) => Ok(Json(serde_json::to_value(region).unwrap())),
+        Ok(Some(region)) => Ok(Json(to_json_value(region)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Region not found")),
@@ -252,7 +265,7 @@ async fn add_data_point(
     }
 
     match s.market_pricing_repo.add_data_point(req).await {
-        Ok(data_point) => Ok(Json(serde_json::to_value(data_point).unwrap())),
+        Ok(data_point) => Ok(Json(to_json_value(data_point)?)),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request(&e.to_string())),
@@ -299,7 +312,7 @@ async fn get_statistics(
         .get_market_statistics(region_id, params.property_type)
         .await
     {
-        Ok(Some(stats)) => Ok(Json(serde_json::to_value(stats).unwrap())),
+        Ok(Some(stats)) => Ok(Json(to_json_value(stats)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("No statistics available")),
@@ -339,7 +352,7 @@ async fn generate_statistics(
     }
 
     match s.market_pricing_repo.generate_statistics(req).await {
-        Ok(stats) => Ok(Json(serde_json::to_value(stats).unwrap())),
+        Ok(stats) => Ok(Json(to_json_value(stats)?)),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request(&e.to_string())),
@@ -397,6 +410,8 @@ async fn request_recommendation(
         std::env::var("LLM_PRICING_ENABLED").unwrap_or_else(|_| "true".to_string()) == "true";
 
     // Fetch unit details to analyze characteristics
+    // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
     let unit = s.unit_repo.find_by_id(req.unit_id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -412,6 +427,8 @@ async fn request_recommendation(
     })?;
 
     // Fetch building details for location context
+    // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
     let building = s
         .building_repo
         .find_by_id(unit.building_id)
@@ -445,7 +462,7 @@ async fn request_recommendation(
     let comparables = if let Some(region) = matching_region {
         let size = unit.size_sqm.unwrap_or(Decimal::new(50, 0));
         s.market_pricing_repo
-            .get_market_comparables(region.id, &unit.unit_type, size, 10)
+            .get_market_comparables(region.id, &unit.unit_type, size, 10, None)
             .await
             .unwrap_or_default()
     } else {
@@ -490,7 +507,7 @@ async fn request_recommendation(
         )
         .await
     {
-        Ok(rec) => Ok(Json(serde_json::to_value(rec).unwrap())),
+        Ok(rec) => Ok(Json(to_json_value(rec)?)),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request(&e.to_string())),
@@ -722,13 +739,15 @@ fn generate_statistical_pricing(
 ) -> (Decimal, Decimal, Decimal, Decimal, serde_json::Value) {
     if comparables.is_empty() {
         // No comparables - use basic estimation based on size
-        let base_price_per_sqm = Decimal::new(15, 0); // €15/sqm default
+        // Note: This is a rough EUR-equivalent baseline. For non-EUR currencies,
+        // the actual prices should be adjusted using market comparables when available.
+        let base_price_per_sqm = Decimal::new(15, 0); // ~15 EUR-equivalent/sqm default
         let size = unit.size_sqm.unwrap_or(Decimal::new(50, 0));
         let base_price = base_price_per_sqm * size;
 
-        let min_price = base_price * Decimal::new(85, 2); // 85%
+        let min_price = base_price * Decimal::new(85, 0) / Decimal::new(100, 0); // 85%
         let optimal_price = base_price;
-        let max_price = base_price * Decimal::new(115, 2); // 115%
+        let max_price = base_price * Decimal::new(115, 0) / Decimal::new(100, 0); // 115%
         let confidence = Decimal::new(40, 0); // Low confidence without comparables
 
         let factors = json!({
@@ -736,7 +755,7 @@ fn generate_statistical_pricing(
             "method": "size_based_estimation",
             "base_price_per_sqm": 15,
             "comparables_used": 0,
-            "note": "No market comparables available, using size-based estimation"
+            "note": "No market comparables available, using size-based estimation with EUR-equivalent baseline. Prices may need adjustment for local markets."
         });
 
         return (min_price, optimal_price, max_price, confidence, factors);
@@ -802,9 +821,9 @@ fn generate_statistical_pricing(
     });
 
     // Set pricing bands around weighted average
-    let min_price = weighted_avg * Decimal::new(90, 2); // 90%
+    let min_price = weighted_avg * Decimal::new(90, 0) / Decimal::new(100, 0); // 90%
     let optimal_price = weighted_avg;
-    let max_price = weighted_avg * Decimal::new(110, 2); // 110%
+    let max_price = weighted_avg * Decimal::new(110, 0) / Decimal::new(100, 0); // 110%
 
     (min_price, optimal_price, max_price, confidence, factors)
 }
@@ -822,7 +841,7 @@ async fn get_recommendation(
     })?;
 
     match s.market_pricing_repo.get_recommendation(id, org_id).await {
-        Ok(Some(rec)) => Ok(Json(serde_json::to_value(rec).unwrap())),
+        Ok(Some(rec)) => Ok(Json(to_json_value(rec)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Recommendation not found")),
@@ -880,11 +899,12 @@ async fn get_recommendation_details(
             .await
         {
             // Get unit to determine property type
+            // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
             #[allow(deprecated)]
             if let Ok(Some(unit)) = s.unit_repo.find_by_id(rec.unit_id).await {
                 let size = unit.size_sqm.unwrap_or(Decimal::new(50, 0));
                 s.market_pricing_repo
-                    .get_market_comparables(stats.region_id, &unit.unit_type, size, 5)
+                    .get_market_comparables(stats.region_id, &unit.unit_type, size, 5, None)
                     .await
                     .unwrap_or_default()
             } else {
@@ -1075,7 +1095,7 @@ async fn accept_recommendation(
         .accept_recommendation(id, org_id, user_id, req.accepted_price)
         .await
     {
-        Ok(Some(rec)) => Ok(Json(serde_json::to_value(rec).unwrap())),
+        Ok(Some(rec)) => Ok(Json(to_json_value(rec)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Recommendation not found")),
@@ -1105,7 +1125,7 @@ async fn reject_recommendation(
         .reject_recommendation(id, org_id, &req.rejection_reason)
         .await
     {
-        Ok(Some(rec)) => Ok(Json(serde_json::to_value(rec).unwrap())),
+        Ok(Some(rec)) => Ok(Json(to_json_value(rec)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Recommendation not found")),
@@ -1162,6 +1182,8 @@ async fn record_price_change(
     let user_id = user.user_id;
 
     // Verify unit belongs to org via building
+    // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
     let unit = s.unit_repo.find_by_id(unit_id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1174,6 +1196,8 @@ async fn record_price_change(
             Json(ErrorResponse::not_found("Unit not found")),
         )
     })?;
+    // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
     let building = s
         .building_repo
         .find_by_id(unit.building_id)
@@ -1206,7 +1230,7 @@ async fn record_price_change(
         .record_price_change(req, user_id)
         .await
     {
-        Ok(history) => Ok(Json(serde_json::to_value(history).unwrap())),
+        Ok(history) => Ok(Json(to_json_value(history)?)),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request(&e.to_string())),
@@ -1228,6 +1252,8 @@ async fn get_current_rent(
     })?;
 
     // Verify unit belongs to org via building
+    // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
     let unit = s.unit_repo.find_by_id(unit_id).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1240,6 +1266,8 @@ async fn get_current_rent(
             Json(ErrorResponse::not_found("Unit not found")),
         )
     })?;
+    // TODO: Migrate to find_by_id_rls when RlsConnection is added to this handler
+    #[allow(deprecated)]
     let building = s
         .building_repo
         .find_by_id(unit.building_id)
@@ -1316,7 +1344,7 @@ async fn create_cma(
     let user_id = user.user_id;
 
     match s.market_pricing_repo.create_cma(org_id, user_id, req).await {
-        Ok(cma) => Ok(Json(serde_json::to_value(cma).unwrap())),
+        Ok(cma) => Ok(Json(to_json_value(cma)?)),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request(&e.to_string())),
@@ -1337,7 +1365,7 @@ async fn get_cma(
     })?;
 
     match s.market_pricing_repo.get_cma(id, org_id).await {
-        Ok(Some(cma)) => Ok(Json(serde_json::to_value(cma).unwrap())),
+        Ok(Some(cma)) => Ok(Json(to_json_value(cma)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("CMA not found")),
@@ -1363,7 +1391,7 @@ async fn update_cma(
     })?;
 
     match s.market_pricing_repo.update_cma(id, org_id, req).await {
-        Ok(Some(cma)) => Ok(Json(serde_json::to_value(cma).unwrap())),
+        Ok(Some(cma)) => Ok(Json(to_json_value(cma)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("CMA not found")),
@@ -1455,7 +1483,7 @@ async fn add_cma_property(
     }
 
     match s.market_pricing_repo.add_property_to_cma(id, req).await {
-        Ok(prop) => Ok(Json(serde_json::to_value(prop).unwrap())),
+        Ok(prop) => Ok(Json(to_json_value(prop)?)),
         Err(e) => Err((
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse::bad_request(&e.to_string())),
@@ -1484,7 +1512,7 @@ async fn get_cma_details(
     })?;
 
     match s.market_pricing_repo.get_cma_with_details(id, org_id).await {
-        Ok(Some(cma_details)) => Ok(Json(serde_json::to_value(cma_details).unwrap())),
+        Ok(Some(cma_details)) => Ok(Json(to_json_value(cma_details)?)),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("CMA not found")),
@@ -1583,6 +1611,8 @@ pub struct ComparablesParams {
     pub property_type: String,
     pub size_sqm: Decimal,
     pub limit: Option<i32>,
+    /// Maximum age of market data in days (default: 90). Slower markets may need higher values.
+    pub max_age_days: Option<i32>,
 }
 
 async fn get_comparables(
@@ -1621,6 +1651,7 @@ async fn get_comparables(
             &params.property_type,
             params.size_sqm,
             limit,
+            params.max_age_days,
         )
         .await
     {
@@ -1698,12 +1729,17 @@ async fn get_pricing_dashboard(
         vacancy_trends,
     };
 
-    Ok(Json(serde_json::to_value(dashboard).unwrap()))
+    Ok(Json(to_json_value(dashboard)?))
 }
 
-/// Export pricing data to CSV/XLSX.
+/// Export pricing data preview (data-only endpoint).
 ///
 /// Story 132.3: Export market data and recommendations for external analysis.
+///
+/// Note: This endpoint returns the data as JSON for preview purposes. The format
+/// parameter indicates the intended export format but actual file generation
+/// (CSV/XLSX download) is not yet implemented. Use the JSON response for
+/// integration with external tools or for preview before full export support.
 async fn export_pricing_data(
     State(s): State<AppState>,
     user: AuthUser,
@@ -1735,15 +1771,16 @@ async fn export_pricing_data(
         min_rent: None,
         max_rent: None,
         rooms: None,
+        // SAFETY: and_hms_opt always succeeds for valid time values (0:0:0 and 23:59:59)
         from_date: req.from_date.map(|d| {
             chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
-                d.and_hms_opt(0, 0, 0).unwrap(),
+                d.and_hms_opt(0, 0, 0).expect("00:00:00 is always valid"),
                 chrono::Utc,
             )
         }),
         to_date: req.to_date.map(|d| {
             chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
-                d.and_hms_opt(23, 59, 59).unwrap(),
+                d.and_hms_opt(23, 59, 59).expect("23:59:59 is always valid"),
                 chrono::Utc,
             )
         }),
@@ -1762,14 +1799,14 @@ async fn export_pricing_data(
             )
         })?;
 
-    // In a production system, this would generate an actual file and return a download URL
-    // For now, return the data as JSON with export metadata
+    // Return data as JSON for preview/integration (file generation not yet implemented)
     Ok(Json(json!({
         "export": {
             "format": req.format,
             "record_count": data_points.len(),
             "generated_at": chrono::Utc::now().to_rfc3339(),
-            "status": "data_ready"
+            "status": "preview",
+            "note": "File download not yet implemented. Use this JSON data for external processing."
         },
         "data": data_points
     })))
