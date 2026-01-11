@@ -233,12 +233,8 @@ impl LeaseAbstractionRepository {
             None
         };
 
-        // Determine review status
-        let review_status = if fields_flagged > 0 {
-            review_status::PENDING
-        } else {
-            review_status::PENDING // Still needs review even if high confidence
-        };
+        // Determine review status - all extractions need review regardless of confidence
+        let review_status = review_status::PENDING;
 
         // Get next version
         let version: i32 = sqlx::query_scalar::<_, Option<i32>>(
@@ -456,6 +452,7 @@ impl LeaseAbstractionRepository {
         Ok(import)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_import_status(
         &self,
         id: Uuid,
@@ -554,6 +551,7 @@ impl LeaseAbstractionRepository {
     }
 
     /// Get extraction with fields expanded for UI
+    #[allow(clippy::vec_init_then_push)]
     pub async fn get_extraction_with_fields(
         &self,
         id: Uuid,
