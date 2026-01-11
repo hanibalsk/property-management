@@ -361,6 +361,7 @@ impl MarketPricingRepository {
 
     // ======================== Pricing Recommendations (Story 132.2) ========================
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_recommendation(
         &self,
         unit_id: Uuid,
