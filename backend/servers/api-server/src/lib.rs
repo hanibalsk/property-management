@@ -217,6 +217,23 @@ pub fn create_router(state: AppState) -> Router {
         .nest("/api/v1/features", routes::features::router())
         // Outages routes (UC-12)
         .nest("/api/v1/outages", routes::outages::router())
+        // Market Pricing routes (Epic 132)
+        .nest("/api/v1/pricing", routes::market_pricing::router())
+        // Lease Abstraction routes (Epic 133)
+        .nest(
+            "/api/v1/lease-abstraction",
+            routes::lease_abstraction::router(),
+        )
+        // Predictive Maintenance routes (Epic 134)
+        .nest(
+            "/api/v1/predictive-maintenance",
+            routes::predictive_maintenance::router(),
+        )
+        // Portfolio Analytics routes (Epic 140)
+        .nest(
+            "/api/v1/portfolio-analytics",
+            routes::portfolio_analytics::router(),
+        )
         // Enhanced Tenant Screening routes (Epic 135)
         .nest(
             "/api/v1/tenant-screening",

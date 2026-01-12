@@ -86,7 +86,11 @@ async fn list_risk_models(State(s): State<AppState>, auth: AuthUser) -> impl Int
         Err(e) => return e.into_response(),
     };
 
-    match s.enhanced_screening_repo.list_risk_models(org_id).await {
+    match s
+        .enhanced_tenant_screening_repo
+        .list_risk_models(org_id)
+        .await
+    {
         Ok(models) => Json(models).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
@@ -104,7 +108,7 @@ async fn create_risk_model(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .create_risk_model(org_id, auth.user_id, req)
         .await
     {
@@ -124,7 +128,7 @@ async fn get_risk_model(
         Err(e) => return e.into_response(),
     };
 
-    match s.enhanced_screening_repo.get_risk_model(id).await {
+    match s.enhanced_tenant_screening_repo.get_risk_model(id).await {
         Ok(Some(model)) => Json(model).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "Risk model not found").into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
@@ -142,7 +146,7 @@ async fn delete_risk_model(
         Err(e) => return e.into_response(),
     };
 
-    match s.enhanced_screening_repo.delete_risk_model(id).await {
+    match s.enhanced_tenant_screening_repo.delete_risk_model(id).await {
         Ok(true) => StatusCode::NO_CONTENT.into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, "Risk model not found").into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
@@ -161,7 +165,7 @@ async fn activate_risk_model(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .activate_risk_model(org_id, id)
         .await
     {
@@ -182,7 +186,7 @@ async fn list_provider_configs(State(s): State<AppState>, auth: AuthUser) -> imp
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .list_provider_configs(org_id)
         .await
     {
@@ -203,7 +207,7 @@ async fn create_provider_config(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .create_provider_config(org_id, req)
         .await
     {
@@ -223,7 +227,11 @@ async fn get_provider_config(
         Err(e) => return e.into_response(),
     };
 
-    match s.enhanced_screening_repo.get_provider_config(id).await {
+    match s
+        .enhanced_tenant_screening_repo
+        .get_provider_config(id)
+        .await
+    {
         Ok(Some(config)) => Json(config).into_response(),
         Ok(None) => (StatusCode::NOT_FOUND, "Provider config not found").into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
@@ -241,7 +249,11 @@ async fn delete_provider_config(
         Err(e) => return e.into_response(),
     };
 
-    match s.enhanced_screening_repo.delete_provider_config(id).await {
+    match s
+        .enhanced_tenant_screening_repo
+        .delete_provider_config(id)
+        .await
+    {
         Ok(true) => StatusCode::NO_CONTENT.into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, "Provider config not found").into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
@@ -267,7 +279,7 @@ async fn update_provider_status(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .update_provider_status(id, req.status, req.error_message.as_deref())
         .await
     {
@@ -298,7 +310,7 @@ async fn list_ai_results(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .list_ai_results(org_id, q.limit.unwrap_or(50), q.offset.unwrap_or(0))
         .await
     {
@@ -319,7 +331,7 @@ async fn get_ai_result(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_ai_result_by_screening(screening_id)
         .await
     {
@@ -342,13 +354,13 @@ async fn get_risk_factors(
 
     // First get the AI result to get its ID
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_ai_result_by_screening(screening_id)
         .await
     {
         Ok(Some(ai_result)) => {
             match s
-                .enhanced_screening_repo
+                .enhanced_tenant_screening_repo
                 .get_risk_factors(ai_result.id)
                 .await
             {
@@ -373,7 +385,7 @@ async fn get_complete_screening_data(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_complete_screening_data(screening_id)
         .await
     {
@@ -395,7 +407,11 @@ async fn run_ai_scoring(
 
     // Get the active model or specified model
     let model = if let Some(model_id) = req.model_id {
-        match s.enhanced_screening_repo.get_risk_model(model_id).await {
+        match s
+            .enhanced_tenant_screening_repo
+            .get_risk_model(model_id)
+            .await
+        {
             Ok(Some(m)) => m,
             Ok(None) => {
                 return (StatusCode::NOT_FOUND, "Specified model not found").into_response()
@@ -404,7 +420,7 @@ async fn run_ai_scoring(
         }
     } else {
         match s
-            .enhanced_screening_repo
+            .enhanced_tenant_screening_repo
             .get_active_risk_model(org_id)
             .await
         {
@@ -422,19 +438,19 @@ async fn run_ai_scoring(
 
     // Get credit, background, and eviction results to compute component scores
     let credit = s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_credit_result_by_screening(req.screening_id)
         .await
         .ok()
         .flatten();
     let background = s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_background_result_by_screening(req.screening_id)
         .await
         .ok()
         .flatten();
     let eviction = s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_eviction_result_by_screening(req.screening_id)
         .await
         .ok()
@@ -477,7 +493,7 @@ async fn run_ai_scoring(
 
     // Create AI result
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .create_ai_result(org_id, req.screening_id, &model, component_scores)
         .await
     {
@@ -502,7 +518,7 @@ async fn get_credit_result(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_credit_result_by_screening(screening_id)
         .await
     {
@@ -524,7 +540,7 @@ async fn create_credit_result(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .create_credit_result(org_id, req)
         .await
     {
@@ -549,7 +565,7 @@ async fn get_background_result(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_background_result_by_screening(screening_id)
         .await
     {
@@ -571,7 +587,7 @@ async fn create_background_result(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .create_background_result(org_id, req)
         .await
     {
@@ -596,7 +612,7 @@ async fn get_eviction_result(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_eviction_result_by_screening(screening_id)
         .await
     {
@@ -618,7 +634,7 @@ async fn create_eviction_result(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .create_eviction_result(org_id, req)
         .await
     {
@@ -638,7 +654,11 @@ async fn get_pending_queue(State(s): State<AppState>, auth: AuthUser) -> impl In
         Err(e) => return e.into_response(),
     };
 
-    match s.enhanced_screening_repo.get_pending_queue_items(50).await {
+    match s
+        .enhanced_tenant_screening_repo
+        .get_pending_queue_items(50)
+        .await
+    {
         Ok(items) => Json(items).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
@@ -656,7 +676,7 @@ async fn create_queue_item(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .create_queue_item(org_id, req)
         .await
     {
@@ -684,7 +704,7 @@ async fn update_queue_status(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .update_queue_item_status(id, &req.status, req.error.as_deref())
         .await
     {
@@ -709,7 +729,7 @@ async fn get_reports(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_reports_by_screening(screening_id)
         .await
     {
@@ -730,7 +750,7 @@ async fn create_report(
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .create_report(org_id, auth.user_id, req)
         .await
     {
@@ -750,7 +770,11 @@ async fn get_statistics(State(s): State<AppState>, auth: AuthUser) -> impl IntoR
         Err(e) => return e.into_response(),
     };
 
-    match s.enhanced_screening_repo.get_statistics(org_id).await {
+    match s
+        .enhanced_tenant_screening_repo
+        .get_statistics(org_id)
+        .await
+    {
         Ok(stats) => Json(stats).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
@@ -764,7 +788,7 @@ async fn get_risk_distribution(State(s): State<AppState>, auth: AuthUser) -> imp
     };
 
     match s
-        .enhanced_screening_repo
+        .enhanced_tenant_screening_repo
         .get_risk_distribution(org_id)
         .await
     {
