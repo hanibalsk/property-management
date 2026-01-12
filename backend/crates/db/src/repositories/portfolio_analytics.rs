@@ -1,17 +1,13 @@
-//! Portfolio Analytics repository for Epic 140: Multi-Property Portfolio Analytics.
-//!
-//! Provides database operations for portfolio benchmarks, performance metrics,
-//! comparisons, trends, and alerts.
-
-use chrono::NaiveDate;
-use rust_decimal::Decimal;
-use sqlx::{Error as SqlxError, Row};
-use uuid::Uuid;
+//! Epic 140: Multi-Property Portfolio Analytics repository.
+//! Provides database operations for portfolio benchmarks, metrics, trends, and alerts.
 
 use crate::models::portfolio_analytics::*;
 use crate::DbPool;
+use chrono::NaiveDate;
+use common::errors::AppError;
+use rust_decimal::Decimal;
+use uuid::Uuid;
 
-/// Repository for portfolio analytics operations.
 #[derive(Clone)]
 pub struct PortfolioAnalyticsRepository {
     pool: DbPool,
@@ -22,748 +18,899 @@ impl PortfolioAnalyticsRepository {
         Self { pool }
     }
 
-    // =========================================================================
-    // PORTFOLIO BENCHMARKS
-    // =========================================================================
+    // ======================== Benchmarks (Story 140.1) ========================
 
-    /// Create a new benchmark.
     pub async fn create_benchmark(
         &self,
         org_id: Uuid,
-        data: &CreatePortfolioBenchmark,
-        created_by: Uuid,
-    ) -> Result<PortfolioBenchmark, SqlxError> {
-        sqlx::query_as::<_, PortfolioBenchmark>(
+        req: CreatePortfolioBenchmark,
+    ) -> Result<PortfolioBenchmark, AppError> {
+        let benchmark = sqlx::query_as::<_, PortfolioBenchmark>(
             r#"
             INSERT INTO portfolio_benchmarks (
-                organization_id, name, description, category, comparison_scope,
-                target_value, warning_threshold, critical_threshold,
-                is_higher_better, created_by
+                organization_id, name, description, category, target_value,
+                min_acceptable, max_acceptable, scope, property_type, region,
+                is_industry_standard, source_name, source_year
             )
-            VALUES ($1, $2, $3, $4::benchmark_category, $5::comparison_scope, $6, $7, $8, $9, $10)
-            RETURNING *
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            RETURNING id, organization_id, name, description, category,
+                      target_value, min_acceptable, max_acceptable, scope,
+                      property_type, region, is_industry_standard, source_name,
+                      source_year, is_active, created_at, updated_at
             "#,
         )
         .bind(org_id)
-        .bind(&data.name)
-        .bind(&data.description)
-        .bind(&data.category)
-        .bind(
-            data.comparison_scope
-                .as_ref()
-                .unwrap_or(&ComparisonScope::Portfolio),
-        )
-        .bind(data.target_value)
-        .bind(data.warning_threshold)
-        .bind(data.critical_threshold)
-        .bind(data.is_higher_better.unwrap_or(true))
-        .bind(created_by)
+        .bind(&req.name)
+        .bind(&req.description)
+        .bind(&req.category)
+        .bind(req.target_value)
+        .bind(req.min_acceptable)
+        .bind(req.max_acceptable)
+        .bind(&req.scope)
+        .bind(&req.property_type)
+        .bind(&req.region)
+        .bind(req.is_industry_standard)
+        .bind(&req.source_name)
+        .bind(req.source_year)
         .fetch_one(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(benchmark)
     }
 
-    /// Get a benchmark by ID.
     pub async fn get_benchmark(
         &self,
         id: Uuid,
         org_id: Uuid,
-    ) -> Result<Option<PortfolioBenchmark>, SqlxError> {
-        sqlx::query_as::<_, PortfolioBenchmark>(
-            "SELECT * FROM portfolio_benchmarks WHERE id = $1 AND organization_id = $2",
-        )
-        .bind(id)
-        .bind(org_id)
-        .fetch_optional(&self.pool)
-        .await
-    }
-
-    /// List all benchmarks for an organization.
-    pub async fn list_benchmarks(
-        &self,
-        org_id: Uuid,
-        category: Option<BenchmarkCategory>,
-    ) -> Result<Vec<PortfolioBenchmark>, SqlxError> {
-        if let Some(cat) = category {
-            sqlx::query_as::<_, PortfolioBenchmark>(
-                r#"
-                SELECT * FROM portfolio_benchmarks
-                WHERE organization_id = $1 AND category = $2::benchmark_category AND is_active = true
-                ORDER BY name
-                "#,
-            )
-            .bind(org_id)
-            .bind(cat)
-            .fetch_all(&self.pool)
-            .await
-        } else {
-            sqlx::query_as::<_, PortfolioBenchmark>(
-                r#"
-                SELECT * FROM portfolio_benchmarks
-                WHERE organization_id = $1 AND is_active = true
-                ORDER BY category, name
-                "#,
-            )
-            .bind(org_id)
-            .fetch_all(&self.pool)
-            .await
-        }
-    }
-
-    /// Update a benchmark.
-    pub async fn update_benchmark(
-        &self,
-        id: Uuid,
-        org_id: Uuid,
-        data: &UpdatePortfolioBenchmark,
-    ) -> Result<Option<PortfolioBenchmark>, SqlxError> {
-        sqlx::query_as::<_, PortfolioBenchmark>(
+    ) -> Result<Option<PortfolioBenchmark>, AppError> {
+        let benchmark = sqlx::query_as::<_, PortfolioBenchmark>(
             r#"
-            UPDATE portfolio_benchmarks SET
-                name = COALESCE($3, name),
-                description = COALESCE($4, description),
-                target_value = COALESCE($5, target_value),
-                warning_threshold = COALESCE($6, warning_threshold),
-                critical_threshold = COALESCE($7, critical_threshold),
-                is_higher_better = COALESCE($8, is_higher_better),
-                is_active = COALESCE($9, is_active),
-                updated_at = NOW()
+            SELECT id, organization_id, name, description, category,
+                   target_value, min_acceptable, max_acceptable, scope,
+                   property_type, region, is_industry_standard, source_name,
+                   source_year, is_active, created_at, updated_at
+            FROM portfolio_benchmarks
             WHERE id = $1 AND organization_id = $2
-            RETURNING *
             "#,
         )
         .bind(id)
         .bind(org_id)
-        .bind(&data.name)
-        .bind(&data.description)
-        .bind(data.target_value)
-        .bind(data.warning_threshold)
-        .bind(data.critical_threshold)
-        .bind(data.is_higher_better)
-        .bind(data.is_active)
         .fetch_optional(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(benchmark)
     }
 
-    /// Delete a benchmark.
-    pub async fn delete_benchmark(&self, id: Uuid, org_id: Uuid) -> Result<bool, SqlxError> {
+    pub async fn list_benchmarks(&self, org_id: Uuid) -> Result<Vec<PortfolioBenchmark>, AppError> {
+        let benchmarks = sqlx::query_as::<_, PortfolioBenchmark>(
+            r#"
+            SELECT id, organization_id, name, description, category,
+                   target_value, min_acceptable, max_acceptable, scope,
+                   property_type, region, is_industry_standard, source_name,
+                   source_year, is_active, created_at, updated_at
+            FROM portfolio_benchmarks
+            WHERE organization_id = $1
+            ORDER BY category, name
+            "#,
+        )
+        .bind(org_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(benchmarks)
+    }
+
+    pub async fn update_benchmark(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+        req: UpdatePortfolioBenchmark,
+    ) -> Result<Option<PortfolioBenchmark>, AppError> {
+        let benchmark = sqlx::query_as::<_, PortfolioBenchmark>(
+            r#"
+            UPDATE portfolio_benchmarks
+            SET name = COALESCE($3, name),
+                description = COALESCE($4, description),
+                target_value = COALESCE($5, target_value),
+                min_acceptable = COALESCE($6, min_acceptable),
+                max_acceptable = COALESCE($7, max_acceptable),
+                is_active = COALESCE($8, is_active),
+                updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2
+            RETURNING id, organization_id, name, description, category,
+                      target_value, min_acceptable, max_acceptable, scope,
+                      property_type, region, is_industry_standard, source_name,
+                      source_year, is_active, created_at, updated_at
+            "#,
+        )
+        .bind(id)
+        .bind(org_id)
+        .bind(&req.name)
+        .bind(&req.description)
+        .bind(req.target_value)
+        .bind(req.min_acceptable)
+        .bind(req.max_acceptable)
+        .bind(req.is_active)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(benchmark)
+    }
+
+    pub async fn delete_benchmark(&self, id: Uuid, org_id: Uuid) -> Result<bool, AppError> {
         let result =
             sqlx::query("DELETE FROM portfolio_benchmarks WHERE id = $1 AND organization_id = $2")
                 .bind(id)
                 .bind(org_id)
                 .execute(&self.pool)
-                .await?;
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(result.rows_affected() > 0)
     }
 
-    // =========================================================================
-    // PROPERTY PERFORMANCE METRICS
-    // =========================================================================
+    // ======================== Property Metrics (Story 140.2) ========================
 
-    /// Create or update property performance metrics.
     pub async fn upsert_property_metrics(
         &self,
-        org_id: Uuid,
-        data: &CreatePropertyMetrics,
-    ) -> Result<PropertyPerformanceMetrics, SqlxError> {
-        // Calculate derived fields
-        let vacant_units = data
-            .total_units
-            .map(|t| t - data.occupied_units.unwrap_or(0));
-        let rent_collection_rate = match (data.collected_rent, data.gross_potential_rent) {
-            (Some(c), Some(g)) if g > Decimal::ZERO => Some(c / g * Decimal::from(100)),
-            _ => None,
-        };
-        let noi = match (data.gross_revenue, data.operating_expenses) {
-            (Some(r), Some(e)) => Some(r - e),
-            _ => None,
-        };
-        let noi_margin = match (noi, data.gross_revenue) {
-            (Some(n), Some(r)) if r > Decimal::ZERO => Some(n / r * Decimal::from(100)),
-            _ => None,
-        };
-        let turnover_rate = match (data.move_outs, data.total_units) {
-            (Some(m), Some(t)) if t > 0 => {
-                Some(Decimal::from(m) / Decimal::from(t) * Decimal::from(100))
-            }
-            _ => None,
-        };
-
-        sqlx::query_as::<_, PropertyPerformanceMetrics>(
+        req: CreatePropertyMetrics,
+    ) -> Result<PropertyPerformanceMetrics, AppError> {
+        let metrics = sqlx::query_as::<_, PropertyPerformanceMetrics>(
             r#"
             INSERT INTO property_performance_metrics (
-                organization_id, building_id, period_type, period_start, period_end,
-                occupancy_rate, total_units, occupied_units, vacant_units,
-                gross_potential_rent, collected_rent, rent_collection_rate,
-                gross_revenue, operating_expenses, net_operating_income, noi_margin,
-                maintenance_requests, completed_requests, avg_resolution_time_hours, maintenance_cost,
-                new_leases, renewals, move_outs, tenant_turnover_rate,
-                energy_consumption_kwh, water_consumption_liters, energy_cost,
-                property_value
+                building_id, period_start, period_end, period_type,
+                total_units, occupied_units, average_lease_term_months, tenant_turnover_rate,
+                gross_rental_income, other_income, operating_expenses, currency,
+                revenue_per_unit, expense_per_unit, expense_ratio, collection_rate,
+                maintenance_requests, avg_resolution_time_hours, maintenance_cost,
+                tenant_satisfaction_score, complaints_count, estimated_value, cap_rate
             )
-            VALUES ($1, $2, $3::aggregation_period, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
-            ON CONFLICT (building_id, period_type, period_start)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+            ON CONFLICT (building_id, period_start, period_end, period_type)
             DO UPDATE SET
-                occupancy_rate = EXCLUDED.occupancy_rate,
                 total_units = EXCLUDED.total_units,
                 occupied_units = EXCLUDED.occupied_units,
-                vacant_units = EXCLUDED.vacant_units,
-                gross_potential_rent = EXCLUDED.gross_potential_rent,
-                collected_rent = EXCLUDED.collected_rent,
-                rent_collection_rate = EXCLUDED.rent_collection_rate,
-                gross_revenue = EXCLUDED.gross_revenue,
+                average_lease_term_months = EXCLUDED.average_lease_term_months,
+                tenant_turnover_rate = EXCLUDED.tenant_turnover_rate,
+                gross_rental_income = EXCLUDED.gross_rental_income,
+                other_income = EXCLUDED.other_income,
                 operating_expenses = EXCLUDED.operating_expenses,
-                net_operating_income = EXCLUDED.net_operating_income,
-                noi_margin = EXCLUDED.noi_margin,
+                revenue_per_unit = EXCLUDED.revenue_per_unit,
+                expense_per_unit = EXCLUDED.expense_per_unit,
+                expense_ratio = EXCLUDED.expense_ratio,
+                collection_rate = EXCLUDED.collection_rate,
                 maintenance_requests = EXCLUDED.maintenance_requests,
-                completed_requests = EXCLUDED.completed_requests,
                 avg_resolution_time_hours = EXCLUDED.avg_resolution_time_hours,
                 maintenance_cost = EXCLUDED.maintenance_cost,
-                new_leases = EXCLUDED.new_leases,
-                renewals = EXCLUDED.renewals,
-                move_outs = EXCLUDED.move_outs,
-                tenant_turnover_rate = EXCLUDED.tenant_turnover_rate,
-                energy_consumption_kwh = EXCLUDED.energy_consumption_kwh,
-                water_consumption_liters = EXCLUDED.water_consumption_liters,
-                energy_cost = EXCLUDED.energy_cost,
-                property_value = EXCLUDED.property_value,
-                calculated_at = NOW(),
-                updated_at = NOW()
-            RETURNING *
+                tenant_satisfaction_score = EXCLUDED.tenant_satisfaction_score,
+                complaints_count = EXCLUDED.complaints_count,
+                estimated_value = EXCLUDED.estimated_value,
+                cap_rate = EXCLUDED.cap_rate
+            RETURNING id, building_id, period_start, period_end, period_type,
+                      total_units, occupied_units, occupancy_rate, average_lease_term_months,
+                      tenant_turnover_rate, gross_rental_income, other_income, total_revenue,
+                      operating_expenses, net_operating_income, currency, revenue_per_unit,
+                      expense_per_unit, expense_ratio, collection_rate, maintenance_requests,
+                      avg_resolution_time_hours, maintenance_cost, tenant_satisfaction_score,
+                      complaints_count, estimated_value, cap_rate, created_at
             "#,
         )
-        .bind(org_id)
-        .bind(data.building_id)
-        .bind(&data.period_type)
-        .bind(data.period_start)
-        .bind(data.period_end)
-        .bind(data.occupancy_rate)
-        .bind(data.total_units)
-        .bind(data.occupied_units)
-        .bind(vacant_units)
-        .bind(data.gross_potential_rent)
-        .bind(data.collected_rent)
-        .bind(rent_collection_rate)
-        .bind(data.gross_revenue)
-        .bind(data.operating_expenses)
-        .bind(noi)
-        .bind(noi_margin)
-        .bind(data.maintenance_requests)
-        .bind(data.completed_requests)
-        .bind(data.avg_resolution_time_hours)
-        .bind(data.maintenance_cost)
-        .bind(data.new_leases)
-        .bind(data.renewals)
-        .bind(data.move_outs)
-        .bind(turnover_rate)
-        .bind(data.energy_consumption_kwh)
-        .bind(data.water_consumption_liters)
-        .bind(data.energy_cost)
-        .bind(data.property_value)
+        .bind(req.building_id)
+        .bind(req.period_start)
+        .bind(req.period_end)
+        .bind(&req.period_type)
+        .bind(req.total_units)
+        .bind(req.occupied_units)
+        .bind(req.average_lease_term_months)
+        .bind(req.tenant_turnover_rate)
+        .bind(req.gross_rental_income)
+        .bind(req.other_income)
+        .bind(req.operating_expenses)
+        .bind(&req.currency)
+        .bind(req.revenue_per_unit)
+        .bind(req.expense_per_unit)
+        .bind(req.expense_ratio)
+        .bind(req.collection_rate)
+        .bind(req.maintenance_requests)
+        .bind(req.avg_resolution_time_hours)
+        .bind(req.maintenance_cost)
+        .bind(req.tenant_satisfaction_score)
+        .bind(req.complaints_count)
+        .bind(req.estimated_value)
+        .bind(req.cap_rate)
         .fetch_one(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(metrics)
     }
 
-    /// Get property metrics for a building.
     pub async fn get_property_metrics(
         &self,
-        org_id: Uuid,
         building_id: Uuid,
-        period_type: &AggregationPeriod,
-        period_start: NaiveDate,
-    ) -> Result<Option<PropertyPerformanceMetrics>, SqlxError> {
-        sqlx::query_as::<_, PropertyPerformanceMetrics>(
-            r#"
-            SELECT * FROM property_performance_metrics
-            WHERE organization_id = $1 AND building_id = $2
-              AND period_type = $3::aggregation_period AND period_start = $4
-            "#,
-        )
-        .bind(org_id)
-        .bind(building_id)
-        .bind(period_type)
-        .bind(period_start)
-        .fetch_optional(&self.pool)
-        .await
-    }
-
-    /// List property metrics history.
-    pub async fn list_property_metrics_history(
-        &self,
-        org_id: Uuid,
-        building_id: Uuid,
-        period_type: &AggregationPeriod,
-        limit: i64,
-    ) -> Result<Vec<PropertyPerformanceMetrics>, SqlxError> {
-        sqlx::query_as::<_, PropertyPerformanceMetrics>(
-            r#"
-            SELECT * FROM property_performance_metrics
-            WHERE organization_id = $1 AND building_id = $2 AND period_type = $3::aggregation_period
-            ORDER BY period_start DESC
-            LIMIT $4
-            "#,
-        )
-        .bind(org_id)
-        .bind(building_id)
-        .bind(period_type)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-    }
-
-    /// List all property metrics for a period.
-    pub async fn list_all_property_metrics(
-        &self,
-        org_id: Uuid,
-        period_type: &AggregationPeriod,
-        period_start: NaiveDate,
-    ) -> Result<Vec<PropertyPerformanceMetrics>, SqlxError> {
-        sqlx::query_as::<_, PropertyPerformanceMetrics>(
-            r#"
-            SELECT * FROM property_performance_metrics
-            WHERE organization_id = $1 AND period_type = $2::aggregation_period AND period_start = $3
-            ORDER BY building_id
-            "#,
-        )
-        .bind(org_id)
-        .bind(period_type)
-        .bind(period_start)
-        .fetch_all(&self.pool)
-        .await
-    }
-
-    // =========================================================================
-    // PORTFOLIO AGGREGATED METRICS
-    // =========================================================================
-
-    /// Calculate and store portfolio aggregated metrics.
-    pub async fn calculate_portfolio_metrics(
-        &self,
-        org_id: Uuid,
-        period_type: &AggregationPeriod,
         period_start: NaiveDate,
         period_end: NaiveDate,
-    ) -> Result<PortfolioAggregatedMetrics, SqlxError> {
-        // Aggregate from property metrics
-        let row = sqlx::query(
+    ) -> Result<Option<PropertyPerformanceMetrics>, AppError> {
+        let metrics = sqlx::query_as::<_, PropertyPerformanceMetrics>(
             r#"
-            SELECT
-                COUNT(DISTINCT building_id) as total_properties,
-                SUM(total_units) as total_units,
-                AVG(occupancy_rate) as avg_occupancy_rate,
-                AVG(rent_collection_rate) as avg_rent_collection_rate,
-                AVG(noi_margin) as avg_noi_margin,
-                AVG(cap_rate) as avg_cap_rate,
-                AVG(tenant_turnover_rate) as avg_tenant_turnover_rate,
-                SUM(gross_revenue) as total_gross_revenue,
-                SUM(operating_expenses) as total_operating_expenses,
-                SUM(net_operating_income) as total_noi,
-                SUM(property_value) as total_property_value
+            SELECT id, building_id, period_start, period_end, period_type,
+                   total_units, occupied_units, occupancy_rate, average_lease_term_months,
+                   tenant_turnover_rate, gross_rental_income, other_income, total_revenue,
+                   operating_expenses, net_operating_income, currency, revenue_per_unit,
+                   expense_per_unit, expense_ratio, collection_rate, maintenance_requests,
+                   avg_resolution_time_hours, maintenance_cost, tenant_satisfaction_score,
+                   complaints_count, estimated_value, cap_rate, created_at
             FROM property_performance_metrics
-            WHERE organization_id = $1 AND period_type = $2::aggregation_period AND period_start = $3
+            WHERE building_id = $1 AND period_start = $2 AND period_end = $3
             "#,
         )
-        .bind(org_id)
-        .bind(period_type)
-        .bind(period_start)
-        .fetch_one(&self.pool)
-        .await?;
-
-        let total_properties: Option<i64> = row.get("total_properties");
-        let total_units: Option<i64> = row.get("total_units");
-
-        // Calculate per-unit metrics
-        let total_revenue: Option<Decimal> = row.get("total_gross_revenue");
-        let total_expenses: Option<Decimal> = row.get("total_operating_expenses");
-        let total_noi: Option<Decimal> = row.get("total_noi");
-
-        let revenue_per_unit = match (total_revenue, total_units) {
-            (Some(r), Some(u)) if u > 0 => Some(r / Decimal::from(u)),
-            _ => None,
-        };
-        let expense_per_unit = match (total_expenses, total_units) {
-            (Some(e), Some(u)) if u > 0 => Some(e / Decimal::from(u)),
-            _ => None,
-        };
-        let noi_per_unit = match (total_noi, total_units) {
-            (Some(n), Some(u)) if u > 0 => Some(n / Decimal::from(u)),
-            _ => None,
-        };
-
-        sqlx::query_as::<_, PortfolioAggregatedMetrics>(
-            r#"
-            INSERT INTO portfolio_aggregated_metrics (
-                organization_id, period_type, period_start, period_end,
-                total_properties, total_units,
-                avg_occupancy_rate, avg_rent_collection_rate, avg_noi_margin,
-                avg_cap_rate, avg_tenant_turnover_rate,
-                total_gross_revenue, total_operating_expenses, total_noi, total_property_value,
-                portfolio_revenue_per_unit, portfolio_expense_per_unit, portfolio_noi_per_unit
-            )
-            VALUES ($1, $2::aggregation_period, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-            ON CONFLICT (organization_id, period_type, period_start)
-            DO UPDATE SET
-                total_properties = EXCLUDED.total_properties,
-                total_units = EXCLUDED.total_units,
-                avg_occupancy_rate = EXCLUDED.avg_occupancy_rate,
-                avg_rent_collection_rate = EXCLUDED.avg_rent_collection_rate,
-                avg_noi_margin = EXCLUDED.avg_noi_margin,
-                avg_cap_rate = EXCLUDED.avg_cap_rate,
-                avg_tenant_turnover_rate = EXCLUDED.avg_tenant_turnover_rate,
-                total_gross_revenue = EXCLUDED.total_gross_revenue,
-                total_operating_expenses = EXCLUDED.total_operating_expenses,
-                total_noi = EXCLUDED.total_noi,
-                total_property_value = EXCLUDED.total_property_value,
-                portfolio_revenue_per_unit = EXCLUDED.portfolio_revenue_per_unit,
-                portfolio_expense_per_unit = EXCLUDED.portfolio_expense_per_unit,
-                portfolio_noi_per_unit = EXCLUDED.portfolio_noi_per_unit,
-                calculated_at = NOW(),
-                updated_at = NOW()
-            RETURNING *
-            "#,
-        )
-        .bind(org_id)
-        .bind(period_type)
+        .bind(building_id)
         .bind(period_start)
         .bind(period_end)
-        .bind(total_properties.map(|v| v as i32))
-        .bind(total_units.map(|v| v as i32))
-        .bind(row.get::<Option<Decimal>, _>("avg_occupancy_rate"))
-        .bind(row.get::<Option<Decimal>, _>("avg_rent_collection_rate"))
-        .bind(row.get::<Option<Decimal>, _>("avg_noi_margin"))
-        .bind(row.get::<Option<Decimal>, _>("avg_cap_rate"))
-        .bind(row.get::<Option<Decimal>, _>("avg_tenant_turnover_rate"))
-        .bind(total_revenue)
-        .bind(total_expenses)
-        .bind(total_noi)
-        .bind(row.get::<Option<Decimal>, _>("total_property_value"))
-        .bind(revenue_per_unit)
-        .bind(expense_per_unit)
-        .bind(noi_per_unit)
-        .fetch_one(&self.pool)
+        .fetch_optional(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(metrics)
     }
 
-    /// Get portfolio aggregated metrics.
+    pub async fn list_property_metrics(
+        &self,
+        org_id: Uuid,
+        building_id: Option<Uuid>,
+        period_type: Option<AggregationPeriod>,
+    ) -> Result<Vec<PropertyPerformanceMetrics>, AppError> {
+        let metrics = sqlx::query_as::<_, PropertyPerformanceMetrics>(
+            r#"
+            SELECT ppm.id, ppm.building_id, ppm.period_start, ppm.period_end, ppm.period_type,
+                   ppm.total_units, ppm.occupied_units, ppm.occupancy_rate, ppm.average_lease_term_months,
+                   ppm.tenant_turnover_rate, ppm.gross_rental_income, ppm.other_income, ppm.total_revenue,
+                   ppm.operating_expenses, ppm.net_operating_income, ppm.currency, ppm.revenue_per_unit,
+                   ppm.expense_per_unit, ppm.expense_ratio, ppm.collection_rate, ppm.maintenance_requests,
+                   ppm.avg_resolution_time_hours, ppm.maintenance_cost, ppm.tenant_satisfaction_score,
+                   ppm.complaints_count, ppm.estimated_value, ppm.cap_rate, ppm.created_at
+            FROM property_performance_metrics ppm
+            JOIN buildings b ON b.id = ppm.building_id
+            WHERE b.organization_id = $1
+              AND ($2::UUID IS NULL OR ppm.building_id = $2)
+              AND ($3::aggregation_period IS NULL OR ppm.period_type = $3)
+            ORDER BY ppm.period_start DESC
+            LIMIT 100
+            "#,
+        )
+        .bind(org_id)
+        .bind(building_id)
+        .bind(period_type)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(metrics)
+    }
+
+    // ======================== Portfolio Metrics (Story 140.3) ========================
+
     pub async fn get_portfolio_metrics(
         &self,
         org_id: Uuid,
-        period_type: &AggregationPeriod,
         period_start: NaiveDate,
-    ) -> Result<Option<PortfolioAggregatedMetrics>, SqlxError> {
-        sqlx::query_as::<_, PortfolioAggregatedMetrics>(
+        period_end: NaiveDate,
+    ) -> Result<Option<PortfolioAggregatedMetrics>, AppError> {
+        let metrics = sqlx::query_as::<_, PortfolioAggregatedMetrics>(
             r#"
-            SELECT * FROM portfolio_aggregated_metrics
-            WHERE organization_id = $1 AND period_type = $2::aggregation_period AND period_start = $3
+            SELECT id, organization_id, period_start, period_end, period_type,
+                   total_buildings, total_units, total_sqm, occupied_units,
+                   portfolio_occupancy_rate, total_revenue, total_expenses, total_noi,
+                   currency, avg_rent_per_unit, avg_rent_per_sqm, avg_expense_per_unit,
+                   avg_cap_rate, revenue_growth_pct, expense_growth_pct, noi_growth_pct,
+                   estimated_portfolio_value, buildings_by_type, revenue_by_region, created_at
+            FROM portfolio_aggregated_metrics
+            WHERE organization_id = $1 AND period_start = $2 AND period_end = $3
             "#,
         )
         .bind(org_id)
-        .bind(period_type)
         .bind(period_start)
+        .bind(period_end)
         .fetch_optional(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(metrics)
     }
 
-    /// List portfolio metrics history.
-    pub async fn list_portfolio_metrics_history(
+    pub async fn calculate_portfolio_metrics(
         &self,
         org_id: Uuid,
-        period_type: &AggregationPeriod,
-        limit: i64,
-    ) -> Result<Vec<PortfolioAggregatedMetrics>, SqlxError> {
-        sqlx::query_as::<_, PortfolioAggregatedMetrics>(
+        period_start: NaiveDate,
+        period_end: NaiveDate,
+        period_type: AggregationPeriod,
+    ) -> Result<PortfolioAggregatedMetrics, AppError> {
+        // Aggregate from property metrics
+        let metrics = sqlx::query_as::<_, PortfolioAggregatedMetrics>(
             r#"
-            SELECT * FROM portfolio_aggregated_metrics
-            WHERE organization_id = $1 AND period_type = $2::aggregation_period
-            ORDER BY period_start DESC
-            LIMIT $3
-            "#,
-        )
-        .bind(org_id)
-        .bind(period_type)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-    }
-
-    // =========================================================================
-    // ALERT RULES
-    // =========================================================================
-
-    /// Create an alert rule.
-    pub async fn create_alert_rule(
-        &self,
-        org_id: Uuid,
-        data: &CreateAlertRule,
-        created_by: Uuid,
-    ) -> Result<PortfolioAlertRule, SqlxError> {
-        sqlx::query_as::<_, PortfolioAlertRule>(
-            r#"
-            INSERT INTO portfolio_alert_rules (
-                organization_id, benchmark_id, name, description, metric_name,
-                condition_type, threshold_value, threshold_operator,
-                severity, notification_channels, recipients, created_by
+            INSERT INTO portfolio_aggregated_metrics (
+                organization_id, period_start, period_end, period_type,
+                total_buildings, total_units, occupied_units,
+                portfolio_occupancy_rate, total_revenue, total_expenses, total_noi,
+                currency, avg_rent_per_unit, avg_cap_rate
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-            RETURNING *
+            SELECT
+                $1 as organization_id,
+                $2 as period_start,
+                $3 as period_end,
+                $4 as period_type,
+                COUNT(DISTINCT ppm.building_id)::INTEGER as total_buildings,
+                COALESCE(SUM(ppm.total_units), 0)::INTEGER as total_units,
+                COALESCE(SUM(ppm.occupied_units), 0)::INTEGER as occupied_units,
+                CASE WHEN SUM(ppm.total_units) > 0
+                     THEN (SUM(ppm.occupied_units)::DECIMAL / SUM(ppm.total_units)) * 100
+                     ELSE 0 END as portfolio_occupancy_rate,
+                COALESCE(SUM(ppm.total_revenue), 0) as total_revenue,
+                COALESCE(SUM(ppm.operating_expenses), 0) as total_expenses,
+                COALESCE(SUM(ppm.net_operating_income), 0) as total_noi,
+                'EUR' as currency,
+                CASE WHEN SUM(ppm.total_units) > 0
+                     THEN SUM(ppm.total_revenue) / SUM(ppm.total_units)
+                     ELSE 0 END as avg_rent_per_unit,
+                AVG(ppm.cap_rate) as avg_cap_rate
+            FROM property_performance_metrics ppm
+            JOIN buildings b ON b.id = ppm.building_id
+            WHERE b.organization_id = $1
+              AND ppm.period_start >= $2 AND ppm.period_end <= $3
+            ON CONFLICT (organization_id, period_start, period_end, period_type)
+            DO UPDATE SET
+                total_buildings = EXCLUDED.total_buildings,
+                total_units = EXCLUDED.total_units,
+                occupied_units = EXCLUDED.occupied_units,
+                portfolio_occupancy_rate = EXCLUDED.portfolio_occupancy_rate,
+                total_revenue = EXCLUDED.total_revenue,
+                total_expenses = EXCLUDED.total_expenses,
+                total_noi = EXCLUDED.total_noi,
+                avg_rent_per_unit = EXCLUDED.avg_rent_per_unit,
+                avg_cap_rate = EXCLUDED.avg_cap_rate
+            RETURNING id, organization_id, period_start, period_end, period_type,
+                      total_buildings, total_units, total_sqm, occupied_units,
+                      portfolio_occupancy_rate, total_revenue, total_expenses, total_noi,
+                      currency, avg_rent_per_unit, avg_rent_per_sqm, avg_expense_per_unit,
+                      avg_cap_rate, revenue_growth_pct, expense_growth_pct, noi_growth_pct,
+                      estimated_portfolio_value, buildings_by_type, revenue_by_region, created_at
             "#,
         )
         .bind(org_id)
-        .bind(data.benchmark_id)
-        .bind(&data.name)
-        .bind(&data.description)
-        .bind(&data.metric_name)
-        .bind(&data.condition_type)
-        .bind(data.threshold_value)
-        .bind(&data.threshold_operator)
-        .bind(data.severity.as_deref().unwrap_or("warning"))
-        .bind(&data.notification_channels)
-        .bind(&data.recipients)
-        .bind(created_by)
+        .bind(period_start)
+        .bind(period_end)
+        .bind(&period_type)
         .fetch_one(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(metrics)
     }
 
-    /// List alert rules.
-    pub async fn list_alert_rules(
-        &self,
-        org_id: Uuid,
-    ) -> Result<Vec<PortfolioAlertRule>, SqlxError> {
-        sqlx::query_as::<_, PortfolioAlertRule>(
-            "SELECT * FROM portfolio_alert_rules WHERE organization_id = $1 ORDER BY name",
+    pub async fn get_portfolio_summary(&self, org_id: Uuid) -> Result<PortfolioSummary, AppError> {
+        // Get latest portfolio metrics
+        let row = sqlx::query_as::<_, (i64, i64, i64, Decimal, Decimal, Decimal)>(
+            r#"
+            SELECT
+                COUNT(DISTINCT b.id) as total_buildings,
+                COALESCE(SUM(u.unit_count), 0) as total_units,
+                COALESCE(SUM(u.occupied_count), 0) as occupied_units,
+                COALESCE(pam.total_revenue, 0) as total_revenue,
+                COALESCE(pam.total_noi, 0) as total_noi,
+                COALESCE(pam.estimated_portfolio_value, 0) as estimated_value
+            FROM buildings b
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) as unit_count,
+                       COUNT(*) FILTER (WHERE status = 'occupied') as occupied_count
+                FROM units WHERE building_id = b.id
+            ) u ON true
+            LEFT JOIN portfolio_aggregated_metrics pam ON pam.organization_id = b.organization_id
+                AND pam.period_end = (SELECT MAX(period_end) FROM portfolio_aggregated_metrics WHERE organization_id = $1)
+            WHERE b.organization_id = $1
+            GROUP BY pam.total_revenue, pam.total_noi, pam.estimated_portfolio_value
+            "#,
         )
         .bind(org_id)
-        .fetch_all(&self.pool)
+        .fetch_optional(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let (
+            total_buildings,
+            total_units,
+            occupied_units,
+            total_revenue,
+            total_noi,
+            estimated_value,
+        ) = row.unwrap_or((0, 0, 0, Decimal::ZERO, Decimal::ZERO, Decimal::ZERO));
+
+        let occupancy_rate = if total_units > 0 {
+            Decimal::from(occupied_units * 100) / Decimal::from(total_units)
+        } else {
+            Decimal::ZERO
+        };
+
+        Ok(PortfolioSummary {
+            total_buildings: total_buildings as i32,
+            total_units: total_units as i32,
+            occupied_units: occupied_units as i32,
+            occupancy_rate,
+            total_revenue,
+            total_noi,
+            estimated_value,
+            currency: "EUR".to_string(),
+        })
     }
 
-    /// Update an alert rule.
-    pub async fn update_alert_rule(
+    // ======================== Property Comparisons (Story 140.4) ========================
+
+    pub async fn create_comparison(
+        &self,
+        org_id: Uuid,
+        user_id: Uuid,
+        req: CreatePropertyComparison,
+    ) -> Result<PortfolioPropertyComparison, AppError> {
+        let comparison = sqlx::query_as::<_, PortfolioPropertyComparison>(
+            r#"
+            INSERT INTO property_comparisons (
+                organization_id, name, description, building_ids,
+                comparison_period_start, comparison_period_end,
+                metrics_to_compare, is_saved, created_by
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING id, organization_id, name, description, building_ids,
+                      comparison_period_start, comparison_period_end,
+                      metrics_to_compare, comparison_results, rankings,
+                      is_saved, created_by, created_at, updated_at
+            "#,
+        )
+        .bind(org_id)
+        .bind(&req.name)
+        .bind(&req.description)
+        .bind(&req.building_ids)
+        .bind(req.comparison_period_start)
+        .bind(req.comparison_period_end)
+        .bind(&req.metrics_to_compare)
+        .bind(req.is_saved)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(comparison)
+    }
+
+    pub async fn get_comparison(
         &self,
         id: Uuid,
         org_id: Uuid,
-        data: &UpdateAlertRule,
-    ) -> Result<Option<PortfolioAlertRule>, SqlxError> {
-        sqlx::query_as::<_, PortfolioAlertRule>(
+    ) -> Result<Option<PortfolioPropertyComparison>, AppError> {
+        let comparison = sqlx::query_as::<_, PortfolioPropertyComparison>(
             r#"
-            UPDATE portfolio_alert_rules SET
-                name = COALESCE($3, name),
-                description = COALESCE($4, description),
-                threshold_value = COALESCE($5, threshold_value),
-                threshold_operator = COALESCE($6, threshold_operator),
-                severity = COALESCE($7, severity),
-                notification_channels = COALESCE($8, notification_channels),
-                recipients = COALESCE($9, recipients),
-                is_active = COALESCE($10, is_active),
-                updated_at = NOW()
+            SELECT id, organization_id, name, description, building_ids,
+                   comparison_period_start, comparison_period_end,
+                   metrics_to_compare, comparison_results, rankings,
+                   is_saved, created_by, created_at, updated_at
+            FROM property_comparisons
             WHERE id = $1 AND organization_id = $2
-            RETURNING *
             "#,
         )
         .bind(id)
         .bind(org_id)
-        .bind(&data.name)
-        .bind(&data.description)
-        .bind(data.threshold_value)
-        .bind(&data.threshold_operator)
-        .bind(&data.severity)
-        .bind(&data.notification_channels)
-        .bind(&data.recipients)
-        .bind(data.is_active)
         .fetch_optional(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(comparison)
     }
 
-    /// Delete an alert rule.
-    pub async fn delete_alert_rule(&self, id: Uuid, org_id: Uuid) -> Result<bool, SqlxError> {
+    pub async fn list_comparisons(
+        &self,
+        org_id: Uuid,
+        saved_only: bool,
+    ) -> Result<Vec<PortfolioPropertyComparison>, AppError> {
+        let comparisons = sqlx::query_as::<_, PortfolioPropertyComparison>(
+            r#"
+            SELECT id, organization_id, name, description, building_ids,
+                   comparison_period_start, comparison_period_end,
+                   metrics_to_compare, comparison_results, rankings,
+                   is_saved, created_by, created_at, updated_at
+            FROM property_comparisons
+            WHERE organization_id = $1 AND ($2 = false OR is_saved = true)
+            ORDER BY updated_at DESC
+            "#,
+        )
+        .bind(org_id)
+        .bind(saved_only)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(comparisons)
+    }
+
+    pub async fn delete_comparison(&self, id: Uuid, org_id: Uuid) -> Result<bool, AppError> {
+        let result =
+            sqlx::query("DELETE FROM property_comparisons WHERE id = $1 AND organization_id = $2")
+                .bind(id)
+                .bind(org_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ======================== Trends (Story 140.5) ========================
+
+    pub async fn record_trend(
+        &self,
+        org_id: Uuid,
+        req: RecordTrend,
+    ) -> Result<PortfolioTrend, AppError> {
+        // Get previous value
+        let previous = sqlx::query_scalar::<_, Decimal>(
+            r#"
+            SELECT value FROM portfolio_trends
+            WHERE organization_id = $1
+              AND COALESCE(building_id, '00000000-0000-0000-0000-000000000000') = COALESCE($2, '00000000-0000-0000-0000-000000000000')
+              AND metric_name = $3
+              AND recorded_at < $4
+            ORDER BY recorded_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(org_id)
+        .bind(req.building_id)
+        .bind(&req.metric_name)
+        .bind(req.recorded_at)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        let change_pct = previous.map(|prev| {
+            if prev != Decimal::ZERO {
+                ((req.value - prev) / prev) * Decimal::from(100)
+            } else {
+                Decimal::ZERO
+            }
+        });
+
+        let trend = sqlx::query_as::<_, PortfolioTrend>(
+            r#"
+            INSERT INTO portfolio_trends (
+                organization_id, building_id, metric_name, recorded_at,
+                value, previous_value, change_pct, period_type, currency, notes
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (organization_id, building_id, metric_name, recorded_at, period_type)
+            DO UPDATE SET value = EXCLUDED.value, previous_value = EXCLUDED.previous_value,
+                          change_pct = EXCLUDED.change_pct, notes = EXCLUDED.notes
+            RETURNING id, organization_id, building_id, metric_name, recorded_at,
+                      value, previous_value, change_pct, period_type, currency, notes, created_at
+            "#,
+        )
+        .bind(org_id)
+        .bind(req.building_id)
+        .bind(&req.metric_name)
+        .bind(req.recorded_at)
+        .bind(req.value)
+        .bind(previous)
+        .bind(change_pct)
+        .bind(&req.period_type)
+        .bind(&req.currency)
+        .bind(&req.notes)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(trend)
+    }
+
+    pub async fn get_trends(
+        &self,
+        org_id: Uuid,
+        metric_name: &str,
+        building_id: Option<Uuid>,
+        from_date: Option<NaiveDate>,
+        to_date: Option<NaiveDate>,
+    ) -> Result<Vec<PortfolioTrend>, AppError> {
+        let trends = sqlx::query_as::<_, PortfolioTrend>(
+            r#"
+            SELECT id, organization_id, building_id, metric_name, recorded_at,
+                   value, previous_value, change_pct, period_type, currency, notes, created_at
+            FROM portfolio_trends
+            WHERE organization_id = $1
+              AND metric_name = $2
+              AND ($3::UUID IS NULL OR building_id = $3)
+              AND ($4::DATE IS NULL OR recorded_at >= $4)
+              AND ($5::DATE IS NULL OR recorded_at <= $5)
+            ORDER BY recorded_at ASC
+            "#,
+        )
+        .bind(org_id)
+        .bind(metric_name)
+        .bind(building_id)
+        .bind(from_date)
+        .bind(to_date)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(trends)
+    }
+
+    // ======================== Alert Rules (Story 140.6) ========================
+
+    pub async fn create_alert_rule(
+        &self,
+        org_id: Uuid,
+        req: CreateAlertRule,
+    ) -> Result<PortfolioAlertRule, AppError> {
+        let rule = sqlx::query_as::<_, PortfolioAlertRule>(
+            r#"
+            INSERT INTO portfolio_alert_rules (
+                organization_id, name, description, metric_name, category,
+                operator, threshold_value, scope, building_id,
+                notify_roles, notify_users, notification_frequency
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            RETURNING id, organization_id, name, description, metric_name, category,
+                      operator, threshold_value, scope, building_id,
+                      notify_roles, notify_users, notification_frequency,
+                      is_active, last_triggered_at, trigger_count, created_at, updated_at
+            "#,
+        )
+        .bind(org_id)
+        .bind(&req.name)
+        .bind(&req.description)
+        .bind(&req.metric_name)
+        .bind(&req.category)
+        .bind(&req.operator)
+        .bind(req.threshold_value)
+        .bind(&req.scope)
+        .bind(req.building_id)
+        .bind(&req.notify_roles)
+        .bind(&req.notify_users)
+        .bind(&req.notification_frequency)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(rule)
+    }
+
+    pub async fn get_alert_rule(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+    ) -> Result<Option<PortfolioAlertRule>, AppError> {
+        let rule = sqlx::query_as::<_, PortfolioAlertRule>(
+            r#"
+            SELECT id, organization_id, name, description, metric_name, category,
+                   operator, threshold_value, scope, building_id,
+                   notify_roles, notify_users, notification_frequency,
+                   is_active, last_triggered_at, trigger_count, created_at, updated_at
+            FROM portfolio_alert_rules
+            WHERE id = $1 AND organization_id = $2
+            "#,
+        )
+        .bind(id)
+        .bind(org_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(rule)
+    }
+
+    pub async fn list_alert_rules(
+        &self,
+        org_id: Uuid,
+        active_only: bool,
+    ) -> Result<Vec<PortfolioAlertRule>, AppError> {
+        let rules = sqlx::query_as::<_, PortfolioAlertRule>(
+            r#"
+            SELECT id, organization_id, name, description, metric_name, category,
+                   operator, threshold_value, scope, building_id,
+                   notify_roles, notify_users, notification_frequency,
+                   is_active, last_triggered_at, trigger_count, created_at, updated_at
+            FROM portfolio_alert_rules
+            WHERE organization_id = $1 AND ($2 = false OR is_active = true)
+            ORDER BY name
+            "#,
+        )
+        .bind(org_id)
+        .bind(active_only)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(rules)
+    }
+
+    pub async fn update_alert_rule(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+        req: UpdateAlertRule,
+    ) -> Result<Option<PortfolioAlertRule>, AppError> {
+        let rule = sqlx::query_as::<_, PortfolioAlertRule>(
+            r#"
+            UPDATE portfolio_alert_rules
+            SET name = COALESCE($3, name),
+                description = COALESCE($4, description),
+                threshold_value = COALESCE($5, threshold_value),
+                operator = COALESCE($6, operator),
+                notify_roles = COALESCE($7, notify_roles),
+                notify_users = COALESCE($8, notify_users),
+                notification_frequency = COALESCE($9, notification_frequency),
+                is_active = COALESCE($10, is_active),
+                updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2
+            RETURNING id, organization_id, name, description, metric_name, category,
+                      operator, threshold_value, scope, building_id,
+                      notify_roles, notify_users, notification_frequency,
+                      is_active, last_triggered_at, trigger_count, created_at, updated_at
+            "#,
+        )
+        .bind(id)
+        .bind(org_id)
+        .bind(&req.name)
+        .bind(&req.description)
+        .bind(req.threshold_value)
+        .bind(&req.operator)
+        .bind(&req.notify_roles)
+        .bind(&req.notify_users)
+        .bind(&req.notification_frequency)
+        .bind(req.is_active)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(rule)
+    }
+
+    pub async fn delete_alert_rule(&self, id: Uuid, org_id: Uuid) -> Result<bool, AppError> {
         let result =
             sqlx::query("DELETE FROM portfolio_alert_rules WHERE id = $1 AND organization_id = $2")
                 .bind(id)
                 .bind(org_id)
                 .execute(&self.pool)
-                .await?;
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(result.rows_affected() > 0)
     }
 
-    // =========================================================================
-    // ALERTS
-    // =========================================================================
+    // ======================== Alerts (Story 140.6) ========================
 
-    /// Create an alert.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn create_alert(
-        &self,
-        org_id: Uuid,
-        rule_id: Option<Uuid>,
-        building_id: Option<Uuid>,
-        alert_type: &str,
-        severity: &str,
-        title: &str,
-        message: Option<&str>,
-        metric_name: Option<&str>,
-        metric_value: Option<Decimal>,
-        threshold_value: Option<Decimal>,
-    ) -> Result<PortfolioAlert, SqlxError> {
-        sqlx::query_as::<_, PortfolioAlert>(
-            r#"
-            INSERT INTO portfolio_alerts (
-                organization_id, rule_id, building_id, alert_type, severity,
-                title, message, metric_name, metric_value, threshold_value
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-            RETURNING *
-            "#,
-        )
-        .bind(org_id)
-        .bind(rule_id)
-        .bind(building_id)
-        .bind(alert_type)
-        .bind(severity)
-        .bind(title)
-        .bind(message)
-        .bind(metric_name)
-        .bind(metric_value)
-        .bind(threshold_value)
-        .fetch_one(&self.pool)
-        .await
-    }
-
-    /// List alerts.
     pub async fn list_alerts(
         &self,
         org_id: Uuid,
-        query: &AlertQuery,
-    ) -> Result<Vec<PortfolioAlert>, SqlxError> {
-        let mut sql = String::from("SELECT * FROM portfolio_alerts WHERE organization_id = $1");
-        let mut param_count = 1;
+        unread_only: bool,
+        unresolved_only: bool,
+        limit: i32,
+    ) -> Result<Vec<PortfolioAlert>, AppError> {
+        let alerts = sqlx::query_as::<_, PortfolioAlert>(
+            r#"
+            SELECT id, rule_id, organization_id, building_id,
+                   metric_name, current_value, threshold_value, deviation_pct,
+                   severity, title, message, is_read, is_resolved,
+                   resolved_at, resolved_by, resolution_notes, notifications_sent, created_at
+            FROM portfolio_alerts
+            WHERE organization_id = $1
+              AND ($2 = false OR is_read = false)
+              AND ($3 = false OR is_resolved = false)
+            ORDER BY created_at DESC
+            LIMIT $4
+            "#,
+        )
+        .bind(org_id)
+        .bind(unread_only)
+        .bind(unresolved_only)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
 
-        if query.status.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" AND status = ${}", param_count));
-        }
-        if query.severity.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" AND severity = ${}", param_count));
-        }
-        if query.building_id.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" AND building_id = ${}", param_count));
-        }
-
-        sql.push_str(" ORDER BY triggered_at DESC LIMIT 100");
-
-        let mut query_builder = sqlx::query_as::<_, PortfolioAlert>(&sql).bind(org_id);
-
-        if let Some(ref status) = query.status {
-            query_builder = query_builder.bind(status);
-        }
-        if let Some(ref severity) = query.severity {
-            query_builder = query_builder.bind(severity);
-        }
-        if let Some(building_id) = query.building_id {
-            query_builder = query_builder.bind(building_id);
-        }
-
-        query_builder.fetch_all(&self.pool).await
+        Ok(alerts)
     }
 
-    /// Acknowledge an alert.
-    pub async fn acknowledge_alert(
+    pub async fn get_alert(
         &self,
         id: Uuid,
         org_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Option<PortfolioAlert>, SqlxError> {
-        sqlx::query_as::<_, PortfolioAlert>(
+    ) -> Result<Option<PortfolioAlert>, AppError> {
+        let alert = sqlx::query_as::<_, PortfolioAlert>(
             r#"
-            UPDATE portfolio_alerts SET
-                status = 'acknowledged',
-                acknowledged_at = NOW(),
-                acknowledged_by = $3
+            SELECT id, rule_id, organization_id, building_id,
+                   metric_name, current_value, threshold_value, deviation_pct,
+                   severity, title, message, is_read, is_resolved,
+                   resolved_at, resolved_by, resolution_notes, notifications_sent, created_at
+            FROM portfolio_alerts
             WHERE id = $1 AND organization_id = $2
-            RETURNING *
             "#,
         )
         .bind(id)
         .bind(org_id)
-        .bind(user_id)
         .fetch_optional(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(alert)
     }
 
-    /// Resolve an alert.
+    pub async fn acknowledge_alert(
+        &self,
+        id: Uuid,
+        org_id: Uuid,
+        is_read: bool,
+    ) -> Result<bool, AppError> {
+        let result = sqlx::query(
+            "UPDATE portfolio_alerts SET is_read = $3 WHERE id = $1 AND organization_id = $2",
+        )
+        .bind(id)
+        .bind(org_id)
+        .bind(is_read)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
     pub async fn resolve_alert(
         &self,
         id: Uuid,
         org_id: Uuid,
         user_id: Uuid,
-    ) -> Result<Option<PortfolioAlert>, SqlxError> {
-        sqlx::query_as::<_, PortfolioAlert>(
+        notes: Option<String>,
+    ) -> Result<bool, AppError> {
+        let result = sqlx::query(
             r#"
-            UPDATE portfolio_alerts SET
-                status = 'resolved',
-                resolved_at = NOW(),
-                resolved_by = $3
+            UPDATE portfolio_alerts
+            SET is_resolved = true, resolved_at = NOW(), resolved_by = $3, resolution_notes = $4
             WHERE id = $1 AND organization_id = $2
-            RETURNING *
             "#,
         )
         .bind(id)
         .bind(org_id)
         .bind(user_id)
-        .fetch_optional(&self.pool)
+        .bind(&notes)
+        .execute(&self.pool)
         .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
+
+        Ok(result.rows_affected() > 0)
     }
 
-    /// Get active alerts count.
-    pub async fn get_active_alerts_count(&self, org_id: Uuid) -> Result<i64, SqlxError> {
-        let row = sqlx::query(
-            "SELECT COUNT(*) as count FROM portfolio_alerts WHERE organization_id = $1 AND status = 'active'",
+    pub async fn get_alert_stats(&self, org_id: Uuid) -> Result<AlertStats, AppError> {
+        let stats = sqlx::query_as::<_, (i64, i64, i64, i64)>(
+            r#"
+            SELECT
+                COUNT(*) as total_alerts,
+                COUNT(*) FILTER (WHERE is_read = false) as unread_alerts,
+                COUNT(*) FILTER (WHERE is_resolved = false) as unresolved_alerts,
+                COUNT(*) FILTER (WHERE severity = 'critical' AND is_resolved = false) as critical_alerts
+            FROM portfolio_alerts
+            WHERE organization_id = $1
+            "#,
         )
         .bind(org_id)
         .fetch_one(&self.pool)
-        .await?;
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))?;
 
-        Ok(row.get("count"))
-    }
-
-    // =========================================================================
-    // TRENDS
-    // =========================================================================
-
-    /// Get trends for a category.
-    pub async fn list_trends(
-        &self,
-        org_id: Uuid,
-        query: &TrendQuery,
-    ) -> Result<Vec<PortfolioTrend>, SqlxError> {
-        let mut sql = String::from("SELECT * FROM portfolio_trends WHERE organization_id = $1");
-        let mut param_count = 1;
-
-        if query.metric_name.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(" AND metric_name = ${}", param_count));
-        }
-        if query.category.is_some() {
-            param_count += 1;
-            sql.push_str(&format!(
-                " AND category = ${}::benchmark_category",
-                param_count
-            ));
-        }
-
-        sql.push_str(" ORDER BY calculated_at DESC");
-
-        let mut query_builder = sqlx::query_as::<_, PortfolioTrend>(&sql).bind(org_id);
-
-        if let Some(ref metric_name) = query.metric_name {
-            query_builder = query_builder.bind(metric_name);
-        }
-        if let Some(ref category) = query.category {
-            query_builder = query_builder.bind(category);
-        }
-
-        query_builder.fetch_all(&self.pool).await
+        Ok(AlertStats {
+            total_alerts: stats.0,
+            unread_alerts: stats.1,
+            unresolved_alerts: stats.2,
+            critical_alerts: stats.3,
+        })
     }
 }

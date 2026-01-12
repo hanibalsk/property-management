@@ -1,610 +1,891 @@
 //! Portfolio Analytics routes (Epic 140).
-//! Provides cross-property analytics, benchmarking, and trend analysis.
+//! Multi-Property Portfolio Analytics with benchmarking, KPIs, and trend analysis.
 
 use crate::state::AppState;
 use api_core::extractors::AuthUser;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use chrono::NaiveDate;
 use common::errors::ErrorResponse;
 use db::models::portfolio_analytics::{
-    AggregationPeriod, AlertQuery, BenchmarkCategory, CreateAlertRule, CreatePortfolioBenchmark,
-    CreatePropertyMetrics, TrendQuery, UpdateAlertRule, UpdatePortfolioBenchmark,
+    AcknowledgeAlert, AggregationPeriod, CreateAlertRule, CreatePortfolioBenchmark,
+    CreatePropertyComparison, CreatePropertyMetrics, RecordTrend, ResolveAlert, UpdateAlertRule,
+    UpdatePortfolioBenchmark,
 };
 use serde::Deserialize;
+use serde_json::json;
+use utoipa::IntoParams;
 use uuid::Uuid;
 
 type ApiResult<T> = Result<T, (StatusCode, Json<ErrorResponse>)>;
 
-fn get_org_id(auth: &AuthUser) -> Result<Uuid, (StatusCode, Json<ErrorResponse>)> {
-    auth.tenant_id.ok_or((
-        StatusCode::BAD_REQUEST,
-        Json(ErrorResponse::bad_request("No organization context")),
-    ))
+/// Helper to serialize a value to JSON.
+fn to_json_value<T: serde::Serialize>(value: T) -> ApiResult<serde_json::Value> {
+    serde_json::to_value(value).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&format!(
+                "Failed to serialize: {}",
+                e
+            ))),
+        )
+    })
 }
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        // Portfolio Summary
+        .route("/summary", get(get_portfolio_summary))
         // Benchmarks
-        .route("/benchmarks", get(list_benchmarks).post(create_benchmark))
-        .route(
-            "/benchmarks/:benchmark_id",
-            get(get_benchmark)
-                .put(update_benchmark)
-                .delete(delete_benchmark),
-        )
+        .route("/benchmarks", get(list_benchmarks))
+        .route("/benchmarks", post(create_benchmark))
+        .route("/benchmarks/{id}", get(get_benchmark))
+        .route("/benchmarks/{id}", put(update_benchmark))
+        .route("/benchmarks/{id}", delete(delete_benchmark))
         // Property Metrics
+        .route("/properties/metrics", get(list_property_metrics))
         .route("/properties/metrics", post(upsert_property_metrics))
         .route(
-            "/properties/:building_id/metrics",
+            "/properties/{building_id}/metrics",
             get(get_property_metrics),
         )
-        .route(
-            "/properties/:building_id/metrics/history",
-            get(list_property_metrics_history),
-        )
-        .route("/properties/metrics/all", get(list_all_property_metrics))
         // Portfolio Metrics
         .route("/metrics", get(get_portfolio_metrics))
-        .route("/metrics/history", get(list_portfolio_metrics_history))
         .route("/metrics/calculate", post(calculate_portfolio_metrics))
+        // Property Comparisons
+        .route("/comparisons", get(list_comparisons))
+        .route("/comparisons", post(create_comparison))
+        .route("/comparisons/{id}", get(get_comparison))
+        .route("/comparisons/{id}", delete(delete_comparison))
+        // Trends
+        .route("/trends", get(get_trends))
+        .route("/trends", post(record_trend))
         // Alert Rules
-        .route(
-            "/alert-rules",
-            get(list_alert_rules).post(create_alert_rule),
-        )
-        .route(
-            "/alert-rules/:rule_id",
-            put(update_alert_rule).delete(delete_alert_rule),
-        )
+        .route("/alerts/rules", get(list_alert_rules))
+        .route("/alerts/rules", post(create_alert_rule))
+        .route("/alerts/rules/{id}", get(get_alert_rule))
+        .route("/alerts/rules/{id}", put(update_alert_rule))
+        .route("/alerts/rules/{id}", delete(delete_alert_rule))
         // Alerts
         .route("/alerts", get(list_alerts))
-        .route("/alerts/:alert_id/acknowledge", post(acknowledge_alert))
-        .route("/alerts/:alert_id/resolve", post(resolve_alert))
-        .route("/alerts/count", get(get_active_alerts_count))
-        // Trends
-        .route("/trends", get(list_trends))
+        .route("/alerts/stats", get(get_alert_stats))
+        .route("/alerts/{id}", get(get_alert))
+        .route("/alerts/{id}/acknowledge", post(acknowledge_alert))
+        .route("/alerts/{id}/resolve", post(resolve_alert))
 }
 
 // =============================================================================
-// QUERY PARAMETERS
+// PORTFOLIO SUMMARY
 // =============================================================================
 
-#[derive(Debug, Deserialize)]
-pub struct BenchmarkQueryParams {
-    pub category: Option<BenchmarkCategory>,
-}
+async fn get_portfolio_summary(
+    State(s): State<AppState>,
+    user: AuthUser,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
 
-#[derive(Debug, Deserialize)]
-pub struct MetricsQueryParams {
-    pub period_type: AggregationPeriod,
-    pub period_start: NaiveDate,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct MetricsHistoryParams {
-    pub period_type: AggregationPeriod,
-    #[serde(default = "default_limit")]
-    pub limit: i64,
-}
-
-fn default_limit() -> i64 {
-    12
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CalculateMetricsParams {
-    pub period_type: AggregationPeriod,
-    pub period_start: NaiveDate,
-    pub period_end: NaiveDate,
+    match s
+        .portfolio_analytics_repo
+        .get_portfolio_summary(org_id)
+        .await
+    {
+        Ok(summary) => Ok(Json(to_json_value(summary)?)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
 }
 
 // =============================================================================
-// BENCHMARK HANDLERS
+// BENCHMARKS
 // =============================================================================
 
 async fn list_benchmarks(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Query(params): Query<BenchmarkQueryParams>,
-) -> ApiResult<Json<Vec<db::models::portfolio_analytics::PortfolioBenchmark>>> {
-    let org_id = get_org_id(&auth)?;
+    State(s): State<AppState>,
+    user: AuthUser,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
 
-    state
-        .portfolio_analytics_repo
-        .list_benchmarks(org_id, params.category)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
+    match s.portfolio_analytics_repo.list_benchmarks(org_id).await {
+        Ok(benchmarks) => Ok(Json(json!({ "benchmarks": benchmarks }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
 }
 
 async fn create_benchmark(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Json(data): Json<CreatePortfolioBenchmark>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioBenchmark>> {
-    let org_id = get_org_id(&auth)?;
+    State(s): State<AppState>,
+    user: AuthUser,
+    Json(req): Json<CreatePortfolioBenchmark>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
 
-    state
+    match s
         .portfolio_analytics_repo
-        .create_benchmark(org_id, &data, auth.user_id)
+        .create_benchmark(org_id, req)
         .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
+    {
+        Ok(benchmark) => Ok(Json(to_json_value(benchmark)?)),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
 }
 
 async fn get_benchmark(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(benchmark_id): Path<Uuid>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioBenchmark>> {
-    let org_id = get_org_id(&auth)?;
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
 
-    state
-        .portfolio_analytics_repo
-        .get_benchmark(benchmark_id, org_id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?
-        .map(Json)
-        .ok_or((
+    match s.portfolio_analytics_repo.get_benchmark(id, org_id).await {
+        Ok(Some(benchmark)) => Ok(Json(to_json_value(benchmark)?)),
+        Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Benchmark not found")),
-        ))
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
 }
 
 async fn update_benchmark(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(benchmark_id): Path<Uuid>,
-    Json(data): Json<UpdatePortfolioBenchmark>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioBenchmark>> {
-    let org_id = get_org_id(&auth)?;
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdatePortfolioBenchmark>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
 
-    state
+    match s
         .portfolio_analytics_repo
-        .update_benchmark(benchmark_id, org_id, &data)
+        .update_benchmark(id, org_id, req)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?
-        .map(Json)
-        .ok_or((
+    {
+        Ok(Some(benchmark)) => Ok(Json(to_json_value(benchmark)?)),
+        Ok(None) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Benchmark not found")),
-        ))
+        )),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
 }
 
 async fn delete_benchmark(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(benchmark_id): Path<Uuid>,
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    let org_id = get_org_id(&auth)?;
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
 
-    let deleted = state
+    match s
         .portfolio_analytics_repo
-        .delete_benchmark(benchmark_id, org_id)
+        .delete_benchmark(id, org_id)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?;
-
-    if deleted {
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err((
+    {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Benchmark not found")),
-        ))
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
     }
 }
 
 // =============================================================================
-// PROPERTY METRICS HANDLERS
+// PROPERTY METRICS
 // =============================================================================
 
-async fn upsert_property_metrics(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Json(data): Json<CreatePropertyMetrics>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PropertyPerformanceMetrics>> {
-    let org_id = get_org_id(&auth)?;
+#[derive(Debug, Deserialize, IntoParams)]
+struct PropertyMetricsQuery {
+    building_id: Option<Uuid>,
+    period_type: Option<AggregationPeriod>,
+}
 
-    state
+async fn list_property_metrics(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Query(query): Query<PropertyMetricsQuery>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
         .portfolio_analytics_repo
-        .upsert_property_metrics(org_id, &data)
+        .list_property_metrics(org_id, query.building_id, query.period_type)
         .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
+    {
+        Ok(metrics) => Ok(Json(json!({ "metrics": metrics }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+async fn upsert_property_metrics(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Json(req): Json<CreatePropertyMetrics>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let _org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .upsert_property_metrics(req)
+        .await
+    {
+        Ok(metrics) => Ok(Json(to_json_value(metrics)?)),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
+struct GetPropertyMetricsQuery {
+    period_start: NaiveDate,
+    period_end: NaiveDate,
 }
 
 async fn get_property_metrics(
-    State(state): State<AppState>,
-    auth: AuthUser,
+    State(s): State<AppState>,
+    user: AuthUser,
     Path(building_id): Path<Uuid>,
-    Query(params): Query<MetricsQueryParams>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PropertyPerformanceMetrics>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .get_property_metrics(
-            org_id,
-            building_id,
-            &params.period_type,
-            params.period_start,
+    Query(query): Query<GetPropertyMetricsQuery>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let _org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
         )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .get_property_metrics(building_id, query.period_start, query.period_end)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?
-        .map(Json)
-        .ok_or((
+    {
+        Ok(Some(metrics)) => Ok(Json(to_json_value(metrics)?)),
+        Ok(None) => Err((
             StatusCode::NOT_FOUND,
-            Json(ErrorResponse::not_found("Property metrics not found")),
-        ))
-}
-
-async fn list_property_metrics_history(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(building_id): Path<Uuid>,
-    Query(params): Query<MetricsHistoryParams>,
-) -> ApiResult<Json<Vec<db::models::portfolio_analytics::PropertyPerformanceMetrics>>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .list_property_metrics_history(org_id, building_id, &params.period_type, params.limit)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
-}
-
-async fn list_all_property_metrics(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Query(params): Query<MetricsQueryParams>,
-) -> ApiResult<Json<Vec<db::models::portfolio_analytics::PropertyPerformanceMetrics>>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .list_all_property_metrics(org_id, &params.period_type, params.period_start)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
-}
-
-// =============================================================================
-// PORTFOLIO METRICS HANDLERS
-// =============================================================================
-
-async fn get_portfolio_metrics(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Query(params): Query<MetricsQueryParams>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioAggregatedMetrics>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .get_portfolio_metrics(org_id, &params.period_type, params.period_start)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?
-        .map(Json)
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::not_found("Portfolio metrics not found")),
-        ))
-}
-
-async fn list_portfolio_metrics_history(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Query(params): Query<MetricsHistoryParams>,
-) -> ApiResult<Json<Vec<db::models::portfolio_analytics::PortfolioAggregatedMetrics>>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .list_portfolio_metrics_history(org_id, &params.period_type, params.limit)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
-}
-
-async fn calculate_portfolio_metrics(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Query(params): Query<CalculateMetricsParams>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioAggregatedMetrics>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .calculate_portfolio_metrics(
-            org_id,
-            &params.period_type,
-            params.period_start,
-            params.period_end,
-        )
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
-}
-
-// =============================================================================
-// ALERT RULE HANDLERS
-// =============================================================================
-
-async fn list_alert_rules(
-    State(state): State<AppState>,
-    auth: AuthUser,
-) -> ApiResult<Json<Vec<db::models::portfolio_analytics::PortfolioAlertRule>>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .list_alert_rules(org_id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
-}
-
-async fn create_alert_rule(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Json(data): Json<CreateAlertRule>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioAlertRule>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .create_alert_rule(org_id, &data, auth.user_id)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
-}
-
-async fn update_alert_rule(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(rule_id): Path<Uuid>,
-    Json(data): Json<UpdateAlertRule>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioAlertRule>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .update_alert_rule(rule_id, org_id, &data)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?
-        .map(Json)
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::not_found("Alert rule not found")),
-        ))
-}
-
-async fn delete_alert_rule(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(rule_id): Path<Uuid>,
-) -> ApiResult<StatusCode> {
-    let org_id = get_org_id(&auth)?;
-
-    let deleted = state
-        .portfolio_analytics_repo
-        .delete_alert_rule(rule_id, org_id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?;
-
-    if deleted {
-        Ok(StatusCode::NO_CONTENT)
-    } else {
-        Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::not_found("Alert rule not found")),
-        ))
+            Json(ErrorResponse::not_found("Metrics not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
     }
 }
 
 // =============================================================================
-// ALERT HANDLERS
+// PORTFOLIO METRICS
 // =============================================================================
 
-async fn list_alerts(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Query(query): Query<AlertQuery>,
-) -> ApiResult<Json<Vec<db::models::portfolio_analytics::PortfolioAlert>>> {
-    let org_id = get_org_id(&auth)?;
+#[derive(Debug, Deserialize, IntoParams)]
+struct PortfolioMetricsQuery {
+    period_start: NaiveDate,
+    period_end: NaiveDate,
+}
 
-    state
+async fn get_portfolio_metrics(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Query(query): Query<PortfolioMetricsQuery>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
         .portfolio_analytics_repo
-        .list_alerts(org_id, &query)
+        .get_portfolio_metrics(org_id, query.period_start, query.period_end)
         .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
+    {
+        Ok(Some(metrics)) => Ok(Json(to_json_value(metrics)?)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Portfolio metrics not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct CalculateMetricsRequest {
+    period_start: NaiveDate,
+    period_end: NaiveDate,
+    #[serde(default = "default_period")]
+    period_type: AggregationPeriod,
+}
+
+fn default_period() -> AggregationPeriod {
+    AggregationPeriod::Monthly
+}
+
+async fn calculate_portfolio_metrics(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Json(req): Json<CalculateMetricsRequest>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .calculate_portfolio_metrics(org_id, req.period_start, req.period_end, req.period_type)
+        .await
+    {
+        Ok(metrics) => Ok(Json(to_json_value(metrics)?)),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
+}
+
+// =============================================================================
+// PROPERTY COMPARISONS
+// =============================================================================
+
+#[derive(Debug, Deserialize, IntoParams)]
+struct ComparisonListQuery {
+    #[serde(default)]
+    saved_only: bool,
+}
+
+async fn list_comparisons(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Query(query): Query<ComparisonListQuery>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .list_comparisons(org_id, query.saved_only)
+        .await
+    {
+        Ok(comparisons) => Ok(Json(json!({ "comparisons": comparisons }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+async fn create_comparison(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Json(req): Json<CreatePropertyComparison>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    let user_id = user.user_id;
+
+    match s
+        .portfolio_analytics_repo
+        .create_comparison(org_id, user_id, req)
+        .await
+    {
+        Ok(comparison) => Ok(Json(to_json_value(comparison)?)),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
+}
+
+async fn get_comparison(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s.portfolio_analytics_repo.get_comparison(id, org_id).await {
+        Ok(Some(comparison)) => Ok(Json(to_json_value(comparison)?)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Comparison not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+async fn delete_comparison(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .delete_comparison(id, org_id)
+        .await
+    {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Comparison not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+// =============================================================================
+// TRENDS
+// =============================================================================
+
+#[derive(Debug, Deserialize, IntoParams)]
+struct TrendsQuery {
+    metric_name: String,
+    building_id: Option<Uuid>,
+    from_date: Option<NaiveDate>,
+    to_date: Option<NaiveDate>,
+}
+
+async fn get_trends(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Query(query): Query<TrendsQuery>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .get_trends(
+            org_id,
+            &query.metric_name,
+            query.building_id,
+            query.from_date,
+            query.to_date,
+        )
+        .await
+    {
+        Ok(trends) => Ok(Json(json!({ "trends": trends }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+async fn record_trend(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Json(req): Json<RecordTrend>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s.portfolio_analytics_repo.record_trend(org_id, req).await {
+        Ok(trend) => Ok(Json(to_json_value(trend)?)),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
+}
+
+// =============================================================================
+// ALERT RULES
+// =============================================================================
+
+#[derive(Debug, Deserialize, IntoParams)]
+struct AlertRulesQuery {
+    #[serde(default)]
+    active_only: bool,
+}
+
+async fn list_alert_rules(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Query(query): Query<AlertRulesQuery>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .list_alert_rules(org_id, query.active_only)
+        .await
+    {
+        Ok(rules) => Ok(Json(json!({ "rules": rules }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+async fn create_alert_rule(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Json(req): Json<CreateAlertRule>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .create_alert_rule(org_id, req)
+        .await
+    {
+        Ok(rule) => Ok(Json(to_json_value(rule)?)),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
+}
+
+async fn get_alert_rule(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s.portfolio_analytics_repo.get_alert_rule(id, org_id).await {
+        Ok(Some(rule)) => Ok(Json(to_json_value(rule)?)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Alert rule not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+async fn update_alert_rule(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateAlertRule>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .update_alert_rule(id, org_id, req)
+        .await
+    {
+        Ok(Some(rule)) => Ok(Json(to_json_value(rule)?)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Alert rule not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request(&e.to_string())),
+        )),
+    }
+}
+
+async fn delete_alert_rule(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .delete_alert_rule(id, org_id)
+        .await
+    {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Alert rule not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+// =============================================================================
+// ALERTS
+// =============================================================================
+
+#[derive(Debug, Deserialize, IntoParams)]
+struct AlertsQuery {
+    #[serde(default)]
+    unread_only: bool,
+    #[serde(default)]
+    unresolved_only: bool,
+    #[serde(default = "default_alert_limit")]
+    limit: i32,
+}
+
+fn default_alert_limit() -> i32 {
+    50
+}
+
+async fn list_alerts(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Query(query): Query<AlertsQuery>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s
+        .portfolio_analytics_repo
+        .list_alerts(
+            org_id,
+            query.unread_only,
+            query.unresolved_only,
+            query.limit,
+        )
+        .await
+    {
+        Ok(alerts) => Ok(Json(json!({ "alerts": alerts }))),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+async fn get_alert_stats(
+    State(s): State<AppState>,
+    user: AuthUser,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s.portfolio_analytics_repo.get_alert_stats(org_id).await {
+        Ok(stats) => Ok(Json(to_json_value(stats)?)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
+}
+
+async fn get_alert(
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
+
+    match s.portfolio_analytics_repo.get_alert(id, org_id).await {
+        Ok(Some(alert)) => Ok(Json(to_json_value(alert)?)),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse::not_found("Alert not found")),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
 }
 
 async fn acknowledge_alert(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(alert_id): Path<Uuid>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioAlert>> {
-    let org_id = get_org_id(&auth)?;
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(req): Json<AcknowledgeAlert>,
+) -> ApiResult<StatusCode> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
 
-    state
+    match s
         .portfolio_analytics_repo
-        .acknowledge_alert(alert_id, org_id, auth.user_id)
+        .acknowledge_alert(id, org_id, req.is_read)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?
-        .map(Json)
-        .ok_or((
+    {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Alert not found")),
-        ))
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
 }
 
 async fn resolve_alert(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Path(alert_id): Path<Uuid>,
-) -> ApiResult<Json<db::models::portfolio_analytics::PortfolioAlert>> {
-    let org_id = get_org_id(&auth)?;
+    State(s): State<AppState>,
+    user: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(req): Json<ResolveAlert>,
+) -> ApiResult<StatusCode> {
+    let org_id = user.tenant_id.ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::bad_request("Tenant context required")),
+        )
+    })?;
 
-    state
+    let user_id = user.user_id;
+
+    match s
         .portfolio_analytics_repo
-        .resolve_alert(alert_id, org_id, auth.user_id)
+        .resolve_alert(id, org_id, user_id, req.resolution_notes)
         .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?
-        .map(Json)
-        .ok_or((
+    {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err((
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::not_found("Alert not found")),
-        ))
-}
-
-#[derive(Debug, serde::Serialize)]
-struct AlertCountResponse {
-    count: i64,
-}
-
-async fn get_active_alerts_count(
-    State(state): State<AppState>,
-    auth: AuthUser,
-) -> ApiResult<Json<AlertCountResponse>> {
-    let org_id = get_org_id(&auth)?;
-
-    let count = state
-        .portfolio_analytics_repo
-        .get_active_alerts_count(org_id)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })?;
-
-    Ok(Json(AlertCountResponse { count }))
-}
-
-// =============================================================================
-// TREND HANDLERS
-// =============================================================================
-
-async fn list_trends(
-    State(state): State<AppState>,
-    auth: AuthUser,
-    Query(query): Query<TrendQuery>,
-) -> ApiResult<Json<Vec<db::models::portfolio_analytics::PortfolioTrend>>> {
-    let org_id = get_org_id(&auth)?;
-
-    state
-        .portfolio_analytics_repo
-        .list_trends(org_id, &query)
-        .await
-        .map(Json)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::internal_error(&e.to_string())),
-            )
-        })
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::internal_error(&e.to_string())),
+        )),
+    }
 }

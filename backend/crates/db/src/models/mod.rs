@@ -882,12 +882,14 @@ pub use predictive_maintenance::{
 pub mod portfolio_analytics;
 
 pub use portfolio_analytics::{
-    AggregationPeriod, AlertQuery as PortfolioAlertQuery, BenchmarkCategory, ComparisonScope,
-    CreateAlertRule, CreatePortfolioBenchmark, CreatePropertyMetrics, MetricsComparison,
-    PortfolioAggregatedMetrics, PortfolioAlert, PortfolioAlertRule, PortfolioBenchmark,
-    PortfolioOverview, PortfolioTrend, PropertyComparison as PortfolioPropertyComparison,
-    PropertyMetricValue, PropertyPerformanceMetrics, PropertyRanking, TrendAnalysis,
-    TrendDataPoint, TrendQuery, UpdateAlertRule, UpdatePortfolioBenchmark,
+    AcknowledgeAlert as AcknowledgePortfolioAlert, AggregationPeriod, AlertStats,
+    BenchmarkCategory, BenchmarkPerformance, ComparisonScope, CreateAlertRule,
+    CreatePortfolioBenchmark, CreatePropertyComparison, CreatePropertyMetrics,
+    PortfolioAggregatedMetrics, PortfolioAlert, PortfolioAlertRule, PortfolioAnalyticsDashboard,
+    PortfolioAnalyticsQuery, PortfolioBenchmark, PortfolioPropertyComparison,
+    PortfolioSummary as PortfolioAnalyticsSummary, PortfolioTrend, PropertyPerformanceMetrics,
+    PropertyRanking, RecordTrend, ResolveAlert as ResolvePortfolioAlert, TrendAnalysis,
+    TrendDataPoint, UpdateAlertRule, UpdatePortfolioBenchmark,
 };
 
 // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
