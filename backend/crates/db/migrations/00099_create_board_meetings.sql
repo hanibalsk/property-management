@@ -457,55 +457,55 @@ CREATE TABLE meeting_statistics (
 -- ============================================================================
 
 -- Board members
-CREATE INDEX idx_board_members_org ON board_members(organization_id);
-CREATE INDEX idx_board_members_user ON board_members(user_id);
-CREATE INDEX idx_board_members_active ON board_members(organization_id, is_active);
-CREATE INDEX idx_board_members_role ON board_members(organization_id, role);
+CREATE INDEX IF NOT EXISTS idx_board_members_org ON board_members(organization_id);
+CREATE INDEX IF NOT EXISTS idx_board_members_user ON board_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_board_members_active ON board_members(organization_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_board_members_role ON board_members(organization_id, role);
 
 -- Board meetings
-CREATE INDEX idx_board_meetings_org ON board_meetings(organization_id);
-CREATE INDEX idx_board_meetings_building ON board_meetings(building_id);
-CREATE INDEX idx_board_meetings_status ON board_meetings(organization_id, status);
-CREATE INDEX idx_board_meetings_scheduled ON board_meetings(scheduled_start);
-CREATE INDEX idx_board_meetings_type ON board_meetings(organization_id, meeting_type);
+CREATE INDEX IF NOT EXISTS idx_board_meetings_org ON board_meetings(organization_id);
+CREATE INDEX IF NOT EXISTS idx_board_meetings_building ON board_meetings(building_id);
+CREATE INDEX IF NOT EXISTS idx_board_meetings_status ON board_meetings(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_board_meetings_scheduled ON board_meetings(scheduled_start);
+CREATE INDEX IF NOT EXISTS idx_board_meetings_type ON board_meetings(organization_id, meeting_type);
 
 -- Agenda items
-CREATE INDEX idx_agenda_items_meeting ON meeting_agenda_items(meeting_id);
-CREATE INDEX idx_agenda_items_order ON meeting_agenda_items(meeting_id, display_order);
-CREATE INDEX idx_agenda_items_status ON meeting_agenda_items(status);
+CREATE INDEX IF NOT EXISTS idx_agenda_items_meeting ON meeting_agenda_items(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_agenda_items_order ON meeting_agenda_items(meeting_id, display_order);
+CREATE INDEX IF NOT EXISTS idx_agenda_items_status ON meeting_agenda_items(status);
 
 -- Motions
-CREATE INDEX idx_motions_meeting ON meeting_motions(meeting_id);
-CREATE INDEX idx_motions_agenda ON meeting_motions(agenda_item_id);
-CREATE INDEX idx_motions_status ON meeting_motions(status);
-CREATE INDEX idx_motions_proposer ON meeting_motions(proposed_by);
+CREATE INDEX IF NOT EXISTS idx_motions_meeting ON meeting_motions(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_motions_agenda ON meeting_motions(agenda_item_id);
+CREATE INDEX IF NOT EXISTS idx_motions_status ON meeting_motions(status);
+CREATE INDEX IF NOT EXISTS idx_motions_proposer ON meeting_motions(proposed_by);
 
 -- Motion votes
-CREATE INDEX idx_motion_votes_motion ON motion_votes(motion_id);
-CREATE INDEX idx_motion_votes_member ON motion_votes(board_member_id);
+CREATE INDEX IF NOT EXISTS idx_motion_votes_motion ON motion_votes(motion_id);
+CREATE INDEX IF NOT EXISTS idx_motion_votes_member ON motion_votes(board_member_id);
 
 -- Attendance
-CREATE INDEX idx_attendance_meeting ON meeting_attendance(meeting_id);
-CREATE INDEX idx_attendance_user ON meeting_attendance(user_id);
-CREATE INDEX idx_attendance_member ON meeting_attendance(board_member_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_meeting ON meeting_attendance(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_user ON meeting_attendance(user_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_member ON meeting_attendance(board_member_id);
 
 -- Minutes
-CREATE INDEX idx_minutes_meeting ON meeting_minutes(meeting_id);
-CREATE INDEX idx_minutes_status ON meeting_minutes(status);
+CREATE INDEX IF NOT EXISTS idx_minutes_meeting ON meeting_minutes(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_minutes_status ON meeting_minutes(status);
 
--- Action items
-CREATE INDEX idx_action_items_meeting ON meeting_action_items(meeting_id);
-CREATE INDEX idx_action_items_assigned ON meeting_action_items(assigned_to);
-CREATE INDEX idx_action_items_due ON meeting_action_items(due_date);
-CREATE INDEX idx_action_items_status ON meeting_action_items(status);
+-- Action items (renamed to avoid conflict with disputes migration index)
+CREATE INDEX IF NOT EXISTS idx_meeting_action_items_meeting ON meeting_action_items(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_action_items_assigned ON meeting_action_items(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_meeting_action_items_due ON meeting_action_items(due_date);
+CREATE INDEX IF NOT EXISTS idx_meeting_action_items_status ON meeting_action_items(status);
 
 -- Documents
-CREATE INDEX idx_meeting_docs_meeting ON meeting_documents(meeting_id);
-CREATE INDEX idx_meeting_docs_type ON meeting_documents(document_type);
+CREATE INDEX IF NOT EXISTS idx_meeting_docs_meeting ON meeting_documents(meeting_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_docs_type ON meeting_documents(document_type);
 
 -- Statistics
-CREATE INDEX idx_meeting_stats_org ON meeting_statistics(organization_id);
-CREATE INDEX idx_meeting_stats_period ON meeting_statistics(period_start, period_end);
+CREATE INDEX IF NOT EXISTS idx_meeting_stats_org ON meeting_statistics(organization_id);
+CREATE INDEX IF NOT EXISTS idx_meeting_stats_period ON meeting_statistics(period_start, period_end);
 
 -- ============================================================================
 -- ROW LEVEL SECURITY
