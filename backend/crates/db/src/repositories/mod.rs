@@ -323,3 +323,8 @@ pub use reserve_funds::ReserveFundRepository;
 pub mod violations;
 
 pub use violations::ViolationRepository;
+
+// Epic 143: Board Meeting Management
+pub mod board_meetings;
+
+pub use board_meetings::BoardMeetingRepository;

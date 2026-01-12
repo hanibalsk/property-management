@@ -161,3 +161,6 @@ pub mod reserve_funds;
 
 // Epic 142: Violation Tracking & Enforcement
 pub mod violations;
+
+// Epic 143: Board Meeting Management
+pub mod board_meetings;

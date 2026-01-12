@@ -7,7 +7,7 @@ use api_core::TenantMembershipProvider;
 use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
-        AutomationRepository, BackgroundJobRepository, BudgetRepository,
+        AutomationRepository, BackgroundJobRepository, BoardMeetingRepository, BudgetRepository,
         BuildingCertificationRepository, BuildingRepository, CommunityRepository,
         CriticalNotificationRepository, DataExportRepository, DelegationRepository,
         DisputeRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
@@ -157,6 +157,8 @@ pub struct AppState {
     pub reserve_fund_repo: ReserveFundRepository,
     // Epic 142: Violation Tracking & Enforcement
     pub violation_repo: ViolationRepository,
+    // Epic 143: Board Meeting Management
+    pub board_meeting_repo: BoardMeetingRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -293,6 +295,8 @@ impl AppState {
         let reserve_fund_repo = ReserveFundRepository::new(db.clone());
         // Epic 142: Violation Tracking & Enforcement
         let violation_repo = ViolationRepository::new(db.clone());
+        // Epic 143: Board Meeting Management
+        let board_meeting_repo = BoardMeetingRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -379,6 +383,7 @@ impl AppState {
             portfolio_analytics_repo,
             reserve_fund_repo,
             violation_repo,
+            board_meeting_repo,
             llm_client,
             auth_service,
             email_service,

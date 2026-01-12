@@ -257,6 +257,8 @@ pub fn create_router(state: AppState) -> Router {
         .nest("/api/v1/reserve-funds", routes::reserve_funds::router())
         // Violations routes (Epic 142)
         .nest("/api/v1/violations", routes::violations::router())
+        // Board Meetings routes (Epic 143)
+        .nest("/api/v1/board-meetings", routes::board_meetings::router())
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration
