@@ -15,9 +15,5 @@
   "devDependencies": {
     "typescript": "^5.3.0"
   },
-<<<<<<< HEAD
-  "version": "0.2.318"
-=======
-  "version": "0.2.318"
->>>>>>> origin/main
+  "version": "0.2.319"
 }

@@ -303,3 +303,8 @@ pub use esg_reporting::EsgReportingRepository;
 pub mod building_certification;
 
 pub use building_certification::BuildingCertificationRepository;
+
+// Epic 138: Automated Property Valuation Model
+pub mod property_valuation;
+
+pub use property_valuation::PropertyValuationRepository;

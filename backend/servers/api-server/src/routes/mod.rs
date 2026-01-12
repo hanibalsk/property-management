@@ -149,3 +149,6 @@ pub mod esg_reporting;
 
 // Epic 137: Smart Building Certification
 pub mod building_certifications;
+
+// Epic 138: Automated Property Valuation Model
+pub mod property_valuation;

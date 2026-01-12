@@ -246,6 +246,11 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/building-certifications",
             routes::building_certifications::router(),
         )
+        // Property Valuation routes (Epic 138)
+        .nest(
+            "/api/v1/property-valuations",
+            routes::property_valuation::router(),
+        )
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration
