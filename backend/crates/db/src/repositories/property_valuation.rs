@@ -825,7 +825,7 @@ impl PropertyValuationRepository {
 
         sqlx::query_as::<_, PropertyValueHistory>(
             r#"
-            INSERT INTO property_value_history (
+            INSERT INTO avm_property_value_history (
                 organization_id, property_id, valuation_id, record_date,
                 estimated_value, price_per_sqm, confidence_level,
                 previous_value, value_change, value_change_percent,
@@ -871,7 +871,7 @@ impl PropertyValuationRepository {
     ) -> Result<Vec<PropertyValueHistory>, SqlxError> {
         sqlx::query_as::<_, PropertyValueHistory>(
             r#"
-            SELECT * FROM property_value_history
+            SELECT * FROM avm_property_value_history
             WHERE organization_id = $1 AND property_id = $2
             ORDER BY record_date DESC
             LIMIT $3

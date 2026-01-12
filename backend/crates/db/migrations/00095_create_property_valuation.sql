@@ -307,7 +307,7 @@ CREATE INDEX idx_market_data_property_type ON valuation_market_data(property_typ
 -- ===========================================================================
 -- Valuation History (track value changes over time)
 -- ===========================================================================
-CREATE TABLE property_value_history (
+CREATE TABLE avm_property_value_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     property_id UUID NOT NULL REFERENCES units(id) ON DELETE CASCADE,
@@ -327,9 +327,9 @@ CREATE TABLE property_value_history (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_value_history_org ON property_value_history(organization_id);
-CREATE INDEX idx_value_history_property ON property_value_history(property_id);
-CREATE INDEX idx_value_history_date ON property_value_history(property_id, record_date DESC);
+CREATE INDEX idx_value_history_org ON avm_property_value_history(organization_id);
+CREATE INDEX idx_value_history_property ON avm_property_value_history(property_id);
+CREATE INDEX idx_value_history_date ON avm_property_value_history(property_id, record_date DESC);
 
 -- ===========================================================================
 -- Valuation Requests (user-initiated valuation requests)
@@ -495,7 +495,7 @@ ALTER TABLE avm_property_valuations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE valuation_comparables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comparable_adjustments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE valuation_market_data ENABLE ROW LEVEL SECURITY;
-ALTER TABLE property_value_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE avm_property_value_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE valuation_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE property_valuation_features ENABLE ROW LEVEL SECURITY;
 ALTER TABLE valuation_reports ENABLE ROW LEVEL SECURITY;
@@ -527,7 +527,7 @@ CREATE POLICY market_data_tenant_isolation ON valuation_market_data
     FOR ALL USING (organization_id = current_setting('app.current_tenant')::uuid);
 
 -- Value History policies
-CREATE POLICY value_history_tenant_isolation ON property_value_history
+CREATE POLICY value_history_tenant_isolation ON avm_property_value_history
     FOR ALL USING (organization_id = current_setting('app.current_tenant')::uuid);
 
 -- Valuation Requests policies
@@ -585,7 +585,7 @@ COMMENT ON TABLE avm_property_valuations IS 'Property valuations with estimated 
 COMMENT ON TABLE valuation_comparables IS 'Comparable sales used in property valuations';
 COMMENT ON TABLE comparable_adjustments IS 'Adjustments applied to comparable sales';
 COMMENT ON TABLE valuation_market_data IS 'Regional and neighborhood market statistics';
-COMMENT ON TABLE property_value_history IS 'Historical property value tracking';
+COMMENT ON TABLE avm_property_value_history IS 'Historical property value tracking';
 COMMENT ON TABLE valuation_requests IS 'User-initiated valuation requests';
 COMMENT ON TABLE property_valuation_features IS 'Property features for hedonic model inputs';
 COMMENT ON TABLE valuation_reports IS 'Generated valuation reports';
