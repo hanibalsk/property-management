@@ -7,11 +7,11 @@ use api_core::TenantMembershipProvider;
 use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
-        AutomationRepository, BackgroundJobRepository, BudgetRepository, BuildingRepository,
-        CommunityRepository, CriticalNotificationRepository, DataExportRepository,
-        DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
-        EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
-        FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository,
+        AutomationRepository, BackgroundJobRepository, BoardMeetingRepository, BudgetRepository,
+        BuildingRepository, CommunityRepository, CriticalNotificationRepository,
+        DataExportRepository, DelegationRepository, DisputeRepository, DocumentRepository,
+        DocumentTemplateRepository, EmergencyRepository, EnergyRepository, EquipmentRepository,
+        FacilityRepository, FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository,
         FeaturePackageRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
         InfrastructureRepository, InsuranceRepository, IntegrationRepository,
@@ -137,6 +137,8 @@ pub struct AppState {
     pub market_pricing_repo: MarketPricingRepository,
     // Epic 133: AI Lease Abstraction & Document Intelligence
     pub lease_abstraction_repo: LeaseAbstractionRepository,
+    // Epic 143: Board Meeting Management
+    pub board_meeting_repo: BoardMeetingRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -255,6 +257,8 @@ impl AppState {
         let market_pricing_repo = MarketPricingRepository::new(db.clone());
         // Epic 133: AI Lease Abstraction & Document Intelligence
         let lease_abstraction_repo = LeaseAbstractionRepository::new(db.clone());
+        // Epic 143: Board Meeting Management
+        let board_meeting_repo = BoardMeetingRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -332,6 +336,7 @@ impl AppState {
             outage_repo,
             market_pricing_repo,
             lease_abstraction_repo,
+            board_meeting_repo,
             llm_client,
             auth_service,
             email_service,

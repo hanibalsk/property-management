@@ -134,3 +134,6 @@ pub mod market_pricing;
 
 // Epic 133: AI Lease Abstraction & Document Intelligence
 pub mod lease_abstraction;
+
+// Epic 143: Board Meeting Management
+pub mod board_meetings;

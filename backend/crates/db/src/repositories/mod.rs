@@ -278,3 +278,8 @@ pub use market_pricing::MarketPricingRepository;
 pub mod lease_abstraction;
 
 pub use lease_abstraction::LeaseAbstractionRepository;
+
+// Epic 143: Board Meeting Management
+pub mod board_meetings;
+
+pub use board_meetings::BoardMeetingRepository;

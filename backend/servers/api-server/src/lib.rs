@@ -224,6 +224,8 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/lease-abstraction",
             routes::lease_abstraction::router(),
         )
+        // Board Meetings routes (Epic 143)
+        .nest("/api/v1/board-meetings", routes::board_meetings::router())
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

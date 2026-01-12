@@ -846,3 +846,20 @@ pub use lease_abstraction::{
     LeaseDocumentSummary, LeaseExtraction, LeaseImport, ProcessDocumentRequest, ProcessingStatus,
     RejectExtraction, ValidationIssue as ExtractionValidationIssue,
 };
+
+// Epic 143: Board Meeting Management
+pub mod board_meetings;
+pub use board_meetings::{
+    ActionItemQuery as BoardMeetingActionItemQuery,
+    ActionItemSummary as BoardMeetingActionItemSummary, AgendaItemStatus, AttendanceHistory,
+    AttendanceStatus, BoardMeeting, BoardMember, BoardMemberQuery, BoardMemberSummary, BoardRole,
+    CastVote as CastBoardVote, CreateActionItem as CreateBoardMeetingActionItem, CreateAgendaItem,
+    CreateBoardMeeting, CreateBoardMember, CreateMinutes, CreateMotion as CreateBoardMotion,
+    MeetingActionItem, MeetingAgendaItem, MeetingAttendance, MeetingDashboard, MeetingDetail,
+    MeetingDocument, MeetingMinutes, MeetingMotion, MeetingQuery, MeetingStatistics, MeetingStatus,
+    MeetingSummary, MeetingType, MeetingTypeCount, MotionDetail, MotionQuery, MotionStatus,
+    MotionStatusCount, MotionSummary, MotionVote, RecordAttendance,
+    UpdateActionItem as UpdateBoardMeetingActionItem, UpdateAgendaItem, UpdateBoardMeeting,
+    UpdateBoardMember, UpdateMinutes, UpdateMotion as UpdateBoardMotion, UploadMeetingDocument,
+    VoteChoice, VoteSummary as BoardMeetingVoteSummary,
+};
