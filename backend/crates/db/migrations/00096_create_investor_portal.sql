@@ -296,7 +296,7 @@ CREATE TABLE investor_reports (
     created_by UUID REFERENCES users(id)
 );
 
-CREATE INDEX idx_reports_org ON investor_reports(organization_id);
+CREATE INDEX idx_investor_reports_org ON investor_reports(organization_id);
 CREATE INDEX idx_reports_investor ON investor_reports(investor_id);
 CREATE INDEX idx_reports_portfolio ON investor_reports(portfolio_id);
 CREATE INDEX idx_reports_type ON investor_reports(report_type);
