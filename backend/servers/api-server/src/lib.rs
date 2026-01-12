@@ -251,6 +251,8 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/property-valuations",
             routes::property_valuation::router(),
         )
+        // Investor Portal routes (Epic 139)
+        .nest("/api/v1/investor-portal", routes::investor_portal::router())
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

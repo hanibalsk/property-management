@@ -152,3 +152,6 @@ pub mod building_certifications;
 
 // Epic 138: Automated Property Valuation Model
 pub mod property_valuation;
+
+// Epic 139: Investor Portal & ROI Reporting
+pub mod investor_portal;

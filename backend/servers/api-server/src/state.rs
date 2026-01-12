@@ -16,8 +16,8 @@ use db::{
         FeatureFlagRepository, FeaturePackageRepository, FinancialRepository, FormRepository,
         GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
         HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
-        LeaseAbstractionRepository, LeaseRepository, LegalRepository, ListingRepository,
-        LlmDocumentRepository, MarketPricingRepository, MeterRepository,
+        InvestorPortalRepository, LeaseAbstractionRepository, LeaseRepository, LegalRepository,
+        ListingRepository, LlmDocumentRepository, MarketPricingRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
@@ -151,6 +151,8 @@ pub struct AppState {
     pub building_certification_repo: BuildingCertificationRepository,
     // Epic 138: Automated Property Valuation Model (AVM)
     pub property_valuation_repo: PropertyValuationRepository,
+    // Epic 139: Investor Portal & ROI Reporting
+    pub investor_portal_repo: InvestorPortalRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -281,6 +283,8 @@ impl AppState {
         let building_certification_repo = BuildingCertificationRepository::new(db.clone());
         // Epic 138: Automated Property Valuation Model (AVM)
         let property_valuation_repo = PropertyValuationRepository::new(db.clone());
+        // Epic 139: Investor Portal & ROI Reporting
+        let investor_portal_repo = InvestorPortalRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -364,6 +368,7 @@ impl AppState {
             esg_reporting_repo,
             building_certification_repo,
             property_valuation_repo,
+            investor_portal_repo,
             llm_client,
             auth_service,
             email_service,

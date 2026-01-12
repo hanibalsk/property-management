@@ -308,3 +308,8 @@ pub use building_certification::BuildingCertificationRepository;
 pub mod property_valuation;
 
 pub use property_valuation::PropertyValuationRepository;
+
+// Epic 139: Investor Portal & ROI Reporting
+pub mod investor_portal;
+
+pub use investor_portal::InvestorPortalRepository;
