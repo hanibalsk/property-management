@@ -49,5 +49,9 @@
     "vitest": "^2.1.8",
     "vitest-axe": "^0.1.0"
   },
-  "version": "0.2.316"
+<<<<<<< HEAD
+  "version": "0.2.317"
+=======
+  "version": "0.2.317"
+>>>>>>> origin/main
 }

@@ -143,3 +143,6 @@ pub mod portfolio_analytics;
 
 // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
 pub mod enhanced_tenant_screening;
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;

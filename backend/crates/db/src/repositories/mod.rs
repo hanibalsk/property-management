@@ -293,3 +293,8 @@ pub use portfolio_analytics::PortfolioAnalyticsRepository;
 pub mod enhanced_tenant_screening;
 
 pub use enhanced_tenant_screening::EnhancedTenantScreeningRepository;
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;
+
+pub use esg_reporting::EsgReportingRepository;

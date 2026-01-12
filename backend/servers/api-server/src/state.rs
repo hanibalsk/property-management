@@ -11,10 +11,11 @@ use db::{
         CommunityRepository, CriticalNotificationRepository, DataExportRepository,
         DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
         EmergencyRepository, EnergyRepository, EnhancedTenantScreeningRepository,
-        EquipmentRepository, FacilityRepository, FaultRepository, FeatureAnalyticsRepository,
-        FeatureFlagRepository, FeaturePackageRepository, FinancialRepository, FormRepository,
-        GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
-        HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
+        EquipmentRepository, EsgReportingRepository, FacilityRepository, FaultRepository,
+        FeatureAnalyticsRepository, FeatureFlagRepository, FeaturePackageRepository,
+        FinancialRepository, FormRepository, GovernmentPortalRepository,
+        GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
+        InfrastructureRepository, InsuranceRepository, IntegrationRepository,
         LeaseAbstractionRepository, LeaseRepository, LegalRepository, ListingRepository,
         LlmDocumentRepository, MarketPricingRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
@@ -143,6 +144,8 @@ pub struct AppState {
     pub portfolio_analytics_repo: PortfolioAnalyticsRepository,
     // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
     pub enhanced_tenant_screening_repo: EnhancedTenantScreeningRepository,
+    // Epic 136: ESG Reporting Dashboard
+    pub esg_reporting_repo: EsgReportingRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -267,6 +270,8 @@ impl AppState {
         let portfolio_analytics_repo = PortfolioAnalyticsRepository::new(db.clone());
         // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
         let enhanced_tenant_screening_repo = EnhancedTenantScreeningRepository::new(db.clone());
+        // Epic 136: ESG Reporting Dashboard
+        let esg_reporting_repo = EsgReportingRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -347,6 +352,7 @@ impl AppState {
             predictive_maintenance_repo,
             portfolio_analytics_repo,
             enhanced_tenant_screening_repo,
+            esg_reporting_repo,
             llm_client,
             auth_service,
             email_service,

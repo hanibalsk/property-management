@@ -891,3 +891,18 @@ pub use enhanced_tenant_screening::{
     ScreeningSummary as EnhancedScreeningSummary, UpdateAiRiskScoringModel,
     UpdateScreeningProviderConfig,
 };
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;
+
+pub use esg_reporting::{
+    CalculateCarbonFootprintRequest, CarbonFootprint, CarbonFootprintQuery, CarbonFootprintSummary,
+    CreateCarbonFootprint, CreateEsgBenchmark, CreateEsgConfiguration, CreateEsgImportJob,
+    CreateEsgMetric, CreateEsgReport, CreateEsgTarget, CreateEuTaxonomyAssessment,
+    EnergySourceType, EsgBenchmark, EsgBenchmarkCategory, EsgBenchmarkComparison,
+    EsgComplianceFramework, EsgConfiguration, EsgDashboardMetrics, EsgDataEntryMethod,
+    EsgEmissionScope, EsgImportJob, EsgMetric, EsgMetricCategory, EsgMetricsQuery, EsgReport,
+    EsgReportStatus, EsgStatistics, EsgSummaryScores, EsgTarget, EuTaxonomyAssessment,
+    GenerateEsgReportRequest, UpdateEsgConfiguration, UpdateEsgMetric, UpdateEsgReport,
+    UpdateEsgTarget, UpdateEuTaxonomyAssessment,
+};
