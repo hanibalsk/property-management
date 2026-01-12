@@ -188,7 +188,7 @@ impl PropertyValuationRepository {
     ) -> Result<PropertyValuation, SqlxError> {
         sqlx::query_as::<_, PropertyValuation>(
             r#"
-            INSERT INTO property_valuations (
+            INSERT INTO avm_property_valuations (
                 organization_id, property_id, building_id, model_id,
                 valuation_date, effective_date, expiration_date,
                 estimated_value, value_range_low, value_range_high,
@@ -252,7 +252,7 @@ impl PropertyValuationRepository {
     ) -> Result<Option<PropertyValuation>, SqlxError> {
         sqlx::query_as::<_, PropertyValuation>(
             r#"
-            SELECT * FROM property_valuations
+            SELECT * FROM avm_property_valuations
             WHERE organization_id = $1 AND id = $2
             "#,
         )
@@ -273,7 +273,7 @@ impl PropertyValuationRepository {
     ) -> Result<Vec<PropertyValuation>, SqlxError> {
         sqlx::query_as::<_, PropertyValuation>(
             r#"
-            SELECT * FROM property_valuations
+            SELECT * FROM avm_property_valuations
             WHERE organization_id = $1
               AND ($2::uuid IS NULL OR property_id = $2)
               AND ($3::valuation_status IS NULL OR status = $3)
@@ -299,7 +299,7 @@ impl PropertyValuationRepository {
     ) -> Result<Option<PropertyValuation>, SqlxError> {
         sqlx::query_as::<_, PropertyValuation>(
             r#"
-            UPDATE property_valuations
+            UPDATE avm_property_valuations
             SET
                 status = COALESCE($3::valuation_status, status),
                 estimated_value = COALESCE($4, estimated_value),
@@ -378,7 +378,7 @@ impl PropertyValuationRepository {
     ) -> Result<bool, SqlxError> {
         let result = sqlx::query(
             r#"
-            DELETE FROM property_valuations
+            DELETE FROM avm_property_valuations
             WHERE organization_id = $1 AND id = $2
             "#,
         )
@@ -400,7 +400,7 @@ impl PropertyValuationRepository {
     ) -> Result<Option<PropertyValuation>, SqlxError> {
         sqlx::query_as::<_, PropertyValuation>(
             r#"
-            UPDATE property_valuations
+            UPDATE avm_property_valuations
             SET
                 status = 'approved'::valuation_status,
                 reviewed_by = $3,
@@ -1326,7 +1326,7 @@ impl PropertyValuationRepository {
                 COUNT(*) FILTER (WHERE status = 'completed' OR status = 'approved') as completed_valuations,
                 COUNT(*) FILTER (WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)) as valuations_this_month,
                 COUNT(*) FILTER (WHERE expiration_date IS NOT NULL AND expiration_date <= CURRENT_DATE + INTERVAL '30 days') as expiring_soon
-            FROM property_valuations
+            FROM avm_property_valuations
             WHERE organization_id = $1
             "#,
         )
@@ -1339,7 +1339,7 @@ impl PropertyValuationRepository {
             SELECT SUM(estimated_value) as total_value
             FROM (
                 SELECT DISTINCT ON (property_id) estimated_value
-                FROM property_valuations
+                FROM avm_property_valuations
                 WHERE organization_id = $1 AND status IN ('completed', 'approved')
                 ORDER BY property_id, valuation_date DESC
             ) latest_valuations
@@ -1382,7 +1382,7 @@ impl PropertyValuationRepository {
     ) -> Result<Vec<PropertyValuation>, SqlxError> {
         sqlx::query_as::<_, PropertyValuation>(
             r#"
-            SELECT * FROM property_valuations
+            SELECT * FROM avm_property_valuations
             WHERE organization_id = $1
               AND expiration_date IS NOT NULL
               AND expiration_date <= CURRENT_DATE + ($2 || ' days')::INTERVAL

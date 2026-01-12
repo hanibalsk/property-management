@@ -110,7 +110,7 @@ CREATE INDEX idx_valuation_models_active ON property_valuation_models(organizati
 -- ===========================================================================
 -- Property Valuations (actual valuations)
 -- ===========================================================================
-CREATE TABLE property_valuations (
+CREATE TABLE avm_property_valuations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     property_id UUID NOT NULL REFERENCES units(id) ON DELETE CASCADE,
@@ -162,12 +162,12 @@ CREATE TABLE property_valuations (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_valuations_org ON property_valuations(organization_id);
-CREATE INDEX idx_valuations_property ON property_valuations(property_id);
-CREATE INDEX idx_valuations_building ON property_valuations(building_id);
-CREATE INDEX idx_valuations_date ON property_valuations(valuation_date DESC);
-CREATE INDEX idx_valuations_status ON property_valuations(organization_id, status);
-CREATE INDEX idx_valuations_value ON property_valuations(estimated_value);
+CREATE INDEX idx_valuations_org ON avm_property_valuations(organization_id);
+CREATE INDEX idx_valuations_property ON avm_property_valuations(property_id);
+CREATE INDEX idx_valuations_building ON avm_property_valuations(building_id);
+CREATE INDEX idx_valuations_date ON avm_property_valuations(valuation_date DESC);
+CREATE INDEX idx_valuations_status ON avm_property_valuations(organization_id, status);
+CREATE INDEX idx_valuations_value ON avm_property_valuations(estimated_value);
 
 -- ===========================================================================
 -- Comparable Sales
@@ -175,7 +175,7 @@ CREATE INDEX idx_valuations_value ON property_valuations(estimated_value);
 CREATE TABLE valuation_comparables (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    valuation_id UUID REFERENCES property_valuations(id) ON DELETE CASCADE,
+    valuation_id UUID REFERENCES avm_property_valuations(id) ON DELETE CASCADE,
     -- Comparable property info (may or may not be in our system)
     comparable_property_id UUID REFERENCES units(id) ON DELETE SET NULL,
     -- External comparable data
@@ -311,7 +311,7 @@ CREATE TABLE property_value_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     property_id UUID NOT NULL REFERENCES units(id) ON DELETE CASCADE,
-    valuation_id UUID REFERENCES property_valuations(id) ON DELETE SET NULL,
+    valuation_id UUID REFERENCES avm_property_valuations(id) ON DELETE SET NULL,
     -- Value snapshot
     record_date DATE NOT NULL,
     estimated_value DECIMAL(14, 2) NOT NULL,
@@ -349,7 +349,7 @@ CREATE TABLE valuation_requests (
     due_date DATE,
     completed_date DATE,
     -- Resulting valuation
-    valuation_id UUID REFERENCES property_valuations(id) ON DELETE SET NULL,
+    valuation_id UUID REFERENCES avm_property_valuations(id) ON DELETE SET NULL,
     -- Assignment
     assigned_to UUID REFERENCES users(id),
     assigned_at TIMESTAMPTZ,
@@ -430,7 +430,7 @@ CREATE UNIQUE INDEX idx_valuation_features_current ON property_valuation_feature
 CREATE TABLE valuation_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    valuation_id UUID NOT NULL REFERENCES property_valuations(id) ON DELETE CASCADE,
+    valuation_id UUID NOT NULL REFERENCES avm_property_valuations(id) ON DELETE CASCADE,
     -- Report info
     report_type VARCHAR(100) NOT NULL DEFAULT 'summary',  -- 'summary', 'detailed', 'appraisal', 'comparative'
     report_number VARCHAR(100),
@@ -464,7 +464,7 @@ CREATE INDEX idx_valuation_reports_type ON valuation_reports(report_type);
 CREATE TABLE valuation_audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    valuation_id UUID REFERENCES property_valuations(id) ON DELETE SET NULL,
+    valuation_id UUID REFERENCES avm_property_valuations(id) ON DELETE SET NULL,
     model_id UUID REFERENCES property_valuation_models(id) ON DELETE SET NULL,
     -- Action info
     action VARCHAR(100) NOT NULL,
@@ -491,7 +491,7 @@ CREATE INDEX idx_valuation_audit_date ON valuation_audit_logs(created_at DESC);
 -- Row Level Security Policies
 -- ===========================================================================
 ALTER TABLE property_valuation_models ENABLE ROW LEVEL SECURITY;
-ALTER TABLE property_valuations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE avm_property_valuations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE valuation_comparables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comparable_adjustments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE valuation_market_data ENABLE ROW LEVEL SECURITY;
@@ -506,7 +506,7 @@ CREATE POLICY valuation_models_tenant_isolation ON property_valuation_models
     FOR ALL USING (organization_id = current_setting('app.current_tenant')::uuid);
 
 -- Valuations policies
-CREATE POLICY valuations_tenant_isolation ON property_valuations
+CREATE POLICY valuations_tenant_isolation ON avm_property_valuations
     FOR ALL USING (organization_id = current_setting('app.current_tenant')::uuid);
 
 -- Comparables policies
@@ -554,7 +554,7 @@ CREATE TRIGGER update_valuation_models_updated_at
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_valuations_updated_at
-    BEFORE UPDATE ON property_valuations
+    BEFORE UPDATE ON avm_property_valuations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_comparables_updated_at
@@ -581,7 +581,7 @@ CREATE TRIGGER update_valuation_reports_updated_at
 -- Comments
 -- ===========================================================================
 COMMENT ON TABLE property_valuation_models IS 'AVM model configurations and parameters';
-COMMENT ON TABLE property_valuations IS 'Property valuations with estimated values and confidence levels';
+COMMENT ON TABLE avm_property_valuations IS 'Property valuations with estimated values and confidence levels';
 COMMENT ON TABLE valuation_comparables IS 'Comparable sales used in property valuations';
 COMMENT ON TABLE comparable_adjustments IS 'Adjustments applied to comparable sales';
 COMMENT ON TABLE valuation_market_data IS 'Regional and neighborhood market statistics';
