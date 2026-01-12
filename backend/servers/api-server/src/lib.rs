@@ -241,6 +241,11 @@ pub fn create_router(state: AppState) -> Router {
         )
         // ESG Reporting routes (Epic 136)
         .nest("/api/v1/esg", routes::esg_reporting::router())
+        // Building Certification routes (Epic 137)
+        .nest(
+            "/api/v1/building-certifications",
+            routes::building_certifications::router(),
+        )
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

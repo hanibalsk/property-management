@@ -835,6 +835,20 @@ pub use market_pricing::{
     VacancyTrendPoint, YieldRange,
 };
 
+// Epic 137: Smart Building Certification
+pub mod building_certification;
+
+pub use building_certification::{
+    BuildingCertification, CertificationAuditLog, CertificationBenchmark, CertificationCost,
+    CertificationCredit, CertificationDashboard, CertificationDocument, CertificationFilters,
+    CertificationLevel, CertificationLevelCount, CertificationMilestone, CertificationProgram,
+    CertificationProgramCount, CertificationReminder, CertificationStatus,
+    CertificationWithCredits, CreateBuildingCertification, CreateCertificationBenchmark,
+    CreateCertificationCost, CreateCertificationCredit, CreateCertificationDocument,
+    CreateCertificationMilestone, CreateCertificationReminder, CreditCategoryType,
+    UpdateBuildingCertification, UpdateCertificationCredit, UpdateCertificationMilestone,
+};
+
 // Epic 133: AI Lease Abstraction & Document Intelligence
 pub mod lease_abstraction;
 pub use lease_abstraction::{

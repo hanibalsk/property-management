@@ -146,3 +146,6 @@ pub mod enhanced_tenant_screening;
 
 // Epic 136: ESG Reporting Dashboard
 pub mod esg_reporting;
+
+// Epic 137: Smart Building Certification
+pub mod building_certifications;

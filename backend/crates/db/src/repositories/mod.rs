@@ -298,3 +298,8 @@ pub use enhanced_tenant_screening::EnhancedTenantScreeningRepository;
 pub mod esg_reporting;
 
 pub use esg_reporting::EsgReportingRepository;
+
+// Epic 137: Smart Building Certification
+pub mod building_certification;
+
+pub use building_certification::BuildingCertificationRepository;

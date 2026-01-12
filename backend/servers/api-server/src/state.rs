@@ -7,15 +7,15 @@ use api_core::TenantMembershipProvider;
 use db::{
     repositories::{
         AgencyRepository, AiChatRepository, AnnouncementRepository, AuditLogRepository,
-        AutomationRepository, BackgroundJobRepository, BudgetRepository, BuildingRepository,
-        CommunityRepository, CriticalNotificationRepository, DataExportRepository,
-        DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
-        EmergencyRepository, EnergyRepository, EnhancedTenantScreeningRepository,
-        EquipmentRepository, EsgReportingRepository, FacilityRepository, FaultRepository,
-        FeatureAnalyticsRepository, FeatureFlagRepository, FeaturePackageRepository,
-        FinancialRepository, FormRepository, GovernmentPortalRepository,
-        GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        InfrastructureRepository, InsuranceRepository, IntegrationRepository,
+        AutomationRepository, BackgroundJobRepository, BudgetRepository,
+        BuildingCertificationRepository, BuildingRepository, CommunityRepository,
+        CriticalNotificationRepository, DataExportRepository, DelegationRepository,
+        DisputeRepository, DocumentRepository, DocumentTemplateRepository, EmergencyRepository,
+        EnergyRepository, EnhancedTenantScreeningRepository, EquipmentRepository,
+        EsgReportingRepository, FacilityRepository, FaultRepository, FeatureAnalyticsRepository,
+        FeatureFlagRepository, FeaturePackageRepository, FinancialRepository, FormRepository,
+        GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
+        HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
         LeaseAbstractionRepository, LeaseRepository, LegalRepository, ListingRepository,
         LlmDocumentRepository, MarketPricingRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
@@ -146,6 +146,8 @@ pub struct AppState {
     pub enhanced_tenant_screening_repo: EnhancedTenantScreeningRepository,
     // Epic 136: ESG Reporting Dashboard
     pub esg_reporting_repo: EsgReportingRepository,
+    // Epic 137: Smart Building Certification
+    pub building_certification_repo: BuildingCertificationRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -272,6 +274,8 @@ impl AppState {
         let enhanced_tenant_screening_repo = EnhancedTenantScreeningRepository::new(db.clone());
         // Epic 136: ESG Reporting Dashboard
         let esg_reporting_repo = EsgReportingRepository::new(db.clone());
+        // Epic 137: Smart Building Certification
+        let building_certification_repo = BuildingCertificationRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -353,6 +357,7 @@ impl AppState {
             portfolio_analytics_repo,
             enhanced_tenant_screening_repo,
             esg_reporting_repo,
+            building_certification_repo,
             llm_client,
             auth_service,
             email_service,
