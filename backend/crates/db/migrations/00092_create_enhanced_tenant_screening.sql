@@ -569,15 +569,15 @@ CREATE POLICY reports_update ON screening_reports
 -- Auto-update timestamps
 CREATE TRIGGER update_ai_risk_models_timestamp
     BEFORE UPDATE ON ai_risk_scoring_models
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_provider_configs_timestamp
     BEFORE UPDATE ON screening_provider_configs
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_request_queue_timestamp
     BEFORE UPDATE ON screening_request_queue
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================================================
 -- SEED DATA: Default AI Risk Scoring Model
