@@ -370,52 +370,52 @@ CREATE TABLE violation_statistics (
 -- =============================================================================
 
 -- Community rules
-CREATE INDEX idx_community_rules_org ON community_rules(organization_id);
-CREATE INDEX idx_community_rules_building ON community_rules(building_id);
-CREATE INDEX idx_community_rules_category ON community_rules(category);
-CREATE INDEX idx_community_rules_active ON community_rules(organization_id, is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_community_rules_org ON community_rules(organization_id);
+CREATE INDEX IF NOT EXISTS idx_community_rules_building ON community_rules(building_id);
+CREATE INDEX IF NOT EXISTS idx_community_rules_category ON community_rules(category);
+CREATE INDEX IF NOT EXISTS idx_community_rules_active ON community_rules(organization_id, is_active) WHERE is_active = true;
 
 -- Violations
-CREATE INDEX idx_violations_org ON violations(organization_id);
-CREATE INDEX idx_violations_building ON violations(building_id);
-CREATE INDEX idx_violations_unit ON violations(unit_id);
-CREATE INDEX idx_violations_status ON violations(organization_id, status);
-CREATE INDEX idx_violations_category ON violations(organization_id, category);
-CREATE INDEX idx_violations_violator ON violations(violator_id);
-CREATE INDEX idx_violations_reporter ON violations(reporter_id);
-CREATE INDEX idx_violations_assigned ON violations(assigned_to);
-CREATE INDEX idx_violations_occurred ON violations(occurred_at DESC);
-CREATE INDEX idx_violations_open ON violations(organization_id, status)
+CREATE INDEX IF NOT EXISTS idx_violations_org ON violations(organization_id);
+CREATE INDEX IF NOT EXISTS idx_violations_building ON violations(building_id);
+CREATE INDEX IF NOT EXISTS idx_violations_unit ON violations(unit_id);
+CREATE INDEX IF NOT EXISTS idx_violations_status ON violations(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_violations_category ON violations(organization_id, category);
+CREATE INDEX IF NOT EXISTS idx_violations_violator ON violations(violator_id);
+CREATE INDEX IF NOT EXISTS idx_violations_reporter ON violations(reporter_id);
+CREATE INDEX IF NOT EXISTS idx_violations_assigned ON violations(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_violations_occurred ON violations(occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_violations_open ON violations(organization_id, status)
     WHERE status NOT IN ('resolved', 'dismissed');
 
 -- Evidence
-CREATE INDEX idx_violation_evidence_violation ON violation_evidence(violation_id);
+CREATE INDEX IF NOT EXISTS idx_violation_evidence_violation ON violation_evidence(violation_id);
 
 -- Enforcement actions
-CREATE INDEX idx_enforcement_actions_violation ON enforcement_actions(violation_id);
-CREATE INDEX idx_enforcement_actions_org ON enforcement_actions(organization_id);
-CREATE INDEX idx_enforcement_actions_status ON enforcement_actions(organization_id, status);
-CREATE INDEX idx_enforcement_actions_due ON enforcement_actions(due_date) WHERE status = 'sent';
+CREATE INDEX IF NOT EXISTS idx_enforcement_actions_violation ON enforcement_actions(violation_id);
+CREATE INDEX IF NOT EXISTS idx_enforcement_actions_org ON enforcement_actions(organization_id);
+CREATE INDEX IF NOT EXISTS idx_enforcement_actions_status ON enforcement_actions(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_enforcement_actions_due ON enforcement_actions(due_date) WHERE status = 'sent';
 
 -- Appeals
-CREATE INDEX idx_violation_appeals_violation ON violation_appeals(violation_id);
-CREATE INDEX idx_violation_appeals_org ON violation_appeals(organization_id);
-CREATE INDEX idx_violation_appeals_status ON violation_appeals(organization_id, status);
-CREATE INDEX idx_violation_appeals_appellant ON violation_appeals(appellant_id);
+CREATE INDEX IF NOT EXISTS idx_violation_appeals_violation ON violation_appeals(violation_id);
+CREATE INDEX IF NOT EXISTS idx_violation_appeals_org ON violation_appeals(organization_id);
+CREATE INDEX IF NOT EXISTS idx_violation_appeals_status ON violation_appeals(organization_id, status);
+CREATE INDEX IF NOT EXISTS idx_violation_appeals_appellant ON violation_appeals(appellant_id);
 
 -- Comments
-CREATE INDEX idx_violation_comments_violation ON violation_comments(violation_id);
+CREATE INDEX IF NOT EXISTS idx_violation_comments_violation ON violation_comments(violation_id);
 
 -- Notifications
-CREATE INDEX idx_violation_notifications_violation ON violation_notifications(violation_id);
+CREATE INDEX IF NOT EXISTS idx_violation_notifications_violation ON violation_notifications(violation_id);
 
 -- Payments
-CREATE INDEX idx_fine_payments_action ON fine_payments(enforcement_action_id);
-CREATE INDEX idx_fine_payments_org ON fine_payments(organization_id);
+CREATE INDEX IF NOT EXISTS idx_fine_payments_action ON fine_payments(enforcement_action_id);
+CREATE INDEX IF NOT EXISTS idx_fine_payments_org ON fine_payments(organization_id);
 
 -- Statistics
-CREATE INDEX idx_violation_statistics_org ON violation_statistics(organization_id);
-CREATE INDEX idx_violation_statistics_period ON violation_statistics(organization_id, period_type, period_start DESC);
+CREATE INDEX IF NOT EXISTS idx_violation_statistics_org ON violation_statistics(organization_id);
+CREATE INDEX IF NOT EXISTS idx_violation_statistics_period ON violation_statistics(organization_id, period_type, period_start DESC);
 
 -- =============================================================================
 -- ROW LEVEL SECURITY

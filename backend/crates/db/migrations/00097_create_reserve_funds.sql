@@ -1,50 +1,82 @@
 -- Epic 141: Reserve Fund Management
 -- Migration: Create tables for HOA/Condo reserve fund management
+-- Note: This migration replaces the simpler reserve_funds tables from migration 57
+
+-- Drop existing simple tables from migration 57 (00057_create_budgets.sql)
+-- These are being replaced with more comprehensive versions
+
+-- First drop dependent objects
+DROP TRIGGER IF EXISTS trg_update_reserve_fund_balance ON reserve_fund_transactions;
+DROP FUNCTION IF EXISTS update_reserve_fund_balance();
+DROP POLICY IF EXISTS reserve_transactions_tenant_isolation ON reserve_fund_transactions;
+DROP POLICY IF EXISTS reserve_funds_tenant_isolation ON reserve_funds;
+DROP INDEX IF EXISTS idx_reserve_transactions_date;
+DROP INDEX IF EXISTS idx_reserve_transactions_fund;
+DROP INDEX IF EXISTS idx_reserve_funds_building;
+DROP INDEX IF EXISTS idx_reserve_funds_organization;
+DROP TABLE IF EXISTS reserve_fund_transactions;
+DROP TABLE IF EXISTS reserve_funds;
 
 -- Enum for fund types
-CREATE TYPE fund_type AS ENUM (
-    'operating',
-    'reserve',
-    'emergency',
-    'special_assessment',
-    'capital_improvement',
-    'insurance',
-    'legal',
-    'custom'
-);
+DO $$ BEGIN
+    CREATE TYPE fund_type AS ENUM (
+        'operating',
+        'reserve',
+        'emergency',
+        'special_assessment',
+        'capital_improvement',
+        'insurance',
+        'legal',
+        'custom'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Enum for contribution frequency
-CREATE TYPE contribution_frequency AS ENUM (
-    'monthly',
-    'quarterly',
-    'semi_annually',
-    'annually',
-    'one_time'
-);
+DO $$ BEGIN
+    CREATE TYPE contribution_frequency AS ENUM (
+        'monthly',
+        'quarterly',
+        'semi_annually',
+        'annually',
+        'one_time'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Enum for investment risk levels
-CREATE TYPE investment_risk_level AS ENUM (
-    'conservative',
-    'moderate',
-    'balanced',
-    'growth',
-    'aggressive'
-);
+DO $$ BEGIN
+    CREATE TYPE investment_risk_level AS ENUM (
+        'conservative',
+        'moderate',
+        'balanced',
+        'growth',
+        'aggressive'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Enum for transaction types
-CREATE TYPE fund_transaction_type AS ENUM (
-    'contribution',
-    'withdrawal',
-    'transfer',
-    'interest',
-    'dividend',
-    'fee',
-    'adjustment',
-    'opening_balance'
-);
+DO $$ BEGIN
+    CREATE TYPE fund_transaction_type AS ENUM (
+        'contribution',
+        'withdrawal',
+        'transfer',
+        'interest',
+        'dividend',
+        'fee',
+        'adjustment',
+        'opening_balance'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- Main reserve funds table
-CREATE TABLE reserve_funds (
+CREATE TABLE IF NOT EXISTS reserve_funds (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     building_id UUID REFERENCES buildings(id) ON DELETE SET NULL,
@@ -74,7 +106,7 @@ CREATE TABLE reserve_funds (
 );
 
 -- Fund contribution schedules
-CREATE TABLE fund_contribution_schedules (
+CREATE TABLE IF NOT EXISTS fund_contribution_schedules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fund_id UUID NOT NULL REFERENCES reserve_funds(id) ON DELETE CASCADE,
 
@@ -103,7 +135,7 @@ CREATE TABLE fund_contribution_schedules (
 );
 
 -- Fund transactions
-CREATE TABLE fund_transactions (
+CREATE TABLE IF NOT EXISTS fund_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fund_id UUID NOT NULL REFERENCES reserve_funds(id) ON DELETE CASCADE,
 
@@ -132,7 +164,7 @@ CREATE TABLE fund_transactions (
 );
 
 -- Fund investment policies
-CREATE TABLE fund_investment_policies (
+CREATE TABLE IF NOT EXISTS fund_investment_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fund_id UUID NOT NULL REFERENCES reserve_funds(id) ON DELETE CASCADE,
 
@@ -177,7 +209,7 @@ CREATE TABLE fund_investment_policies (
 );
 
 -- Fund projections (reserve studies)
-CREATE TABLE fund_projections (
+CREATE TABLE IF NOT EXISTS fund_projections (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fund_id UUID NOT NULL REFERENCES reserve_funds(id) ON DELETE CASCADE,
 
@@ -209,7 +241,7 @@ CREATE TABLE fund_projections (
 );
 
 -- Fund projection line items (year-by-year breakdown)
-CREATE TABLE fund_projection_items (
+CREATE TABLE IF NOT EXISTS fund_projection_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     projection_id UUID NOT NULL REFERENCES fund_projections(id) ON DELETE CASCADE,
 
@@ -235,7 +267,7 @@ CREATE TABLE fund_projection_items (
 );
 
 -- Fund component tracking (e.g., roof, HVAC, elevator)
-CREATE TABLE fund_components (
+CREATE TABLE IF NOT EXISTS fund_components (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fund_id UUID NOT NULL REFERENCES reserve_funds(id) ON DELETE CASCADE,
 
@@ -260,7 +292,7 @@ CREATE TABLE fund_components (
 );
 
 -- Fund alerts
-CREATE TABLE fund_alerts (
+CREATE TABLE IF NOT EXISTS fund_alerts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     fund_id UUID NOT NULL REFERENCES reserve_funds(id) ON DELETE CASCADE,
 
@@ -286,29 +318,29 @@ CREATE TABLE fund_alerts (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_reserve_funds_org ON reserve_funds(organization_id);
-CREATE INDEX idx_reserve_funds_building ON reserve_funds(building_id);
-CREATE INDEX idx_reserve_funds_type ON reserve_funds(fund_type);
-CREATE INDEX idx_reserve_funds_active ON reserve_funds(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_reserve_funds_org ON reserve_funds(organization_id);
+CREATE INDEX IF NOT EXISTS idx_reserve_funds_building ON reserve_funds(building_id);
+CREATE INDEX IF NOT EXISTS idx_reserve_funds_type ON reserve_funds(fund_type);
+CREATE INDEX IF NOT EXISTS idx_reserve_funds_active ON reserve_funds(is_active) WHERE is_active = true;
 
-CREATE INDEX idx_contribution_schedules_fund ON fund_contribution_schedules(fund_id);
-CREATE INDEX idx_contribution_schedules_next_due ON fund_contribution_schedules(next_due_date)
+CREATE INDEX IF NOT EXISTS idx_contribution_schedules_fund ON fund_contribution_schedules(fund_id);
+CREATE INDEX IF NOT EXISTS idx_contribution_schedules_next_due ON fund_contribution_schedules(next_due_date)
     WHERE is_active = true;
 
-CREATE INDEX idx_fund_transactions_fund ON fund_transactions(fund_id);
-CREATE INDEX idx_fund_transactions_date ON fund_transactions(transaction_date);
-CREATE INDEX idx_fund_transactions_type ON fund_transactions(transaction_type);
+CREATE INDEX IF NOT EXISTS idx_fund_transactions_fund ON fund_transactions(fund_id);
+CREATE INDEX IF NOT EXISTS idx_fund_transactions_date ON fund_transactions(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_fund_transactions_type ON fund_transactions(transaction_type);
 
-CREATE INDEX idx_fund_projections_fund ON fund_projections(fund_id);
-CREATE INDEX idx_fund_projections_current ON fund_projections(fund_id) WHERE is_current = true;
+CREATE INDEX IF NOT EXISTS idx_fund_projections_fund ON fund_projections(fund_id);
+CREATE INDEX IF NOT EXISTS idx_fund_projections_current ON fund_projections(fund_id) WHERE is_current = true;
 
-CREATE INDEX idx_fund_projection_items_projection ON fund_projection_items(projection_id);
+CREATE INDEX IF NOT EXISTS idx_fund_projection_items_projection ON fund_projection_items(projection_id);
 
-CREATE INDEX idx_fund_components_fund ON fund_components(fund_id);
-CREATE INDEX idx_fund_components_replacement ON fund_components(next_replacement_date);
+CREATE INDEX IF NOT EXISTS idx_fund_components_fund ON fund_components(fund_id);
+CREATE INDEX IF NOT EXISTS idx_fund_components_replacement ON fund_components(next_replacement_date);
 
-CREATE INDEX idx_fund_alerts_fund ON fund_alerts(fund_id);
-CREATE INDEX idx_fund_alerts_active ON fund_alerts(fund_id) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_fund_alerts_fund ON fund_alerts(fund_id);
+CREATE INDEX IF NOT EXISTS idx_fund_alerts_active ON fund_alerts(fund_id) WHERE is_active = true;
 
 -- Row Level Security
 ALTER TABLE reserve_funds ENABLE ROW LEVEL SECURITY;
@@ -321,6 +353,7 @@ ALTER TABLE fund_components ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fund_alerts ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for reserve_funds
+DROP POLICY IF EXISTS reserve_funds_tenant_isolation ON reserve_funds;
 CREATE POLICY reserve_funds_tenant_isolation ON reserve_funds
     FOR ALL USING (
         organization_id = NULLIF(current_setting('app.current_organization_id', true), '')::UUID
@@ -391,6 +424,7 @@ CREATE POLICY fund_alerts_tenant_isolation ON fund_alerts
     );
 
 -- Triggers for updated_at
+DROP TRIGGER IF EXISTS update_reserve_funds_updated_at ON reserve_funds;
 CREATE TRIGGER update_reserve_funds_updated_at
     BEFORE UPDATE ON reserve_funds
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
