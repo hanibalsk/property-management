@@ -269,6 +269,36 @@ pub mod outage;
 
 pub use outage::OutageRepository;
 
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub mod market_pricing;
+
+pub use market_pricing::MarketPricingRepository;
+
+// Epic 133: AI Lease Abstraction & Document Intelligence
+pub mod lease_abstraction;
+
+pub use lease_abstraction::LeaseAbstractionRepository;
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;
+
+pub use predictive_maintenance::PredictiveMaintenanceRepository;
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+pub use portfolio_analytics::PortfolioAnalyticsRepository;
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;
+
+pub use enhanced_tenant_screening::EnhancedTenantScreeningRepository;
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;
+
+pub use esg_reporting::EsgReportingRepository;
+
 // Epic 137: Smart Building Certification
 pub mod building_certification;
 

@@ -21,5 +21,9 @@
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0"
   },
+<<<<<<< HEAD
   "version": "0.2.318"
+=======
+  "version": "0.2.318"
+>>>>>>> origin/main
 }
