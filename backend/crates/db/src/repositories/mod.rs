@@ -313,3 +313,8 @@ pub use property_valuation::PropertyValuationRepository;
 pub mod investor_portal;
 
 pub use investor_portal::InvestorPortalRepository;
+
+// Epic 141: Reserve Fund Management
+pub mod reserve_funds;
+
+pub use reserve_funds::ReserveFundRepository;

@@ -23,10 +23,10 @@ use db::{
         OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
         PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
         PortfolioAnalyticsRepository, PredictiveMaintenanceRepository, PropertyValuationRepository,
-        RegistryRepository, RentalRepository, RoleRepository, SensorRepository,
-        SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
-        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
-        UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
+        RegistryRepository, RentalRepository, ReserveFundRepository, RoleRepository,
+        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
+        SubscriptionRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
+        UnitRepository, UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
         WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
@@ -141,8 +141,6 @@ pub struct AppState {
     pub lease_abstraction_repo: LeaseAbstractionRepository,
     // Epic 134: Predictive Maintenance & Equipment Intelligence
     pub predictive_maintenance_repo: PredictiveMaintenanceRepository,
-    // Epic 140: Multi-Property Portfolio Analytics
-    pub portfolio_analytics_repo: PortfolioAnalyticsRepository,
     // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
     pub enhanced_tenant_screening_repo: EnhancedTenantScreeningRepository,
     // Epic 136: ESG Reporting Dashboard
@@ -153,6 +151,10 @@ pub struct AppState {
     pub property_valuation_repo: PropertyValuationRepository,
     // Epic 139: Investor Portal & ROI Reporting
     pub investor_portal_repo: InvestorPortalRepository,
+    // Epic 140: Multi-Property Portfolio Analytics
+    pub portfolio_analytics_repo: PortfolioAnalyticsRepository,
+    // Epic 141: Reserve Fund Management
+    pub reserve_fund_repo: ReserveFundRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -273,8 +275,6 @@ impl AppState {
         let lease_abstraction_repo = LeaseAbstractionRepository::new(db.clone());
         // Epic 134: Predictive Maintenance & Equipment Intelligence
         let predictive_maintenance_repo = PredictiveMaintenanceRepository::new(db.clone());
-        // Epic 140: Multi-Property Portfolio Analytics
-        let portfolio_analytics_repo = PortfolioAnalyticsRepository::new(db.clone());
         // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
         let enhanced_tenant_screening_repo = EnhancedTenantScreeningRepository::new(db.clone());
         // Epic 136: ESG Reporting Dashboard
@@ -285,6 +285,10 @@ impl AppState {
         let property_valuation_repo = PropertyValuationRepository::new(db.clone());
         // Epic 139: Investor Portal & ROI Reporting
         let investor_portal_repo = InvestorPortalRepository::new(db.clone());
+        // Epic 140: Multi-Property Portfolio Analytics
+        let portfolio_analytics_repo = PortfolioAnalyticsRepository::new(db.clone());
+        // Epic 141: Reserve Fund Management
+        let reserve_fund_repo = ReserveFundRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -363,12 +367,13 @@ impl AppState {
             market_pricing_repo,
             lease_abstraction_repo,
             predictive_maintenance_repo,
-            portfolio_analytics_repo,
             enhanced_tenant_screening_repo,
             esg_reporting_repo,
             building_certification_repo,
             property_valuation_repo,
             investor_portal_repo,
+            portfolio_analytics_repo,
+            reserve_fund_repo,
             llm_client,
             auth_service,
             email_service,

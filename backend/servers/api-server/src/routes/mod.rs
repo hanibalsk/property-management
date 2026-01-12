@@ -138,9 +138,6 @@ pub mod lease_abstraction;
 // Epic 134: Predictive Maintenance & Equipment Intelligence
 pub mod predictive_maintenance;
 
-// Epic 140: Multi-Property Portfolio Analytics
-pub mod portfolio_analytics;
-
 // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
 pub mod enhanced_tenant_screening;
 
@@ -155,3 +152,9 @@ pub mod property_valuation;
 
 // Epic 139: Investor Portal & ROI Reporting
 pub mod investor_portal;
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+// Epic 141: Reserve Fund Management
+pub mod reserve_funds;

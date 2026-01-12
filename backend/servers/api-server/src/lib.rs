@@ -229,11 +229,6 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/predictive-maintenance",
             routes::predictive_maintenance::router(),
         )
-        // Portfolio Analytics routes (Epic 140)
-        .nest(
-            "/api/v1/portfolio-analytics",
-            routes::portfolio_analytics::router(),
-        )
         // Enhanced Tenant Screening routes (Epic 135)
         .nest(
             "/api/v1/tenant-screening",
@@ -258,6 +253,8 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/portfolio-analytics",
             routes::portfolio_analytics::router(),
         )
+        // Reserve Fund routes (Epic 141)
+        .nest("/api/v1/reserve-funds", routes::reserve_funds::router())
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

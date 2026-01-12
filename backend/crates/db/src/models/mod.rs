@@ -981,3 +981,17 @@ pub use investor_portal::{
     RoiCalculationQuery, RoiPeriod, RoiSummary, UpdateCapitalCall, UpdateDistribution,
     UpdateInvestmentPortfolio, UpdateInvestorPortfolioProperty, UpdateInvestorProfile,
 };
+
+// Epic 141: Reserve Fund Management
+pub mod reserve_funds;
+
+pub use reserve_funds::{
+    AcknowledgeFundAlert, ComponentReplacementSchedule, ContributionFrequency,
+    CreateContributionSchedule, CreateFundComponent, CreateFundProjection, CreateInvestmentPolicy,
+    CreateProjectionItem, CreateReserveFund as CreateReserveFund141, FundAlert, FundComponent,
+    FundContributionSchedule, FundDashboard, FundHealthReport, FundInvestmentPolicy,
+    FundProjection, FundProjectionItem, FundSummary, FundTransaction, FundTransactionType,
+    FundTransferRequest, FundType, InvestmentRiskLevel, RecordFundTransaction,
+    ReserveFund as ReserveFund141, ReserveStudySummary, ResolveFundAlert, TransactionQuery,
+    UpdateContributionSchedule, UpdateFundComponent, UpdateReserveFund as UpdateReserveFund141,
+};
