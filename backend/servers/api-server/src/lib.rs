@@ -224,6 +224,39 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/lease-abstraction",
             routes::lease_abstraction::router(),
         )
+        // Predictive Maintenance routes (Epic 134)
+        .nest(
+            "/api/v1/predictive-maintenance",
+            routes::predictive_maintenance::router(),
+        )
+        // Enhanced Tenant Screening routes (Epic 135)
+        .nest(
+            "/api/v1/tenant-screening",
+            routes::enhanced_tenant_screening::router(),
+        )
+        // ESG Reporting routes (Epic 136)
+        .nest("/api/v1/esg", routes::esg_reporting::router())
+        // Building Certification routes (Epic 137)
+        .nest(
+            "/api/v1/building-certifications",
+            routes::building_certifications::router(),
+        )
+        // Property Valuation routes (Epic 138)
+        .nest(
+            "/api/v1/property-valuations",
+            routes::property_valuation::router(),
+        )
+        // Investor Portal routes (Epic 139)
+        .nest("/api/v1/investor-portal", routes::investor_portal::router())
+        // Portfolio Analytics routes (Epic 140)
+        .nest(
+            "/api/v1/portfolio-analytics",
+            routes::portfolio_analytics::router(),
+        )
+        // Reserve Fund routes (Epic 141)
+        .nest("/api/v1/reserve-funds", routes::reserve_funds::router())
+        // Violations routes (Epic 142)
+        .nest("/api/v1/violations", routes::violations::router())
         // Board Meetings routes (Epic 143)
         .nest("/api/v1/board-meetings", routes::board_meetings::router())
         // Middleware

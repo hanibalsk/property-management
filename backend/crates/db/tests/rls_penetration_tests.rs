@@ -537,6 +537,16 @@ async fn test_rls_coverage_validation() {
         "notification_preferences",
         "critical_notifications",
         "critical_notification_acknowledgments",
+        // Enhanced Tenant Screening (Epic 135)
+        "ai_risk_scoring_models",
+        "screening_provider_configs",
+        "screening_ai_results",
+        "screening_risk_factors",
+        "screening_credit_results",
+        "screening_background_results",
+        "screening_eviction_results",
+        "screening_request_queue",
+        "screening_reports",
     ];
 
     for table_name in &expected_rls_tables {
