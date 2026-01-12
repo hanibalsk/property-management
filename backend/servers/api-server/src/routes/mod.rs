@@ -140,3 +140,6 @@ pub mod predictive_maintenance;
 
 // Epic 140: Multi-Property Portfolio Analytics
 pub mod portfolio_analytics;
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;

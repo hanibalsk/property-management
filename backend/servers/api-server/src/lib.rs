@@ -234,6 +234,11 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/portfolio-analytics",
             routes::portfolio_analytics::router(),
         )
+        // Enhanced Tenant Screening routes (Epic 135)
+        .nest(
+            "/api/v1/tenant-screening",
+            routes::enhanced_tenant_screening::router(),
+        )
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

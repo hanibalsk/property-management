@@ -288,3 +288,8 @@ pub use predictive_maintenance::PredictiveMaintenanceRepository;
 pub mod portfolio_analytics;
 
 pub use portfolio_analytics::PortfolioAnalyticsRepository;
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;
+
+pub use enhanced_tenant_screening::EnhancedTenantScreeningRepository;

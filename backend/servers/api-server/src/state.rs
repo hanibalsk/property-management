@@ -10,11 +10,11 @@ use db::{
         AutomationRepository, BackgroundJobRepository, BudgetRepository, BuildingRepository,
         CommunityRepository, CriticalNotificationRepository, DataExportRepository,
         DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
-        EmergencyRepository, EnergyRepository, EquipmentRepository, FacilityRepository,
-        FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository,
-        FeaturePackageRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
-        GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        InfrastructureRepository, InsuranceRepository, IntegrationRepository,
+        EmergencyRepository, EnergyRepository, EnhancedTenantScreeningRepository,
+        EquipmentRepository, FacilityRepository, FaultRepository, FeatureAnalyticsRepository,
+        FeatureFlagRepository, FeaturePackageRepository, FinancialRepository, FormRepository,
+        GovernmentPortalRepository, GranularNotificationRepository, HealthMonitoringRepository,
+        HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
         LeaseAbstractionRepository, LeaseRepository, LegalRepository, ListingRepository,
         LlmDocumentRepository, MarketPricingRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
@@ -141,6 +141,8 @@ pub struct AppState {
     pub predictive_maintenance_repo: PredictiveMaintenanceRepository,
     // Epic 140: Multi-Property Portfolio Analytics
     pub portfolio_analytics_repo: PortfolioAnalyticsRepository,
+    // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+    pub enhanced_tenant_screening_repo: EnhancedTenantScreeningRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -263,6 +265,8 @@ impl AppState {
         let predictive_maintenance_repo = PredictiveMaintenanceRepository::new(db.clone());
         // Epic 140: Multi-Property Portfolio Analytics
         let portfolio_analytics_repo = PortfolioAnalyticsRepository::new(db.clone());
+        // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+        let enhanced_tenant_screening_repo = EnhancedTenantScreeningRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -342,6 +346,7 @@ impl AppState {
             lease_abstraction_repo,
             predictive_maintenance_repo,
             portfolio_analytics_repo,
+            enhanced_tenant_screening_repo,
             llm_client,
             auth_service,
             email_service,

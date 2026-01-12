@@ -875,3 +875,19 @@ pub use portfolio_analytics::{
     PropertyMetricValue, PropertyPerformanceMetrics, PropertyRanking, TrendAnalysis,
     TrendDataPoint, TrendQuery, UpdateAlertRule, UpdatePortfolioBenchmark,
 };
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;
+
+pub use enhanced_tenant_screening::{
+    AiResultWithFactors, AiRiskCategory, AiRiskScoringModel, CompleteScreeningData,
+    CreateAiRiskScoringModel, CreateScreeningBackgroundResult, CreateScreeningCreditResult,
+    CreateScreeningEvictionResult, CreateScreeningProviderConfig, CreateScreeningQueueItem,
+    CreateScreeningReport, CreateScreeningRiskFactor, InitiateScreeningRequest,
+    ProviderIntegrationStatus, RiskCategoryDistribution, RiskFactorCategory, RiskFactorImpact,
+    RunAiScoringRequest, ScreeningAiResult, ScreeningBackgroundResult, ScreeningCreditResult,
+    ScreeningEvictionResult, ScreeningProviderConfig, ScreeningProviderType, ScreeningReport,
+    ScreeningRequestQueueItem, ScreeningRiskFactor, ScreeningStatistics,
+    ScreeningSummary as EnhancedScreeningSummary, UpdateAiRiskScoringModel,
+    UpdateScreeningProviderConfig,
+};
