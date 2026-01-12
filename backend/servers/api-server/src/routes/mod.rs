@@ -132,5 +132,26 @@ pub mod outages;
 // Epic 132: Dynamic Rent Pricing & Market Analytics
 pub mod market_pricing;
 
+// Epic 133: AI Lease Abstraction & Document Intelligence
+pub mod lease_abstraction;
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;
+
+// Epic 137: Smart Building Certification
+pub mod building_certifications;
+
+// Epic 138: Automated Property Valuation Model
+pub mod property_valuation;
+
 // Epic 139: Investor Portal & ROI Reporting
 pub mod investor_portal;
