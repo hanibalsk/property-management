@@ -158,3 +158,6 @@ pub mod portfolio_analytics;
 
 // Epic 141: Reserve Fund Management
 pub mod reserve_funds;
+
+// Epic 142: Violation Tracking & Enforcement
+pub mod violations;

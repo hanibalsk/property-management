@@ -995,3 +995,17 @@ pub use reserve_funds::{
     ReserveFund as ReserveFund141, ReserveStudySummary, ResolveFundAlert, TransactionQuery,
     UpdateContributionSchedule, UpdateFundComponent, UpdateReserveFund as UpdateReserveFund141,
 };
+
+// Epic 142: Violation Tracking & Enforcement
+pub mod violations;
+pub use violations::{
+    AppealQuery, AppealStatus, CategoryCount as ViolationCategoryCount, CommunityRule,
+    CreateCommunityRule, CreateEnforcementAction, CreateViolation, CreateViolationAppeal,
+    CreateViolationComment, CreateViolationEvidence, EnforcementAction, EnforcementActionType,
+    EnforcementQuery, EnforcementStatus, FinePayment, RecordFinePayment, RuleComplianceSummary,
+    StatusCount as ViolationStatusCount, UpdateCommunityRule, UpdateEnforcementAction,
+    UpdateViolation, UpdateViolationAppeal, Violation, ViolationAppeal, ViolationCategory,
+    ViolationComment, ViolationDashboard, ViolationDetail, ViolationEvidence,
+    ViolationNotification, ViolationQuery, ViolationSeverity, ViolationStatistics, ViolationStatus,
+    ViolationSummary, ViolatorHistory,
+};

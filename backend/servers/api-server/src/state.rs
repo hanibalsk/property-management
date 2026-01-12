@@ -26,8 +26,8 @@ use db::{
         RegistryRepository, RentalRepository, ReserveFundRepository, RoleRepository,
         SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
         SubscriptionRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
-        UnitRepository, UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
-        WorkOrderRepository, WorkflowRepository,
+        UnitRepository, UnitResidentRepository, UserRepository, VendorRepository,
+        ViolationRepository, VoteRepository, WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -155,6 +155,8 @@ pub struct AppState {
     pub portfolio_analytics_repo: PortfolioAnalyticsRepository,
     // Epic 141: Reserve Fund Management
     pub reserve_fund_repo: ReserveFundRepository,
+    // Epic 142: Violation Tracking & Enforcement
+    pub violation_repo: ViolationRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -289,6 +291,8 @@ impl AppState {
         let portfolio_analytics_repo = PortfolioAnalyticsRepository::new(db.clone());
         // Epic 141: Reserve Fund Management
         let reserve_fund_repo = ReserveFundRepository::new(db.clone());
+        // Epic 142: Violation Tracking & Enforcement
+        let violation_repo = ViolationRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -374,6 +378,7 @@ impl AppState {
             investor_portal_repo,
             portfolio_analytics_repo,
             reserve_fund_repo,
+            violation_repo,
             llm_client,
             auth_service,
             email_service,

@@ -255,6 +255,8 @@ pub fn create_router(state: AppState) -> Router {
         )
         // Reserve Fund routes (Epic 141)
         .nest("/api/v1/reserve-funds", routes::reserve_funds::router())
+        // Violations routes (Epic 142)
+        .nest("/api/v1/violations", routes::violations::router())
         // Middleware
         .layer(TraceLayer::new_for_http())
         // CORS configuration

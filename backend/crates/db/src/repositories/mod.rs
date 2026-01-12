@@ -318,3 +318,8 @@ pub use investor_portal::InvestorPortalRepository;
 pub mod reserve_funds;
 
 pub use reserve_funds::ReserveFundRepository;
+
+// Epic 142: Violation Tracking & Enforcement
+pub mod violations;
+
+pub use violations::ViolationRepository;
