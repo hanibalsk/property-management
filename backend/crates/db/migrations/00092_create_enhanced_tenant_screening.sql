@@ -101,10 +101,12 @@ CREATE TABLE ai_risk_scoring_models (
         excellent_threshold > good_threshold AND
         good_threshold > fair_threshold AND
         fair_threshold > poor_threshold
-    ),
-    CONSTRAINT unique_active_model UNIQUE (organization_id, is_active)
-        WHERE (is_active = true)
+    )
 );
+
+-- Partial unique index to ensure only one active model per organization
+CREATE UNIQUE INDEX unique_active_model_per_org ON ai_risk_scoring_models(organization_id)
+    WHERE is_active = true;
 
 -- Screening Provider Configurations
 CREATE TABLE screening_provider_configs (
