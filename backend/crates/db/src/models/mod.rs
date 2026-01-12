@@ -582,6 +582,9 @@ pub use llm_document::{
 // UC-12: Utility Outages
 pub mod outage;
 
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub mod market_pricing;
+
 // Epic 72: Regional Legal Compliance (SK/CZ)
 pub mod regional_compliance;
 
@@ -816,16 +819,90 @@ pub use outage::{
     StartOutage, UpdateOutage,
 };
 
+// Epic 132: Dynamic Rent Pricing & Market Analytics
+pub use market_pricing::{
+    pricing_recommendation_status, pricing_source, AcceptPricingRecommendation, AddCmaProperty,
+    CmaAnalysisSummary, CmaPropertyComparison, CmaSummary, CmaWithProperties,
+    ComparativeMarketAnalysis, CreateComparativeMarketAnalysis, CreateMarketDataPoint,
+    CreateMarketRegion, ExportPricingDataRequest, GenerateStatisticsRequest, MarketComparable,
+    MarketDataPoint, MarketDataQuery, MarketRegion, MarketRegionSummary, MarketStatistics,
+    MarketStatisticsSummary, MarketTrendPoint, PortfolioPricingSummary,
+    PriceRange as MarketPriceRange, PricingDashboard, PricingDashboardQuery,
+    PricingFactor as MarketPricingFactor, PricingHistoryEntry, PricingRecommendation,
+    PricingRecommendationSummary, PricingRecommendationWithDetails, RecordPriceChange,
+    RejectPricingRecommendation, RequestPricingRecommendation, UnitPricingHistory,
+    UnitRecommendationSummary, UpdateComparativeMarketAnalysis, UpdateMarketRegion,
+    VacancyTrendPoint, YieldRange,
+};
+
+// Epic 133: AI Lease Abstraction & Document Intelligence
+pub mod lease_abstraction;
+pub use lease_abstraction::{
+    document_status as lease_document_status, import_status as lease_import_status,
+    review_status as extraction_review_status, ApproveExtraction, CreateExtractionCorrection,
+    CreateLeaseDocument, CreateLeaseExtraction, ExtractedField, ExtractionCorrection,
+    ExtractionSummary, ExtractionWithFields, ImportExtractionRequest,
+    ImportResult as LeaseImportResult, ImportValidationResult, LeaseDocument, LeaseDocumentQuery,
+    LeaseDocumentSummary, LeaseExtraction, LeaseImport, ProcessDocumentRequest, ProcessingStatus,
+    RejectExtraction, ValidationIssue as ExtractionValidationIssue,
+};
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;
+
+pub use predictive_maintenance::{
+    AcknowledgeAlertRequest, AlertSeverity as PredictiveAlertSeverity,
+    AlertStatus as PredictiveAlertStatus, AlertType as PredictiveAlertType, AlertWithEquipment,
+    AlertsBySeverity, CreateEquipment as CreatePredictiveEquipment, CreateEquipmentDocument,
+    CreateMaintenanceLog, Equipment as PredictiveEquipment, EquipmentByStatus, EquipmentDocument,
+    EquipmentPrediction, EquipmentQuery as PredictiveEquipmentQuery,
+    EquipmentStatus as PredictiveEquipmentStatus, EquipmentSummary as PredictiveEquipmentSummary,
+    EquipmentType, HealthDistribution, HealthThreshold, MaintenanceAlert, MaintenanceDashboard,
+    MaintenanceLog, MaintenanceLogPhoto, MaintenanceOutcome, MaintenanceTrend,
+    MaintenanceType as PredictiveMaintenanceType, PredictionFactor, PredictionResult,
+    RecommendedAction, ResolveAlertRequest, RunPredictionRequest, SetHealthThreshold,
+    UpdateEquipment as UpdatePredictiveEquipment, UpdateMaintenanceLog,
+};
+
+// Epic 140: Multi-Property Portfolio Analytics
+pub mod portfolio_analytics;
+
+pub use portfolio_analytics::{
+    AggregationPeriod, AlertQuery as PortfolioAlertQuery, BenchmarkCategory, ComparisonScope,
+    CreateAlertRule, CreatePortfolioBenchmark, CreatePropertyMetrics, MetricsComparison,
+    PortfolioAggregatedMetrics, PortfolioAlert, PortfolioAlertRule, PortfolioBenchmark,
+    PortfolioOverview, PortfolioTrend, PropertyComparison as PortfolioPropertyComparison,
+    PropertyMetricValue, PropertyPerformanceMetrics, PropertyRanking, TrendAnalysis,
+    TrendDataPoint, TrendQuery, UpdateAlertRule, UpdatePortfolioBenchmark,
+};
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;
+
+pub use enhanced_tenant_screening::{
+    AiResultWithFactors, AiRiskCategory, AiRiskScoringModel, CompleteScreeningData,
+    CreateAiRiskScoringModel, CreateScreeningBackgroundResult, CreateScreeningCreditResult,
+    CreateScreeningEvictionResult, CreateScreeningProviderConfig, CreateScreeningQueueItem,
+    CreateScreeningReport, CreateScreeningRiskFactor, InitiateScreeningRequest,
+    ProviderIntegrationStatus, RiskCategoryDistribution, RiskFactorCategory, RiskFactorImpact,
+    RunAiScoringRequest, ScreeningAiResult, ScreeningBackgroundResult, ScreeningCreditResult,
+    ScreeningEvictionResult, ScreeningProviderConfig, ScreeningProviderType, ScreeningReport,
+    ScreeningRequestQueueItem, ScreeningRiskFactor, ScreeningStatistics,
+    ScreeningSummary as EnhancedScreeningSummary, UpdateAiRiskScoringModel,
+    UpdateScreeningProviderConfig,
+};
+
 // Epic 136: ESG Reporting Dashboard
 pub mod esg_reporting;
 
 pub use esg_reporting::{
-    CarbonFootprint, CarbonFootprintQuery, CarbonFootprintSummary, CreateCarbonFootprint,
-    CreateEsgBenchmark, CreateEsgConfiguration, CreateEsgImportJob, CreateEsgMetric,
-    CreateEsgReport, CreateEsgTarget, CreateEuTaxonomyAssessment, EsgBenchmark,
-    EsgBenchmarkCategory, EsgBenchmarkComparison, EsgComplianceFramework, EsgConfiguration,
-    EsgDashboardMetrics, EsgDataEntryMethod, EsgEmissionScope, EsgImportJob, EsgMetric,
-    EsgMetricCategory, EsgMetricsQuery, EsgReport, EsgReportStatus, EsgStatistics,
-    EsgSummaryScores, EsgTarget, EuTaxonomyAssessment, UpdateEsgConfiguration, UpdateEsgMetric,
-    UpdateEsgReport, UpdateEsgTarget, UpdateEuTaxonomyAssessment,
+    CalculateCarbonFootprintRequest, CarbonFootprint, CarbonFootprintQuery, CarbonFootprintSummary,
+    CreateCarbonFootprint, CreateEsgBenchmark, CreateEsgConfiguration, CreateEsgImportJob,
+    CreateEsgMetric, CreateEsgReport, CreateEsgTarget, CreateEuTaxonomyAssessment,
+    EnergySourceType, EsgBenchmark, EsgBenchmarkCategory, EsgBenchmarkComparison,
+    EsgComplianceFramework, EsgConfiguration, EsgDashboardMetrics, EsgDataEntryMethod,
+    EsgEmissionScope, EsgImportJob, EsgMetric, EsgMetricCategory, EsgMetricsQuery, EsgReport,
+    EsgReportStatus, EsgStatistics, EsgSummaryScores, EsgTarget, EuTaxonomyAssessment,
+    GenerateEsgReportRequest, UpdateEsgConfiguration, UpdateEsgMetric, UpdateEsgReport,
+    UpdateEsgTarget, UpdateEuTaxonomyAssessment,
 };

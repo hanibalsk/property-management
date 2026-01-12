@@ -85,7 +85,7 @@ async fn get_configuration(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_configuration(org_id)
         .await
         .map(Json)
@@ -100,7 +100,7 @@ async fn upsert_configuration(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .upsert_configuration(org_id, input)
         .await
         .map(Json)
@@ -119,7 +119,7 @@ async fn list_metrics(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .list_metrics(org_id, query)
         .await
         .map(Json)
@@ -134,7 +134,7 @@ async fn create_metric(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .create_metric(org_id, auth.user_id, input)
         .await
         .map(|m| (StatusCode::CREATED, Json(m)))
@@ -147,7 +147,7 @@ async fn get_metric(
     Path(id): Path<Uuid>,
 ) -> Result<Json<EsgMetric>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_metric(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -162,7 +162,7 @@ async fn update_metric(
     Json(input): Json<UpdateEsgMetric>,
 ) -> Result<Json<EsgMetric>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .update_metric(id, input)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -182,7 +182,7 @@ async fn verify_metric(
     Json(input): Json<VerifyMetricRequest>,
 ) -> Result<Json<EsgMetric>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .verify_metric(id, auth.user_id, &input.status)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -196,7 +196,7 @@ async fn delete_metric(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .delete_metric(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -215,7 +215,7 @@ async fn list_carbon_footprints(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .list_carbon_footprints(org_id, query)
         .await
         .map(Json)
@@ -230,7 +230,7 @@ async fn create_carbon_footprint(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .create_carbon_footprint(org_id, input)
         .await
         .map(|c| (StatusCode::CREATED, Json(c)))
@@ -243,7 +243,7 @@ async fn get_carbon_footprint(
     Path(id): Path<Uuid>,
 ) -> Result<Json<CarbonFootprint>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_carbon_footprint(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -262,7 +262,7 @@ async fn get_carbon_summary(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_carbon_summary(org_id, year)
         .await
         .map(Json)
@@ -275,7 +275,7 @@ async fn delete_carbon_footprint(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .delete_carbon_footprint(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -299,7 +299,7 @@ async fn list_benchmarks(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .list_benchmarks(org_id, params.category)
         .await
         .map(Json)
@@ -314,7 +314,7 @@ async fn create_benchmark(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .create_benchmark(org_id, input)
         .await
         .map(|b| (StatusCode::CREATED, Json(b)))
@@ -327,7 +327,7 @@ async fn delete_benchmark(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .delete_benchmark(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -351,7 +351,7 @@ async fn list_targets(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .list_targets(org_id, params.building_id)
         .await
         .map(Json)
@@ -366,7 +366,7 @@ async fn create_target(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .create_target(org_id, input)
         .await
         .map(|t| (StatusCode::CREATED, Json(t)))
@@ -379,7 +379,7 @@ async fn get_target(
     Path(id): Path<Uuid>,
 ) -> Result<Json<EsgTarget>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_target(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -394,7 +394,7 @@ async fn update_target(
     Json(input): Json<UpdateEsgTarget>,
 ) -> Result<Json<EsgTarget>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .update_target(id, input)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -408,7 +408,7 @@ async fn delete_target(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .delete_target(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -432,7 +432,7 @@ async fn list_reports(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .list_reports(org_id, params.status)
         .await
         .map(Json)
@@ -447,7 +447,7 @@ async fn create_report(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .create_report(org_id, auth.user_id, input)
         .await
         .map(|r| (StatusCode::CREATED, Json(r)))
@@ -460,7 +460,7 @@ async fn get_report(
     Path(id): Path<Uuid>,
 ) -> Result<Json<EsgReport>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_report(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -475,7 +475,7 @@ async fn update_report(
     Json(input): Json<UpdateEsgReport>,
 ) -> Result<Json<EsgReport>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .update_report(id, input)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -489,7 +489,7 @@ async fn submit_report(
     Path(id): Path<Uuid>,
 ) -> Result<Json<EsgReport>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .submit_report(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -506,7 +506,7 @@ async fn approve_report(
     Path(id): Path<Uuid>,
 ) -> Result<Json<EsgReport>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .approve_report(id, auth.user_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -523,7 +523,7 @@ async fn delete_report(
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let deleted = state
-        .esg_repo
+        .esg_reporting_repo
         .delete_report(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -555,7 +555,7 @@ async fn list_eu_taxonomy_assessments(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .list_eu_taxonomy_assessments(org_id, params.year)
         .await
         .map(Json)
@@ -570,7 +570,7 @@ async fn create_eu_taxonomy_assessment(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .create_eu_taxonomy_assessment(org_id, input)
         .await
         .map(|a| (StatusCode::CREATED, Json(a)))
@@ -583,7 +583,7 @@ async fn get_eu_taxonomy_assessment(
     Path(id): Path<Uuid>,
 ) -> Result<Json<EuTaxonomyAssessment>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_eu_taxonomy_assessment(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -598,7 +598,7 @@ async fn update_eu_taxonomy_assessment(
     Json(input): Json<UpdateEuTaxonomyAssessment>,
 ) -> Result<Json<EuTaxonomyAssessment>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .update_eu_taxonomy_assessment(id, input)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -624,7 +624,7 @@ async fn get_dashboard(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_dashboard_metrics(org_id, year, params.building_id)
         .await
         .map(Json)
@@ -640,7 +640,7 @@ async fn refresh_dashboard(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .refresh_dashboard_metrics(org_id, year, params.building_id)
         .await
         .map(Json)
@@ -658,7 +658,7 @@ async fn list_import_jobs(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .list_import_jobs(org_id)
         .await
         .map(Json)
@@ -673,7 +673,7 @@ async fn create_import_job(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .create_import_job(org_id, auth.user_id, input)
         .await
         .map(|j| (StatusCode::CREATED, Json(j)))
@@ -686,7 +686,7 @@ async fn get_import_job(
     Path(id): Path<Uuid>,
 ) -> Result<Json<EsgImportJob>, (StatusCode, String)> {
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_import_job(id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
@@ -705,7 +705,7 @@ async fn get_statistics(
     let org_id = get_org_id(&auth)?;
 
     state
-        .esg_repo
+        .esg_reporting_repo
         .get_statistics(org_id)
         .await
         .map(Json)

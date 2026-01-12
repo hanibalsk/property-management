@@ -10,21 +10,23 @@ use db::{
         AutomationRepository, BackgroundJobRepository, BudgetRepository, BuildingRepository,
         CommunityRepository, CriticalNotificationRepository, DataExportRepository,
         DelegationRepository, DisputeRepository, DocumentRepository, DocumentTemplateRepository,
-        EmergencyRepository, EnergyRepository, EquipmentRepository, EsgReportingRepository,
-        FacilityRepository, FaultRepository, FeatureAnalyticsRepository, FeatureFlagRepository,
-        FeaturePackageRepository, FinancialRepository, FormRepository, GovernmentPortalRepository,
+        EmergencyRepository, EnergyRepository, EnhancedTenantScreeningRepository,
+        EquipmentRepository, EsgReportingRepository, FacilityRepository, FaultRepository,
+        FeatureAnalyticsRepository, FeatureFlagRepository, FeaturePackageRepository,
+        FinancialRepository, FormRepository, GovernmentPortalRepository,
         GranularNotificationRepository, HealthMonitoringRepository, HelpRepository,
-        InfrastructureRepository, InsuranceRepository, IntegrationRepository, LeaseRepository,
-        LegalRepository, ListingRepository, LlmDocumentRepository, MeterRepository,
+        InfrastructureRepository, InsuranceRepository, IntegrationRepository,
+        LeaseAbstractionRepository, LeaseRepository, LegalRepository, ListingRepository,
+        LlmDocumentRepository, MarketPricingRepository, MeterRepository,
         NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
         OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
         OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
         PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
-        RegistryRepository, RentalRepository, RoleRepository, SensorRepository,
-        SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
-        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
-        UnitResidentRepository, UserRepository, VendorRepository, VoteRepository,
-        WorkOrderRepository, WorkflowRepository,
+        PortfolioAnalyticsRepository, PredictiveMaintenanceRepository, RegistryRepository,
+        RentalRepository, RoleRepository, SensorRepository, SentimentRepository, SessionRepository,
+        SignatureRequestRepository, SubscriptionRepository, SystemAnnouncementRepository,
+        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
+        VendorRepository, VoteRepository, WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -132,8 +134,18 @@ pub struct AppState {
     pub feature_analytics_repo: FeatureAnalyticsRepository,
     // UC-12: Utility Outages
     pub outage_repo: OutageRepository,
+    // Epic 132: Dynamic Rent Pricing & Market Analytics
+    pub market_pricing_repo: MarketPricingRepository,
+    // Epic 133: AI Lease Abstraction & Document Intelligence
+    pub lease_abstraction_repo: LeaseAbstractionRepository,
+    // Epic 134: Predictive Maintenance & Equipment Intelligence
+    pub predictive_maintenance_repo: PredictiveMaintenanceRepository,
+    // Epic 140: Multi-Property Portfolio Analytics
+    pub portfolio_analytics_repo: PortfolioAnalyticsRepository,
+    // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+    pub enhanced_tenant_screening_repo: EnhancedTenantScreeningRepository,
     // Epic 136: ESG Reporting Dashboard
-    pub esg_repo: EsgReportingRepository,
+    pub esg_reporting_repo: EsgReportingRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -248,8 +260,18 @@ impl AppState {
         let feature_analytics_repo = FeatureAnalyticsRepository::new(db.clone());
         // UC-12: Utility Outages
         let outage_repo = OutageRepository::new(db.clone());
+        // Epic 132: Dynamic Rent Pricing & Market Analytics
+        let market_pricing_repo = MarketPricingRepository::new(db.clone());
+        // Epic 133: AI Lease Abstraction & Document Intelligence
+        let lease_abstraction_repo = LeaseAbstractionRepository::new(db.clone());
+        // Epic 134: Predictive Maintenance & Equipment Intelligence
+        let predictive_maintenance_repo = PredictiveMaintenanceRepository::new(db.clone());
+        // Epic 140: Multi-Property Portfolio Analytics
+        let portfolio_analytics_repo = PortfolioAnalyticsRepository::new(db.clone());
+        // Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+        let enhanced_tenant_screening_repo = EnhancedTenantScreeningRepository::new(db.clone());
         // Epic 136: ESG Reporting Dashboard
-        let esg_repo = EsgReportingRepository::new(db.clone());
+        let esg_reporting_repo = EsgReportingRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -325,7 +347,12 @@ impl AppState {
             feature_package_repo,
             feature_analytics_repo,
             outage_repo,
-            esg_repo,
+            market_pricing_repo,
+            lease_abstraction_repo,
+            predictive_maintenance_repo,
+            portfolio_analytics_repo,
+            enhanced_tenant_screening_repo,
+            esg_reporting_repo,
             llm_client,
             auth_service,
             email_service,
