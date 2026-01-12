@@ -835,6 +835,49 @@ pub use market_pricing::{
     VacancyTrendPoint, YieldRange,
 };
 
+// Epic 137: Smart Building Certification
+pub mod building_certification;
+
+pub use building_certification::{
+    BuildingCertification, CertificationAuditLog, CertificationBenchmark, CertificationCost,
+    CertificationCredit, CertificationDashboard, CertificationDocument, CertificationFilters,
+    CertificationLevel, CertificationLevelCount, CertificationMilestone, CertificationProgram,
+    CertificationProgramCount, CertificationReminder, CertificationStatus,
+    CertificationWithCredits, CreateBuildingCertification, CreateCertificationBenchmark,
+    CreateCertificationCost, CreateCertificationCredit, CreateCertificationDocument,
+    CreateCertificationMilestone, CreateCertificationReminder, CreditCategoryType,
+    UpdateBuildingCertification, UpdateCertificationCredit, UpdateCertificationMilestone,
+};
+
+// Epic 133: AI Lease Abstraction & Document Intelligence
+pub mod lease_abstraction;
+pub use lease_abstraction::{
+    document_status as lease_document_status, import_status as lease_import_status,
+    review_status as extraction_review_status, ApproveExtraction, CreateExtractionCorrection,
+    CreateLeaseDocument, CreateLeaseExtraction, ExtractedField, ExtractionCorrection,
+    ExtractionSummary, ExtractionWithFields, ImportExtractionRequest,
+    ImportResult as LeaseImportResult, ImportValidationResult, LeaseDocument, LeaseDocumentQuery,
+    LeaseDocumentSummary, LeaseExtraction, LeaseImport, ProcessDocumentRequest, ProcessingStatus,
+    RejectExtraction, ValidationIssue as ExtractionValidationIssue,
+};
+
+// Epic 134: Predictive Maintenance & Equipment Intelligence
+pub mod predictive_maintenance;
+
+pub use predictive_maintenance::{
+    AcknowledgeAlertRequest, AlertSeverity as PredictiveAlertSeverity,
+    AlertStatus as PredictiveAlertStatus, AlertType as PredictiveAlertType, AlertWithEquipment,
+    AlertsBySeverity, CreateEquipment as CreatePredictiveEquipment, CreateEquipmentDocument,
+    CreateMaintenanceLog, Equipment as PredictiveEquipment, EquipmentByStatus, EquipmentDocument,
+    EquipmentPrediction, EquipmentQuery as PredictiveEquipmentQuery,
+    EquipmentStatus as PredictiveEquipmentStatus, EquipmentSummary as PredictiveEquipmentSummary,
+    EquipmentType, HealthDistribution, HealthThreshold, MaintenanceAlert, MaintenanceDashboard,
+    MaintenanceLog, MaintenanceLogPhoto, MaintenanceOutcome, MaintenanceTrend,
+    MaintenanceType as PredictiveMaintenanceType, PredictionFactor, PredictionResult,
+    RecommendedAction, ResolveAlertRequest, RunPredictionRequest, SetHealthThreshold,
+    UpdateEquipment as UpdatePredictiveEquipment, UpdateMaintenanceLog,
+};
+
 // Epic 140: Multi-Property Portfolio Analytics
 pub mod portfolio_analytics;
 
@@ -847,4 +890,94 @@ pub use portfolio_analytics::{
     PortfolioSummary as PortfolioAnalyticsSummary, PortfolioTrend, PropertyPerformanceMetrics,
     PropertyRanking, RecordTrend, ResolveAlert as ResolvePortfolioAlert, TrendAnalysis,
     TrendDataPoint, UpdateAlertRule, UpdatePortfolioBenchmark,
+};
+
+// Epic 135: Enhanced Tenant Screening with AI Risk Scoring
+pub mod enhanced_tenant_screening;
+
+pub use enhanced_tenant_screening::{
+    AiResultWithFactors, AiRiskCategory, AiRiskScoringModel, CompleteScreeningData,
+    CreateAiRiskScoringModel, CreateScreeningBackgroundResult, CreateScreeningCreditResult,
+    CreateScreeningEvictionResult, CreateScreeningProviderConfig, CreateScreeningQueueItem,
+    CreateScreeningReport, CreateScreeningRiskFactor, InitiateScreeningRequest,
+    ProviderIntegrationStatus, RiskCategoryDistribution, RiskFactorCategory, RiskFactorImpact,
+    RunAiScoringRequest, ScreeningAiResult, ScreeningBackgroundResult, ScreeningCreditResult,
+    ScreeningEvictionResult, ScreeningProviderConfig, ScreeningProviderType, ScreeningReport,
+    ScreeningRequestQueueItem, ScreeningRiskFactor, ScreeningStatistics,
+    ScreeningSummary as EnhancedScreeningSummary, UpdateAiRiskScoringModel,
+    UpdateScreeningProviderConfig,
+};
+
+// Epic 136: ESG Reporting Dashboard
+pub mod esg_reporting;
+
+pub use esg_reporting::{
+    CalculateCarbonFootprintRequest, CarbonFootprint, CarbonFootprintQuery, CarbonFootprintSummary,
+    CreateCarbonFootprint, CreateEsgBenchmark, CreateEsgConfiguration, CreateEsgImportJob,
+    CreateEsgMetric, CreateEsgReport, CreateEsgTarget, CreateEuTaxonomyAssessment,
+    EnergySourceType, EsgBenchmark, EsgBenchmarkCategory, EsgBenchmarkComparison,
+    EsgComplianceFramework, EsgConfiguration, EsgDashboardMetrics, EsgDataEntryMethod,
+    EsgEmissionScope, EsgImportJob, EsgMetric, EsgMetricCategory, EsgMetricsQuery, EsgReport,
+    EsgReportStatus, EsgStatistics, EsgSummaryScores, EsgTarget, EuTaxonomyAssessment,
+    GenerateEsgReportRequest, UpdateEsgConfiguration, UpdateEsgMetric, UpdateEsgReport,
+    UpdateEsgTarget, UpdateEuTaxonomyAssessment,
+};
+
+// Epic 138: Automated Property Valuation Model
+pub mod property_valuation;
+
+pub use property_valuation::{
+    AdjustmentType,
+    ComparableAdjustment,
+    CreateAdjustment,
+    CreateComparable,
+    CreateMarketData,
+    CreatePropertyFeatures,
+    // Aliased to avoid conflicts with owner_analytics
+    CreatePropertyValuation as CreateAvmValuation,
+    CreateValuationAuditLog,
+    CreateValuationModel,
+    CreateValuationReport,
+    CreateValuationRequest,
+    CreateValueHistory,
+    MarketAnalysisSummary,
+    MarketTrend as AvmMarketTrend,
+    PropertyCondition,
+    PropertyValuation as AvmValuation,
+    PropertyValuationFeatures,
+    PropertyValuationModel,
+    PropertyValueHistory as AvmValueHistory,
+    PropertyValueTrend as AvmValueTrend,
+    UpdateComparable,
+    UpdateMarketData,
+    UpdatePropertyFeatures,
+    UpdatePropertyValuation as UpdateAvmValuation,
+    UpdateValuationModel,
+    UpdateValuationReport,
+    UpdateValuationRequest,
+    ValuationAuditLog,
+    ValuationComparable,
+    ValuationConfidence,
+    ValuationDashboard,
+    ValuationMarketData,
+    ValuationModelType,
+    ValuationReport,
+    ValuationRequest,
+    ValuationStatus,
+    ValuationWithDetails,
+    ValueHistoryPoint,
+};
+
+// Epic 139: Investor Portal & ROI Reporting
+pub mod investor_portal;
+
+pub use investor_portal::{
+    CapitalCall, CreateCapitalCall, CreateDashboardMetrics, CreateDistribution,
+    CreateInvestmentPortfolio, CreateInvestorPortfolioProperty, CreateInvestorProfile,
+    CreateInvestorReport, CreateRoiCalculation, DistributionType, InvestmentPortfolio,
+    InvestmentStatus, InvestorDashboardMetrics, InvestorDistribution, InvestorPortalDashboard,
+    InvestorPortfolioProperty, InvestorPortfolioSummary, InvestorProfile, InvestorReport,
+    InvestorReportType, InvestorSummary, InvestorType, PortfolioWithDetails, RoiCalculation,
+    RoiCalculationQuery, RoiPeriod, RoiSummary, UpdateCapitalCall, UpdateDistribution,
+    UpdateInvestmentPortfolio, UpdateInvestorPortfolioProperty, UpdateInvestorProfile,
 };
