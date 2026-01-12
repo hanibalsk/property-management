@@ -620,27 +620,27 @@ CREATE POLICY esg_import_update ON esg_import_jobs
 
 CREATE TRIGGER update_esg_configs_timestamp
     BEFORE UPDATE ON esg_configurations
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_esg_metrics_timestamp
     BEFORE UPDATE ON esg_metrics
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_carbon_footprints_timestamp
     BEFORE UPDATE ON carbon_footprints
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_esg_targets_timestamp
     BEFORE UPDATE ON esg_targets
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_esg_reports_timestamp
     BEFORE UPDATE ON esg_reports
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_eu_taxonomy_timestamp
     BEFORE UPDATE ON eu_taxonomy_assessments
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================================================
 -- SEED DATA: Default Benchmarks
