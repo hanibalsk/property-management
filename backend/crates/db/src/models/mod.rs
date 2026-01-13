@@ -1041,3 +1041,29 @@ pub use data_residency::{
     RegionInfo, ResidencyAuditEvent, ResidencyStatus, RoutingRuleSummary,
     RunComplianceVerification,
 };
+
+// Epic 150: API Ecosystem Expansion
+pub mod api_ecosystem;
+
+pub use api_ecosystem::{
+    api_doc_category, code_sample_language, connector_auth_type, connector_status,
+    developer_status, ecosystem_webhook_event, installation_status, integration_category,
+    marketplace_integration_status, webhook_auth_type, ApiCodeSample, ApiDocumentation,
+    ApiEcosystemDashboard, ApiEcosystemStatistics, Connector, ConnectorAction,
+    ConnectorExecutionLog, ConnectorExecutionQuery, CreateApiCodeSample, CreateApiDocumentation,
+    CreateConnector, CreateConnectorAction, CreateDeveloperApiKey, CreateDeveloperApiKeyResponse,
+    CreateDeveloperRegistration, CreateEnhancedWebhookSubscription, CreateIntegrationRating,
+    CreateMarketplaceIntegration, CreatePreBuiltIntegrationConnection, CreateSandboxConfig,
+    DeveloperApiKey, DeveloperApiKeyDisplay, DeveloperPortalStatistics, DeveloperRegistration,
+    DeveloperUsageStats, EndpointUsageStats, EnhancedWebhookDeliveryLog, EnhancedWebhookStatistics,
+    EnhancedWebhookSubscription, GoogleCalendarConfig, HubSpotConfig, InstallIntegration,
+    IntegrationActivityLog, IntegrationCategoryCount, IntegrationRating, IntegrationRatingWithUser,
+    MarketplaceIntegration, MarketplaceIntegrationQuery, MarketplaceIntegrationSummary,
+    OrganizationIntegration, OutlookCalendarConfig, PreBuiltIntegrationConnection,
+    PreBuiltIntegrationSyncResult, PreBuiltIntegrationType, QuickBooksConfig,
+    ReviewDeveloperRegistration, SalesforceConfig, SandboxConfig, SandboxTestRequestPayload,
+    SandboxTestResponsePayload, SlackConfig, SyncPreBuiltIntegrationRequest, TeamsConfig,
+    UpdateApiDocumentation, UpdateConnector, UpdateEnhancedWebhookSubscription,
+    UpdateMarketplaceIntegration, UpdateOrganizationIntegration,
+    UpdatePreBuiltIntegrationConnection, WebhookRetryPolicyConfig, XeroConfig,
+};

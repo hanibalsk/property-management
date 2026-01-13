@@ -34,3 +34,5 @@ aws-credential-types = { workspace = true }
 redis = { workspace = true }
 # Async stream utilities
 futures-lite = "2.2"
+# Async trait for connector actions
+async-trait = "0.1"
