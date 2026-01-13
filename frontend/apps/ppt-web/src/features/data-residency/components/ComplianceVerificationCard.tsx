@@ -129,7 +129,9 @@ export const ComplianceVerificationCard: React.FC<ComplianceVerificationCardProp
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className={`w-12 h-12 rounded-full ${statusStyles.bg} flex items-center justify-center`}>
+            <div
+              className={`w-12 h-12 rounded-full ${statusStyles.bg} flex items-center justify-center`}
+            >
               <svg
                 className={`w-6 h-6 ${statusStyles.text}`}
                 fill="none"
@@ -241,7 +243,9 @@ export const ComplianceVerificationCard: React.FC<ComplianceVerificationCardProp
                   </div>
                   <div>
                     <p className="text-gray-500">Cross-Region</p>
-                    <p className={`font-medium ${access.cross_region_count > 0 ? 'text-yellow-600' : 'text-gray-900'}`}>
+                    <p
+                      className={`font-medium ${access.cross_region_count > 0 ? 'text-yellow-600' : 'text-gray-900'}`}
+                    >
                       {formatNumber(access.cross_region_count)}
                     </p>
                   </div>
@@ -295,9 +299,7 @@ export const ComplianceVerificationCard: React.FC<ComplianceVerificationCardProp
       <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
         <div>
           {result.report_available && (
-            <span className="text-xs text-gray-500">
-              Detailed report available for download
-            </span>
+            <span className="text-xs text-gray-500">Detailed report available for download</span>
           )}
         </div>
         <div className="flex space-x-3">

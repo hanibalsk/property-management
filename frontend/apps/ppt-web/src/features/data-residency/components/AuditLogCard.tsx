@@ -100,10 +100,7 @@ export const AuditLogCard: React.FC<AuditLogCardProps> = ({
       {/* Audit Log List */}
       <div className="divide-y divide-gray-100">
         {entries.map((entry) => (
-          <div
-            key={entry.id}
-            className={`px-6 py-4 ${!entry.chain_valid ? 'bg-red-50' : ''}`}
-          >
+          <div key={entry.id} className={`px-6 py-4 ${!entry.chain_valid ? 'bg-red-50' : ''}`}>
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-4">
                 {/* Event Type Icon */}
@@ -138,7 +135,10 @@ export const AuditLogCard: React.FC<AuditLogCardProps> = ({
                   {entry.changes && entry.changes.length > 0 && (
                     <div className="mt-2 space-y-1">
                       {entry.changes.map((change, idx) => (
-                        <div key={idx} className="text-xs text-gray-600 flex items-center space-x-2">
+                        <div
+                          key={idx}
+                          className="text-xs text-gray-600 flex items-center space-x-2"
+                        >
                           <span className="font-medium">{change.field}:</span>
                           {change.old_value && (
                             <span className="line-through text-red-500">{change.old_value}</span>
