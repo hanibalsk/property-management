@@ -710,11 +710,9 @@ impl PortfolioPerformanceRepository {
             None
         };
 
-        let dscr = if annual_debt_service.is_some() && annual_debt_service.unwrap() > Decimal::ZERO
-        {
-            Some(noi / annual_debt_service.unwrap())
-        } else {
-            None
+        let dscr = match annual_debt_service {
+            Some(debt) if debt > Decimal::ZERO => Some(noi / debt),
+            _ => None,
         };
 
         let grm = if gross_income > Decimal::ZERO {
