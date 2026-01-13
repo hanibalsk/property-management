@@ -51,8 +51,6 @@ impl From<reqwest::Error> for ConnectorError {
     fn from(err: reqwest::Error) -> Self {
         if err.is_timeout() {
             ConnectorError::Timeout(30000)
-        } else if err.is_connect() {
-            ConnectorError::NetworkError(err.to_string())
         } else {
             ConnectorError::NetworkError(err.to_string())
         }
@@ -653,11 +651,13 @@ impl HttpConnector {
 
     /// Check if OAuth2 token needs refresh.
     pub fn needs_token_refresh(&self) -> bool {
-        if let AuthConfig::OAuth2 { expires_at, .. } = &self.config.auth {
-            if let Some(exp) = expires_at {
-                // Refresh 5 minutes before expiry
-                return Utc::now() + Duration::minutes(5) >= *exp;
-            }
+        if let AuthConfig::OAuth2 {
+            expires_at: Some(exp),
+            ..
+        } = &self.config.auth
+        {
+            // Refresh 5 minutes before expiry
+            return Utc::now() + Duration::minutes(5) >= *exp;
         }
         false
     }
