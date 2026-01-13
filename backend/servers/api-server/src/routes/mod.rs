@@ -165,6 +165,9 @@ pub mod violations;
 // Epic 143: Board Meeting Management
 pub mod board_meetings;
 
+// Epic 145: Multi-Currency & Cross-Border Support
+pub mod multi_currency;
+
 // Epic 146: Enhanced Data Residency Controls
 pub mod data_residency;
 
