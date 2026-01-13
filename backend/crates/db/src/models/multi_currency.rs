@@ -19,7 +19,9 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[sqlx(type_name = "supported_currency", rename_all = "SCREAMING_SNAKE_CASE")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Default)]
 pub enum SupportedCurrency {
+    #[default]
     EUR, // Euro (base for most EU)
     CZK, // Czech Koruna
     CHF, // Swiss Franc
@@ -35,11 +37,6 @@ pub enum SupportedCurrency {
     NOK, // Norwegian Krone
 }
 
-impl Default for SupportedCurrency {
-    fn default() -> Self {
-        SupportedCurrency::EUR
-    }
-}
 
 impl std::fmt::Display for SupportedCurrency {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -71,52 +68,43 @@ impl PgHasArrayType for SupportedCurrency {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[sqlx(type_name = "exchange_rate_source", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ExchangeRateSource {
+    #[default]
     Ecb,    // European Central Bank
     Xe,     // XE.com
     Manual, // Manual override
     Api,    // Custom API integration
 }
 
-impl Default for ExchangeRateSource {
-    fn default() -> Self {
-        ExchangeRateSource::Ecb
-    }
-}
 
 /// Transaction conversion status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[sqlx(type_name = "conversion_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ConversionStatus {
+    #[default]
     Pending,
     Converted,
     Failed,
     Manual,
 }
 
-impl Default for ConversionStatus {
-    fn default() -> Self {
-        ConversionStatus::Pending
-    }
-}
 
 /// Cross-border compliance status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[sqlx(type_name = "compliance_status", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum CrossBorderComplianceStatus {
     Compliant,
+    #[default]
     PendingReview,
     NonCompliant,
     Exempt,
 }
 
-impl Default for CrossBorderComplianceStatus {
-    fn default() -> Self {
-        CrossBorderComplianceStatus::PendingReview
-    }
-}
 
 /// Country codes (ISO 3166-1 alpha-2)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]

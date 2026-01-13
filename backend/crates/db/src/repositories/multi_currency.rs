@@ -109,12 +109,12 @@ impl MultiCurrencyRepository {
             "#,
         )
         .bind(org_id)
-        .bind(&req.base_currency)
+        .bind(req.base_currency)
         .bind(&req.enabled_currencies)
-        .bind(&req.display_currency)
+        .bind(req.display_currency)
         .bind(req.show_original_amount)
         .bind(req.decimal_places)
-        .bind(&req.exchange_rate_source)
+        .bind(req.exchange_rate_source)
         .bind(req.auto_update_rates)
         .bind(req.update_frequency_hours)
         .bind(&req.rounding_mode)
@@ -153,12 +153,12 @@ impl MultiCurrencyRepository {
             "#,
         )
         .bind(org_id)
-        .bind(&req.base_currency)
+        .bind(req.base_currency)
         .bind(&req.enabled_currencies)
-        .bind(&req.display_currency)
+        .bind(req.display_currency)
         .bind(req.show_original_amount)
         .bind(req.decimal_places)
-        .bind(&req.exchange_rate_source)
+        .bind(req.exchange_rate_source)
         .bind(req.auto_update_rates)
         .bind(req.update_frequency_hours)
         .bind(&req.rounding_mode)
@@ -191,8 +191,8 @@ impl MultiCurrencyRepository {
         )
         .bind(req.building_id)
         .bind(org_id)
-        .bind(&req.default_currency)
-        .bind(&req.country)
+        .bind(req.default_currency)
+        .bind(req.country)
         .bind(req.vat_rate)
         .bind(&req.vat_registration_number)
         .bind(&req.local_tax_id)
@@ -279,8 +279,8 @@ impl MultiCurrencyRepository {
         )
         .bind(building_id)
         .bind(org_id)
-        .bind(&req.default_currency)
-        .bind(&req.country)
+        .bind(req.default_currency)
+        .bind(req.country)
         .bind(req.vat_rate)
         .bind(&req.vat_registration_number)
         .bind(&req.local_tax_id)
@@ -315,8 +315,8 @@ impl MultiCurrencyRepository {
             LIMIT 1
             "#,
         )
-        .bind(&from_currency)
-        .bind(&to_currency)
+        .bind(from_currency)
+        .bind(to_currency)
         .bind(date)
         .fetch_optional(&self.pool)
         .await
@@ -342,8 +342,8 @@ impl MultiCurrencyRepository {
             LIMIT 1
             "#,
         )
-        .bind(&from_currency)
-        .bind(&to_currency)
+        .bind(from_currency)
+        .bind(to_currency)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -372,12 +372,12 @@ impl MultiCurrencyRepository {
             LIMIT 1000
             "#,
         )
-        .bind(&query.from_currency)
-        .bind(&query.to_currency)
+        .bind(query.from_currency)
+        .bind(query.to_currency)
         .bind(query.date)
         .bind(query.date_from)
         .bind(query.date_to)
-        .bind(&query.source)
+        .bind(query.source)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -404,12 +404,12 @@ impl MultiCurrencyRepository {
                       valid_from, valid_until, created_at
             "#,
         )
-        .bind(&req.from_currency)
-        .bind(&req.to_currency)
+        .bind(req.from_currency)
+        .bind(req.to_currency)
         .bind(req.rate)
         .bind(inverse_rate)
         .bind(req.rate_date)
-        .bind(&req.source)
+        .bind(req.source)
         .bind(&req.source_reference)
         .fetch_one(&self.pool)
         .await
@@ -438,8 +438,8 @@ impl MultiCurrencyRepository {
                       valid_from, valid_until, created_at
             "#,
         )
-        .bind(&req.from_currency)
-        .bind(&req.to_currency)
+        .bind(req.from_currency)
+        .bind(req.to_currency)
         .bind(req.rate)
         .bind(inverse_rate)
         .bind(req.rate_date)
@@ -472,7 +472,7 @@ impl MultiCurrencyRepository {
             "#,
         )
         .bind(org_id)
-        .bind(&source)
+        .bind(source)
         .bind(success)
         .bind(rates_fetched)
         .bind(error_message)
@@ -553,9 +553,9 @@ impl MultiCurrencyRepository {
         .bind(req.building_id)
         .bind(&req.source_type)
         .bind(req.source_id)
-        .bind(&req.original_currency)
+        .bind(req.original_currency)
         .bind(req.original_amount)
-        .bind(&base_currency)
+        .bind(base_currency)
         .bind(converted_amount)
         .bind(exchange_rate)
         .bind(rate_date)
@@ -623,10 +623,10 @@ impl MultiCurrencyRepository {
         .bind(org_id)
         .bind(query.building_id)
         .bind(&query.source_type)
-        .bind(&query.currency)
+        .bind(query.currency)
         .bind(query.date_from)
         .bind(query.date_to)
-        .bind(&query.status)
+        .bind(query.status)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -740,13 +740,13 @@ impl MultiCurrencyRepository {
         )
         .bind(req.lease_id)
         .bind(org_id)
-        .bind(&req.property_country)
-        .bind(&req.property_currency)
-        .bind(&req.tenant_country)
+        .bind(req.property_country)
+        .bind(req.property_currency)
+        .bind(req.tenant_country)
         .bind(&req.tenant_tax_id)
         .bind(&req.tenant_vat_number)
-        .bind(&req.lease_currency)
-        .bind(&req.payment_currency)
+        .bind(req.lease_currency)
+        .bind(req.payment_currency)
         .bind(req.convert_at_invoice_date)
         .bind(req.convert_at_payment_date)
         .bind(req.fixed_exchange_rate)
@@ -756,8 +756,8 @@ impl MultiCurrencyRepository {
         .bind(req.reverse_charge_vat)
         .bind(req.withholding_tax_rate)
         .bind(&req.local_clauses)
-        .bind(&req.governing_law)
-        .bind(&req.jurisdiction)
+        .bind(req.governing_law)
+        .bind(req.jurisdiction)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -819,9 +819,9 @@ impl MultiCurrencyRepository {
             "#,
         )
         .bind(org_id)
-        .bind(&query.property_country)
-        .bind(&query.lease_currency)
-        .bind(&query.compliance_status)
+        .bind(query.property_country)
+        .bind(query.lease_currency)
+        .bind(query.compliance_status)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -870,10 +870,10 @@ impl MultiCurrencyRepository {
         )
         .bind(lease_id)
         .bind(org_id)
-        .bind(&req.tenant_country)
+        .bind(req.tenant_country)
         .bind(&req.tenant_tax_id)
         .bind(&req.tenant_vat_number)
-        .bind(&req.payment_currency)
+        .bind(req.payment_currency)
         .bind(req.convert_at_invoice_date)
         .bind(req.convert_at_payment_date)
         .bind(req.fixed_exchange_rate)
@@ -882,11 +882,11 @@ impl MultiCurrencyRepository {
         .bind(req.vat_rate)
         .bind(req.reverse_charge_vat)
         .bind(req.withholding_tax_rate)
-        .bind(&req.compliance_status)
+        .bind(req.compliance_status)
         .bind(&req.compliance_notes)
         .bind(&req.local_clauses)
-        .bind(&req.governing_law)
-        .bind(&req.jurisdiction)
+        .bind(req.governing_law)
+        .bind(req.jurisdiction)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -912,7 +912,7 @@ impl MultiCurrencyRepository {
             ORDER BY requirement_type, requirement_name
             "#,
         )
-        .bind(&country)
+        .bind(country)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -951,7 +951,7 @@ impl MultiCurrencyRepository {
         .bind(org_id)
         .bind(&req.name)
         .bind(&req.description)
-        .bind(&req.report_currency)
+        .bind(req.report_currency)
         .bind(req.show_original_currencies)
         .bind(req.show_conversion_details)
         .bind(&req.rate_date_type)
@@ -1049,7 +1049,7 @@ impl MultiCurrencyRepository {
         .bind(req.config_id)
         .bind(req.period_start)
         .bind(req.period_end)
-        .bind(&req.report_currency)
+        .bind(req.report_currency)
         .bind(total_revenue)
         .bind(total_expenses)
         .bind(net_income)
