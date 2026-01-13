@@ -1012,6 +1012,9 @@ pub use violations::{
 
 // Epic 143: Board Meeting Management
 pub mod board_meetings;
+
+// Epic 144: Portfolio Performance Analytics
+pub mod portfolio_performance;
 pub use board_meetings::{
     ActionItemQuery as BoardMeetingActionItemQuery,
     ActionItemSummary as BoardMeetingActionItemSummary, AgendaItemStatus, AttendanceHistory,
@@ -1025,4 +1028,19 @@ pub use board_meetings::{
     UpdateActionItem as UpdateBoardMeetingActionItem, UpdateAgendaItem, UpdateBoardMeeting,
     UpdateBoardMember, UpdateMinutes, UpdateMotion as UpdateBoardMotion, UploadMeetingDocument,
     VoteChoice, VoteSummary as BoardMeetingVoteSummary,
+};
+pub use portfolio_performance::{
+    BenchmarkComparison, BenchmarkComparisonSummary, BenchmarkSource, CalculateMetricsRequest,
+    CashFlowTrendPoint, CreateBenchmarkComparison, CreateMarketBenchmark, CreatePerformanceAlert,
+    CreatePerformancePortfolio, CreatePortfolioProperty,
+    CreatePropertyTransaction as CreatePortfolioPropertyTransaction,
+    DashboardQuery as PerformanceDashboardQuery, DashboardSummary, ExportPortfolioReport,
+    ExportPortfolioReportResponse, FinancialMetrics, FinancingType, MarketBenchmark,
+    MetricComparison, MetricPeriod, MetricsSummary, PerformanceAlert, PerformancePortfolio,
+    PortfolioAnalyticsDashboard144, PortfolioMetricsSummary,
+    PortfolioProperty as PerformancePortfolioProperty, PortfolioTransactionType, PropertyCashFlow,
+    PropertyPerformanceCard, PropertyTransaction, TransactionQuery as PortfolioTransactionQuery,
+    UpdateMarketBenchmark, UpdatePerformancePortfolio,
+    UpdatePortfolioProperty as UpdatePerformancePortfolioProperty, UpdatePropertyTransaction,
+    UpsertPropertyCashFlow, ValueTrendPoint,
 };

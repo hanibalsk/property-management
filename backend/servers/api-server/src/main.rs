@@ -524,6 +524,62 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/webhooks/portals",
             routes::portal_webhooks::router(),
         )
+        // Feature Packages routes (Epic 108)
+        .nest(
+            "/api/v1/feature-packages",
+            routes::feature_packages::router(),
+        )
+        // Features routes (Epic 109)
+        .nest("/api/v1/features", routes::features::router())
+        // Outages routes (UC-12)
+        .nest("/api/v1/outages", routes::outages::router())
+        // Market Pricing routes (Epic 132)
+        .nest("/api/v1/market-pricing", routes::market_pricing::router())
+        // Lease Abstraction routes (Epic 133)
+        .nest(
+            "/api/v1/lease-abstraction",
+            routes::lease_abstraction::router(),
+        )
+        // Predictive Maintenance routes (Epic 134)
+        .nest(
+            "/api/v1/predictive-maintenance",
+            routes::predictive_maintenance::router(),
+        )
+        // Enhanced Tenant Screening routes (Epic 135)
+        .nest(
+            "/api/v1/tenant-screening",
+            routes::enhanced_tenant_screening::router(),
+        )
+        // ESG Reporting routes (Epic 136)
+        .nest("/api/v1/esg", routes::esg_reporting::router())
+        // Building Certifications routes (Epic 137)
+        .nest(
+            "/api/v1/building-certifications",
+            routes::building_certifications::router(),
+        )
+        // Property Valuation routes (Epic 138)
+        .nest(
+            "/api/v1/property-valuation",
+            routes::property_valuation::router(),
+        )
+        // Investor Portal routes (Epic 139)
+        .nest("/api/v1/investor-portal", routes::investor_portal::router())
+        // Portfolio Analytics routes (Epic 140)
+        .nest(
+            "/api/v1/portfolio-analytics",
+            routes::portfolio_analytics::router(),
+        )
+        // Reserve Funds routes (Epic 141)
+        .nest("/api/v1/reserve-funds", routes::reserve_funds::router())
+        // Violations routes (Epic 142)
+        .nest("/api/v1/violations", routes::violations::router())
+        // Board Meetings routes (Epic 143)
+        .nest("/api/v1/board-meetings", routes::board_meetings::router())
+        // Portfolio Performance routes (Epic 144)
+        .nest(
+            "/api/v1/portfolio-performance",
+            routes::portfolio_performance::router(),
+        )
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware

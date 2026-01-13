@@ -164,3 +164,6 @@ pub mod violations;
 
 // Epic 143: Board Meeting Management
 pub mod board_meetings;
+
+// Epic 144: Portfolio Performance Analytics
+pub mod portfolio_performance;

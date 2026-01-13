@@ -328,3 +328,8 @@ pub use violations::ViolationRepository;
 pub mod board_meetings;
 
 pub use board_meetings::BoardMeetingRepository;
+
+// Epic 144: Portfolio Performance Analytics
+pub mod portfolio_performance;
+
+pub use portfolio_performance::PortfolioPerformanceRepository;
