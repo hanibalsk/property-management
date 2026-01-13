@@ -164,3 +164,6 @@ pub mod violations;
 
 // Epic 143: Board Meeting Management
 pub mod board_meetings;
+
+// Epic 146: Enhanced Data Residency Controls
+pub mod data_residency;
