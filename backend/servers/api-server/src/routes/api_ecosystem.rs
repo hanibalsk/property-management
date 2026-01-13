@@ -13,21 +13,21 @@ use chrono::{Duration, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
     api_doc_category, code_sample_language, developer_status, ecosystem_webhook_event,
-    installation_status, integration_category, marketplace_integration_status, ApiCodeSample,
-    ApiDocumentation, ApiEcosystemDashboard, ApiEcosystemStatistics, Connector, ConnectorAction,
-    ConnectorExecutionLog, ConnectorExecutionQuery, CreateApiCodeSample, CreateApiDocumentation,
-    CreateConnector, CreateConnectorAction, CreateDeveloperApiKey, CreateDeveloperApiKeyResponse,
-    CreateDeveloperRegistration, CreateEnhancedWebhookSubscription, CreateIntegrationRating,
-    CreateMarketplaceIntegration, CreatePreBuiltIntegrationConnection, CreateSandboxConfig,
-    DeveloperApiKeyDisplay, DeveloperPortalStatistics, DeveloperRegistration, DeveloperUsageStats,
-    EnhancedWebhookDeliveryLog, EnhancedWebhookStatistics, EnhancedWebhookSubscription,
-    InstallIntegration, IntegrationCategoryCount, IntegrationRating, IntegrationRatingWithUser,
-    MarketplaceIntegration, MarketplaceIntegrationQuery, MarketplaceIntegrationSummary,
-    OrganizationIntegration, PreBuiltIntegrationConnection, PreBuiltIntegrationSyncResult,
-    ReviewDeveloperRegistration, SandboxConfig, SandboxTestRequestPayload,
-    SandboxTestResponsePayload, SyncPreBuiltIntegrationRequest, UpdateApiDocumentation,
-    UpdateConnector, UpdateEnhancedWebhookSubscription, UpdateMarketplaceIntegration,
-    UpdateOrganizationIntegration, UpdatePreBuiltIntegrationConnection,
+    ApiCodeSample, ApiDocumentation, ApiEcosystemDashboard, ApiEcosystemStatistics, Connector,
+    ConnectorAction, ConnectorExecutionLog, ConnectorExecutionQuery, CreateApiCodeSample,
+    CreateApiDocumentation, CreateConnector, CreateConnectorAction, CreateDeveloperApiKey,
+    CreateDeveloperApiKeyResponse, CreateDeveloperRegistration, CreateEnhancedWebhookSubscription,
+    CreateIntegrationRating, CreateMarketplaceIntegration, CreatePreBuiltIntegrationConnection,
+    CreateSandboxConfig, DeveloperApiKeyDisplay, DeveloperPortalStatistics, DeveloperRegistration,
+    DeveloperUsageStats, EnhancedWebhookDeliveryLog, EnhancedWebhookStatistics,
+    EnhancedWebhookSubscription, InstallIntegration, IntegrationCategoryCount, IntegrationRating,
+    IntegrationRatingWithUser, MarketplaceIntegration, MarketplaceIntegrationQuery,
+    MarketplaceIntegrationSummary, OrganizationIntegration, PreBuiltIntegrationConnection,
+    PreBuiltIntegrationSyncResult, ReviewDeveloperRegistration, SandboxConfig,
+    SandboxTestRequestPayload, SandboxTestResponsePayload, SyncPreBuiltIntegrationRequest,
+    UpdateApiDocumentation, UpdateConnector, UpdateEnhancedWebhookSubscription,
+    UpdateMarketplaceIntegration, UpdateOrganizationIntegration,
+    UpdatePreBuiltIntegrationConnection,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
@@ -267,43 +267,14 @@ fn not_found(entity: &str, id: impl std::fmt::Display) -> (StatusCode, Json<Erro
     tag = "API Ecosystem"
 )]
 async fn list_marketplace_integrations(
-    State(_state): State<AppState>,
-    Query(_query): Query<MarketplaceIntegrationQuery>,
+    State(state): State<AppState>,
+    Query(query): Query<MarketplaceIntegrationQuery>,
 ) -> Result<Json<Vec<MarketplaceIntegrationSummary>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database query
-    // For now, return sample data
-    let integrations = vec![
-        MarketplaceIntegrationSummary {
-            id: Uuid::new_v4(),
-            slug: "quickbooks".to_string(),
-            name: "QuickBooks".to_string(),
-            description: "Sync invoices and payments with QuickBooks".to_string(),
-            category: integration_category::ACCOUNTING.to_string(),
-            icon_url: Some("https://cdn.example.com/icons/quickbooks.svg".to_string()),
-            vendor_name: "Intuit".to_string(),
-            status: marketplace_integration_status::AVAILABLE.to_string(),
-            rating_average: Some(4.5),
-            rating_count: 128,
-            install_count: 1542,
-            is_featured: true,
-            is_premium: false,
-        },
-        MarketplaceIntegrationSummary {
-            id: Uuid::new_v4(),
-            slug: "slack".to_string(),
-            name: "Slack".to_string(),
-            description: "Send notifications to Slack channels".to_string(),
-            category: integration_category::COMMUNICATION.to_string(),
-            icon_url: Some("https://cdn.example.com/icons/slack.svg".to_string()),
-            vendor_name: "Slack Technologies".to_string(),
-            status: marketplace_integration_status::AVAILABLE.to_string(),
-            rating_average: Some(4.7),
-            rating_count: 256,
-            install_count: 2341,
-            is_featured: true,
-            is_premium: false,
-        },
-    ];
+    let integrations = state
+        .api_ecosystem_repo
+        .list_marketplace_integrations(&query)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(integrations))
 }
@@ -320,38 +291,15 @@ async fn list_marketplace_integrations(
     tag = "API Ecosystem"
 )]
 async fn create_marketplace_integration(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _auth: AuthUser,
     Json(request): Json<CreateMarketplaceIntegration>,
 ) -> Result<Json<MarketplaceIntegration>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Check admin permissions and implement database insert
-    let integration = MarketplaceIntegration {
-        id: Uuid::new_v4(),
-        slug: request.slug,
-        name: request.name,
-        description: request.description,
-        long_description: request.long_description,
-        category: request.category,
-        icon_url: request.icon_url,
-        banner_url: request.banner_url,
-        vendor_name: request.vendor_name,
-        vendor_url: request.vendor_url,
-        documentation_url: request.documentation_url,
-        support_url: request.support_url,
-        version: request.version,
-        status: marketplace_integration_status::AVAILABLE.to_string(),
-        features: request.features,
-        requirements: request.requirements,
-        pricing_info: request.pricing_info,
-        rating_average: None,
-        rating_count: 0,
-        install_count: 0,
-        is_featured: false,
-        is_premium: request.is_premium.unwrap_or(false),
-        required_scopes: request.required_scopes,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
+    let integration = state
+        .api_ecosystem_repo
+        .create_marketplace_integration(&request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(integration))
 }
@@ -368,11 +316,17 @@ async fn create_marketplace_integration(
     tag = "API Ecosystem"
 )]
 async fn get_marketplace_integration(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Path(path): Path<IntegrationIdPath>,
 ) -> Result<Json<MarketplaceIntegration>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database query
-    Err(not_found("Integration", path.id))
+    let integration = state
+        .api_ecosystem_repo
+        .get_marketplace_integration(path.id)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?
+        .ok_or_else(|| not_found("Integration", path.id))?;
+
+    Ok(Json(integration))
 }
 
 /// Update marketplace integration (admin only).
@@ -388,13 +342,19 @@ async fn get_marketplace_integration(
     tag = "API Ecosystem"
 )]
 async fn update_marketplace_integration(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _auth: AuthUser,
     Path(path): Path<IntegrationIdPath>,
-    Json(_request): Json<UpdateMarketplaceIntegration>,
+    Json(request): Json<UpdateMarketplaceIntegration>,
 ) -> Result<Json<MarketplaceIntegration>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database update
-    Err(not_found("Integration", path.id))
+    let integration = state
+        .api_ecosystem_repo
+        .update_marketplace_integration(path.id, &request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?
+        .ok_or_else(|| not_found("Integration", path.id))?;
+
+    Ok(Json(integration))
 }
 
 /// Delete marketplace integration (admin only).
@@ -409,12 +369,21 @@ async fn update_marketplace_integration(
     tag = "API Ecosystem"
 )]
 async fn delete_marketplace_integration(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _auth: AuthUser,
-    Path(_path): Path<IntegrationIdPath>,
+    Path(path): Path<IntegrationIdPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database delete
-    Ok(StatusCode::NO_CONTENT)
+    let deleted = state
+        .api_ecosystem_repo
+        .delete_marketplace_integration(path.id)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
+
+    if deleted {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(not_found("Integration", path.id))
+    }
 }
 
 /// List integration categories with counts.
@@ -427,26 +396,13 @@ async fn delete_marketplace_integration(
     tag = "API Ecosystem"
 )]
 async fn list_integration_categories(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Result<Json<Vec<IntegrationCategoryCount>>, (StatusCode, Json<ErrorResponse>)> {
-    let categories = vec![
-        IntegrationCategoryCount {
-            category: integration_category::ACCOUNTING.to_string(),
-            count: 5,
-        },
-        IntegrationCategoryCount {
-            category: integration_category::CRM.to_string(),
-            count: 4,
-        },
-        IntegrationCategoryCount {
-            category: integration_category::CALENDAR.to_string(),
-            count: 3,
-        },
-        IntegrationCategoryCount {
-            category: integration_category::COMMUNICATION.to_string(),
-            count: 6,
-        },
-    ];
+    let categories = state
+        .api_ecosystem_repo
+        .get_integration_category_counts()
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(categories))
 }
@@ -513,12 +469,17 @@ async fn create_integration_rating(
     tag = "API Ecosystem"
 )]
 async fn list_organization_integrations(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _tenant: TenantExtractor,
-    Path(_path): Path<OrgIdPath>,
+    Path(path): Path<OrgIdPath>,
 ) -> Result<Json<Vec<OrganizationIntegration>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database query
-    Ok(Json(vec![]))
+    let integrations = state
+        .api_ecosystem_repo
+        .list_organization_integrations(path.org_id)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
+
+    Ok(Json(integrations))
 }
 
 /// Install integration.
@@ -533,27 +494,17 @@ async fn list_organization_integrations(
     tag = "API Ecosystem"
 )]
 async fn install_integration(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _tenant: TenantExtractor,
     auth: AuthUser,
     Path(path): Path<OrgIdPath>,
     Json(request): Json<InstallIntegration>,
 ) -> Result<Json<OrganizationIntegration>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database insert
-    let installation = OrganizationIntegration {
-        id: Uuid::new_v4(),
-        organization_id: path.org_id,
-        integration_id: request.integration_id,
-        status: installation_status::INSTALLED.to_string(),
-        configuration: request.configuration,
-        credentials_encrypted: None,
-        enabled: true,
-        last_sync_at: None,
-        last_error: None,
-        installed_by: auth.user_id,
-        installed_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
+    let installation = state
+        .api_ecosystem_repo
+        .install_integration(path.org_id, auth.user_id, &request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(installation))
 }
@@ -581,12 +532,21 @@ async fn update_organization_integration(
 
 /// Uninstall integration.
 async fn uninstall_integration(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _tenant: TenantExtractor,
-    Path(_path): Path<OrgIntegrationPath>,
+    Path(path): Path<OrgIntegrationPath>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database delete
-    Ok(StatusCode::NO_CONTENT)
+    let uninstalled = state
+        .api_ecosystem_repo
+        .uninstall_integration(path.org_id, path.id)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
+
+    if uninstalled {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(not_found("Integration", path.id))
+    }
 }
 
 /// Sync integration.
