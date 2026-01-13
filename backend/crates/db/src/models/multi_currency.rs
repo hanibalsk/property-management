@@ -37,7 +37,6 @@ pub enum SupportedCurrency {
     NOK, // Norwegian Krone
 }
 
-
 impl std::fmt::Display for SupportedCurrency {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -71,12 +70,11 @@ impl PgHasArrayType for SupportedCurrency {
 #[derive(Default)]
 pub enum ExchangeRateSource {
     #[default]
-    Ecb,    // European Central Bank
+    Ecb, // European Central Bank
     Xe,     // XE.com
     Manual, // Manual override
     Api,    // Custom API integration
 }
-
 
 /// Transaction conversion status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
@@ -91,7 +89,6 @@ pub enum ConversionStatus {
     Manual,
 }
 
-
 /// Cross-border compliance status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
 #[sqlx(type_name = "compliance_status", rename_all = "snake_case")]
@@ -104,7 +101,6 @@ pub enum CrossBorderComplianceStatus {
     NonCompliant,
     Exempt,
 }
-
 
 /// Country codes (ISO 3166-1 alpha-2)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, sqlx::Type)]
