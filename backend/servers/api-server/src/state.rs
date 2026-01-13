@@ -22,13 +22,13 @@ use db::{
         OnboardingRepository, OperationsRepository, OrganizationMemberRepository,
         OrganizationRepository, OutageRepository, OwnerAnalyticsRepository,
         PackageVisitorRepository, PasswordResetRepository, PersonMonthRepository,
-        PlatformAdminRepository, PortfolioAnalyticsRepository, PredictiveMaintenanceRepository,
-        PropertyValuationRepository, RegistryRepository, RentalRepository, ReserveFundRepository,
-        RoleRepository, SensorRepository, SentimentRepository, SessionRepository,
-        SignatureRequestRepository, SubscriptionRepository, SystemAnnouncementRepository,
-        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
-        VendorRepository, ViolationRepository, VoteRepository, WorkOrderRepository,
-        WorkflowRepository,
+        PlatformAdminRepository, PortfolioAnalyticsRepository, PortfolioPerformanceRepository,
+        PredictiveMaintenanceRepository, PropertyValuationRepository, RegistryRepository,
+        RentalRepository, ReserveFundRepository, RoleRepository, SensorRepository,
+        SentimentRepository, SessionRepository, SignatureRequestRepository, SubscriptionRepository,
+        SystemAnnouncementRepository, TwoFactorAuthRepository, UnitRepository,
+        UnitResidentRepository, UserRepository, VendorRepository, ViolationRepository,
+        VoteRepository, WorkOrderRepository, WorkflowRepository,
     },
     DbPool,
 };
@@ -160,6 +160,8 @@ pub struct AppState {
     pub violation_repo: ViolationRepository,
     // Epic 143: Board Meeting Management
     pub board_meeting_repo: BoardMeetingRepository,
+    // Epic 144: Portfolio Performance Analytics
+    pub portfolio_performance_repo: PortfolioPerformanceRepository,
     // Epic 145: Multi-Currency & Cross-Border Support
     pub multi_currency_repo: MultiCurrencyRepository,
     // Epic 91: AI Chat LLM Integration
@@ -300,6 +302,8 @@ impl AppState {
         let violation_repo = ViolationRepository::new(db.clone());
         // Epic 143: Board Meeting Management
         let board_meeting_repo = BoardMeetingRepository::new(db.clone());
+        // Epic 144: Portfolio Performance Analytics
+        let portfolio_performance_repo = PortfolioPerformanceRepository::new(db.clone());
         // Epic 145: Multi-Currency & Cross-Border Support
         let multi_currency_repo = MultiCurrencyRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
@@ -389,6 +393,7 @@ impl AppState {
             reserve_fund_repo,
             violation_repo,
             board_meeting_repo,
+            portfolio_performance_repo,
             multi_currency_repo,
             llm_client,
             auth_service,

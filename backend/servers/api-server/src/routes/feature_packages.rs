@@ -145,6 +145,13 @@ async fn verify_org_access(
     }
 }
 
+/// Create combined routes for feature packages.
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .merge(admin_router())
+        .nest("/public", public_router())
+}
+
 /// Create admin routes for feature packages.
 pub fn admin_router() -> Router<AppState> {
     Router::new()
