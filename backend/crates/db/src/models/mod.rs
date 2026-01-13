@@ -1026,3 +1026,20 @@ pub use board_meetings::{
     UpdateBoardMember, UpdateMinutes, UpdateMotion as UpdateBoardMotion, UploadMeetingDocument,
     VoteChoice, VoteSummary as BoardMeetingVoteSummary,
 };
+
+// Epic 145: Multi-Currency & Cross-Border Support
+pub mod multi_currency;
+
+pub use multi_currency::{
+    ConversionStatus, CountryCode, CreateCrossBorderLease, CreateCurrencyConfig,
+    CreateExchangeRate, CreateMultiCurrencyTransaction, CreatePropertyCurrencyConfig,
+    CreateReportConfig, CrossBorderComplianceRequirement, CrossBorderComplianceStatus,
+    CrossBorderLease, CrossBorderLeaseQuery, CurrencyBreakdown, CurrencyConversionAudit,
+    CurrencyDistribution, CurrencyExposureAnalysis, CurrencySummary, ExchangeRate,
+    ExchangeRateFetchLog, ExchangeRateQuery, ExchangeRateSource, ExchangeRateSummary,
+    GenerateReportRequest, MultiCurrencyDashboard, MultiCurrencyReportConfig,
+    MultiCurrencyReportSnapshot, MultiCurrencyStatistics, MultiCurrencyTransaction,
+    OrganizationCurrencyConfig, OverrideExchangeRate, PropertyBreakdown, PropertyCurrencyConfig,
+    SupportedCurrency, TransactionQuery as MultiCurrencyTransactionQuery, UpdateCrossBorderLease,
+    UpdateCurrencyConfig, UpdatePropertyCurrencyConfig, UpdateReportConfig, UpdateTransactionRate,
+};

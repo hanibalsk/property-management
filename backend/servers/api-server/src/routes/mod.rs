@@ -164,3 +164,6 @@ pub mod violations;
 
 // Epic 143: Board Meeting Management
 pub mod board_meetings;
+
+// Epic 145: Multi-Currency & Cross-Border Support
+pub mod multi_currency;

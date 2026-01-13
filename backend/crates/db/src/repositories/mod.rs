@@ -328,3 +328,8 @@ pub use violations::ViolationRepository;
 pub mod board_meetings;
 
 pub use board_meetings::BoardMeetingRepository;
+
+// Epic 145: Multi-Currency & Cross-Border Support
+pub mod multi_currency;
+
+pub use multi_currency::MultiCurrencyRepository;

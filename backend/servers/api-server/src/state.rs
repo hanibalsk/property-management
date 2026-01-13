@@ -18,16 +18,17 @@ use db::{
         HelpRepository, InfrastructureRepository, InsuranceRepository, IntegrationRepository,
         InvestorPortalRepository, LeaseAbstractionRepository, LeaseRepository, LegalRepository,
         ListingRepository, LlmDocumentRepository, MarketPricingRepository, MeterRepository,
-        NotificationPreferenceRepository, OAuthRepository, OnboardingRepository,
-        OperationsRepository, OrganizationMemberRepository, OrganizationRepository,
-        OutageRepository, OwnerAnalyticsRepository, PackageVisitorRepository,
-        PasswordResetRepository, PersonMonthRepository, PlatformAdminRepository,
-        PortfolioAnalyticsRepository, PredictiveMaintenanceRepository, PropertyValuationRepository,
-        RegistryRepository, RentalRepository, ReserveFundRepository, RoleRepository,
-        SensorRepository, SentimentRepository, SessionRepository, SignatureRequestRepository,
-        SubscriptionRepository, SystemAnnouncementRepository, TwoFactorAuthRepository,
-        UnitRepository, UnitResidentRepository, UserRepository, VendorRepository,
-        ViolationRepository, VoteRepository, WorkOrderRepository, WorkflowRepository,
+        MultiCurrencyRepository, NotificationPreferenceRepository, OAuthRepository,
+        OnboardingRepository, OperationsRepository, OrganizationMemberRepository,
+        OrganizationRepository, OutageRepository, OwnerAnalyticsRepository,
+        PackageVisitorRepository, PasswordResetRepository, PersonMonthRepository,
+        PlatformAdminRepository, PortfolioAnalyticsRepository, PredictiveMaintenanceRepository,
+        PropertyValuationRepository, RegistryRepository, RentalRepository, ReserveFundRepository,
+        RoleRepository, SensorRepository, SentimentRepository, SessionRepository,
+        SignatureRequestRepository, SubscriptionRepository, SystemAnnouncementRepository,
+        TwoFactorAuthRepository, UnitRepository, UnitResidentRepository, UserRepository,
+        VendorRepository, ViolationRepository, VoteRepository, WorkOrderRepository,
+        WorkflowRepository,
     },
     DbPool,
 };
@@ -159,6 +160,8 @@ pub struct AppState {
     pub violation_repo: ViolationRepository,
     // Epic 143: Board Meeting Management
     pub board_meeting_repo: BoardMeetingRepository,
+    // Epic 145: Multi-Currency & Cross-Border Support
+    pub multi_currency_repo: MultiCurrencyRepository,
     // Epic 91: AI Chat LLM Integration
     pub llm_client: LlmClient,
     pub auth_service: AuthService,
@@ -297,6 +300,8 @@ impl AppState {
         let violation_repo = ViolationRepository::new(db.clone());
         // Epic 143: Board Meeting Management
         let board_meeting_repo = BoardMeetingRepository::new(db.clone());
+        // Epic 145: Multi-Currency & Cross-Border Support
+        let multi_currency_repo = MultiCurrencyRepository::new(db.clone());
         // Epic 91: AI Chat LLM Integration
         let llm_client = LlmClient::new();
         let auth_service = AuthService::new();
@@ -384,6 +389,7 @@ impl AppState {
             reserve_fund_repo,
             violation_repo,
             board_meeting_repo,
+            multi_currency_repo,
             llm_client,
             auth_service,
             email_service,
