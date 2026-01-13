@@ -524,6 +524,8 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/webhooks/portals",
             routes::portal_webhooks::router(),
         )
+        // API Ecosystem Expansion routes (Epic 150)
+        .nest("/api/v1/ecosystem", routes::api_ecosystem::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware
