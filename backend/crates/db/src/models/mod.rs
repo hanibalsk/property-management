@@ -1045,6 +1045,23 @@ pub use portfolio_performance::{
     UpsertPropertyCashFlow, ValueTrendPoint,
 };
 
+// Epic 145: Multi-Currency & Cross-Border Support
+pub mod multi_currency;
+
+pub use multi_currency::{
+    ConversionStatus, CountryCode, CreateCrossBorderLease, CreateCurrencyConfig,
+    CreateExchangeRate, CreateMultiCurrencyTransaction, CreatePropertyCurrencyConfig,
+    CreateReportConfig, CrossBorderComplianceRequirement, CrossBorderComplianceStatus,
+    CrossBorderLease, CrossBorderLeaseQuery, CurrencyBreakdown, CurrencyConversionAudit,
+    CurrencyDistribution, CurrencyExposureAnalysis, CurrencySummary, ExchangeRate,
+    ExchangeRateFetchLog, ExchangeRateQuery, ExchangeRateSource, ExchangeRateSummary,
+    GenerateReportRequest, MultiCurrencyDashboard, MultiCurrencyReportConfig,
+    MultiCurrencyReportSnapshot, MultiCurrencyStatistics, MultiCurrencyTransaction,
+    OrganizationCurrencyConfig, OverrideExchangeRate, PropertyBreakdown, PropertyCurrencyConfig,
+    SupportedCurrency, TransactionQuery as MultiCurrencyTransactionQuery, UpdateCrossBorderLease,
+    UpdateCurrencyConfig, UpdatePropertyCurrencyConfig, UpdateReportConfig, UpdateTransactionRate,
+};
+
 // Epic 146: Enhanced Data Residency Controls
 pub mod data_residency;
 pub use data_residency::{
@@ -1058,4 +1075,30 @@ pub use data_residency::{
     ImplicationLevel, IssueSeverity, LogCrossRegionAccess, OutOfRegionData, RegionAccessSummary,
     RegionInfo, ResidencyAuditEvent, ResidencyStatus, RoutingRuleSummary,
     RunComplianceVerification,
+};
+
+// Epic 150: API Ecosystem Expansion
+pub mod api_ecosystem;
+
+pub use api_ecosystem::{
+    api_doc_category, code_sample_language, connector_auth_type, connector_status,
+    developer_status, ecosystem_webhook_event, installation_status, integration_category,
+    marketplace_integration_status, webhook_auth_type, ApiCodeSample, ApiDocumentation,
+    ApiEcosystemDashboard, ApiEcosystemStatistics, Connector, ConnectorAction,
+    ConnectorExecutionLog, ConnectorExecutionQuery, CreateApiCodeSample, CreateApiDocumentation,
+    CreateConnector, CreateConnectorAction, CreateDeveloperApiKey, CreateDeveloperApiKeyResponse,
+    CreateDeveloperRegistration, CreateEnhancedWebhookSubscription, CreateIntegrationRating,
+    CreateMarketplaceIntegration, CreatePreBuiltIntegrationConnection, CreateSandboxConfig,
+    DeveloperApiKey, DeveloperApiKeyDisplay, DeveloperPortalStatistics, DeveloperRegistration,
+    DeveloperUsageStats, EndpointUsageStats, EnhancedWebhookDeliveryLog, EnhancedWebhookStatistics,
+    EnhancedWebhookSubscription, GoogleCalendarConfig, HubSpotConfig, InstallIntegration,
+    IntegrationActivityLog, IntegrationCategoryCount, IntegrationRating, IntegrationRatingWithUser,
+    MarketplaceIntegration, MarketplaceIntegrationQuery, MarketplaceIntegrationSummary,
+    OrganizationIntegration, OutlookCalendarConfig, PreBuiltIntegrationConnection,
+    PreBuiltIntegrationSyncResult, PreBuiltIntegrationType, QuickBooksConfig,
+    ReviewDeveloperRegistration, SalesforceConfig, SandboxConfig, SandboxTestRequestPayload,
+    SandboxTestResponsePayload, SlackConfig, SyncPreBuiltIntegrationRequest, TeamsConfig,
+    UpdateApiDocumentation, UpdateConnector, UpdateEnhancedWebhookSubscription,
+    UpdateMarketplaceIntegration, UpdateOrganizationIntegration,
+    UpdatePreBuiltIntegrationConnection, WebhookRetryPolicyConfig, XeroConfig,
 };

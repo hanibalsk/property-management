@@ -514,6 +514,8 @@ async fn main() -> anyhow::Result<()> {
         .nest("/api/v1/vendor-portal", routes::vendor_portal::router())
         // Registry routes (Epic 64)
         .nest("/api/v1/registry", routes::registry::router())
+        // Multi-Currency routes (Epic 145)
+        .nest("/api/v1/multi-currency", routes::multi_currency::router())
         // Voice Webhooks routes (Epic 93)
         .nest(
             "/api/v1/webhooks/voice",
@@ -580,6 +582,8 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/portfolio-performance",
             routes::portfolio_performance::router(),
         )
+        // API Ecosystem Expansion routes (Epic 150)
+        .nest("/api/v1/ecosystem", routes::api_ecosystem::router())
         // Swagger UI
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Middleware

@@ -1,8 +1,14 @@
 //! External integrations: Airbnb, Booking, real estate portals, calendar sync, accounting exports.
+//!
+//! Epic 150: API Ecosystem Expansion - Connector framework and pre-built integrations.
 
 pub mod airbnb;
 pub mod booking;
 pub mod portals;
+
+// Epic 150: API Ecosystem Expansion
+pub mod connector;
+pub mod prebuilt;
 
 // Epic 61: External Integrations Suite
 pub mod accounting;
@@ -117,4 +123,25 @@ pub use redis::{
     PubSubService, RedisClient, RedisConfig, SessionData, SessionStore, CACHE_KEY_PREFIX,
     DEFAULT_CACHE_TTL_SECS, DEFAULT_SESSION_TTL_SECS, PUBSUB_CHANNEL_PREFIX, REDIS_URL_ENV,
     SESSION_KEY_PREFIX,
+};
+
+// Epic 150: API Ecosystem Expansion
+// Story 150.2: Connector Framework
+pub use connector::{
+    AuthConfig, ConnectorAction, ConnectorConfig, ConnectorError, DataTransformer,
+    ExecutionLogEntry, ExecutionResult, HttpConnector, RateLimitConfig, RateLimiterState,
+    RetryConfig,
+};
+
+// Story 150.4: Pre-Built Integrations
+pub use prebuilt::{
+    HubSpotClient, HubSpotContact, HubSpotContactProperties, HubSpotDeal, HubSpotDealProperties,
+    IntegrationSyncResult, QuickBooksAddress, QuickBooksClient, QuickBooksCustomer,
+    QuickBooksEmailAddr, QuickBooksInvoice, QuickBooksInvoiceLine, QuickBooksLinkedTxn,
+    QuickBooksPayment, QuickBooksPaymentLine, QuickBooksPhone, QuickBooksRef,
+    QuickBooksSalesItemLineDetail, SalesforceClient, SalesforceContact, SalesforceLead,
+    SalesforceOpportunity, SlackAttachment, SlackAttachmentField, SlackBlock, SlackChannel,
+    SlackClient, SlackMessage, SlackTextObject, SyncError, TeamsAdaptiveCard, TeamsAttachment,
+    TeamsClient, TeamsMessage, XeroAccountRef, XeroClient, XeroContact, XeroInvoice,
+    XeroInvoiceRef, XeroLineItem, XeroPayment,
 };

@@ -168,5 +168,11 @@ pub mod board_meetings;
 // Epic 144: Portfolio Performance Analytics
 pub mod portfolio_performance;
 
+// Epic 145: Multi-Currency & Cross-Border Support
+pub mod multi_currency;
+
 // Epic 146: Enhanced Data Residency Controls
 pub mod data_residency;
+
+// Epic 150: API Ecosystem Expansion
+pub mod api_ecosystem;

@@ -333,3 +333,8 @@ pub use board_meetings::BoardMeetingRepository;
 pub mod portfolio_performance;
 
 pub use portfolio_performance::PortfolioPerformanceRepository;
+
+// Epic 145: Multi-Currency & Cross-Border Support
+pub mod multi_currency;
+
+pub use multi_currency::MultiCurrencyRepository;
