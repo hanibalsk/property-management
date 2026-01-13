@@ -1044,3 +1044,18 @@ pub use portfolio_performance::{
     UpdatePortfolioProperty as UpdatePerformancePortfolioProperty, UpdatePropertyTransaction,
     UpsertPropertyCashFlow, ValueTrendPoint,
 };
+
+// Epic 146: Enhanced Data Residency Controls
+pub mod data_residency;
+pub use data_residency::{
+    AccessType, AccessTypeCount, AuditChange, AuditLogEntry as ResidencyAuditLogEntry,
+    AuditLogQuery as ResidencyAuditLogQuery, AuditLogResponse as ResidencyAuditLogResponse,
+    AvailableRegionsResponse, ComplianceImplication, ComplianceIssue, ComplianceStatus,
+    ComplianceVerificationResponse, ComplianceVerificationResult, ConfigureDataResidency,
+    CreateAuditLogEntry, CrossRegionAccessLog, CrossRegionStats, DataLocationSummary, DataRegion,
+    DataResidencyAuditLog, DataResidencyConfig, DataResidencyConfigResponse,
+    DataResidencyDashboard, DataRoutingRule, DataRoutingStatus, DataTypeCategory, DataTypeOverride,
+    ImplicationLevel, IssueSeverity, LogCrossRegionAccess, OutOfRegionData, RegionAccessSummary,
+    RegionInfo, ResidencyAuditEvent, ResidencyStatus, RoutingRuleSummary,
+    RunComplianceVerification,
+};

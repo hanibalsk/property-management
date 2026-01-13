@@ -167,3 +167,6 @@ pub mod board_meetings;
 
 // Epic 144: Portfolio Performance Analytics
 pub mod portfolio_performance;
+
+// Epic 146: Enhanced Data Residency Controls
+pub mod data_residency;
