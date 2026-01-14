@@ -203,7 +203,7 @@ pub struct CreateIntegrationRating {
 }
 
 /// Integration rating with user info.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
 pub struct IntegrationRatingWithUser {
     pub id: Uuid,
     pub integration_id: Uuid,

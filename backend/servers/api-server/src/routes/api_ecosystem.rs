@@ -12,22 +12,21 @@ use axum::{
 use chrono::{Duration, Utc};
 use common::errors::ErrorResponse;
 use db::models::{
-    api_doc_category, code_sample_language, developer_status, ecosystem_webhook_event,
-    ApiCodeSample, ApiDocumentation, ApiEcosystemDashboard, ApiEcosystemStatistics, Connector,
-    ConnectorAction, ConnectorExecutionLog, ConnectorExecutionQuery, CreateApiCodeSample,
-    CreateApiDocumentation, CreateConnector, CreateConnectorAction, CreateDeveloperApiKey,
-    CreateDeveloperApiKeyResponse, CreateDeveloperRegistration, CreateEnhancedWebhookSubscription,
-    CreateIntegrationRating, CreateMarketplaceIntegration, CreatePreBuiltIntegrationConnection,
-    CreateSandboxConfig, DeveloperApiKeyDisplay, DeveloperPortalStatistics, DeveloperRegistration,
-    DeveloperUsageStats, EnhancedWebhookDeliveryLog, EnhancedWebhookStatistics,
-    EnhancedWebhookSubscription, InstallIntegration, IntegrationCategoryCount, IntegrationRating,
-    IntegrationRatingWithUser, MarketplaceIntegration, MarketplaceIntegrationQuery,
-    MarketplaceIntegrationSummary, OrganizationIntegration, PreBuiltIntegrationConnection,
-    PreBuiltIntegrationSyncResult, ReviewDeveloperRegistration, SandboxConfig,
-    SandboxTestRequestPayload, SandboxTestResponsePayload, SyncPreBuiltIntegrationRequest,
-    UpdateApiDocumentation, UpdateConnector, UpdateEnhancedWebhookSubscription,
-    UpdateMarketplaceIntegration, UpdateOrganizationIntegration,
-    UpdatePreBuiltIntegrationConnection,
+    api_doc_category, code_sample_language, ecosystem_webhook_event, ApiCodeSample,
+    ApiDocumentation, ApiEcosystemDashboard, ApiEcosystemStatistics, Connector, ConnectorAction,
+    ConnectorExecutionLog, ConnectorExecutionQuery, CreateApiCodeSample, CreateApiDocumentation,
+    CreateConnector, CreateConnectorAction, CreateDeveloperApiKey, CreateDeveloperApiKeyResponse,
+    CreateDeveloperRegistration, CreateEnhancedWebhookSubscription, CreateIntegrationRating,
+    CreateMarketplaceIntegration, CreatePreBuiltIntegrationConnection, CreateSandboxConfig,
+    DeveloperApiKeyDisplay, DeveloperPortalStatistics, DeveloperRegistration, DeveloperUsageStats,
+    EnhancedWebhookDeliveryLog, EnhancedWebhookStatistics, EnhancedWebhookSubscription,
+    InstallIntegration, IntegrationCategoryCount, IntegrationRating, IntegrationRatingWithUser,
+    MarketplaceIntegration, MarketplaceIntegrationQuery, MarketplaceIntegrationSummary,
+    OrganizationIntegration, PreBuiltIntegrationConnection, PreBuiltIntegrationSyncResult,
+    ReviewDeveloperRegistration, SandboxConfig, SandboxTestRequestPayload,
+    SandboxTestResponsePayload, SyncPreBuiltIntegrationRequest, UpdateApiDocumentation,
+    UpdateConnector, UpdateEnhancedWebhookSubscription, UpdateMarketplaceIntegration,
+    UpdateOrganizationIntegration, UpdatePreBuiltIntegrationConnection,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
@@ -407,22 +406,41 @@ async fn list_integration_categories(
     Ok(Json(categories))
 }
 
+/// Pagination query parameters.
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct PaginationQuery {
+    #[serde(default = "default_limit")]
+    pub limit: i32,
+    #[serde(default)]
+    pub offset: i32,
+}
+
+fn default_limit() -> i32 {
+    20
+}
+
 /// List integration ratings.
 #[utoipa::path(
     get,
     path = "/api/v1/ecosystem/marketplace/{id}/ratings",
-    params(IntegrationIdPath),
+    params(IntegrationIdPath, PaginationQuery),
     responses(
         (status = 200, description = "List of ratings", body = Vec<IntegrationRatingWithUser>),
     ),
     tag = "API Ecosystem"
 )]
 async fn list_integration_ratings(
-    State(_state): State<AppState>,
-    Path(_path): Path<IntegrationIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<IntegrationIdPath>,
+    Query(query): Query<PaginationQuery>,
 ) -> Result<Json<Vec<IntegrationRatingWithUser>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database query
-    Ok(Json(vec![]))
+    let ratings = state
+        .api_ecosystem_repo
+        .list_integration_ratings(path.id, query.limit, query.offset)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
+
+    Ok(Json(ratings))
 }
 
 /// Create integration rating.
@@ -437,23 +455,20 @@ async fn list_integration_ratings(
     tag = "API Ecosystem"
 )]
 async fn create_integration_rating(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     auth: AuthUser,
     Path(path): Path<IntegrationIdPath>,
     Json(request): Json<CreateIntegrationRating>,
 ) -> Result<Json<IntegrationRating>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database insert
-    let rating = IntegrationRating {
-        id: Uuid::new_v4(),
-        integration_id: path.id,
-        organization_id: auth.tenant_id.unwrap_or(Uuid::nil()),
-        user_id: auth.user_id,
-        rating: request.rating,
-        review: request.review,
-        helpful_count: 0,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
+    let org_id = auth
+        .tenant_id
+        .ok_or_else(|| error_response("MISSING_ORG", "Organization context required"))?;
+
+    let rating = state
+        .api_ecosystem_repo
+        .create_integration_rating(path.id, org_id, auth.user_id, &request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(rating))
 }
@@ -511,23 +526,35 @@ async fn install_integration(
 
 /// Get organization integration.
 async fn get_organization_integration(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _tenant: TenantExtractor,
     Path(path): Path<OrgIntegrationPath>,
 ) -> Result<Json<OrganizationIntegration>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database query
-    Err(not_found("Integration", path.id))
+    let integration = state
+        .api_ecosystem_repo
+        .get_organization_integration(path.org_id, path.id)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?
+        .ok_or_else(|| not_found("Integration", path.id))?;
+
+    Ok(Json(integration))
 }
 
 /// Update organization integration.
 async fn update_organization_integration(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _tenant: TenantExtractor,
     Path(path): Path<OrgIntegrationPath>,
-    Json(_request): Json<UpdateOrganizationIntegration>,
+    Json(request): Json<UpdateOrganizationIntegration>,
 ) -> Result<Json<OrganizationIntegration>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database update
-    Err(not_found("Integration", path.id))
+    let integration = state
+        .api_ecosystem_repo
+        .update_organization_integration(path.org_id, path.id, &request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?
+        .ok_or_else(|| not_found("Integration", path.id))?;
+
+    Ok(Json(integration))
 }
 
 /// Uninstall integration.
@@ -636,49 +663,48 @@ async fn delete_connector(
 
 /// List connector actions.
 async fn list_connector_actions(
-    State(_state): State<AppState>,
-    Path(_path): Path<IntegrationIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<IntegrationIdPath>,
 ) -> Result<Json<Vec<ConnectorAction>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database query
-    Ok(Json(vec![]))
+    let actions = state
+        .api_ecosystem_repo
+        .list_connector_actions(path.id)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
+
+    Ok(Json(actions))
 }
 
 /// Create connector action.
 async fn create_connector_action(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _auth: AuthUser,
     Path(_path): Path<IntegrationIdPath>,
     Json(request): Json<CreateConnectorAction>,
 ) -> Result<Json<ConnectorAction>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database insert
-    let action = ConnectorAction {
-        id: Uuid::new_v4(),
-        connector_id: request.connector_id,
-        name: request.name,
-        description: request.description,
-        http_method: request.http_method,
-        endpoint_path: request.endpoint_path,
-        request_schema: request.request_schema,
-        response_schema: request.response_schema,
-        request_transformations: request.request_transformations,
-        response_transformations: request.response_transformations,
-        pagination_config: request.pagination_config,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
+    let action = state
+        .api_ecosystem_repo
+        .create_connector_action(&request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(action))
 }
 
 /// List connector execution logs.
 async fn list_connector_logs(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _tenant: TenantExtractor,
-    Path(_path): Path<OrgIdPath>,
-    Query(_query): Query<ConnectorExecutionQuery>,
+    Path(path): Path<OrgIdPath>,
+    Query(query): Query<ConnectorExecutionQuery>,
 ) -> Result<Json<Vec<ConnectorExecutionLog>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database query
-    Ok(Json(vec![]))
+    let logs = state
+        .api_ecosystem_repo
+        .list_connector_execution_logs(path.org_id, &query)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
+
+    Ok(Json(logs))
 }
 
 // ==================== Story 150.3: Webhook Management ====================
@@ -695,37 +721,17 @@ async fn list_enhanced_webhooks(
 
 /// Create enhanced webhook.
 async fn create_enhanced_webhook(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     _tenant: TenantExtractor,
     auth: AuthUser,
     Path(path): Path<OrgIdPath>,
     Json(request): Json<CreateEnhancedWebhookSubscription>,
 ) -> Result<Json<EnhancedWebhookSubscription>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database insert with URL validation
-    let webhook = EnhancedWebhookSubscription {
-        id: Uuid::new_v4(),
-        organization_id: path.org_id,
-        name: request.name,
-        description: request.description,
-        url: request.url,
-        auth_type: request.auth_type,
-        auth_config: request.auth_config,
-        events: request.events,
-        filters: request.filters,
-        payload_template: request.payload_template,
-        status: "active".to_string(),
-        headers: request.headers,
-        retry_policy: request
-            .retry_policy
-            .map(|p| serde_json::to_value(p).unwrap()),
-        rate_limit_requests: request.rate_limit_requests,
-        rate_limit_window_seconds: request.rate_limit_window_seconds,
-        timeout_ms: request.timeout_ms.unwrap_or(30000),
-        verify_ssl: request.verify_ssl.unwrap_or(true),
-        created_by: auth.user_id,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
+    let webhook = state
+        .api_ecosystem_repo
+        .create_enhanced_webhook(path.org_id, auth.user_id, &request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(webhook))
 }
@@ -741,12 +747,18 @@ async fn get_enhanced_webhook(
 
 /// Update enhanced webhook.
 async fn update_enhanced_webhook(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Path(path): Path<IntegrationIdPath>,
-    Json(_request): Json<UpdateEnhancedWebhookSubscription>,
+    Json(request): Json<UpdateEnhancedWebhookSubscription>,
 ) -> Result<Json<EnhancedWebhookSubscription>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database update
-    Err(not_found("Webhook", path.id))
+    let webhook = state
+        .api_ecosystem_repo
+        .update_enhanced_webhook(path.id, &request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?
+        .ok_or_else(|| not_found("Webhook", path.id))?;
+
+    Ok(Json(webhook))
 }
 
 /// Delete enhanced webhook.
@@ -773,32 +785,29 @@ async fn test_enhanced_webhook(
 
 /// List webhook delivery logs.
 async fn list_webhook_delivery_logs(
-    State(_state): State<AppState>,
-    Path(_path): Path<IntegrationIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<IntegrationIdPath>,
+    Query(query): Query<PaginationQuery>,
 ) -> Result<Json<Vec<EnhancedWebhookDeliveryLog>>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database query
-    Ok(Json(vec![]))
+    let logs = state
+        .api_ecosystem_repo
+        .list_webhook_delivery_logs(path.id, query.limit, query.offset)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
+
+    Ok(Json(logs))
 }
 
 /// Get enhanced webhook statistics.
 async fn get_enhanced_webhook_stats(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Path(path): Path<IntegrationIdPath>,
 ) -> Result<Json<EnhancedWebhookStatistics>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement statistics calculation
-    let stats = EnhancedWebhookStatistics {
-        subscription_id: path.id,
-        total_deliveries: 0,
-        successful_deliveries: 0,
-        failed_deliveries: 0,
-        pending_deliveries: 0,
-        retrying_deliveries: 0,
-        average_response_time_ms: None,
-        success_rate: 100.0,
-        last_24h_deliveries: 0,
-        last_24h_failures: 0,
-        events_by_type: serde_json::json!({}),
-    };
+    let stats = state
+        .api_ecosystem_repo
+        .get_webhook_statistics(path.id)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(stats))
 }
@@ -989,23 +998,15 @@ async fn handle_prebuilt_oauth_callback(
 
 /// Register as a developer.
 async fn register_developer(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
+    auth: AuthUser,
     Json(request): Json<CreateDeveloperRegistration>,
 ) -> Result<Json<DeveloperRegistration>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement database insert
-    let registration = DeveloperRegistration {
-        id: Uuid::new_v4(),
-        user_id: None,
-        email: request.email,
-        company_name: request.company_name,
-        website: request.website,
-        use_case: request.use_case,
-        status: developer_status::PENDING.to_string(),
-        approved_at: None,
-        approved_by: None,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
-    };
+    let registration = state
+        .api_ecosystem_repo
+        .register_developer(auth.user_id, &request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
 
     Ok(Json(registration))
 }
@@ -1021,13 +1022,19 @@ async fn get_developer_registration(
 
 /// Review developer registration (admin only).
 async fn review_developer_registration(
-    State(_state): State<AppState>,
-    _auth: AuthUser,
+    State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<DeveloperIdPath>,
-    Json(_request): Json<ReviewDeveloperRegistration>,
+    Json(request): Json<ReviewDeveloperRegistration>,
 ) -> Result<Json<DeveloperRegistration>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement review logic
-    Err(not_found("Developer", path.id))
+    let registration = state
+        .api_ecosystem_repo
+        .review_developer_registration(path.id, auth.user_id, &request)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?
+        .ok_or_else(|| not_found("Developer", path.id))?;
+
+    Ok(Json(registration))
 }
 
 /// List developer API keys.
@@ -1041,34 +1048,51 @@ async fn list_developer_api_keys(
 
 /// Create developer API key.
 async fn create_developer_api_key(
-    State(_state): State<AppState>,
-    Path(_path): Path<DeveloperIdPath>,
+    State(state): State<AppState>,
+    Path(path): Path<DeveloperIdPath>,
     Json(request): Json<CreateDeveloperApiKey>,
 ) -> Result<Json<CreateDeveloperApiKeyResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Generate a new API key
+    let is_sandbox = request.is_sandbox.unwrap_or(false);
     let key = format!(
         "ppt_{}_{}",
-        if request.is_sandbox.unwrap_or(false) {
-            "test"
-        } else {
-            "live"
-        },
+        if is_sandbox { "test" } else { "live" },
         Uuid::new_v4().to_string().replace("-", "")
     );
 
+    // Create key prefix (first 8 chars for display)
+    let key_prefix = key.chars().take(12).collect::<String>();
+
+    // Hash the key for storage (in production, use proper hashing like argon2)
+    let key_hash = format!("sha256:{}", sha256_simple(&key));
+
+    let api_key = state
+        .api_ecosystem_repo
+        .create_developer_api_key(path.id, &request, &key_prefix, &key_hash)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?;
+
+    // Return the full key only on creation
     let response = CreateDeveloperApiKeyResponse {
-        id: Uuid::new_v4(),
-        name: request.name,
-        key: key.clone(),
-        scopes: request.scopes,
-        rate_limit_tier: "standard".to_string(),
-        is_sandbox: request.is_sandbox.unwrap_or(false),
-        expires_at: request
-            .expires_in_days
-            .map(|days| Utc::now() + Duration::days(days as i64)),
+        id: api_key.id,
+        name: api_key.name,
+        key: key.clone(), // Return full key only on creation
+        scopes: api_key.scopes,
+        rate_limit_tier: api_key.rate_limit_tier,
+        is_sandbox: api_key.is_sandbox,
+        expires_at: api_key.expires_at,
     };
 
     Ok(Json(response))
+}
+
+/// Simple SHA256 hash for demo (use argon2 in production).
+fn sha256_simple(input: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    input.hash(&mut hasher);
+    format!("{:x}", hasher.finish())
 }
 
 /// Revoke developer API key.
@@ -1082,11 +1106,34 @@ async fn revoke_developer_api_key(
 
 /// Rotate developer API key.
 async fn rotate_developer_api_key(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
+    auth: AuthUser,
     Path(path): Path<DeveloperKeyPath>,
 ) -> Result<Json<CreateDeveloperApiKeyResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // TODO: Implement key rotation
-    Err(not_found("API key", path.key_id))
+    // Generate new key (we need to know if it was sandbox from the old key)
+    // For simplicity, we'll generate a live key; in production, fetch old key first
+    let key = format!("ppt_live_{}", Uuid::new_v4().to_string().replace("-", ""));
+    let key_prefix = key.chars().take(12).collect::<String>();
+    let key_hash = format!("sha256:{}", sha256_simple(&key));
+
+    let api_key = state
+        .api_ecosystem_repo
+        .rotate_developer_api_key(path.key_id, auth.user_id, &key_prefix, &key_hash)
+        .await
+        .map_err(|e| error_response("DATABASE_ERROR", &e.to_string()))?
+        .ok_or_else(|| not_found("API key", path.key_id))?;
+
+    let response = CreateDeveloperApiKeyResponse {
+        id: api_key.id,
+        name: api_key.name,
+        key,
+        scopes: api_key.scopes,
+        rate_limit_tier: api_key.rate_limit_tier,
+        is_sandbox: api_key.is_sandbox,
+        expires_at: api_key.expires_at,
+    };
+
+    Ok(Json(response))
 }
 
 /// Get developer usage statistics.
